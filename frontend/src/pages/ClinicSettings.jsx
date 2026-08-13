@@ -498,7 +498,6 @@ export default function ClinicSettings() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-body-md text-body-md font-semibold text-on-surface truncate">{s.name}</p>
-                    <p className="font-body-sm text-body-sm text-outline truncate">{s.email} &bull; {s.phone}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between sm:justify-end gap-sm w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30">
