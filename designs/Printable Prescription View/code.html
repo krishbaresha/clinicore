@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Printable Prescription - ClinicFlow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;600&amp;family=Merriweather:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#f7faf8",
+                        "surface-bright": "#f7faf8",
+                        "tertiary-container": "#676a6c",
+                        "surface-variant": "#e0e3e1",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#00201d",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#9cf2e8",
+                        "tertiary-fixed": "#e0e3e5",
+                        "surface-container-highest": "#e0e3e1",
+                        "primary-fixed-dim": "#80d5cb",
+                        "on-tertiary-container": "#e9ebed",
+                        "on-primary-fixed-variant": "#00504a",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f1f4f3",
+                        "outline": "#6e7977",
+                        "secondary-container": "#96f3e1",
+                        "on-surface-variant": "#3e4947",
+                        "on-secondary-fixed-variant": "#005046",
+                        "inverse-surface": "#2d3130",
+                        "on-tertiary-fixed": "#191c1e",
+                        "secondary": "#006b5e",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#4f5254",
+                        "outline-variant": "#bdc9c6",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e5e9e7",
+                        "on-secondary-fixed": "#00201b",
+                        "inverse-on-surface": "#eef1f0",
+                        "surface-dim": "#d7dbd9",
+                        "surface": "#f7faf8",
+                        "on-background": "#181c1c",
+                        "primary": "#005c55",
+                        "on-primary-container": "#a3faef",
+                        "secondary-fixed-dim": "#7ad7c6",
+                        "primary-container": "#0f766e",
+                        "on-surface": "#181c1c",
+                        "surface-container": "#ebefed",
+                        "secondary-fixed": "#96f3e1",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#80d5cb",
+                        "tertiary-fixed-dim": "#c4c7c9",
+                        "surface-tint": "#006a63",
+                        "on-secondary-container": "#007164",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "error": "#ba1a1a",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "32px",
+                        "base": "4px",
+                        "sidebar-width": "260px",
+                        "container-max": "1440px",
+                        "sm": "16px",
+                        "md": "24px",
+                        "xl": "48px",
+                        "xs": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "serif": ["Merriweather", "serif"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        @media print {
+            body {
+                background-color: white !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .page-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+            }
+        }
+        .page-container {
+            width: 8.5in;
+            min-height: 11in;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-high text-on-surface font-body-md min-h-screen py-lg">
+<!-- Action Bar (Hidden on Print) -->
+<div class="fixed top-4 right-4 z-50 no-print">
+<button class="bg-primary-container text-on-primary font-label-md text-label-md px-6 py-3 rounded-full flex items-center gap-2 hover:bg-opacity-90 transition-opacity shadow-lg" onclick="window.print()">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">print</span>
+            Print Prescription
+        </button>
+</div>
+<!-- Letter-sized Document -->
+<div class="page-container mx-auto bg-surface-container-lowest shadow-xl rounded-lg p-[1in] flex flex-col relative">
+<!-- Header / Letterhead -->
+<div class="flex items-start justify-between border-b-2 border-primary-container pb-6 mb-8">
+<div class="flex items-center gap-4">
+<img class="h-16 w-auto object-contain" data-alt="A clean, modern medical clinic logo featuring a stylized teal cross and smooth typography for 'ClinicFlow', suitable for a high-end corporate identity in the healthcare sector, set against a pristine white background to ensure high contrast and professional clarity." src="https://lh3.googleusercontent.com/aida/AP1WRLu3OsMue1fhnnKGSBzNeSLXBeTsrilUiUDtIiBf71se7Td9D9hfK5SWEYm6pNkJY6BAjz1OGL15nfmWzTwcd15k7C-gqu2wzv6L6-zhs9rSHvBl_hgMSb1QW7mXNVI92ChW7TmYx-fOVWeC2yG0pvG1mybm8JPWITJt6uZ52lIuDswGnq_gpHwulzl3GqIarq-WgeioXObs1tinFYUatQdrYZA7rnjFCalyVNPUqerdYd2cVPBs-_FiYNpM"/>
+<div>
+<h1 class="font-serif text-headline-lg font-headline-lg text-primary">ClinicFlow Medical Center</h1>
+<p class="text-on-surface-variant font-body-md text-body-md">123 Healthcare Blvd, Medical District, NY 10001</p>
+<p class="text-on-surface-variant font-body-sm text-body-sm mt-1">Phone: (555) 123-4567 | Web: clinicflow.health</p>
+</div>
+</div>
+<div class="text-right">
+<span class="material-symbols-outlined text-primary-container text-4xl">local_pharmacy</span>
+<p class="font-headline-md text-headline-md text-primary mt-2">Rx</p>
+</div>
+</div>
+<!-- Patient Info -->
+<div class="grid grid-cols-3 gap-6 bg-surface-container-low p-4 rounded-lg mb-8">
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block mb-1">Patient Name</span>
+<span class="font-body-md text-body-md font-semibold">Sarah Jenkins</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block mb-1">Age / Gender</span>
+<span class="font-body-md text-body-md font-semibold">32 Years / F</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block mb-1">Date of Visit</span>
+<span class="font-body-md text-body-md font-semibold">Oct 24, 2023</span>
+</div>
+</div>
+<!-- Prescriptions Table -->
+<div class="flex-grow">
+<h2 class="font-headline-md text-headline-md mb-4 text-primary">Prescribed Medications</h2>
+<div class="w-full">
+<div class="grid grid-cols-12 gap-4 border-b border-outline-variant pb-2 mb-4">
+<div class="col-span-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Medicine Name</div>
+<div class="col-span-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Dosage</div>
+<div class="col-span-3 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Duration</div>
+</div>
+<!-- Row 1 -->
+<div class="grid grid-cols-12 gap-4 border-b border-surface-variant py-4 items-center">
+<div class="col-span-6 font-body-md text-body-md font-semibold">Loratadine 10mg</div>
+<div class="col-span-3 font-body-sm text-body-sm text-on-surface-variant">Once Daily</div>
+<div class="col-span-3 font-body-sm text-body-sm text-on-surface-variant">14 Days</div>
+</div>
+<!-- Row 2 -->
+<div class="grid grid-cols-12 gap-4 border-b border-surface-variant py-4 items-center">
+<div class="col-span-6 font-body-md text-body-md font-semibold">Fluticasone Nasal Spray</div>
+<div class="col-span-3 font-body-sm text-body-sm text-on-surface-variant">2 puffs each nostril twice daily</div>
+<div class="col-span-3 font-body-sm text-body-sm text-on-surface-variant">30 Days</div>
+</div>
+</div>
+<div class="mt-8 p-4 bg-surface-container-low rounded-lg border-l-4 border-secondary-container">
+<span class="font-label-md text-label-md font-semibold block mb-2">Physician's Notes:</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Take Loratadine in the morning. If nasal congestion persists after 2 weeks, please schedule a follow-up appointment.</p>
+</div>
+</div>
+<!-- Footer / Signature -->
+<div class="mt-16 flex justify-between items-end border-t border-outline-variant pt-8">
+<div class="text-on-surface-variant font-label-md text-label-md">
+                Generated by ClinicFlow EMR
+            </div>
+<div class="w-64 text-center">
+<div class="border-b border-on-surface mb-2 h-12 flex items-end justify-center">
+<!-- Placeholder for physical signature space -->
+</div>
+<p class="font-body-md text-body-md font-semibold">Dr. Julian Vance</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Lead Administrator / Physician</p>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">License #MD-987654</p>
+</div>
+</div>
+</div>
+</body></html>

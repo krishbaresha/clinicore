@@ -1,0 +1,130 @@
+{
+  "_note_for_ai": "This is the canonical mock dataset for ClinicFlow. Use these exact field names, exact data shapes, and exact ID formats in all generated code. Do not invent new fields not present here without flagging it in the Progress Log first. Extend this file with more sample rows if needed, but never change existing field names.",
+
+  "clinic": {
+    "id": "clinic_001",
+    "name": "Dr. Ahmed's Clinic",
+    "logo_url": "",
+    "address": "Auto Bhan Road, Hyderabad, Sindh, Pakistan",
+    "created_at": "2023-01-10T09:00:00Z"
+  },
+
+  "users": [
+    {
+      "id": "user_001",
+      "clinic_id": "clinic_001",
+      "name": "Dr. Ahmed Raza",
+      "role": "doctor",
+      "phone": "03001234567",
+      "email": "dr.ahmed@example.com"
+    },
+    {
+      "id": "user_002",
+      "clinic_id": "clinic_001",
+      "name": "Sana Malik",
+      "role": "receptionist",
+      "phone": "03111234567",
+      "email": "sana.reception@example.com"
+    }
+  ],
+
+  "patients": [
+    {
+      "id": "pat_001",
+      "clinic_id": "clinic_001",
+      "full_name": "Muhammad Bilal",
+      "phone": "03211112233",
+      "cnic": "41304-1234567-1",
+      "age": 34,
+      "gender": "male",
+      "created_at": "2023-03-15T10:00:00Z"
+    },
+    {
+      "id": "pat_002",
+      "clinic_id": "clinic_001",
+      "full_name": "Ayesha Siddiqui",
+      "phone": "03451112244",
+      "cnic": "41306-7654321-2",
+      "age": 27,
+      "gender": "female",
+      "created_at": "2024-06-01T11:30:00Z"
+    },
+    {
+      "id": "pat_003",
+      "clinic_id": "clinic_001",
+      "full_name": "Abdul Ghani",
+      "phone": "03007779988",
+      "cnic": "",
+      "age": 58,
+      "gender": "male",
+      "created_at": "2022-11-20T09:15:00Z"
+    }
+  ],
+
+  "visits": [
+    {
+      "id": "visit_001",
+      "patient_id": "pat_001",
+      "clinic_id": "clinic_001",
+      "visit_date": "2023-03-15T10:05:00Z",
+      "symptoms": "Fever, sore throat, body ache",
+      "diagnosis": "Viral flu",
+      "fee_amount": 800,
+      "follow_up_date": "2023-03-22",
+      "notes": "Advised rest and fluids"
+    },
+    {
+      "id": "visit_002",
+      "patient_id": "pat_001",
+      "clinic_id": "clinic_001",
+      "visit_date": "2025-07-10T16:20:00Z",
+      "symptoms": "Persistent cough, mild chest discomfort",
+      "diagnosis": "Bronchitis",
+      "fee_amount": 1000,
+      "follow_up_date": "2025-07-20",
+      "notes": "Patient returned after 2 years — history retrieved successfully"
+    },
+    {
+      "id": "visit_003",
+      "patient_id": "pat_002",
+      "clinic_id": "clinic_001",
+      "visit_date": "2024-06-01T11:35:00Z",
+      "symptoms": "Headache, dizziness",
+      "diagnosis": "Low blood pressure",
+      "fee_amount": 900,
+      "follow_up_date": null,
+      "notes": ""
+    },
+    {
+      "id": "visit_004",
+      "patient_id": "pat_003",
+      "clinic_id": "clinic_001",
+      "visit_date": "2022-11-20T09:20:00Z",
+      "symptoms": "Joint pain, difficulty walking",
+      "diagnosis": "Early-stage arthritis",
+      "fee_amount": 1200,
+      "follow_up_date": "2022-12-05",
+      "notes": "Referred for X-ray"
+    }
+  ],
+
+  "prescription_items": [
+    { "id": "rx_001", "visit_id": "visit_001", "medicine_name": "Panadol", "dosage": "1 tablet, twice daily", "duration": "5 days" },
+    { "id": "rx_002", "visit_id": "visit_001", "medicine_name": "Amoxicillin 500mg", "dosage": "1 capsule, 3 times daily", "duration": "7 days" },
+    { "id": "rx_003", "visit_id": "visit_002", "medicine_name": "Ascoril Syrup", "dosage": "10ml, twice daily", "duration": "6 days" },
+    { "id": "rx_004", "visit_id": "visit_003", "medicine_name": "Ferrous Sulphate", "dosage": "1 tablet daily", "duration": "30 days" },
+    { "id": "rx_005", "visit_id": "visit_004", "medicine_name": "Voltral SR", "dosage": "1 tablet, twice daily", "duration": "10 days" }
+  ],
+
+  "store_inventory": [
+    { "id": "inv_001", "clinic_id": "clinic_001", "medicine_name": "Panadol", "stock_qty": 120, "unit_price": 8, "low_stock_threshold": 20 },
+    { "id": "inv_002", "clinic_id": "clinic_001", "medicine_name": "Amoxicillin 500mg", "stock_qty": 15, "unit_price": 25, "low_stock_threshold": 20 },
+    { "id": "inv_003", "clinic_id": "clinic_001", "medicine_name": "Ascoril Syrup", "stock_qty": 40, "unit_price": 180, "low_stock_threshold": 10 },
+    { "id": "inv_004", "clinic_id": "clinic_001", "medicine_name": "Ferrous Sulphate", "stock_qty": 8, "unit_price": 12, "low_stock_threshold": 15 }
+  ],
+
+  "store_sales": [
+    { "id": "sale_001", "clinic_id": "clinic_001", "inventory_id": "inv_001", "quantity_sold": 2, "sale_amount": 16, "sale_date": "2025-08-10T09:00:00Z", "linked_visit_id": null },
+    { "id": "sale_002", "clinic_id": "clinic_001", "inventory_id": "inv_003", "quantity_sold": 1, "sale_amount": 180, "sale_date": "2025-08-11T14:30:00Z", "linked_visit_id": "visit_002" }
+  ]
+}
