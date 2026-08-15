@@ -4,19 +4,23 @@ import { initDB } from "./api/db.js";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import SidebarLayout from "./layouts/SidebarLayout.jsx";
 
-// Pages
+// Pages — existing
 import LoginScreen               from "./pages/LoginScreen.jsx";
 import Dashboard                 from "./pages/Dashboard.jsx";
 import PatientsList              from "./pages/PatientsList.jsx";
 import PatientProfile            from "./pages/PatientProfile.jsx";
 import AddNewPatient             from "./pages/AddNewPatient.jsx";
-import NewVisitPrescriptionEntry from "./pages/NewVisitPrescriptionEntry.jsx";
-import PrintablePrescriptionView from "./pages/PrintablePrescriptionView.jsx";
-import PrintPrescriptionIsolated from "./pages/PrintPrescriptionIsolated.jsx";
 import FeesReports               from "./pages/FeesReports.jsx";
 import MedicalStoreInventory     from "./pages/MedicalStoreInventory.jsx";
-import MedicalStoreSalesLog      from "./pages/MedicalStoreSalesLog.jsx";
 import ClinicSettings            from "./pages/ClinicSettings.jsx";
+
+// Pages — NEW (real clinic workflow screens)
+import PatientRegistration       from "./pages/PatientRegistration.jsx";
+import ReceptionQueue            from "./pages/ReceptionQueue.jsx";
+import PendingReports            from "./pages/PendingReports.jsx";
+import DoctorQueue               from "./pages/DoctorQueue.jsx";
+import ConsultationScreen        from "./pages/ConsultationScreen.jsx";
+import MedicalStorePOS           from "./pages/MedicalStorePOS.jsx";
 
 /**
  * ProtectedRoute — wraps pages that require a logged-in session.
@@ -24,7 +28,7 @@ import ClinicSettings            from "./pages/ClinicSettings.jsx";
  */
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return null; // Avoid flash before session is restored
+  if (loading) return null;
   if (!user)   return <Navigate to="/login" replace />;
   return children;
 }
@@ -46,25 +50,26 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/login" element={<LoginScreen />} />
 
-      {/* Authenticated — wrapped in sidebar layout */}
-      <Route path="/dashboard" element={<AuthenticatedLayout><Dashboard /></AuthenticatedLayout>} />
-      <Route path="/patients"  element={<AuthenticatedLayout><PatientsList /></AuthenticatedLayout>} />
+      {/* ─── Reception / Counter Flow ─────────────────────────── */}
+      <Route path="/reception/register"        element={<AuthenticatedLayout><PatientRegistration /></AuthenticatedLayout>} />
+      <Route path="/reception/queue"           element={<AuthenticatedLayout><ReceptionQueue /></AuthenticatedLayout>} />
+      <Route path="/reception/pending-reports" element={<AuthenticatedLayout><PendingReports /></AuthenticatedLayout>} />
+
+      {/* ─── Doctor Flow ──────────────────────────────────────── */}
+      <Route path="/doctor/queue"                   element={<AuthenticatedLayout><DoctorQueue /></AuthenticatedLayout>} />
+      <Route path="/doctor/consultation/:visitId"   element={<AuthenticatedLayout><ConsultationScreen /></AuthenticatedLayout>} />
+
+      {/* ─── Medical Store ─────────────────────────────────────── */}
+      <Route path="/store/pos"   element={<AuthenticatedLayout><MedicalStorePOS /></AuthenticatedLayout>} />
+      <Route path="/store"       element={<AuthenticatedLayout><MedicalStoreInventory /></AuthenticatedLayout>} />
+
+      {/* ─── Shared / General ──────────────────────────────────── */}
+      <Route path="/dashboard"   element={<AuthenticatedLayout><Dashboard /></AuthenticatedLayout>} />
+      <Route path="/patients"    element={<AuthenticatedLayout><PatientsList /></AuthenticatedLayout>} />
       <Route path="/patients/new" element={<AuthenticatedLayout><AddNewPatient /></AuthenticatedLayout>} />
       <Route path="/patients/:id" element={<AuthenticatedLayout><PatientProfile /></AuthenticatedLayout>} />
-      <Route path="/visits/new"   element={<AuthenticatedLayout><NewVisitPrescriptionEntry /></AuthenticatedLayout>} />
-
-      {/* Print view — no sidebar, clean white page */}
-      <Route path="/visits/:id/print" element={
-        <ProtectedRoute><PrintablePrescriptionView /></ProtectedRoute>
-      } />
-      <Route path="/print/prescription/:id" element={
-        <ProtectedRoute><PrintPrescriptionIsolated /></ProtectedRoute>
-      } />
-
-      <Route path="/fees"         element={<AuthenticatedLayout><FeesReports /></AuthenticatedLayout>} />
-      <Route path="/store"        element={<AuthenticatedLayout><MedicalStoreInventory /></AuthenticatedLayout>} />
-      <Route path="/store/sales"  element={<AuthenticatedLayout><MedicalStoreSalesLog /></AuthenticatedLayout>} />
-      <Route path="/settings"     element={<AuthenticatedLayout><ClinicSettings /></AuthenticatedLayout>} />
+      <Route path="/fees"        element={<AuthenticatedLayout><FeesReports /></AuthenticatedLayout>} />
+      <Route path="/settings"    element={<AuthenticatedLayout><ClinicSettings /></AuthenticatedLayout>} />
 
       {/* Default redirect */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -74,7 +79,7 @@ function AppRoutes() {
 }
 
 export default function App() {
-  // Seed the localStorage DB once on very first load
+  // Seed the localStorage DB once on very first load (bumped to v4 to force re-seed with new schema)
   useEffect(() => { initDB(); }, []);
 
   return (

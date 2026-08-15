@@ -107,7 +107,7 @@ export default function ClinicSettings() {
               type="text"
               value={clinicForm.name}
               onChange={handleClinicChange}
-              placeholder="Dr. Ahmed's Clinic"
+              placeholder="Dr. Asif Ashraf's Clinic"
               className="input-field"
             />
           </div>
@@ -119,7 +119,7 @@ export default function ClinicSettings() {
               rows={2}
               value={clinicForm.address}
               onChange={handleClinicChange}
-              placeholder="Auto Bhan Road, Hyderabad, Sindh, Pakistan"
+              placeholder="Lajpat Road, Hyderabad"
               className="input-field resize-none"
             />
           </div>
@@ -207,7 +207,7 @@ export default function ClinicSettings() {
               type="text"
               value={profileForm.name}
               onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-              placeholder="Dr. Ahmed Raza"
+              placeholder="Dr. Asif Ashraf"
               className="input-field"
               required
             />
@@ -220,7 +220,7 @@ export default function ClinicSettings() {
               type="email"
               value={profileForm.email}
               onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-              placeholder="dr.ahmed@example.com"
+              placeholder="dr.asif@example.com"
               className="input-field"
               required
             />

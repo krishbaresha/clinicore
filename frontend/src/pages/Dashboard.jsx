@@ -148,12 +148,12 @@ export default function Dashboard() {
           <span className="font-label-md text-label-md font-bold">Add New Patient</span>
         </button>
         <button
-          id="quick-new-visit"
-          onClick={() => navigate("/visits/new")}
+          id="quick-register-patient"
+          onClick={() => navigate("/reception/register")}
           className="glass-card px-6 py-4 flex items-center gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
         >
-          <span className="material-symbols-outlined">medical_services</span>
-          <span className="font-label-md text-label-md font-bold">New Visit</span>
+          <span className="material-symbols-outlined">how_to_reg</span>
+          <span className="font-label-md text-label-md font-bold">Register Patient</span>
         </button>
         <button
           id="quick-view-reports"

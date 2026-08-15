@@ -43,7 +43,7 @@ export default function MedicalStoreSalesLog() {
     const d = new Date(s.sale_date);
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   });
-  const monthlySalesTotal = thisMonthSales.reduce((sum, s) => sum + (s.sale_amount || 0), 0);
+  const monthlySalesTotal = thisMonthSales.reduce((sum, s) => sum + (s.total_amount || s.sale_amount || 0), 0);
 
   function getMedicineName(inventory_id) {
     return inventory.find((i) => i.id === inventory_id)?.medicine_name || inventory_id;
@@ -137,32 +137,34 @@ export default function MedicalStoreSalesLog() {
         <div className="glass-card p-xl text-center text-outline font-body-md">No sales recorded yet.</div>
       ) : (
         <div className="space-y-3">
-          {sales.map((sale) => (
+          {sales.map((sale) => {
+            // Support both new cart-style sales (items[]) and legacy single-item sales
+            const saleItems = sale.items || (sale.inventory_id ? [{ medicine_name: getMedicineName(sale.inventory_id), quantity: sale.quantity_sold, line_total: sale.sale_amount }] : []);
+            const saleTotal = sale.total_amount || sale.sale_amount || 0;
+            return (
             <div
               key={sale.id}
               id={`sale-row-${sale.id}`}
-              className="glass-row rounded-2xl p-4 md:px-6 md:py-4 flex flex-col md:grid md:grid-cols-12 md:items-center gap-3"
+              className="glass-row rounded-2xl p-4 md:px-6 md:py-4 flex flex-col gap-2"
             >
-              <div className="col-span-3 flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm">
-                <span className="material-symbols-outlined text-[16px] text-outline hidden md:block">calendar_today</span>
-                {formatDate(sale.sale_date)}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm">
+                  <span className="material-symbols-outlined text-[16px] text-outline">calendar_today</span>
+                  {formatDate(sale.sale_date)}
+                </div>
+                <span className="font-headline-md text-headline-md font-bold text-primary">{formatCurrency(saleTotal)}</span>
               </div>
-              <div className="col-span-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-primary hidden md:block">medication</span>
-                <span className="font-body-md text-body-md font-semibold text-on-surface">
-                  {getMedicineName(sale.inventory_id)}
-                </span>
-              </div>
-              <div className="col-span-2 flex items-center justify-between md:justify-end gap-2">
-                <span className="md:hidden font-label-md text-outline uppercase text-xs">Qty:</span>
-                <span className="font-headline-md text-headline-md font-bold text-on-surface">{sale.quantity_sold}</span>
-              </div>
-              <div className="col-span-3 flex items-center justify-between md:justify-end gap-2">
-                <span className="md:hidden font-label-md text-outline uppercase text-xs">Amount:</span>
-                <span className="font-headline-md text-headline-md font-bold text-primary">{formatCurrency(sale.sale_amount)}</span>
+              <div className="flex flex-wrap gap-2">
+                {saleItems.map((item, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 text-xs bg-surface-container-low text-on-surface-variant px-2 py-1 rounded-lg">
+                    <span className="material-symbols-outlined text-[12px] text-primary">medication</span>
+                    {item.medicine_name} × {item.quantity || item.quantity_sold}
+                  </span>
+                ))}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

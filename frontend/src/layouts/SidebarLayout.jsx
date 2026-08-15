@@ -3,91 +3,141 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getInitials } from "../utils/formatters.js";
 
-// Navigation items matching the Sitemap exactly (04_Screens_and_Sitemap.md §1)
-const NAV_ITEMS = [
-  { label: "Dashboard",       icon: "dashboard",         path: "/dashboard" },
-  { label: "Patients",        icon: "group",             path: "/patients"  },
-  { label: "New Visit",       icon: "medical_services",  path: "/visits/new" },
-  { label: "Fees & Reports",  icon: "payments",          path: "/fees"       },
-  { label: "Medical Store",   icon: "inventory_2",       path: "/store"      },
-  { label: "Settings",        icon: "settings",          path: "/settings",  spacer: true },
+// Role-based navigation as defined in 04_Screens_and_Sitemap.md §1
+const NAV_BY_ROLE = {
+  receptionist: [
+    { label: "Dashboard",        icon: "dashboard",          path: "/dashboard" },
+    { label: "Register Patient", icon: "how_to_reg",         path: "/reception/register" },
+    { label: "Today's Queue",    icon: "event_note",         path: "/reception/queue" },
+    { label: "Pending Reports",  icon: "pending_actions",    path: "/reception/pending-reports" },
+    { label: "Patients",         icon: "group",              path: "/patients" },
+    { label: "Fees & Reports",   icon: "payments",           path: "/fees" },
+    { label: "Settings",         icon: "settings",           path: "/settings", spacer: true },
+  ],
+  doctor: [
+    { label: "Dashboard",        icon: "dashboard",          path: "/dashboard" },
+    { label: "My Queue",         icon: "queue",              path: "/doctor/queue" },
+    { label: "Patients",         icon: "group",              path: "/patients" },
+    { label: "Fees & Reports",   icon: "payments",           path: "/fees" },
+    { label: "Settings",         icon: "settings",           path: "/settings", spacer: true },
+  ],
+  pharmacist: [
+    { label: "POS / Checkout",   icon: "point_of_sale",      path: "/store/pos" },
+    { label: "Inventory",        icon: "inventory_2",        path: "/store" },
+    { label: "Settings",         icon: "settings",           path: "/settings", spacer: true },
+  ],
+};
+
+// Fallback nav for unknown roles — show everything
+const NAV_DEFAULT = [
+  { label: "Dashboard",        icon: "dashboard",          path: "/dashboard" },
+  { label: "Register Patient", icon: "how_to_reg",         path: "/reception/register" },
+  { label: "Today's Queue",    icon: "event_note",         path: "/reception/queue" },
+  { label: "Pending Reports",  icon: "pending_actions",    path: "/reception/pending-reports" },
+  { label: "My Queue",         icon: "queue",              path: "/doctor/queue" },
+  { label: "Patients",         icon: "group",              path: "/patients" },
+  { label: "POS / Checkout",   icon: "point_of_sale",      path: "/store/pos" },
+  { label: "Inventory",        icon: "inventory_2",        path: "/store" },
+  { label: "Fees & Reports",   icon: "payments",           path: "/fees" },
+  { label: "Settings",         icon: "settings",           path: "/settings", spacer: true },
 ];
+
+// Mobile bottom nav — always shows most-used cross-role items
+const MOBILE_NAV = [
+  { label: "Home",     icon: "home",         path: "/dashboard" },
+  { label: "Queue",    icon: "queue",        path: "/doctor/queue" },
+  { label: "Register", icon: "how_to_reg",   path: "/reception/register" },
+  { label: "Store",    icon: "point_of_sale",path: "/store/pos" },
+  { label: "Patients", icon: "group",        path: "/patients" },
+];
+
+function NavItems({ items, onItemClick }) {
+  return (
+    <ul className="space-y-1">
+      {items.map((item) => (
+        <li key={item.path} className={item.spacer ? "mt-4" : ""}>
+          <NavLink
+            to={item.path}
+            onClick={onItemClick}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 ${
+                isActive ? "nav-item-active" : "nav-item"
+              }`
+            }
+          >
+            <span className="material-symbols-outlined">{item.icon}</span>
+            <span className="font-body-md text-body-md">{item.label}</span>
+          </NavLink>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function SidebarLayout({ children }) {
   const { user, clinic, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const navItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
+
   function handleLogout() {
     logout();
     navigate("/login");
   }
 
-  return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row overflow-x-hidden">
-      {/* ── Desktop Sidebar ─────────────────────────────── */}
-      <aside className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-[260px] border-r border-white/20 backdrop-blur-xl bg-white/70 shadow-[0_8px_32px_0_rgba(15,118,110,0.08)] z-50 py-md">
+  function SidebarContent({ onItemClick }) {
+    return (
+      <>
         {/* Logo */}
-        <div className="px-md mb-lg flex items-center gap-xs">
-          <span
-            className="material-symbols-outlined text-primary text-3xl"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
+        <div className="px-5 mb-6 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
             medical_services
           </span>
-          <h1 className="font-headline-md text-headline-md font-bold text-primary">
-            {clinic?.name || "ClinicFlow"}
-          </h1>
+          <h1 className="font-bold text-xl text-primary truncate">{clinic?.name || "ClinicFlow"}</h1>
         </div>
 
         {/* User Chip */}
         {user && (
-          <div className="mx-xs mb-md flex items-center gap-xs bg-surface-container-low/50 rounded-lg px-xs py-2">
-            <div className="w-10 h-10 rounded-full bg-secondary-container text-primary flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="mx-2 mb-4 flex items-center gap-2 bg-surface-container-low/50 rounded-xl px-3 py-2">
+            <div className="w-9 h-9 rounded-full bg-secondary-container text-primary flex items-center justify-center font-bold text-xs shrink-0">
               {getInitials(user.name)}
             </div>
             <div className="min-w-0">
-              <p className="font-label-md text-label-md text-on-surface font-bold truncate">{user.name}</p>
-              <p className="font-body-sm text-body-sm text-outline capitalize">{user.role}</p>
+              <p className="font-semibold text-sm text-on-surface truncate">{user.name}</p>
+              <p className="text-xs text-outline capitalize">{user.role}</p>
             </div>
           </div>
         )}
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2">
-          <ul className="space-y-1">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.path} className={item.spacer ? "mt-lg" : ""}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 transition-colors duration-150 ${
-                      isActive ? "nav-item-active" : "nav-item"
-                    }`
-                  }
-                >
-                  <span className="material-symbols-outlined">{item.icon}</span>
-                  <span className="font-body-md text-body-md">{item.label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+          <NavItems items={navItems} onItemClick={onItemClick} />
         </nav>
 
         {/* Logout */}
-        <div className="px-xs mt-md">
+        <div className="px-2 mt-4">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/30 rounded-lg transition-colors font-body-md text-body-md"
+            className="w-full flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/30 rounded-xl transition-colors text-sm font-medium"
           >
             <span className="material-symbols-outlined">logout</span>
             Logout
           </button>
         </div>
+      </>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col md:flex-row overflow-x-hidden">
+      {/* ── Desktop Sidebar ─────────────────────────────── */}
+      <aside className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-[260px] border-r border-white/20 backdrop-blur-xl bg-white/70 shadow-[0_8px_32px_0_rgba(15,118,110,0.08)] z-50 py-5">
+        <SidebarContent onItemClick={undefined} />
       </aside>
 
       {/* ── Mobile Top App Bar ───────────────────────────── */}
-      <header className="md:hidden sticky top-0 z-40 w-full flex justify-between items-center px-sm py-3 bg-background/80 backdrop-blur-md border-b border-outline-variant/30">
+      <header className="md:hidden sticky top-0 z-40 w-full flex justify-between items-center px-4 py-3 bg-background/80 backdrop-blur-md border-b border-outline-variant/30">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMobileMenuOpen(true)}
@@ -99,7 +149,7 @@ export default function SidebarLayout({ children }) {
           <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
             medical_services
           </span>
-          <span className="font-headline-md text-headline-md font-bold text-primary">{clinic?.name || "ClinicFlow"}</span>
+          <span className="font-bold text-base text-primary">{clinic?.name || "ClinicFlow"}</span>
         </div>
         {user && (
           <div className="w-9 h-9 rounded-full bg-secondary-container text-primary flex items-center justify-center font-bold text-xs">
@@ -111,80 +161,21 @@ export default function SidebarLayout({ children }) {
       {/* ── Mobile Sidebar Drawer ─────────────────────────── */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
-
-          {/* Drawer Content */}
-          <aside className="relative flex flex-col w-[260px] max-w-[80vw] h-full bg-white/95 backdrop-blur-xl border-r border-white/20 shadow-2xl z-10 py-md transition-transform duration-300">
-            {/* Close Button & Brand */}
-            <div className="px-md mb-lg flex items-center justify-between">
-              <div className="flex items-center gap-xs">
-                <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  medical_services
-                </span>
-                <span className="font-headline-md text-headline-md font-bold text-primary truncate max-w-[140px]">
-                  {clinic?.name || "ClinicFlow"}
-                </span>
+          <aside className="relative flex flex-col w-[260px] max-w-[80vw] h-full bg-white/95 backdrop-blur-xl border-r border-white/20 shadow-2xl z-10 py-5">
+            <div className="px-5 mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>medical_services</span>
+                <span className="font-bold text-base text-primary truncate max-w-[140px]">{clinic?.name || "ClinicFlow"}</span>
               </div>
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1 rounded-full hover:bg-surface-container-high flex items-center justify-center"
-              >
+              <button onClick={() => setMobileMenuOpen(false)} className="p-1 rounded-full hover:bg-surface-container-high">
                 <span className="material-symbols-outlined text-2xl">close</span>
               </button>
             </div>
-
-            {/* User Chip */}
-            {user && (
-              <div className="mx-xs mb-md flex items-center gap-xs bg-surface-container-low/50 rounded-lg px-xs py-2">
-                <div className="w-10 h-10 rounded-full bg-secondary-container text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                  {getInitials(user.name)}
-                </div>
-                <div className="min-w-0">
-                  <p className="font-label-md text-label-md text-on-surface font-bold truncate">{user.name}</p>
-                  <p className="font-body-sm text-body-sm text-outline capitalize">{user.role}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto px-2">
-              <ul className="space-y-1">
-                {NAV_ITEMS.map((item) => (
-                  <li key={item.path} className={item.spacer ? "mt-lg" : ""}>
-                    <NavLink
-                      to={item.path}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-3 transition-colors duration-150 ${
-                          isActive ? "nav-item-active" : "nav-item"
-                        }`
-                      }
-                    >
-                      <span className="material-symbols-outlined">{item.icon}</span>
-                      <span className="font-body-md text-body-md">{item.label}</span>
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            {/* Logout */}
-            <div className="px-xs mt-md">
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  handleLogout();
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/30 rounded-lg transition-colors font-body-md text-body-md"
-              >
-                <span className="material-symbols-outlined">logout</span>
-                Logout
-              </button>
-            </div>
+            <SidebarContent onItemClick={() => setMobileMenuOpen(false)} />
           </aside>
         </div>
       )}
@@ -197,13 +188,7 @@ export default function SidebarLayout({ children }) {
       {/* ── Mobile Bottom Navigation ─────────────────────── */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full z-45 bg-surface/90 backdrop-blur-lg rounded-t-xl border-t border-white/20 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
         <ul className="flex justify-around items-center h-16 px-2">
-          {[
-            { label: "Home",     icon: "home",         path: "/dashboard"  },
-            { label: "Patients", icon: "group",        path: "/patients"   },
-            { label: "Add",      icon: "add_circle",   path: "/visits/new" },
-            { label: "Store",    icon: "storefront",   path: "/store"      },
-            { label: "Reports",  icon: "assessment",   path: "/fees"       },
-          ].map((item) => (
+          {MOBILE_NAV.map((item) => (
             <li key={item.path}>
               <NavLink
                 to={item.path}
@@ -216,7 +201,7 @@ export default function SidebarLayout({ children }) {
                 }
               >
                 <span className="material-symbols-outlined text-2xl">{item.icon}</span>
-                <span className="font-label-md text-label-md mt-0.5">{item.label}</span>
+                <span className="text-xs mt-0.5 font-medium">{item.label}</span>
               </NavLink>
             </li>
           ))}

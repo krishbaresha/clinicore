@@ -1,450 +1,279 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getPatient, getPatientVisits, getPatientDocuments, uploadPatientDocument, deletePatientDocument } from "../api/patients.js";
-import { dbPrescriptions } from "../api/db.js";
-import { formatDate, formatCurrency } from "../utils/formatters.js";
+import { dbPatients, dbVisits } from "../api/db.js";
+
+// Placeholder prescription image — used when mock data has a URL path (not a real data-url)
+const RX_PLACEHOLDER = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 140' fill='none'%3E%3Crect width='200' height='140' rx='8' fill='%23f0fdf4'/%3E%3Ctext x='100' y='55' font-family='sans-serif' font-size='36' text-anchor='middle' fill='%2316a34a'%3E%E2%80%8B%F0%9F%93%8B%3C/text%3E%3Ctext x='100' y='85' font-family='sans-serif' font-size='11' text-anchor='middle' fill='%2316a34a' font-weight='600'%3EPrescription Photo%3C/text%3E%3Ctext x='100' y='103' font-family='sans-serif' font-size='9' text-anchor='middle' fill='%2315803d'%3E(demo placeholder)%3C/text%3E%3C/svg%3E`;
+const REPORT_PLACEHOLDER = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 140' fill='none'%3E%3Crect width='200' height='140' rx='8' fill='%23eff6ff'/%3E%3Ctext x='100' y='55' font-family='sans-serif' font-size='36' text-anchor='middle' fill='%233b82f6'%3E%F0%9F%A9%BB%3C/text%3E%3Ctext x='100' y='85' font-family='sans-serif' font-size='11' text-anchor='middle' fill='%231d4ed8' font-weight='600'%3EReport Photo%3C/text%3E%3Ctext x='100' y='103' font-family='sans-serif' font-size='9' text-anchor='middle' fill='%231e40af'%3E(demo placeholder)%3C/text%3E%3C/svg%3E`;
+
+function resolveImgSrc(src) {
+  if (!src) return null;
+  // If it's a data URL already (from camera), use directly
+  if (src.startsWith("data:")) return src;
+  // If it's a mock path like /mock-images/rx_visit_001.jpg, return a placeholder
+  return RX_PLACEHOLDER;
+}
+
+function resolveReportSrc(src) {
+  if (!src) return null;
+  if (src.startsWith("data:")) return src;
+  return REPORT_PLACEHOLDER;
+}
+
+function PhotoLightbox({ src, alt, onClose }) {
+  if (!src) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+        <img src={src} alt={alt} className="w-full rounded-2xl shadow-2xl object-contain max-h-[80vh]" />
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-8 h-8 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+        >
+          <span className="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function getRelLabel(type) {
+  return { father: "S/O", husband: "W/O", wife: "H/O", mother: "D/O", brother: "Br/O", sister: "Sr/O" }[type] || "";
+}
+
+function VisitCard({ visit, index }) {
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const rxSrc = resolveImgSrc(visit.prescription_image_url);
+  const reportSrcs = (visit.report_image_urls || []).map(resolveReportSrc).filter(Boolean);
+  const isRecent = index === 0;
+
+  return (
+    <>
+      {lightboxSrc && <PhotoLightbox src={lightboxSrc} alt="Prescription / Report" onClose={() => setLightboxSrc(null)} />}
+
+      <li className="ml-6 relative">
+        {/* Timeline dot */}
+        <div className={`absolute -left-[33px] top-3 w-4 h-4 rounded-full border-2 border-white ${isRecent ? "bg-teal-600" : "bg-gray-400"}`} />
+
+        <div className={`rounded-2xl border ${isRecent ? "border-teal-100 bg-white shadow-md shadow-teal-50" : "border-gray-100 bg-white shadow-sm"} p-4`}>
+          {/* Header */}
+          <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {new Date(visit.visit_date).toLocaleDateString("en-PK", { year: "numeric", month: "long", day: "numeric" })}
+                </span>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  visit.visit_type === "follow_up" ? "bg-blue-50 text-blue-700" : "bg-teal-50 text-teal-700"
+                }`}>
+                  {visit.visit_type === "follow_up" ? "Follow-up" : "New Visit"}
+                </span>
+                {isRecent && (
+                  <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-semibold">Most Recent</span>
+                )}
+                {visit.status === "completed" && (
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Completed</span>
+                )}
+              </div>
+              <div className="text-xs text-gray-400 mt-0.5">Token #{visit.token_number}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xl font-black text-teal-700">Rs. {visit.fee_amount?.toLocaleString() ?? "—"}</div>
+              <div className="text-xs text-gray-400">Fee Paid</div>
+            </div>
+          </div>
+
+          {/* Prescription Photo */}
+          {rxSrc ? (
+            <div className="mb-3">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">📋 Prescription</div>
+              <button
+                onClick={() => setLightboxSrc(rxSrc)}
+                className="group relative rounded-xl overflow-hidden border border-gray-100 hover:border-teal-200 transition-all shadow-sm hover:shadow-md w-full max-w-[240px]"
+              >
+                <img src={rxSrc} alt="Prescription" className="w-full object-cover aspect-video" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <span className="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity text-3xl drop-shadow">zoom_in</span>
+                </div>
+              </button>
+            </div>
+          ) : (
+            <div className="mb-3 text-xs text-gray-400 italic flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">hide_image</span>
+              No prescription photo
+            </div>
+          )}
+
+          {/* Report Photos */}
+          {reportSrcs.length > 0 && (
+            <div className="mb-3">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">🩻 Reports ({reportSrcs.length})</div>
+              <div className="flex gap-2 flex-wrap">
+                {reportSrcs.map((src, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setLightboxSrc(src)}
+                    className="group relative rounded-xl overflow-hidden border border-gray-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-md w-20 h-20"
+                  >
+                    <img src={src} alt={`Report ${i + 1}`} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <span className="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity text-xl">zoom_in</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {visit.notes && (
+            <p className="text-xs text-gray-500 italic border-t border-gray-100 pt-2 mt-2">{visit.notes}</p>
+          )}
+
+          {/* Follow-up */}
+          {visit.follow_up_date && (
+            <div className="flex items-center gap-1.5 text-xs text-teal-700 mt-2">
+              <span className="material-symbols-outlined text-sm">event_available</span>
+              Follow-up: {new Date(visit.follow_up_date).toLocaleDateString("en-PK", { year: "numeric", month: "long", day: "numeric" })}
+            </div>
+          )}
+        </div>
+      </li>
+    </>
+  );
+}
 
 export default function PatientProfile() {
-  const { id }       = useParams();
-  const navigate     = useNavigate();
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [patient, setPatient] = useState(null);
-  const [visits,  setVisits]  = useState([]);
-  const [documents, setDocuments] = useState([]);
-  const [error,   setError]   = useState("");
-
-  const fileInputRef = useRef(null);
-  const videoRef = useRef(null);
-  const [showCameraModal, setShowCameraModal] = useState(false);
-  const [cameraStream, setCameraStream] = useState(null);
-  const [capturedPhoto, setCapturedPhoto] = useState(null);
+  const [visits, setVisits] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const pr = getPatient(id);
-    if (!pr.success) { setError(pr.error.message); return; }
-    setPatient(pr.data);
-    const vr = getPatientVisits(id);
-    if (vr.success) setVisits(vr.data);
-    const dr = getPatientDocuments(id);
-    if (dr.success) setDocuments(dr.data);
+    const p = dbPatients.getById(id);
+    if (!p) { setError("Patient not found."); return; }
+    setPatient(p);
+    setVisits(dbVisits.getByPatient(id)); // sorted most-recent first
   }, [id]);
-
-  async function startCamera() {
-    try {
-      setCapturedPhoto(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      setCameraStream(stream);
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      }, 100);
-    } catch (err) {
-      alert("Could not access camera. Please upload a file instead or ensure permissions are allowed.");
-      setShowCameraModal(false);
-    }
-  }
-
-  function stopCamera() {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop());
-      setCameraStream(null);
-    }
-  }
-
-  function capturePhoto() {
-    if (videoRef.current) {
-      const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg");
-      setCapturedPhoto(dataUrl);
-      stopCamera();
-    }
-  }
-
-  function saveCapturedPhoto() {
-    if (capturedPhoto) {
-      const docObj = {
-        name: `Camera_Capture_${Date.now()}.jpg`,
-        file_type: "image/jpeg",
-        data_url: capturedPhoto
-      };
-      const res = uploadPatientDocument(id, docObj);
-      if (res.success) {
-        const dr = getPatientDocuments(id);
-        if (dr.success) setDocuments(dr.data);
-      }
-      setCapturedPhoto(null);
-      setShowCameraModal(false);
-    }
-  }
-
-  function handleFileUpload(e) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const docObj = {
-          name: file.name,
-          file_type: file.type,
-          data_url: reader.result
-        };
-        const res = uploadPatientDocument(id, docObj);
-        if (res.success) {
-          const dr = getPatientDocuments(id);
-          if (dr.success) setDocuments(dr.data);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  }
 
   if (error) {
     return (
-      <div className="p-lg text-center text-error font-body-md">
-        {error} —{" "}
-        <button className="underline text-primary" onClick={() => navigate("/patients")}>
-          Back to Patients
-        </button>
+      <div className="p-8 text-center text-red-500 font-medium">
+        {error}{" "}
+        <button className="underline text-teal-600" onClick={() => navigate("/patients")}>Back to Patients</button>
       </div>
     );
   }
 
   if (!patient) {
-    return <div className="p-lg text-center text-outline font-body-md">Loading…</div>;
+    return <div className="p-8 text-center text-gray-400">Loading…</div>;
   }
 
-  return (
-    <div className="p-md md:p-lg flex flex-col gap-lg max-w-3xl">
+  const relLabel = getRelLabel(patient.relation_type);
 
-      {/* Back button */}
+  return (
+    <div className="p-4 md:p-6 max-w-2xl mx-auto">
+      {/* Back */}
       <button
-        id="back-to-patients"
         onClick={() => navigate("/patients")}
-        className="flex items-center gap-1 text-primary font-body-sm text-body-sm hover:underline self-start"
+        className="flex items-center gap-1 text-sm text-teal-600 hover:underline mb-4"
       >
-        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+        <span className="material-symbols-outlined text-lg">arrow_back</span>
         Back to Patients
       </button>
 
-      {/* Patient Header Card */}
-      <div className="glass-card p-md flex flex-col md:flex-row md:items-center gap-md">
-        <div className="w-16 h-16 rounded-full bg-secondary-container text-primary flex items-center justify-center font-bold text-2xl shrink-0">
-          {patient.full_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
-        </div>
-        <div className="flex-1">
-          <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface">{patient.full_name}</h2>
-          <div className="flex flex-wrap gap-x-md gap-y-1 mt-xs text-on-surface-variant font-body-sm text-body-sm">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">cake</span>
-              Age {patient.age ?? "—"}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">wc</span>
-              {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : "—"}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">call</span>
-              {patient.phone}
-            </span>
-            {patient.cnic && (
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">badge</span>
-                {patient.cnic}
-              </span>
+      {/* Patient Header */}
+      <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-2xl p-5 text-white mb-5 shadow-xl shadow-teal-600/20">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center font-black text-xl">
+            {patient.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+          </div>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold">{patient.full_name}</h1>
+            {patient.relation_name && (
+              <div className="text-teal-100 text-sm mt-0.5">
+                {relLabel} {patient.relation_name}
+              </div>
             )}
+            <div className="flex flex-wrap gap-3 mt-2 text-xs text-teal-100">
+              {patient.age && <span>🎂 {patient.age} yrs</span>}
+              {patient.gender && <span className="capitalize">👤 {patient.gender}</span>}
+              {patient.phone && <span>📞 {patient.phone}</span>}
+              {patient.cnic && <span>🪪 {patient.cnic}</span>}
+            </div>
           </div>
         </div>
-        <button
-          id="add-visit-btn"
-          onClick={() => navigate(`/visits/new?patient_id=${patient.id}`)}
-          className="btn-pill shrink-0"
-        >
-          <span className="material-symbols-outlined text-sm">add</span>
-          Add New Visit
-        </button>
+
+        {/* Stats row */}
+        <div className="flex gap-4 mt-4 pt-4 border-t border-white/20">
+          <div>
+            <div className="text-2xl font-black">{visits.length}</div>
+            <div className="text-xs text-teal-200">Total Visits</div>
+          </div>
+          <div>
+            <div className="text-2xl font-black">
+              {visits.length > 0 ? new Date(visits[0].visit_date).getFullYear() : "—"}
+            </div>
+            <div className="text-xs text-teal-200">Last Seen</div>
+          </div>
+          <div>
+            <div className="text-2xl font-black">
+              {new Date(patient.created_at).getFullYear()}
+            </div>
+            <div className="text-xs text-teal-200">Patient Since</div>
+          </div>
+        </div>
       </div>
 
-      {/* Documents & Medical Reports Section */}
-      <section className="glass-card p-lg flex flex-col gap-md">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h3 className="font-headline-md text-headline-md font-bold text-on-surface">Documents &amp; Reports</h3>
-            <p className="font-body-sm text-body-sm text-outline">Patient medical files, lab tests, and report images</p>
-          </div>
-          
-          <div className="flex items-center gap-sm">
-            {/* Native file upload input hidden */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              multiple
-              accept="image/*,application/pdf"
-              className="hidden"
-            />
-            
-            {/* Upload buttons */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="btn-secondary flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-sm">upload_file</span>
-              Upload File
-            </button>
-            
-            <button
-              onClick={() => {
-                setShowCameraModal(true);
-                startCamera();
-              }}
-              className="btn-pill flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-sm">photo_camera</span>
-              Take Photo
-            </button>
-          </div>
-        </div>
-
-        {/* Documents Grid */}
-        {documents.length === 0 ? (
-          <p className="font-body-md text-body-md text-outline text-center py-4">No documents uploaded yet.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-sm">
-            {documents.map((doc) => {
-              const isImage = doc.file_type?.startsWith("image/");
-              return (
-                <div key={doc.id} className="flex items-center justify-between p-sm bg-surface-container-low rounded-xl border border-outline-variant/30 gap-sm">
-                  <div className="flex items-center gap-sm min-w-0">
-                    {isImage ? (
-                      <img
-                        src={doc.data_url}
-                        alt={doc.name}
-                        className="w-12 h-12 object-cover rounded-lg border border-outline-variant shrink-0"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-primary-container/10 text-primary flex items-center justify-center shrink-0">
-                        <span className="material-symbols-outlined text-2xl">description</span>
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-body-md text-body-md font-semibold text-on-surface truncate" title={doc.name}>
-                        {doc.name}
-                      </p>
-                      <p className="font-body-sm text-body-sm text-outline">
-                        {formatDate(doc.uploaded_at)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-xs">
-                    {/* View/Download link */}
-                    <a
-                      href={doc.data_url}
-                      download={doc.name}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 hover:bg-surface-container-high rounded-full text-primary flex items-center justify-center"
-                      title="Download/View"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">download</span>
-                    </a>
-                    
-                    {/* Delete button */}
-                    <button
-                      onClick={() => {
-                        if (confirm(`Delete document "${doc.name}"?`)) {
-                          deletePatientDocument(doc.id);
-                          const dr = getPatientDocuments(id);
-                          if (dr.success) setDocuments(dr.data);
-                        }
-                      }}
-                      className="p-2 hover:bg-error-container/20 rounded-full text-error flex items-center justify-center"
-                      title="Delete"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Camera Capture Modal */}
-      {showCameraModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-md">
-          {/* Backdrop */}
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { stopCamera(); setShowCameraModal(false); }} />
-          
-          {/* Modal Container */}
-          <div className="relative bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl z-10 flex flex-col">
-            <header className="px-lg py-md border-b border-outline-variant/30 flex justify-between items-center bg-surface">
-              <h4 className="font-headline-sm text-headline-sm font-bold text-on-surface">Capture Document Photo</h4>
-              <button
-                onClick={() => { stopCamera(); setShowCameraModal(false); }}
-                className="text-outline hover:text-on-surface flex items-center justify-center"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </header>
-            
-            <div className="relative bg-black aspect-video flex items-center justify-center">
-              {!capturedPhoto ? (
-                <>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 border-2 border-dashed border-white/40 pointer-events-none m-md rounded-lg" />
-                </>
-              ) : (
-                <img
-                  src={capturedPhoto}
-                  alt="Captured preview"
-                  className="w-full h-full object-contain"
-                />
-              )}
-            </div>
-            
-            <footer className="p-md flex justify-between bg-surface border-t border-outline-variant/30">
-              {!capturedPhoto ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { stopCamera(); setShowCameraModal(false); }}
-                    className="btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={capturePhoto}
-                    className="btn-primary flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-sm">photo_camera</span>
-                    Capture
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { setCapturedPhoto(null); startCamera(); }}
-                    className="btn-secondary"
-                  >
-                    Retake
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveCapturedPhoto}
-                    className="btn-primary"
-                  >
-                    Use Photo
-                  </button>
-                </>
-              )}
-            </footer>
-          </div>
-        </div>
-      )}
-
-      {/* Visit Timeline */}
+      {/* Visit History Timeline */}
       <section>
-        <h3 className="font-headline-md text-headline-md font-bold text-on-surface mb-md">
-          Visit History ({visits.length})
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900">
+            Visit History
+            <span className="ml-2 text-sm font-normal text-gray-500">({visits.length})</span>
+          </h2>
+          <button
+            onClick={() => navigate("/reception/register")}
+            className="flex items-center gap-1.5 bg-teal-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-teal-700 transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">add</span>
+            New Visit
+          </button>
+        </div>
 
         {visits.length === 0 ? (
-          <div className="glass-card p-xl text-center text-outline font-body-md">
+          <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400 shadow-sm">
+            <span className="material-symbols-outlined text-4xl block mb-2 text-gray-200">history</span>
             No visits recorded yet.
           </div>
         ) : (
-          <ol className="relative border-l-2 border-secondary-container/50 ml-4 flex flex-col gap-lg">
-            {visits.map((visit) => {
-              const rxItems = dbPrescriptions.getByVisit(visit.id);
-              return (
-                <li key={visit.id} id={`visit-${visit.id}`} className="ml-6 relative">
-                  {/* Timeline dot */}
-                  <div className="absolute -left-[33px] top-3 w-4 h-4 rounded-full bg-primary border-2 border-white" />
+          <>
+            {/* "History never lost across years" banner — shown if patient has visits spanning >1 year */}
+            {visits.length >= 2 && (() => {
+              const oldest = new Date(visits[visits.length - 1].visit_date);
+              const newest = new Date(visits[0].visit_date);
+              const yearDiff = newest.getFullYear() - oldest.getFullYear();
+              return yearDiff >= 1 ? (
+                <div className="flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-xl px-4 py-2.5 mb-4 text-sm text-teal-700">
+                  <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>history</span>
+                  <span>
+                    <strong>History complete</strong> — {yearDiff} year{yearDiff > 1 ? "s" : ""} of records spanning{" "}
+                    {oldest.getFullYear()} to {newest.getFullYear()}
+                  </span>
+                </div>
+              ) : null;
+            })()}
 
-                  <div className="glass-card p-md flex flex-col gap-sm">
-                    {/* Visit date + fee */}
-                    <div className="flex justify-between items-start flex-wrap gap-2">
-                      <span className="font-label-md text-label-md text-outline uppercase tracking-wider">
-                        {formatDate(visit.visit_date)}
-                      </span>
-                      <span className="font-headline-md text-headline-md font-bold text-primary">
-                        {formatCurrency(visit.fee_amount)}
-                      </span>
-                    </div>
-
-                    {/* Diagnosis */}
-                    <div>
-                      <p className="font-label-md text-label-md text-outline uppercase mb-1">Diagnosis</p>
-                      <p className="font-body-md text-body-md text-on-surface font-semibold">{visit.diagnosis || "—"}</p>
-                    </div>
-
-                    {/* Symptoms */}
-                    {visit.symptoms && (
-                      <div>
-                        <p className="font-label-md text-label-md text-outline uppercase mb-1">Symptoms</p>
-                        <p className="font-body-sm text-body-sm text-on-surface-variant">{visit.symptoms}</p>
-                      </div>
-                    )}
-
-                    {/* Medicines */}
-                    {rxItems.length > 0 && (
-                      <div>
-                        <p className="font-label-md text-label-md text-outline uppercase mb-2">Medicines Prescribed</p>
-                        <ul className="flex flex-col gap-1">
-                          {rxItems.map((rx) => (
-                            <li key={rx.id} className="flex items-start gap-2 font-body-sm text-body-sm text-on-surface">
-                              <span className="material-symbols-outlined text-[14px] text-primary mt-0.5">medication</span>
-                              <span>
-                                <strong>{rx.medicine_name}</strong> — {rx.dosage} for {rx.duration}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {visit.notes && (
-                      <p className="font-body-sm text-body-sm text-outline italic border-t border-outline-variant/30 pt-xs">
-                        {visit.notes}
-                      </p>
-                    )}
-
-                    {/* Follow-up */}
-                    {visit.follow_up_date && (
-                      <div className="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm">
-                        <span className="material-symbols-outlined text-[16px] text-primary">event_available</span>
-                        Follow-up: {formatDate(visit.follow_up_date)}
-                      </div>
-                    )}
-
-                    {/* Print prescription link */}
-                    <button
-                      id={`print-rx-${visit.id}`}
-                      onClick={() => navigate(`/visits/${visit.id}/print`)}
-                      className="self-start flex items-center gap-1 text-primary font-body-sm text-body-sm hover:underline mt-xs"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">print</span>
-                      Print Prescription
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+            <ol className="relative border-l-2 border-teal-100 ml-4 flex flex-col gap-4">
+              {visits.map((visit, i) => (
+                <VisitCard key={visit.id} visit={visit} index={i} />
+              ))}
+            </ol>
+          </>
         )}
       </section>
     </div>

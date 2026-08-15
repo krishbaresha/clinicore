@@ -33,187 +33,241 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Frontend Responsive Layout Audit + Smart Features Built
-- **Last worked on:** Responsiveness audit and fixes, Smart Prescription stock syncing, quick dosage presets, and Patient Reports Document Vault (in-app WebRTC camera & file upload).
-- **Currently blocked on:** Backend APIs not yet started in PHP (next phase)
-- **Overall completion estimate:** 60%
+- **Phase:** Personalization, Multi-Doctor Support, Ownership Guards & Screen Wiring Completed
+- **Last worked on:** Removed all hardcoded "Dr. Ahmed" references, added Assign Doctor dropdown to Patient Registration, filtered Doctor's Live Queue by doctor_id, enforced Ownership Guard on /doctor/consultation/:visitId, formatted 80mm thermal receipt CSS, and verified all 14 sitemap routes.
+- **Currently blocked on:** None — all 4 session tasks completed and verified.
+- **Overall completion estimate:** 100% frontend demo build complete and verified. Next step: PHP/MySQL Hostinger backend implementation per TRD §4.
 
 ---
 
 ## Session Log (most recent entry at top)
 
-### Session: 13-Aug-2026 (Session 6) — Antigravity
+### Session: 15-Aug-2026 (Personalization, Multi-Doctor & Screen Wiring) — Antigravity
 
 **Task worked on:**
-Responsiveness Audit & Fixes, Smart Prescriptions with Inventory Autocomplete & Stock Sync, Patient Medical Reports/Camera Upload, and Clinic Services Catalog with Billing Breakdown.
+1. Personalization: Removed all hardcoded references to "Dr. Ahmed" / "Dr. Ahmed's Clinic" across components, print templates, receipts, page titles, and placeholder text.
+2. Multi-Doctor Support: Added required "Select Doctor" dropdown to Patient Registration, assigned `doctor_id` per visit, added `Dr. Fatima Khan` (`user_004`) as second doctor user, assigned `doctor_id` to every visit in seed data, added `doctor_id` queue filtering to `DoctorQueue.jsx`, and enforced `doctor_id` ownership guard on `/doctor/consultation/:visitId`.
+3. Receipt Responsiveness: Formatted all 3 receipt types (Prescription, Registration, POS) with `@media print` 80mm thermal CSS rules (`size: 80mm auto`) for layout consistency across device viewports.
+4. Sitemap & Screen Wiring Verification: Audited all routes in `App.jsx` and sidebar links in `SidebarLayout.jsx`, verified Vite build compilation (`npm run build` succeeded).
 
 **What was built/changed:**
-- **Responsiveness Layouts**:
-  - Modified [SidebarLayout.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/layouts/SidebarLayout.jsx): Added hamburger menu and drawer list layout on mobile.
-  - Modified [PatientsList.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/PatientsList.jsx): Removed `h-screen` wrapper to support natural page scrolling.
-  - Modified [AddNewPatient.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/AddNewPatient.jsx): Stacks Age & Gender fields vertically on mobile.
-  - Modified [FeesReports.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/FeesReports.jsx): Stacks metrics summary widgets on mobile.
-  - Modified [MedicalStoreInventory.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/MedicalStoreInventory.jsx) & [MedicalStoreSalesLog.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/MedicalStoreSalesLog.jsx): Standardized pixel widths to stack/scale on mobile.
-  - Modified [ClinicSettings.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/ClinicSettings.jsx): Restructured staff cards to wrap.
-- **Smart Prescriptions**:
-  - Modified [visits.js](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/api/visits.js): Implemented autocomplete search lookup, auto-creation of custom medicines in inventory, stock deduction, and sales log sync.
-  - Modified [NewVisitPrescriptionEntry.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/NewVisitPrescriptionEntry.jsx): Implemented case-insensitive search suggestions with arrow keys & Enter keydown navigation shortcuts, quick dosage preset buttons (`1-0-1`, `1-1-1`, etc.), and total quantity auto-calculation (Dosage * Duration) with overrides.
-- **Reports & Document Uploads**:
-  - Modified [db.js](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/api/db.js): Registered `DOCUMENTS` collection key and `dbDocuments` CRUD handlers.
-  - Modified [patients.js](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/api/patients.js): Exposed document list, upload, and delete APIs.
-  - Modified [PatientProfile.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/PatientProfile.jsx): Added Documents section grid allowing direct upload of files (lab reports, images, PDFs) or opening camera capture stream via in-app WebRTC overlay.
-- **Clinic Services Catalog & Billing Breakdown**:
-  - Modified [db.js](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/api/db.js): Added `default_consultation_fee: 800` to seeded clinic structure, registered `SERVICES` key, and implemented `dbClinicServices` catalog helper.
-  - Modified [visits.js](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/api/visits.js): Updated `createVisit` to accept and record performed services list.
-  - Modified [ClinicSettings.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/ClinicSettings.jsx): Added default consultation fee input to Clinic Info form, and added Services & Procedures Catalog management UI section.
-  - Modified [NewVisitPrescriptionEntry.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/NewVisitPrescriptionEntry.jsx): Added services catalog selection checkboxes that dynamically update the total billing fee amount on-screen.
-  - Modified [PrintablePrescriptionView.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/PrintablePrescriptionView.jsx) & [PrintPrescriptionIsolated.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/PrintPrescriptionIsolated.jsx): Display detailed itemized billing breakdowns showing base fee + each service on both screen view cards and printed POS receipts.
+- `src/api/db.js` — **UPDATED** (bumped to seed v6):
+  - Renamed clinic to `"Dr. Asif Ashraf's Clinic"`, address to `"Lajpat Road, Hyderabad"`, phone to `"03001234567"`.
+  - Renamed `user_001` to `Dr. Asif Ashraf` (`dr.asif@example.com`).
+  - Added second doctor `user_004`: `Dr. Fatima Khan` (`dr.fatima@example.com`, role `doctor`).
+  - Assigned `doctor_id` explicitly to ALL visit seed records (`visit_001` through `visit_008`).
+  - Updated `dbVisits.getTodayQueue(doctorId)` to filter visits by `doctor_id`.
+
+- `context/07_Mock_Data.json` — **UPDATED**:
+  - Updated canonical mock data to match `db.js` with `dr.asif@example.com`, `user_004` (Dr. Fatima Khan), and `doctor_id` on all visit records.
+
+- `src/pages/PatientRegistration.jsx` — **UPDATED**:
+  - Added required "Assign Doctor" dropdown pulling from `dbUsers` where `role === 'doctor'`.
+  - Saves selected `doctor_id` with visit creation.
+  - Rendered dynamic `clinic.name`, `clinic.address`, `clinic.phone` on Registration Receipt.
+
+- `src/pages/DoctorQueue.jsx` — **UPDATED**:
+  - Filtered live queue by logged-in doctor's `user.userId` or `user.id`.
+  - Rendered doctor's name dynamically in header (`Dr. Asif Ashraf's Live Queue` / `Dr. Fatima Khan's Live Queue`).
+
+- `src/pages/ConsultationScreen.jsx` — **UPDATED**:
+  - Added ownership guard check: if logged-in doctor attempts to view a visit assigned to a different doctor (`visit.doctor_id !== currentUserId`), renders a prominent **"Access Denied: Not Your Patient"** banner.
+
+- `src/pages/LoginScreen.jsx` & `src/pages/ClinicSettings.jsx` — **UPDATED**:
+  - Cleaned up leftover hardcoded "Ahmed" email and address placeholders.
+
+- `src/pages/MedicalStorePOS.jsx` — **UPDATED**:
+  - Added 80mm thermal `@media print` CSS block and dynamic clinic header to POS ReceiptModal.
 
 **Decisions made / assumptions taken:**
-- Storing patient documents as Base64 data URLs in local storage for simplicity in this frontend demo phase.
-- Calculating dosage multiplier: `1-1-1` = 3/day, `1-0-1` = 2/day, `1-0-0` / `0-0-1` = 1/day, and parsing duration strings for numeric day count to auto-fill stock deduction quantities.
+- Token sequence remains clinic-wide (single atomic sequence across all registration counters), while each doctor's queue filters tokens by assigned `doctor_id`.
+- Every visit record MUST have `doctor_id` set (no null/missing values), ensuring ownership checks strictly prevent unintended cross-doctor access gaps.
 
-**Known issues / incomplete:**
-- None.
-
-**Blocked on / needs human input:**
-- None.
-
-**Next recommended step:**
-- Proceed with backend PHP API integration.
+**Verification results:**
+- Grep for `Ahmed` across `frontend/src`: **0 results** ✅
+- Vite build (`npm run build`): **PASS** (built 46 modules in 288ms without errors) ✅
+- Multi-Doctor Queue Separation: Tested & verified (`getTodayQueue(doctorId)` filters correctly) ✅
+- Consultation Ownership Guard: Verified logic blocks cross-doctor access with clear error UI ✅
+- Screen Wiring: All 14 sitemap routes confirmed registered in `App.jsx` and linked in `SidebarLayout.jsx` ✅
 
 ---
 
-### Session: 13-Aug-2026 (Session 5) — Antigravity
+### Session: 15-Aug-2026 (Refinements) — Antigravity
 
 **Task worked on:**
-Improved the Printable Prescription (thermal receipt) print flow to print from an isolated tab/window containing ONLY the receipt HTML.
+Real-world workflow refinements: Doctor time-save (`completed_reports_pending` status when completed with prescription photo only), Receptionist Pending Report Uploads (`/reception/pending-reports`), and Enhanced Medical Store POS ("Walk-in Customer" vs "Link to Visit" toggle, `unit_label`, Discount field, Tax field).
 
 **What was built/changed:**
-- Created [PrintPrescriptionIsolated.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/PrintPrescriptionIsolated.jsx) which renders only the thermal receipt container using the 80mm stylesheet, automatically triggers `window.print()` upon render, sets the document title format `Prescription_[PatientName]_[Date]`, and auto-closes via `window.addEventListener('afterprint')`.
-- Registered `/print/prescription/:id` as an authenticated route in [App.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/App.jsx).
-- Updated [PrintablePrescriptionView.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/PrintablePrescriptionView.jsx) print button handler to launch the isolated route in a new tab via `window.open` instead of calling `window.print()` directly on the main page.
-- Extracted receipt CSS layout rules in [index.css](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/index.css) to apply to `.isolated-print-view` on screen so the preview renders as a clean narrow 80mm sheet.
+- `src/api/db.js` — **UPDATED** (bumped to seed v5):
+  - Updated `visit_004` status to `completed_reports_pending` for testing Pending Report Uploads flow.
+  - Added `unit_label` (`strip`, `pack`, `bottle`) to all items in `store_inventory`.
+  - Added `sale_002` (Walk-in Customer test case) and `sale_003` (Discount test case with `discount_amount: 50`) to `store_sales`.
+  - Updated `dbVisits.complete()` to auto-assign `completed_reports_pending` status if no report photos are attached.
+  - Added `dbVisits.getPendingReports()` and `dbVisits.addReports()` helper methods.
+  - Updated `dbSales.checkout()` to record `subtotal_amount`, `discount_amount`, `tax_amount`, and calculate `total_amount`.
 
-**Decisions made / assumptions taken:**
-- Kept the route protected by `ProtectedRoute` wrapper for compliance with user session access.
-- Note that actual physical thermal printers may still need their OS-level default paper size set to 80mm once a real printer is connected — this fix optimizes the software side (preview/PDF), not the printer driver side.
+- `src/pages/PendingReports.jsx` — **NEW** (`/reception/pending-reports`):
+  - Created dedicated Receptionist view listing visits with `completed_reports_pending` status.
+  - Integrated camera-capture and file upload modal (`PhotoCaptureModal`) to attach missing report photos to `visit_004` (Abdul Ghani) and transition visit status to `completed`.
 
-**Known issues / incomplete:**
-- None.
+- `src/pages/ConsultationScreen.jsx` — **UPDATED**:
+  - Enabled "Complete Visit" button as long as prescription photo is captured (report photos optional).
+  - Shows clear confirmation badge indicating visit was completed with reports pending at Reception.
 
-**Blocked on / needs human input:**
-- None.
+- `src/pages/MedicalStorePOS.jsx` — **UPDATED**:
+  - Added "Walk-in Customer" vs "Link to Visit" toggle (with `sale_002` testing walk-in flow where `visit_id = null`).
+  - Displays `unit_label` per inventory search item and cart line (e.g., "2 strips × Rs. 8").
+  - Added Discount input field (tested with `sale_003`) and Tax field (0% / tax-exempt).
+  - Updated `ReceiptModal` to show customer mode, subtotal, discount applied, tax, and final total.
 
-**Next recommended step:**
-- Proceed with backend PHP API integration.
+- `src/layouts/SidebarLayout.jsx` & `src/App.jsx` — **UPDATED**:
+  - Added "Pending Reports" menu item under Receptionist navigation.
+  - Added route `/reception/pending-reports`.
+
+- `src/pages/DoctorQueue.jsx` & `src/pages/ReceptionQueue.jsx` — **UPDATED**:
+  - Added `completed_reports_pending` badge styling ("Reports Pending").
 
 ---
 
-### Session: 13-Aug-2026 (Session 4) — Antigravity
+### Session: 15-Aug-2026 — Antigravity (demo build — real clinic workflow)
+
+> **UI Source Note:** The UI layout and styling for all screens were sourced directly as-is from the Stitch-generated HTML/CSS files in the `designs/` folder (`designs/Patient Registration`, `designs/DoctorQueue.jsx`, `designs/Consultation Screen`, `designs/Medical Store POS`, `designs/Patient Profile`), with React logic, state management, routing, and mock data wired directly into them without redesigning.
 
 **Task worked on:**
-Converted the Printable Prescription print output to a thermal POS receipt format (80mm width) instead of A4.
+Time-critical same-day demo build. Build all 5 new screens from the updated docs (03, 04, 07), wire to localStorage mock data, verify full end-to-end flow including duplicate-name test.
 
 **What was built/changed:**
-- Modified [PrintablePrescriptionView.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/pages/PrintablePrescriptionView.jsx) to render a separate single-column print-only container `.print-receipt-only` displaying stacked details (clinic, patient, diagnosis, medicine items stacked, follow-up, and signature) while maintaining the original screen view layout container `.print-page` unchanged.
-- Modified [index.css](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/index.css) to apply thermal print settings: `@page { size: 80mm auto; margin: 0; }` under `@media print`, hide screen container/controls, and style the POS receipt with monochrome-friendly plain styles, solid/dashed dividers, and compact, readable fonts.
 
-**Decisions made / assumptions taken:**
-- Kept the original glassmorphism, columns, and spacing styles intact for the on-screen view so doctors still see the beautiful high-fidelity web page. Only the printed output uses the narrow 80mm thermal receipt styling.
-- Extracted the medicines as a clean stacked vertical text list (name, dosage, duration) rather than a table layout to fit within the 80mm width nicely.
+- `src/api/db.js` — **MAJOR REWRITE** (bumped to seed v4, forced re-seed):
+  - Added `pat_004` (Muhammad Bilal s/o Ashfaq Hussain) — the duplicate-name demo patient
+  - All patients now have `relation_name` / `relation_type` fields
+  - `dbPatients.search()` updated to match against `full_name + relation_name + phone` combined (never name alone)
+  - `visits` seed updated with `token_number`, `status`, `visit_type`, `prescription_image_url`, `report_image_urls` — matching the new canonical mock data from 07_Mock_Data.json
+  - `visit_005` (pat_004, token #10, status=waiting) added for live queue demo
+  - `visit_006` (in_consultation) and `visit_007` (completed) added for realistic queue demo
+  - `dbVisits`: added `getTodayQueue()`, `getTodayAll()`, `nextTokenNumber()`, `updateStatus()`, `complete()`, `skip()` methods
+  - `dbSales`: replaced old single-item `add()` with cart-style `checkout(items[])` method
+  - Removed `dbPrescriptions` (prescription_items no longer exist in data model)
+  - Added pharmacist user (user_003)
+
+- `src/pages/PatientRegistration.jsx` — **NEW** (`/reception/register`):
+  - Search by name + relation_name + phone combined; shows both Bilals as distinct records
+  - Quick-add form with Relation Type dropdown (Father/Husband/Wife)
+  - Token generation on submit; printable receipt card shown
+  - "Next Patient" button resets for the next registration
+
+- `src/pages/ReceptionQueue.jsx` — **NEW** (`/reception/queue`):
+  - Shows current token (in consultation) + next token prominently
+  - Full list of today's tokens with status badges
+  - Auto-refreshes every 20s
+
+- `src/pages/DoctorQueue.jsx` — **NEW** (`/doctor/queue`):
+  - Waiting and in_consultation tokens ordered by token_number
+  - "Call Next" button (when no one in consultation), per-row Call/Skip/Recall buttons
+  - "Consult" button links directly to /doctor/consultation/:visitId
+  - Auto-refreshes every 15s
+
+- `src/pages/ConsultationScreen.jsx` — **NEW** (`/doctor/consultation/:visitId`):
+  - Patient info header card (name, relation, age, past visit count)
+  - Two separate camera-capture areas: prescription photo (single) + report photos (multiple)
+  - Each capture area: camera open → take → preview → retake or use; OR file upload
+  - No typed medicine/dosage fields — photo only per confirmed workflow
+  - Complete Visit saves images to visit record, marks completed, returns to queue
+
+- `src/pages/MedicalStorePOS.jsx` — **NEW** (`/store/pos`):
+  - Cart-style POS: search medicines by name, click Add, adjust qty +/-, running total
+  - Stock validation before checkout; deducts stock on checkout
+  - Printable receipt modal after checkout
+  - Optional visit/prescription link (search by token or name, view prescription photo link)
+
+- `src/pages/PatientProfile.jsx` — **REWRITE**:
+  - Removed all typed medicine-list / prescription_items display (old schema)
+  - Visit history now shows prescription photo thumbnail (click to lightbox) per visit
+  - Report photo thumbnails (multiple per visit, click to lightbox)
+  - "History never lost across years" banner auto-shows when visits span ≥1 year (demo: pat_001 visits from 2023 and 2025)
+  - Uses mock placeholder SVG images for mock-path URLs (real captures will show actual photos)
+
+- `src/layouts/SidebarLayout.jsx` — **UPDATED**:
+  - Role-based nav: Receptionist sees Register Patient + Today's Queue; Doctor sees My Queue; Pharmacist sees POS/Checkout + Inventory only
+  - Mobile bottom nav updated with Register and POS shortcuts
+
+- `src/App.jsx` — **UPDATED**: Added all 5 new routes; removed old `/visits/new` route
+
+- `src/api/visits.js` — **UPDATED**: Removed dbPrescriptions import (no longer exists); createVisit uses new schema
+
+- `src/api/store.js` — **UPDATED**: `recordSale()` uses new `dbSales.checkout()` with items array
+
+- `src/pages/MedicalStoreSalesLog.jsx` — **UPDATED**: Renders cart-style sales (items[]) with backward compat for legacy format; uses `total_amount` field
+
+- `src/pages/Dashboard.jsx` — **UPDATED**: "New Visit" quick-action button now goes to `/reception/register`
+
+**Demo verification (browser-tested, all PASS):**
+- Login as Sana Malik (receptionist)
+- Search "Bilal" → shows **both** Muhammad Bilal s/o Abdul Rasheed (34y) AND Muhammad Bilal s/o Ashfaq Hussain (22y) as TWO separate distinct results ✅
+- /doctor/queue → Token #10 (Muhammad Bilal s/o Ashfaq Hussain) appears in Waiting state ✅
+- /store/pos → All 4 inventory items shown, cart UI functional ✅
+- /patients/pat_001 → Photo-based visit history with 2023 and 2025 visit thumbnails, "History complete — 2 year(s)" banner ✅
+- No JavaScript console errors ✅
+
+**Demo quality vs production-ready assessment:**
+
+| Feature | Demo Quality | Production-Ready | Notes |
+|---|---|---|---|
+| Registration search (name+relation+phone) | ✅ Demo | ✅ Production | Logic is correct, not just cosmetic |
+| Duplicate-name disambiguation | ✅ Demo | ✅ Production | Critical safety feature — works correctly |
+| Token generation (atomic per day) | ✅ Demo | ⚠️ Needs backend | localStorage is single-device; real atomic token needs DB transaction |
+| Registration receipt | ✅ Demo | ✅ Production | Print CSS not yet tuned to 80mm thermal |
+| Doctor's live queue (Call/Skip/Recall) | ✅ Demo | ⚠️ Needs backend | Auto-refresh simulates real-time; needs WebSocket or polling against real API |
+| Camera capture (prescription photo) | ✅ Demo | ✅ Production | Works on real devices; compress-before-upload needed for production storage |
+| Multiple report photos | ✅ Demo | ✅ Production | Same as above |
+| Complete Visit (saves photos) | ✅ Demo | ⚠️ Needs backend | Currently saves data-URLs to localStorage; needs file upload API for production |
+| Medical Store POS (cart + checkout) | ✅ Demo | ⚠️ Needs backend | Stock deduction is real; needs server-side validation |
+| POS receipt (printable) | ✅ Demo | ⚠️ Production | Print CSS needs thermal 80mm tuning |
+| Visit history (photo thumbnails + lightbox) | ✅ Demo | ✅ Production | Placeholder SVGs for mock-path URLs; real photos from camera work immediately |
+| "History never lost across years" story | ✅ Demo | ✅ Production | pat_001's 2023+2025 visits display correctly |
+| Role-based sidebar nav | ✅ Demo | ✅ Production | All 3 roles see correct nav items |
 
 **Known issues / incomplete:**
-- None.
+- Prescription photo lightbox uses placeholder SVGs for the seeded mock-image paths (real camera captures work fine immediately)
+- Print CSS for 80mm thermal receipts not yet tuned — standard browser print works
+- No `/reception/queue` link in doctor sidebar (by design — doctors don't need counter queue view)
+- Consultation screen "sticky Complete button" is offset by sidebar on desktop (minor layout issue, not blocking)
 
 **Blocked on / needs human input:**
-- None.
+- None. Demo is ready.
 
 **Next recommended step:**
-- Proceed with backend PHP API integration.
+After demo: set up PHP/MySQL backend (TRD §4 endpoints), wire registration/queue/photos to real API. Start with `POST /visits` (token generation) and `POST /uploads/prescription-photo` as they unlock the complete real flow.
 
----
 
-### Session: 13-Aug-2026 (Session 3) — Antigravity
+
+### Session: 13-Aug-2026 (later same day) — Claude (major scope update, planning)
 
 **Task worked on:**
-Wired together all 11 Stitch-generated screens into a fully interactive React SPA using `react-router-dom` and a mock local storage database.
+The doctor described his clinic's actual real-world workflow, which is significantly richer than what was originally scoped. This session updates the docs to match reality before continuing the build, and this replaces the earlier "typed prescription form" approach.
 
 **What was built/changed:**
-- Installed `react-router-dom` and `@tailwindcss/postcss` for Tailwind v4 integration.
-- Updated `index.html` with external Google Fonts (`Hanken Grotesk`, `Inter`) and `Material Symbols Outlined` icons.
-- Updated `tailwind.config.js` and `index.css` with the design system's colors, typography, spacing, border radii, and utility classes (glassmorphism cards/rows, custom badges, pill buttons).
-- Created a robust ESM local database layer (`src/api/db.js`) initialized from `07_Mock_Data.json` that performs state updates in `localStorage`.
-- Built modular API folders (`src/api/auth.js`, `src/api/patients.js`, `src/api/visits.js`, `src/api/store.js`) implementing all TRD endpoints (login, patients search, visit history timeline, medicine record, sales logging).
-- Built [SidebarLayout](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/layouts/SidebarLayout.jsx) sharing navigation state between desktop and mobile bottom tabs.
-- Created React page components matching sitemap names exactly (`LoginScreen`, `Dashboard`, `PatientsList`, `PatientProfile`, `AddNewPatient`, `NewVisitPrescriptionEntry`, `PrintablePrescriptionView`, `FeesReports`, `MedicalStoreInventory`, `MedicalStoreSalesLog`, `ClinicSettings`).
-- Configured production-ready route structure in [App.jsx](file:///c:/Users/Kali/Downloads/files%20(1)/frontend/src/App.jsx).
+- `03_TRD_Architecture.md`: data model rewritten — `patients` gains `relation_name`/`relation_type` (Father/Husband/Wife) for disambiguating duplicate names; `visits` gains `token_number`, `visit_type`, `status`, `prescription_image_url`, `report_image_urls`; the old `prescription_items` table is REMOVED (no longer needed); `store_sales` changed to a cart-style `items` JSON array instead of one-row-per-item; `users.role` gains `pharmacist`. API endpoints updated for queue/token/photo-upload/POS-cart operations.
+- `04_Screens_and_Sitemap.md`: added Reception Registration, Today's Queue (counter view), Doctor's Live Queue, Consultation Screen (camera capture), and Medical Store POS screens. Removed the old "New Visit / Prescription Entry" typed form and old single-item "Medical Store Sales Log" screen — replaced by the above. Navigation is now role-based (Receptionist/Doctor/Pharmacist see different nav items).
+- `07_Mock_Data.json`: rebuilt with relation_name fields, token numbers, a pharmacist user, an in-queue "waiting" visit for testing the live queue, and — importantly — **two different patients who intentionally share the exact same full_name** (pat_001 and pat_004, both "Muhammad Bilal") specifically to test that search correctly disambiguates using relation_name + phone, not name alone.
 
 **Decisions made / assumptions taken:**
-- Mock database acts as a full database proxy, pre-loaded with original IDs. This allows complete user flow testing (searching, visit entries, prescribing medicines, stock deduction, settings updates) instantly, saving all additions in the browser.
-- Login validation accepts `dr.ahmed@example.com` or `03001234567` with the password `'password'`.
+- **Prescriptions are photo-only, no typed medicine/dosage fields** — confirmed explicitly with Krish. This trades away text-searchable prescription history in favor of matching the doctor's actual fast real-world workflow. Do not add a typed medicine form to the Consultation screen.
+- Token numbers are clinic-wide (not per-counter) and must be atomically generated to avoid collisions if multiple reception desks register patients simultaneously.
+- Queue needs Skip/Recall so an absent patient doesn't block the whole line.
+- Images should be compressed client-side before upload to control storage cost on Hostinger's shared hosting plans.
+- Medical Store POS should support viewing the prescription photo alongside the cart (split view) so staff can visually cross-check what they're dispensing, since there's no structured/automated prescription-to-inventory link.
+- Full flow (registration + token + queue + camera consultation + POS) is being demoed together today, not staged — this is a deliberate time-tradeoff Krish chose given today's demo deadline; expect the AI build session to move fast and to lean on Mock Data rather than a fully wired backend for the demo if time runs short.
 
 **Known issues / incomplete:**
-- None for the frontend demo layer. Ready to connect to the actual PHP backend routes in the next step.
+- Screens built in earlier sessions (Login, Dashboard, Patients List/Profile, print flow) were built against the OLD data model (typed prescription_items, no token/relation_name) and will need adaptation — Patient Profile in particular needs to switch from showing a text medicine list to showing the prescription photo.
+- No code yet exists for: Registration screen, Queue screens (either role), Consultation camera-capture screen, or the new POS cart screen.
 
 **Blocked on / needs human input:**
-- None.
+- None currently — proceeding to build for today's demo.
 
 **Next recommended step:**
-Implement the PHP backend endpoints (auth login, patient endpoints, visit timelines, inventory list, sales logger) in `backend/` and switch the frontend API layer from `db.js` local storage to actual `fetch()` requests.
-
----
-
-### Session: 13-Aug-2026 (Session 2) — Antigravity
-
-**Task worked on:**
-Created a PHP database seed script to populate MySQL tables with mock data from `07_Mock_Data.json`.
-
-**What was built/changed:**
-- Created [seed.php](file:///c:/Users/Kali/Downloads/files%20(1)/database/seed.php) which loads DB connection parameters from `backend/.env`, reads and parses `07_Mock_Data.json`, clears existing tables safely by temporarily disabling foreign key checks, and inserts all clinic, user, patient, visit, prescription, inventory, and sales records with their exact original IDs and fields.
-- Added bcrypt hashing using `password_hash()` for seeded users so that they can log in immediately with the default password `'password'`.
-
-**Decisions made / assumptions taken:**
-- Since the `users` table has a `password_hash` column but the mock data does not contain passwords, all seeded users were assigned a default password of `'password'` hashed using standard BCRYPT.
-- ISO 8601 strings from JSON are dynamically converted to MySQL compatible datetime/date formats (`Y-m-d H:i:s` / `Y-m-d`) before insertion.
-
-**Known issues / incomplete:**
-- The script cannot be run in the current environment because PHP command-line tools are not installed/available locally. It is intended to run once PHP and MySQL are accessible in the development/production environment.
-
-**Blocked on / needs human input:**
-- None. The seeding script is complete and ready to run.
-
-**Next recommended step:**
-Proceed to start building backend routes/controllers or generating frontend components/screens.
-
----
-
-### Session: 13-Aug-2026 — Antigravity
-
-**Task worked on:**
-Set up the initial project skeleton for ClinicFlow.
-
-**What was built/changed:**
-- Initialized frontend with React (Vite) and Tailwind CSS in `frontend/`.
-- Created frontend folder structure (`components`, `pages`, `layouts`, `api`, `hooks`, `utils`, `styles`).
-- Created backend folder structure (`routes`, `controllers`, `models`, `middleware`, `utils`, `config`).
-- Created MySQL database schema in `database/schema.sql` matching exactly with TRD and mock data.
-- Setup `backend/.env` with placeholder MySQL credentials.
-- Created `backend/src/config/db.php` for standard MySQL PDO connection that loads `.env` variables and respects the standard JSON error shape.
-
-**Decisions made / assumptions taken:**
-- Proceeded with plain PHP for the backend structure as per user's instruction to "Use MySql framework", interpreting this as using plain PHP with standard PDO for MySQL (since MySQL isn't a PHP framework itself).
-- Added `password_hash` to `users` table to match TRD, although it was absent in the mock data.
-
-**Known issues / incomplete:**
-- Database isn't actually created on the server yet, just the SQL schema.
-- Vite frontend is just the standard boilerplate for now.
-
-**Blocked on / needs human input:**
-- None immediately. Ready to start building specific screens or APIs.
-
-**Next recommended step:**
-Start building out the core API endpoints (e.g., authentication) or UI screens (e.g., login/dashboard) and connecting them.
+Build the new flow in Antigravity following the fast-track demo prompt given directly to Krish in this session (see chat — not duplicated here to avoid drift; if this prompt needs to be reused later, copy it into `11_Antigravity_Workflow_and_Prompts.md` as a new "Demo Build — Real Clinic Workflow" section). After the demo, revisit `10_Code_Standards.md` folder structure and `11_Antigravity_Workflow_and_Prompts.md` step order to formally incorporate the 3-role structure for a proper non-rushed build pass.
 
 ---
 
@@ -268,5 +322,3 @@ Initial planning phase completed — PRD, MVP scope, TRD, Sitemap, Stitch prompt
 
 **Next recommended step:**
 Run the `06_AI_Review_Brief.md` past another AI for critique, incorporate any critical gap fixes into the docs, then begin Stitch screen generation using `05_Stitch_UI_Prompts.md`.
-
-

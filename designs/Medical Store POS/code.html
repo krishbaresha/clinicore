@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ClinicFlow - Medical Store POS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#bdece2",
+                        "outline-variant": "#bdc9c6",
+                        "primary-fixed": "#9cf2e8",
+                        "surface-container": "#e5eeff",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#cbdbf5",
+                        "primary-fixed-dim": "#80d5cb",
+                        "inverse-primary": "#80d5cb",
+                        "outline": "#6e7977",
+                        "on-tertiary-fixed": "#171c1f",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#0f766e",
+                        "inverse-on-surface": "#eaf1ff",
+                        "surface-bright": "#f8f9ff",
+                        "secondary": "#3b665f",
+                        "on-error-container": "#93000a",
+                        "on-background": "#0b1c30",
+                        "secondary-fixed-dim": "#a2d0c6",
+                        "on-primary-fixed": "#00201d",
+                        "surface-container-highest": "#d3e4fe",
+                        "tertiary-fixed": "#dfe3e7",
+                        "secondary-container": "#bdece2",
+                        "surface-container-high": "#dce9ff",
+                        "background": "#f8f9ff",
+                        "surface-variant": "#d3e4fe",
+                        "tertiary-container": "#656a6d",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#eff4ff",
+                        "tertiary": "#4d5255",
+                        "inverse-surface": "#213145",
+                        "tertiary-fixed-dim": "#c3c7cb",
+                        "on-surface-variant": "#3e4947",
+                        "on-secondary-fixed": "#00201c",
+                        "on-primary-fixed-variant": "#00504a",
+                        "on-tertiary-fixed-variant": "#43474b",
+                        "on-error": "#ffffff",
+                        "on-tertiary-container": "#e6eaee",
+                        "primary": "#005c55",
+                        "on-surface": "#0b1c30",
+                        "surface-tint": "#006a63",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#416c65",
+                        "on-secondary-fixed-variant": "#224e47",
+                        "on-primary-container": "#a3faef",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface": "#f8f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "32px",
+                        "bento-gap": "20px",
+                        "gutter": "24px",
+                        "unit": "4px",
+                        "section-margin": "48px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(15, 118, 110, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex h-screen w-64 fixed left-0 top-0 border-r border-outline-variant/10 bg-surface/90 dark:bg-surface-container-low/90 backdrop-blur-lg shadow-[20px_0_40px_rgba(15,118,110,0.04)] z-50 flex-col gap-4 p-4">
+<div class="mb-8 px-4 py-2">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">ClinicFlow</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Pharmacy POS</p>
+</div>
+<div class="flex flex-col gap-2 flex-grow">
+<!-- Active Tab: Medical Store POS -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container/50 dark:bg-primary-container/30 text-primary dark:text-primary-fixed rounded-xl font-bold transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">point_of_sale</span>
+<span class="font-label-md text-label-md">Medical Store POS</span>
+</a>
+<!-- Inactive Tab: Inventory -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary transition-all hover:bg-secondary-fixed/30 dark:hover:bg-secondary-container/20 rounded-xl duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<!-- Inactive Tab: Settings -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary transition-all hover:bg-secondary-fixed/30 dark:hover:bg-secondary-container/20 rounded-xl duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+<div class="mt-auto">
+<button class="w-full bg-primary-container text-white py-3 rounded-xl font-label-md text-label-md hover:bg-primary transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined">add</span>
+                New Transaction
+            </button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-0 md:ml-64 flex-1 p-4 md:p-container-padding transition-all">
+<!-- Mobile Header (Visible only on md:hidden) -->
+<header class="md:hidden flex justify-between items-center mb-6 bg-surface/80 backdrop-blur-xl p-4 rounded-xl border border-outline-variant/10 shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">point_of_sale</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">ClinicFlow POS</h1>
+</div>
+<button class="p-2 text-on-surface-variant">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-bento-gap max-w-7xl mx-auto h-[calc(100vh-64px)]">
+<!-- Left Column: POS Terminal -->
+<div class="lg:col-span-8 flex flex-col gap-bento-gap h-full">
+<!-- Search Bar Card -->
+<div class="glass-card rounded-2xl p-6 shadow-[0_20px_40px_rgba(15,118,110,0.04)]">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-4 text-on-surface-variant">search</span>
+<input class="w-full pl-12 pr-4 py-4 rounded-xl bg-surface border-none focus:ring-2 focus:ring-secondary-container shadow-inner text-body-lg font-body-lg text-on-surface placeholder:text-outline-variant transition-all" placeholder="Search medicine by name or barcode..." type="text"/>
+<button class="absolute right-4 p-2 bg-secondary-container/50 hover:bg-secondary-container text-primary rounded-lg transition-colors">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+</button>
+</div>
+</div>
+<!-- Shopping Cart List -->
+<div class="glass-card rounded-2xl p-6 shadow-[0_20px_40px_rgba(15,118,110,0.04)] flex-1 overflow-hidden flex flex-col">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-4 border-b border-outline-variant/10 pb-2">Current Cart</h2>
+<div class="overflow-y-auto pr-2 space-y-2 flex-1">
+<!-- Cart Item 1 -->
+<div class="flex items-center justify-between p-3 hover:bg-secondary-fixed/30 rounded-xl transition-colors group border-b border-outline-variant/5 last:border-0">
+<div class="flex-1">
+<h3 class="font-body-md text-body-md font-medium text-on-surface">Augmentin 625mg</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Tablet • Amoxicillin</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface rounded-lg p-1 border border-outline-variant/20 shadow-sm">
+<button class="p-1 hover:bg-secondary-container rounded text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+<span class="w-8 text-center font-label-md text-label-md">2</span>
+<button class="p-1 hover:bg-secondary-container rounded text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">add</span></button>
+</div>
+<div class="w-20 text-right">
+<span class="font-body-md text-body-md text-on-surface-variant">$14.50</span>
+</div>
+<div class="w-24 text-right font-medium">
+<span class="font-body-md text-body-md text-on-surface">$29.00</span>
+</div>
+<button class="p-2 text-outline hover:text-error transition-colors opacity-50 group-hover:opacity-100">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Cart Item 2 -->
+<div class="flex items-center justify-between p-3 hover:bg-secondary-fixed/30 rounded-xl transition-colors group border-b border-outline-variant/5 last:border-0">
+<div class="flex-1">
+<h3 class="font-body-md text-body-md font-medium text-on-surface">Paracetamol 500mg</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Tablet • Pain Relief</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface rounded-lg p-1 border border-outline-variant/20 shadow-sm">
+<button class="p-1 hover:bg-secondary-container rounded text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+<span class="w-8 text-center font-label-md text-label-md">1</span>
+<button class="p-1 hover:bg-secondary-container rounded text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">add</span></button>
+</div>
+<div class="w-20 text-right">
+<span class="font-body-md text-body-md text-on-surface-variant">$4.20</span>
+</div>
+<div class="w-24 text-right font-medium">
+<span class="font-body-md text-body-md text-on-surface">$4.20</span>
+</div>
+<button class="p-2 text-outline hover:text-error transition-colors opacity-50 group-hover:opacity-100">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Sticky Footer (Totals) -->
+<div class="mt-4 pt-4 border-t border-outline-variant/20 bg-surface/50 rounded-xl p-4 shadow-sm">
+<div class="space-y-2 mb-4">
+<div class="flex justify-between font-body-md text-body-md text-on-surface-variant">
+<span>Subtotal</span>
+<span>$33.20</span>
+</div>
+<div class="flex justify-between font-body-md text-body-md text-on-surface-variant">
+<span>Tax (8%)</span>
+<span>$2.66</span>
+</div>
+<div class="flex justify-between font-headline-lg text-headline-lg font-bold text-on-surface pt-2 border-t border-outline-variant/10">
+<span>Total Amount</span>
+<span class="text-primary">$35.86</span>
+</div>
+</div>
+<button class="w-full bg-primary-container hover:bg-primary text-white py-4 rounded-xl font-headline-md text-headline-md transition-colors shadow-sm flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">receipt_long</span>
+                            Checkout &amp; Print Receipt
+                        </button>
+</div>
+</div>
+</div>
+<!-- Right Column: Prescription Cross-check -->
+<div class="lg:col-span-4 h-full">
+<div class="glass-card rounded-2xl p-6 shadow-[0_20px_40px_rgba(15,118,110,0.04)] h-full flex flex-col">
+<div class="flex items-start justify-between mb-4 pb-4 border-b border-outline-variant/10">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">assignment</span>
+                                Prescription Cross-check
+                            </h2>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Patient: Eleanor Vance</p>
+</div>
+<span class="px-2 py-1 bg-secondary-fixed/50 text-on-secondary-container rounded-full font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                            Linked
+                        </span>
+</div>
+<div class="flex-1 bg-surface-container rounded-xl overflow-hidden border border-outline-variant/20 shadow-inner relative flex flex-col items-center justify-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant text-center px-4 py-2 bg-surface/80 backdrop-blur w-full absolute top-0 z-10 border-b border-outline-variant/10">
+                            Visually verify medicine and dosage against doctor's notes.
+                        </p>
+<!-- Empty state / Placeholder for image if needed, though instruction says to use placeholder image directly -->
+<div class="w-full h-full flex items-center justify-center bg-surface-dim/30 p-4 mt-8">
+<div class="text-center opacity-50">
+<span class="material-symbols-outlined text-4xl mb-2 text-outline">description</span>
+<p class="font-label-md text-label-md">Prescription Scan Expected Here</p>
+</div>
+</div>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 bg-surface border border-outline-variant/30 text-on-surface py-2 rounded-lg font-label-md text-label-md hover:bg-secondary-fixed/20 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">zoom_in</span>
+                            Zoom
+                        </button>
+<button class="flex-1 bg-surface border border-outline-variant/30 text-on-surface py-2 rounded-lg font-label-md text-label-md hover:bg-error-container hover:text-on-error-container transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">report</span>
+                            Flag Issue
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

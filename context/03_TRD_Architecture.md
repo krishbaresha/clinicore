@@ -47,12 +47,14 @@ Multi-tenant note: each clinic is a separate `clinic_id`. All tables (patients, 
 
 ## 3. Core Data Model / Entities
 
+> **MAJOR UPDATE (13-Aug-2026):** Real clinic workflow discovered from the doctor — see `09_Progress_Log.md`. This adds: token/queue system, relation-name-based patient search (to solve duplicate-name collisions), photo-based prescriptions (no typed medicine list), and a third user role (pharmacist). All entities below reflect this updated model — this supersedes any earlier simpler version.
+
 ### `clinics`
 | Field | Type | Notes |
 |---|---|---|
-| id | UUID | Primary key |
-| name | text | e.g. "Dr. Ahmed's Clinic" |
-| logo_url | text | Optional, for prescription branding |
+| id | UUID | |
+| name | text | |
+| logo_url | text | |
 | address | text | |
 | created_at | timestamp | |
 
@@ -62,8 +64,8 @@ Multi-tenant note: each clinic is a separate `clinic_id`. All tables (patients, 
 | id | UUID | |
 | clinic_id | UUID | FK → clinics |
 | name | text | |
-| role | enum | `doctor`, `receptionist` |
-| email / phone | text | For login |
+| role | enum | `doctor`, `receptionist`, `pharmacist` — pharmacist can ONLY access Medical Store screens, never patient medical records |
+| email / phone | text | |
 | password_hash | text | |
 
 ### `patients`
@@ -72,11 +74,15 @@ Multi-tenant note: each clinic is a separate `clinic_id`. All tables (patients, 
 | id | UUID | |
 | clinic_id | UUID | FK → clinics |
 | full_name | text | |
-| phone | text | Indexed — primary search field |
+| relation_name | text | Father/Husband/Wife's name — critical for disambiguating common names |
+| relation_type | enum | `father`, `husband`, `wife` |
+| phone | text | Indexed — primary search field alongside full_name + relation_name |
 | cnic | text | Optional |
 | age | int | |
 | gender | enum | |
-| created_at | timestamp | First-ever visit date |
+| created_at | timestamp | |
+
+**Search rule:** patient search must match against `full_name` + `relation_name` + `phone` combined — never `full_name` alone, since duplicate names are common and returning the wrong patient's history is a real safety risk.
 
 ### `visits`
 | Field | Type | Notes |
@@ -84,21 +90,18 @@ Multi-tenant note: each clinic is a separate `clinic_id`. All tables (patients, 
 | id | UUID | |
 | patient_id | UUID | FK → patients |
 | clinic_id | UUID | FK → clinics |
+| doctor_id | UUID | FK → users (role=doctor) — which doctor this visit/token is assigned to. REQUIRED: the clinic has multiple doctors seeing patients concurrently (e.g. Dr. Asif Ashraf and a lady doctor colleague), so every visit/token belongs to exactly one doctor, and each doctor's queue only shows their own patients. |
+| token_number | int | Assigned at registration, resets daily, must be atomically generated (no duplicate tokens same day) |
+| visit_type | enum | `new`, `follow_up` |
+| status | enum | `waiting`, `in_consultation`, `completed`, `completed_reports_pending`, `skipped` — `completed_reports_pending` means the doctor finished and moved on without uploading report photos yet; reception can complete that later (see Section 2 Reception Flow update) |
 | visit_date | timestamp | |
-| symptoms | text | |
-| diagnosis | text | |
-| fee_amount | decimal | |
+| fee_amount | decimal | Collected at reception (Counter), not by the doctor |
+| prescription_image_url | text | Photo of the physical prescription pad — REQUIRED to complete a visit |
+| report_image_urls | text[] | Photos of any patient reports — OPTIONAL at consultation time; can be added later by reception if status is `completed_reports_pending` |
 | follow_up_date | date | Optional |
 | notes | text | Optional |
 
-### `prescription_items`
-| Field | Type | Notes |
-|---|---|---|
-| id | UUID | |
-| visit_id | UUID | FK → visits |
-| medicine_name | text | |
-| dosage | text | e.g. "1 tablet twice daily" |
-| duration | text | e.g. "5 days" |
+> **No structured `prescription_items` table for medicines** — per the doctor's real workflow, medicines are handwritten on a pad and only captured as a photo, not typed into the system. Do not build a medicine-name/dosage form for the doctor's consultation screen; build a camera-capture flow instead. (This was evaluated and intentionally decided — see Progress Log — favoring consultation speed over structured/searchable prescription data.)
 
 ### `store_inventory`
 | Field | Type | Notes |
@@ -106,41 +109,52 @@ Multi-tenant note: each clinic is a separate `clinic_id`. All tables (patients, 
 | id | UUID | |
 | clinic_id | UUID | FK → clinics |
 | medicine_name | text | |
-| stock_qty | int | |
-| unit_price | decimal | |
-| low_stock_threshold | int | Default e.g. 10 |
+| unit_label | text | The smallest sellable unit for this medicine — e.g. `"tablet"`, `"bottle"`, `"injection"`, `"tube"`, `"capsule"`. Stock and price are always tracked in this unit — no separate box/strip/loose hierarchy needed; quantity sold can be any number (1 tablet or 50), unit stays fixed per medicine. |
+| stock_qty | int | Quantity in `unit_label` units |
+| unit_price | decimal | Price per single `unit_label` unit |
+| low_stock_threshold | int | |
 
 ### `store_sales`
 | Field | Type | Notes |
 |---|---|---|
 | id | UUID | |
 | clinic_id | UUID | FK → clinics |
-| inventory_id | UUID | FK → store_inventory |
-| quantity_sold | int | |
-| sale_amount | decimal | |
+| visit_id | UUID (nullable) | FK → visits — OPTIONAL. Null means a walk-in customer bought medicine without any clinic visit/consultation; the POS must fully support this standalone mode, not require a linked visit. |
+| customer_name | text (nullable) | Optional, only relevant for walk-in sales without a visit_id, for the receipt |
+| items | JSON | Array of `{ inventory_id, medicine_name, unit_label, quantity, unit_price, line_total }` |
+| subtotal | decimal | Sum of all line_totals before discount/tax |
+| discount_amount | decimal | Flat amount or computed from a percent entered at checkout — default 0 |
+| tax_amount | decimal | Default 0 for now. Field exists so a future FBR Digital Invoicing integration (IRN/QR code generation, matching prior FBR DI API work) can be added later without a schema change — do not build FBR integration now, just keep this field present and unused/zero. |
+| total_amount | decimal | subtotal - discount_amount + tax_amount |
 | sale_date | timestamp | |
-| linked_visit_id | UUID | Optional — Phase 3 auto-dispense link |
 
-## 4. API Endpoints (MVP scope)
+## 4. API Endpoints (MVP scope — UPDATED for real clinic workflow)
 
 ```
 POST   /auth/login
 GET    /dashboard/summary
 
-GET    /patients?search=
+GET    /patients?search=          (searches full_name + relation_name + phone together)
 GET    /patients/:id
 POST   /patients
 
 GET    /patients/:id/visits
-POST   /visits
-GET    /visits/:id  (includes prescription_items)
+POST   /visits                     (registration: creates visit, assigns token_number atomically, status=waiting)
+
+GET    /queue/today?doctor_id=      (a doctor's own live queue — visits with status=waiting/in_consultation FOR THAT DOCTOR ONLY, ordered by token_number; a logged-in doctor sees only their own doctor_id's queue automatically)
+POST   /visits/:id/call             (sets status=in_consultation)
+POST   /visits/:id/skip             (sets status=skipped, moves to end of queue)
+POST   /visits/:id/complete         (accepts prescription_image_url [required] and report_image_urls [optional]; if report_image_urls is empty, sets status=completed_reports_pending, otherwise status=completed)
+POST   /visits/:id/reports          (reception-only: adds report_image_urls to a visit that's status=completed_reports_pending, then updates status to completed)
+GET    /visits/pending-reports       (reception: lists all visits currently status=completed_reports_pending, so reception knows which patients still need to come back for report upload)
+POST   /uploads/prescription-photo  (accepts a captured/uploaded image, returns a URL, should compress client-side before upload)
 
 GET    /fees/summary?range=daily|weekly|monthly
 
 GET    /store/inventory
 POST   /store/inventory
 GET    /store/sales
-POST   /store/sales
+POST   /store/sales                (accepts an array of {inventory_id, quantity}, optional visit_id [nullable — walk-in sales have no visit_id], optional customer_name, optional discount_amount, optional tax_amount; reduces stock, computes subtotal/total, returns receipt data)
 ```
 
 ## 5. Security Requirements

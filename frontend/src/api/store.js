@@ -25,11 +25,15 @@ export function recordSale(formData) {
   const qty = parseInt(quantity_sold) || 1;
   if (item.stock_qty < qty) return { success: false, data: null, error: { code: "INSUFFICIENT_STOCK", message: `Only ${item.stock_qty} units available.` } };
 
-  const sale = dbSales.add({
-    inventory_id,
-    quantity_sold: qty,
-    sale_amount: parseFloat((item.unit_price * qty).toFixed(2)),
-    linked_visit_id: linked_visit_id || null,
+  const sale = dbSales.checkout({
+    visit_id: linked_visit_id || null,
+    items: [{
+      inventory_id,
+      medicine_name: item.medicine_name,
+      quantity: qty,
+      unit_price: item.unit_price,
+      line_total: parseFloat((item.unit_price * qty).toFixed(2)),
+    }],
   });
   return { success: true, data: sale, error: null };
 }

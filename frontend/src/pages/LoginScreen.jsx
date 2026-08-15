@@ -82,7 +82,7 @@ export default function LoginScreen() {
                   name="identifier"
                   type="text"
                   autoComplete="username"
-                  placeholder="dr.ahmed@example.com or 03001234567"
+                  placeholder="dr.asif@example.com"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="input-field pl-10"
@@ -138,9 +138,6 @@ export default function LoginScreen() {
                   <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                 )}
               </button>
-              <p className="font-body-sm text-body-sm text-outline text-center">
-                Use email or phone + password <span className="font-semibold text-primary">password</span>
-              </p>
             </div>
           </form>
         </div>
