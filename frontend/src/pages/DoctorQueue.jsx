@@ -131,46 +131,48 @@ export default function DoctorQueue() {
                 key={visit.id}
                 className={`rounded-2xl border-2 p-4 transition-all ${s.bg} ${s.border} ${isActive ? "shadow-lg" : "shadow-sm"}`}
               >
-                <div className="flex items-start gap-3">
-                  {/* Token Number */}
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${
-                    isActive ? "bg-teal-600 text-white shadow-md shadow-teal-200" : "bg-white text-gray-700 border border-gray-200"
-                  }`}>
-                    {visit.token_number}
-                  </div>
-
-                  {/* Patient Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-gray-900 text-base">
-                        {patient ? patient.full_name : "Unknown Patient"}
-                      </span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${s.badge}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                        {s.label}
-                      </span>
-                      {visit.visit_type === "follow_up" && (
-                        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Follow-up</span>
-                      )}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    {/* Token Number */}
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${
+                      isActive ? "bg-teal-600 text-white shadow-md shadow-teal-200" : "bg-white text-gray-700 border border-gray-200"
+                    }`}>
+                      {visit.token_number}
                     </div>
-                    {patient && (
-                      <div className="text-sm text-gray-500 mt-0.5">
-                        {getRelLabel(patient.relation_type)} {patient.relation_name}
-                        {patient.age ? ` · ${patient.age}y` : ""}
-                        {patient.phone ? ` · ${patient.phone}` : ""}
+
+                    {/* Patient Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-gray-900 text-base">
+                          {patient ? patient.full_name : "Unknown Patient"}
+                        </span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${s.badge}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                          {s.label}
+                        </span>
+                        {visit.visit_type === "follow_up" && (
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Follow-up</span>
+                        )}
                       </div>
-                    )}
-                    <div className="text-xs text-gray-400 mt-1">
-                      Registered at {new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
+                      {patient && (
+                        <div className="text-sm text-gray-500 mt-0.5">
+                          {getRelLabel(patient.relation_type)} {patient.relation_name}
+                          {patient.age ? ` · ${patient.age}y` : ""}
+                          {patient.phone ? ` · ${patient.phone}` : ""}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-400 mt-1">
+                        Registered at {new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
+                      </div>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-col gap-2 shrink-0">
+                  <div className="flex sm:flex-col flex-row gap-2 shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/60">
                     {isActive && (
                       <button
                         onClick={() => startConsultation(visit.id)}
-                        className="flex items-center gap-1.5 bg-teal-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-teal-700 transition-colors shadow-md shadow-teal-200"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-teal-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-teal-700 transition-colors shadow-md shadow-teal-200"
                       >
                         <span className="material-symbols-outlined text-sm">stethoscope</span>
                         Consult
@@ -180,14 +182,14 @@ export default function DoctorQueue() {
                       <>
                         <button
                           onClick={() => { dbVisits.updateStatus(visit.id, "in_consultation"); loadQueue(); }}
-                          className="flex items-center gap-1 bg-white border border-teal-300 text-teal-700 px-3 py-1.5 rounded-xl text-xs font-semibold hover:bg-teal-50 transition-colors"
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-teal-300 text-teal-700 px-3 py-1.5 rounded-xl text-xs font-semibold hover:bg-teal-50 transition-colors"
                         >
                           <span className="material-symbols-outlined text-sm">call</span>
                           Call
                         </button>
                         <button
                           onClick={() => skipVisit(visit.id)}
-                          className="flex items-center gap-1 bg-white border border-gray-200 text-gray-500 px-3 py-1.5 rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors"
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-gray-200 text-gray-500 px-3 py-1.5 rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors"
                         >
                           <span className="material-symbols-outlined text-sm">skip_next</span>
                           Skip
@@ -197,7 +199,7 @@ export default function DoctorQueue() {
                     {visit.status === "skipped" && (
                       <button
                         onClick={() => { dbVisits.updateStatus(visit.id, "waiting"); loadQueue(); }}
-                        className="flex items-center gap-1 bg-white border border-amber-300 text-amber-700 px-3 py-1.5 rounded-xl text-xs font-medium hover:bg-amber-50 transition-colors"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-amber-300 text-amber-700 px-3 py-1.5 rounded-xl text-xs font-medium hover:bg-amber-50 transition-colors"
                       >
                         <span className="material-symbols-outlined text-sm">undo</span>
                         Recall

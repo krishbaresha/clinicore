@@ -214,7 +214,7 @@ export default function ConsultationScreen() {
     setReportPhotos((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  async function completeVisit() {
+  async function completeVisit(targetStatus = "completed") {
     if (!prescriptionPhoto) {
       alert("Please take or upload a prescription photo before completing the visit.");
       return;
@@ -224,6 +224,7 @@ export default function ConsultationScreen() {
       prescription_image_url: prescriptionPhoto,
       report_image_urls: reportPhotos,
       notes,
+      forcedStatus: targetStatus,
     });
     setSaving(false);
     setDone(completedVisit);
@@ -394,27 +395,50 @@ export default function ConsultationScreen() {
         />
       </div>
 
-      {/* Sticky Complete Button */}
-      <div className="fixed bottom-0 left-0 right-0 md:left-[260px] p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 z-40">
-        <button
-          onClick={completeVisit}
-          disabled={saving}
-          className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl ${
-            prescriptionPhoto
-              ? "bg-teal-600 text-white hover:bg-teal-700 shadow-teal-600/25"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          {saving ? (
-            <span className="material-symbols-outlined animate-spin">refresh</span>
-          ) : (
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>task_alt</span>
-          )}
-          {saving ? "Saving..." : "Complete Visit"}
-          {!prescriptionPhoto && (
-            <span className="text-xs font-normal opacity-60">(add prescription photo first)</span>
-          )}
-        </button>
+      {/* Sticky Mobile-Safe Button Bar */}
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-[260px] p-3 sm:p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+        <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-2.5">
+          {/* Primary: Complete Visit */}
+          <button
+            id="complete-visit-btn"
+            type="button"
+            onClick={() => completeVisit("completed")}
+            disabled={saving || !prescriptionPhoto}
+            className={`flex-1 py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md ${
+              prescriptionPhoto
+                ? "bg-teal-600 text-white hover:bg-teal-700 active:scale-98 shadow-teal-600/20"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed opacity-75"
+            }`}
+          >
+            {saving ? (
+              <span className="material-symbols-outlined animate-spin text-lg">refresh</span>
+            ) : (
+              <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            )}
+            <span>Complete Visit</span>
+          </button>
+
+          {/* Secondary: Complete & Forward Reports to Reception */}
+          <button
+            id="forward-reception-btn"
+            type="button"
+            onClick={() => completeVisit("completed_reports_pending")}
+            disabled={saving || !prescriptionPhoto}
+            className={`flex-1 py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all border ${
+              prescriptionPhoto
+                ? "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100 active:scale-98 shadow-sm"
+                : "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-75"
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">forward_to_inbox</span>
+            <span>Complete &amp; Forward Reports to Reception</span>
+          </button>
+        </div>
+        {!prescriptionPhoto && (
+          <p className="text-center text-xs text-gray-500 mt-1 font-medium">
+            ⚠️ Please capture or upload a prescription photo first to enable completion buttons.
+          </p>
+        )}
       </div>
     </div>
   );

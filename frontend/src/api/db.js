@@ -480,13 +480,13 @@ export const dbVisits = {
   },
 
   /** Complete a visit — saves prescription photo + report photos.
-   *  If report photos are present -> status = 'completed'.
-   *  If no report photos -> status = 'completed_reports_pending'.
+   *  If forcedStatus is provided, uses that explicitly ('completed' vs 'completed_reports_pending').
+   *  Otherwise, defaults to 'completed' if report_image_urls > 0, else 'completed_reports_pending'.
    */
-  complete: (id, { prescription_image_url, report_image_urls, notes }) => {
+  complete: (id, { prescription_image_url, report_image_urls, notes, forcedStatus }) => {
     const visits = getCollection(KEYS.VISITS);
     const reports = report_image_urls || [];
-    const status = reports.length > 0 ? "completed" : "completed_reports_pending";
+    const status = forcedStatus || (reports.length > 0 ? "completed" : "completed_reports_pending");
     const updated = visits.map((v) =>
       v.id === id
         ? { ...v, status, prescription_image_url, report_image_urls: reports, notes: notes || v.notes }

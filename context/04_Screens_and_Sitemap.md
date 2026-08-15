@@ -71,7 +71,10 @@
 - Patient info shown at top (name, age, relation name, past visit count).
 - **Camera capture area** for the prescription pad photo — big, simple "Take Photo" / "Upload Photo" button (mobile/tablet camera access), with a preview and retake option before confirming.
 - Second, separate camera capture area for patient reports (X-ray/lab reports) — supports multiple photos.
-- "Complete Visit" button — enabled once the prescription photo is captured (report photos are OPTIONAL). Saves whatever images are present to the visit record; if report photos weren't added, sets status to `completed_reports_pending` instead of `completed` so reception can add them later without involving the doctor again. Returns to the queue for the next token — this lets the doctor move fast when time is short, without being blocked on uploading reports.
+- Bottom action area has TWO explicit buttons, side by side, both enabled once the prescription photo is captured:
+  - **"Complete Visit"** (primary) — saves whatever images are present (reports included if added), sets status to `completed`. Use this when reports were captured (or there are none needed).
+  - **"Complete & Forward Reports to Reception"** (secondary) — explicitly and intentionally sets status to `completed_reports_pending`, clearly signaling "I'm skipping report upload on purpose, reception should handle it" — this is a deliberate doctor action, not just a silent side effect of forgetting to add photos. This is what lets the doctor move to the next patient fast when time is short.
+  Both buttons return to the queue for the next token.
 - No typed medicine/dosage form on this screen — intentionally photo-only, per the real clinic workflow (see 09_Progress_Log.md).
 
 ### Medical Store Flow (UPDATED — full standalone POS)
