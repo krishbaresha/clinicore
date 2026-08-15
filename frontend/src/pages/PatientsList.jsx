@@ -31,8 +31,8 @@ export default function PatientsList() {
   return (
     <div className="flex flex-col w-full">
       {/* Page Header */}
-      <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md flex justify-between items-center px-lg py-md border-b border-outline-variant/20">
-        <h1 className="font-headline-lg text-headline-lg font-bold text-primary hidden md:block">Patients</h1>
+      <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md flex items-center justify-between px-3 py-3 md:px-lg md:py-md border-b border-outline-variant/20 gap-2">
+        <h1 className="font-bold text-xl md:text-headline-lg text-primary shrink-0">Patients</h1>
 
         {/* Search bar — hero interaction */}
         <div className="flex-1 max-w-2xl px-0 md:px-8">

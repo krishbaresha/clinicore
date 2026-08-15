@@ -33,7 +33,7 @@ export default function AddNewPatient() {
   }
 
   return (
-    <div className="p-md md:p-lg flex flex-col gap-lg max-w-xl">
+    <div className="p-3 sm:p-5 md:p-8 flex flex-col gap-lg max-w-xl mx-auto w-full">
       {/* Back */}
       <button
         id="back-from-add-patient"

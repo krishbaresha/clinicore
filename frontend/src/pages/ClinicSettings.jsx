@@ -92,7 +92,7 @@ export default function ClinicSettings() {
   }
 
   return (
-    <div className="p-md md:p-lg flex flex-col gap-lg max-w-2xl">
+    <div className="p-3 sm:p-5 md:p-8 flex flex-col gap-lg max-w-4xl mx-auto w-full">
       <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Clinic Settings</h1>
 
       {/* Clinic Info Section */}

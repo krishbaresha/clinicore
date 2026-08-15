@@ -235,7 +235,7 @@ export default function MedicalStorePOS() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+    <div className="p-3 sm:p-5 md:p-8 max-w-6xl mx-auto w-full">
       {receipt && (
         <ReceiptModal
           sale={receipt}
@@ -285,7 +285,7 @@ export default function MedicalStorePOS() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_360px] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 md:gap-6">
         {/* Left: Inventory + optional visit link */}
         <div className="space-y-4">
           {/* Linked Visit selector (if customerMode === 'link') */}

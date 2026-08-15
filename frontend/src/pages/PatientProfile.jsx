@@ -176,7 +176,7 @@ export default function PatientProfile() {
   const relLabel = getRelLabel(patient.relation_type);
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
+    <div className="p-3 sm:p-5 md:p-8 max-w-4xl mx-auto w-full">
       {/* Back */}
       <button
         onClick={() => navigate("/patients")}
@@ -188,23 +188,25 @@ export default function PatientProfile() {
 
       {/* Patient Header */}
       <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-2xl p-5 text-white mb-5 shadow-xl shadow-teal-600/20">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center font-black text-xl">
-            {patient.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-          </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">{patient.full_name}</h1>
-            {patient.relation_name && (
-              <div className="text-teal-100 text-sm mt-0.5">
-                {relLabel} {patient.relation_name}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3 mt-2 text-xs text-teal-100">
-              {patient.age && <span>🎂 {patient.age} yrs</span>}
-              {patient.gender && <span className="capitalize">👤 {patient.gender}</span>}
-              {patient.phone && <span>📞 {patient.phone}</span>}
-              {patient.cnic && <span>🪪 {patient.cnic}</span>}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center font-black text-xl shrink-0">
+              {patient.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
             </div>
+            <div>
+              <h1 className="text-xl font-bold">{patient.full_name}</h1>
+              {patient.relation_name && (
+                <div className="text-teal-100 text-sm mt-0.5">
+                  {relLabel} {patient.relation_name}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 mt-2 text-xs text-teal-100">
+            {patient.age && <span>🎂 {patient.age} yrs</span>}
+            {patient.gender && <span className="capitalize">👤 {patient.gender}</span>}
+            {patient.phone && <span>📞 {patient.phone}</span>}
+            {patient.cnic && <span>🪪 {patient.cnic}</span>}
           </div>
         </div>
 

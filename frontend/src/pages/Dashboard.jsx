@@ -70,7 +70,7 @@ export default function Dashboard() {
       </header>
 
       {/* Stats Bento Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-md" aria-label="Key metrics">
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6" aria-label="Key metrics">
         {/* Patients Today */}
         <StatCard
           label="Patients Today"
@@ -138,11 +138,11 @@ export default function Dashboard() {
       </section>
 
       {/* Quick Actions */}
-      <section className="flex flex-wrap gap-4" aria-label="Quick actions">
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" aria-label="Quick actions">
         <button
           id="quick-add-patient"
           onClick={() => navigate("/patients/new")}
-          className="glass-card px-6 py-4 flex items-center gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+          className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
         >
           <span className="material-symbols-outlined">person_add</span>
           <span className="font-label-md text-label-md font-bold">Add New Patient</span>
@@ -150,7 +150,7 @@ export default function Dashboard() {
         <button
           id="quick-register-patient"
           onClick={() => navigate("/reception/register")}
-          className="glass-card px-6 py-4 flex items-center gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+          className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
         >
           <span className="material-symbols-outlined">how_to_reg</span>
           <span className="font-label-md text-label-md font-bold">Register Patient</span>
@@ -158,7 +158,7 @@ export default function Dashboard() {
         <button
           id="quick-view-reports"
           onClick={() => navigate("/fees")}
-          className="glass-card px-6 py-4 flex items-center gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+          className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
         >
           <span className="material-symbols-outlined">assessment</span>
           <span className="font-label-md text-label-md font-bold">View Reports</span>

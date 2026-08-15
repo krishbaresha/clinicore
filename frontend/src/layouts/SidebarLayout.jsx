@@ -181,7 +181,7 @@ export default function SidebarLayout({ children }) {
       )}
 
       {/* ── Main Content Area ────────────────────────────── */}
-      <main className="flex-1 md:ml-[260px] min-h-screen pb-20 md:pb-0 min-w-0">
+      <main className="flex-1 md:ml-[260px] min-h-screen pb-24 md:pb-8 min-w-0 w-full">
         {children}
       </main>
 

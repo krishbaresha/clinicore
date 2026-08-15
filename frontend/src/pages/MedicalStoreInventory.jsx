@@ -35,7 +35,7 @@ export default function MedicalStoreInventory() {
   function isLowStock(item) { return item.stock_qty <= item.low_stock_threshold; }
 
   return (
-    <div className="p-md md:p-lg flex flex-col gap-lg max-w-4xl">
+    <div className="p-3 sm:p-5 md:p-8 flex flex-col gap-lg max-w-4xl mx-auto w-full">
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
