@@ -42,6 +42,28 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Session Log (most recent entry at top)
 
+### Session: 15-Aug-2026 (Mobile Sticky Footer Fix & Consultation 2-Button Flow) — Antigravity
+
+**Task worked on:**
+1. Critical Mobile Responsiveness Bug: Fixed mobile bottom sticky/fixed action bars (`bottom-16 md:bottom-0 z-40`) across all primary screens so action buttons are positioned above the mobile bottom navigation bar (`h-16 z-45`), never cut off, hidden, or requiring scroll to discover.
+2. Consultation Screen Dual Action Flow: Replaced single implicit completion button with two explicit, side-by-side action buttons:
+   - **"Complete Visit"** (`status=completed`): Primary teal button for when reports are attached or not needed.
+   - **"Complete & Forward Reports to Reception"** (`status=completed_reports_pending`): Secondary amber button when doctor explicitly forwards report upload to reception.
+
+**Audit Findings — Screens Fixed:**
+- `ConsultationScreen.jsx` (**BUG FIXED**): Previously had `fixed bottom-0` without accounting for the mobile bottom nav bar (`h-16`), which caused the completion button to be hidden underneath the nav bar on mobile viewports (<768px). Updated to `fixed bottom-16 md:bottom-0 left-0 right-0 md:left-[260px] z-40 bg-white/95 backdrop-blur-md border-t p-3 sm:p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]`.
+- `DoctorQueue.jsx` (**BUG FIXED**): Token cards previously placed action buttons in a tight right-aligned flex column that truncated on 360px mobile screens. Updated to responsive `flex-col sm:flex-row` with a full-width bottom action button row on mobile.
+- `PatientRegistration.jsx` (**BUG FIXED**): Registration receipt view had `min-h-screen flex items-center` without bottom padding, causing print and next patient buttons to push past the bottom screen edge on mobile. Added safe viewport scroll padding.
+- `db.js` (**UPDATED**): Updated `dbVisits.complete` to support explicit `forcedStatus` parameter (`"completed"` vs `"completed_reports_pending"`).
+
+**Verification results:**
+- 360px Mobile Viewport Test: **PASS** (Both "Complete Visit" and "Complete & Forward Reports to Reception" buttons rendered 100% visible in the sticky bar above the bottom nav without scrolling) ✅
+- Forward to Reception Flow: Tapping "Complete & Forward Reports to Reception" correctly sets visit status to `completed_reports_pending` and makes the token immediately appear in `/reception/pending-reports` for counter staff ✅
+- Vite Production Build (`npm run build`): **PASS** (built 46 modules in 318ms) ✅
+- GitHub Push (`origin/main`): Pushed commit `e8a27c5` ✅
+
+---
+
 ### Session: 15-Aug-2026 (Full WebApp Responsiveness Pass) — Antigravity
 
 **Task worked on:**
