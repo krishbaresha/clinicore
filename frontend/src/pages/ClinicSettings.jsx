@@ -746,7 +746,11 @@ export default function ClinicSettings() {
                             alert(`✅ Resend API Success! Full Database Backup .json attachment delivered to inbox (${targetEmails.join(", ")}).`);
                           } else {
                             const errTxt = await res.text();
-                            alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local backup JSON was downloaded.`);
+                            if (errTxt.includes("You can only send testing emails to your own email address")) {
+                              alert(`💡 Resend Testing Mode Notice:\n\nResend Free Sandbox Key currently sends testing emails to your Resend account email (yoyobangali29@gmail.com).\n\nTo send to ${clinicForm.backup_email}, set target email to yoyobangali29@gmail.com OR verify your domain at resend.com/domains!\n\nLocal backup JSON was downloaded to your computer.`);
+                            } else {
+                              alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local backup JSON was downloaded.`);
+                            }
                           }
                         } catch (err) {
                           alert(`⚠️ Resend Dispatch Error: ${err.message}. Local backup JSON was downloaded.`);
