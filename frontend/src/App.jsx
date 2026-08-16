@@ -21,6 +21,9 @@ import PendingReports            from "./pages/PendingReports.jsx";
 import DoctorQueue               from "./pages/DoctorQueue.jsx";
 import ConsultationScreen        from "./pages/ConsultationScreen.jsx";
 import MedicalStorePOS           from "./pages/MedicalStorePOS.jsx";
+import SupplierPurchases         from "./pages/SupplierPurchases.jsx";
+import MedicalStoreSalesLog      from "./pages/MedicalStoreSalesLog.jsx";
+import WarehouseManagement       from "./pages/WarehouseManagement.jsx";
 
 /**
  * ProtectedRoute — wraps pages that require a logged-in session.
@@ -60,8 +63,11 @@ function AppRoutes() {
       <Route path="/doctor/consultation/:visitId"   element={<AuthenticatedLayout><ConsultationScreen /></AuthenticatedLayout>} />
 
       {/* ─── Medical Store ─────────────────────────────────────── */}
-      <Route path="/store/pos"   element={<AuthenticatedLayout><MedicalStorePOS /></AuthenticatedLayout>} />
-      <Route path="/store"       element={<AuthenticatedLayout><MedicalStoreInventory /></AuthenticatedLayout>} />
+      <Route path="/store/pos"       element={<AuthenticatedLayout><MedicalStorePOS /></AuthenticatedLayout>} />
+      <Route path="/store/purchases" element={<AuthenticatedLayout><SupplierPurchases /></AuthenticatedLayout>} />
+      <Route path="/store/sales"     element={<AuthenticatedLayout><MedicalStoreSalesLog /></AuthenticatedLayout>} />
+      <Route path="/store/warehouse" element={<AuthenticatedLayout><WarehouseManagement /></AuthenticatedLayout>} />
+      <Route path="/store"           element={<AuthenticatedLayout><MedicalStoreInventory /></AuthenticatedLayout>} />
 
       {/* ─── Shared / General ──────────────────────────────────── */}
       <Route path="/dashboard"   element={<AuthenticatedLayout><Dashboard /></AuthenticatedLayout>} />

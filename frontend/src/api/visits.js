@@ -20,12 +20,13 @@ export function createVisit(formData) {
   return { success: true, data: visit, error: null };
 }
 
-/** Get summary of fees — daily, weekly, or monthly — for the Fees & Reports screen. */
-export function getFeesSummary(range = "monthly") {
+/** Get summary of fees — daily, weekly, or monthly — for the Fees & Reports screen. Option to filter by doctorId. */
+export function getFeesSummary(range = "monthly", doctorId = null) {
   const visits = dbVisits.getAll();
   const now = new Date();
 
   const filtered = visits.filter((v) => {
+    if (doctorId && v.doctor_id && v.doctor_id !== doctorId) return false;
     const d = new Date(v.visit_date);
     if (range === "daily")   return d.toDateString() === now.toDateString();
     if (range === "weekly") {

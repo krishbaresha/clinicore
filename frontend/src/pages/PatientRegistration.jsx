@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { dbPatients, dbVisits, dbUsers, dbClinic } from "../api/db.js";
+import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
 
 const RELATION_TYPES = ["father", "husband", "wife", "mother", "brother", "sister", "son", "daughter"];
 
@@ -93,6 +94,19 @@ export default function PatientRegistration() {
   function registerVisit(e) {
     e.preventDefault();
     if (!selected) return;
+
+    // Duplicate Token Safeguard Check
+    const todayQueue = dbVisits.getTodayAll();
+    const existingActive = todayQueue.find(
+      (v) => v.patient_id === selected.id && (v.status === "waiting" || v.status === "in_consultation")
+    );
+    if (existingActive) {
+      const confirmDup = confirm(
+        `⚠️ ATTENTION: ${selected.full_name} ALREADY has an active Token (#${existingActive.token_number}) in today's queue!\n\nDo you still want to issue ANOTHER duplicate token for this patient?`
+      );
+      if (!confirmDup) return;
+    }
+
     const assignedDoctor = doctors.find((d) => d.id === selectedDoctorId) || doctors[0];
     const newVisit = dbVisits.add({
       patient_id: selected.id,
@@ -267,11 +281,11 @@ export default function PatientRegistration() {
           {/* ── Action Buttons (hidden on print) ── */}
           <div className="mt-4 flex gap-3 print:hidden">
             <button
-              onClick={printReceipt}
-              className="flex-1 flex items-center justify-center gap-2 bg-white border border-teal-200 text-teal-700 font-semibold py-3 px-4 rounded-2xl hover:bg-teal-50 transition-colors"
+              onClick={() => printOPDTokenReceipt(receipt, clinic)}
+              className="flex-1 flex items-center justify-center gap-2 bg-teal-50 border border-teal-300 text-teal-800 font-bold py-3 px-4 rounded-2xl hover:bg-teal-100 transition-colors shadow-sm"
             >
               <span className="material-symbols-outlined text-xl">print</span>
-              Print Receipt
+              Print Thermal Token (80mm)
             </button>
             <button
               onClick={newRegistration}
@@ -398,8 +412,11 @@ export default function PatientRegistration() {
           <form onSubmit={addAndSelectPatient} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Full Name *</label>
+                <label htmlFor="reg_full_name" className="block text-xs font-semibold text-gray-600 mb-1">Full Name *</label>
                 <input
+                  id="reg_full_name"
+                  name="full_name"
+                  autoComplete="name"
                   required value={form.full_name}
                   onChange={(e) => handleFormChange("full_name", e.target.value)}
                   placeholder="Muhammad Ali"
@@ -407,8 +424,11 @@ export default function PatientRegistration() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Relation Type *</label>
+                <label htmlFor="reg_relation_type" className="block text-xs font-semibold text-gray-600 mb-1">Relation Type *</label>
                 <select
+                  id="reg_relation_type"
+                  name="relation_type"
+                  autoComplete="off"
                   required value={form.relation_type}
                   onChange={(e) => handleFormChange("relation_type", e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
@@ -419,8 +439,11 @@ export default function PatientRegistration() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Relation Name *</label>
+                <label htmlFor="reg_relation_name" className="block text-xs font-semibold text-gray-600 mb-1">Relation Name *</label>
                 <input
+                  id="reg_relation_name"
+                  name="relation_name"
+                  autoComplete="off"
                   required value={form.relation_name}
                   onChange={(e) => handleFormChange("relation_name", e.target.value)}
                   placeholder="Abdul Rasheed"
@@ -428,8 +451,11 @@ export default function PatientRegistration() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Phone *</label>
+                <label htmlFor="reg_phone" className="block text-xs font-semibold text-gray-600 mb-1">Phone *</label>
                 <input
+                  id="reg_phone"
+                  name="phone"
+                  autoComplete="tel"
                   required type="tel" value={form.phone}
                   onChange={(e) => handleFormChange("phone", e.target.value)}
                   placeholder="03001234567"
@@ -437,23 +463,30 @@ export default function PatientRegistration() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Age</label>
+                <label htmlFor="reg_age" className="block text-xs font-semibold text-gray-600 mb-1">Age *</label>
                 <input
-                  type="number" min="0" max="120" value={form.age}
+                  id="reg_age"
+                  name="age"
+                  autoComplete="off"
+                  required type="number" min="0" max="120" value={form.age}
                   onChange={(e) => handleFormChange("age", e.target.value)}
-                  placeholder="30"
+                  placeholder="35"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Gender</label>
+                <label htmlFor="reg_gender" className="block text-xs font-semibold text-gray-600 mb-1">Gender *</label>
                 <select
-                  value={form.gender}
+                  id="reg_gender"
+                  name="gender"
+                  autoComplete="sex"
+                  required value={form.gender}
                   onChange={(e) => handleFormChange("gender", e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
               <div className="sm:col-span-2">
@@ -516,7 +549,7 @@ export default function PatientRegistration() {
               >
                 {doctors.map((doc) => (
                   <option key={doc.id} value={doc.id}>
-                    {doc.name} ({doc.phone || doc.role})
+                    👨‍⚕️ {doc.name} — {doc.specialization || "General Physician"} ({doc.room_number || "Room 1"})
                   </option>
                 ))}
               </select>

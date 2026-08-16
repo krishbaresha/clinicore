@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { dbVisits, dbInventory } from "../api/db.js";
+import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers } from "../api/db.js";
 import { formatCurrency, formatTodayLong, getGreeting } from "../utils/formatters.js";
 
 function StatCard({ label, value, icon, subline, iconBg, labelColor, valueColor, children }) {
@@ -35,6 +35,32 @@ export default function Dashboard() {
   const today = new Date().toDateString();
   const todayVisits = allVisits.filter((v) => new Date(v.visit_date).toDateString() === today);
   const feesToday = todayVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
+
+  // User-specific visits & fees (e.g. Dr. Fatima, Dr. Asif)
+  const myTodayVisits = todayVisits.filter((v) => v.doctor_id === user?.userId || v.doctor_id === user?.id || (!v.doctor_id && user?.role === "doctor"));
+  const myFeesToday = myTodayVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
+
+  const allSales = dbSales.getAll();
+  const todaySales = allSales.filter((s) => new Date(s.sale_date).toDateString() === today);
+  const pharmacyRevenueToday = todaySales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
+
+  const allExpenses = dbExpenses.getAll();
+  const todayExpenses = allExpenses.filter((e) => new Date(e.expense_date).toDateString() === today);
+  const expensesToday = todayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  const netRevenueToday = (feesToday + pharmacyRevenueToday) - expensesToday;
+
+  // Doctor-by-Doctor OPD Revenue Breakdown (for Principal Owner View)
+  const doctorAccounts = dbUsers.getAll().filter((u) => u.role === "doctor");
+  const doctorBreakdown = doctorAccounts.map((doc) => {
+    const docVisits = todayVisits.filter((v) => v.doctor_id === doc.id);
+    const docFees = docVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
+    return {
+      ...doc,
+      today_patient_count: docVisits.length,
+      today_fees: docFees,
+    };
+  });
 
   const allInventory = dbInventory.getAll();
   const lowStockItems = allInventory.filter((i) => i.stock_qty <= i.low_stock_threshold);
@@ -73,22 +99,24 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6" aria-label="Key metrics">
         {/* Patients Today */}
         <StatCard
-          label="Patients Today"
-          value={todayVisits.length}
+          label={user?.is_owner || user?.can_view_financials ? "Clinic Patients Today" : "My Patients Today"}
+          value={user?.is_owner || user?.can_view_financials ? todayVisits.length : myTodayVisits.length}
           icon="group"
           iconBg="bg-secondary-container/50"
           subline={
             <>
               <span className="material-symbols-outlined text-sm">calendar_today</span>
-              {todayVisits.length === 0 ? "No visits yet today" : `${todayVisits.length} visit${todayVisits.length > 1 ? "s" : ""} recorded`}
+              {user?.is_owner || user?.can_view_financials
+                ? `${todayVisits.length} total OPD visit${todayVisits.length === 1 ? "" : "s"}`
+                : `${myTodayVisits.length} visit${myTodayVisits.length === 1 ? "" : "s"} in my OPD chamber`}
             </>
           }
         />
 
         {/* Fees Collected Today */}
         <StatCard
-          label="Fees Collected Today"
-          value={formatCurrency(feesToday)}
+          label={user?.is_owner || user?.can_view_financials ? "Total Fees Collected" : "My Fees Today"}
+          value={formatCurrency(user?.is_owner || user?.can_view_financials ? feesToday : myFeesToday)}
           icon="payments"
           iconBg="bg-primary-container/10"
         />
@@ -136,6 +164,111 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      {/* Executive Financial Revenue Breakdown — Only for Owner Doctor or Doctors with Financial Access */}
+      {(user?.is_owner || user?.can_view_financials) ? (
+        <section className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white rounded-3xl p-6 shadow-xl border border-teal-700/50 space-y-4">
+          <div className="flex items-center justify-between border-b border-teal-700/60 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="material-symbols-outlined text-amber-400 text-2xl">account_balance_wallet</span>
+              <div>
+                <h3 className="font-bold text-lg leading-tight">Clinic Financial Revenue Breakdown</h3>
+                <p className="text-xs text-teal-200">Real-time daily earnings summary for Principal Doctor &amp; Owner</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate("/fees")}
+              className="text-xs font-bold bg-teal-600/80 hover:bg-teal-500 text-white px-3.5 py-2 rounded-xl transition-colors border border-teal-400/40 flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-base">analytics</span>
+              View Ledger Analytics →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">OPD Doctor Fees</div>
+              <div className="text-2xl font-black text-emerald-300">Rs. {feesToday.toLocaleString()}</div>
+              <div className="text-[11px] text-teal-200/80 mt-1">From {todayVisits.length} consultation tokens</div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">Pharmacy Store Sales</div>
+              <div className="text-2xl font-black text-cyan-300">Rs. {pharmacyRevenueToday.toLocaleString()}</div>
+              <div className="text-[11px] text-teal-200/80 mt-1">From {todaySales.length} store sales receipts</div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">Daily Expenses</div>
+              <div className="text-2xl font-black text-rose-300">Rs. {expensesToday.toLocaleString()}</div>
+              <div className="text-[11px] text-teal-200/80 mt-1">From {todayExpenses.length} expense vouchers</div>
+            </div>
+
+            <div className="bg-amber-500/20 backdrop-blur-md rounded-2xl p-4 border border-amber-400/40">
+              <div className="text-xs text-amber-200 font-bold uppercase tracking-wider mb-1">Net Overall Revenue</div>
+              <div className="text-2xl font-black text-amber-300">Rs. {netRevenueToday.toLocaleString()}</div>
+              <div className="text-[11px] text-amber-100/90 font-medium mt-1">Fees + Store Sales - Expenses</div>
+            </div>
+          </div>
+
+          {/* Doctor-by-Doctor OPD Revenue Breakdown Table */}
+          <div className="border-t border-teal-700/60 pt-4 mt-2">
+            <h4 className="text-xs font-bold text-teal-200 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-base text-amber-400">stethoscope</span>
+              Today&apos;s Doctor-by-Doctor OPD Revenue Breakdown
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {doctorBreakdown.map((doc) => (
+                <div key={doc.id} className="bg-white/10 p-3.5 rounded-2xl border border-white/10 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white flex items-center gap-1 truncate">
+                      <span>👨‍⚕️ {doc.name}</span>
+                      {doc.is_owner && <span className="text-[9px] bg-amber-400 text-teal-950 font-black px-1.5 py-0.2 rounded shrink-0">OWNER</span>}
+                    </div>
+                    <div className="text-[11px] text-teal-200 truncate">{doc.specialization || "General Physician"}</div>
+                    <div className="text-[10px] text-teal-300/80 mt-0.5">{doc.today_patient_count} Patients Today</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-black text-amber-300">Rs. {doc.today_fees.toLocaleString()}</div>
+                    <div className="text-[9px] text-teal-200 uppercase">OPD Collection</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-teal-600">stethoscope</span>
+              <h3 className="font-bold text-gray-900 text-base">My OPD Consultation Portal</h3>
+            </div>
+            <button
+              onClick={() => navigate("/doctor/queue")}
+              className="text-xs font-bold bg-teal-50 text-teal-700 hover:bg-teal-100 px-3 py-1.5 rounded-xl border border-teal-200 transition-colors"
+            >
+              Open My OPD Queue →
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
+              <div className="text-xs text-teal-700 font-bold uppercase mb-1">My Patients Today</div>
+              <div className="text-3xl font-black text-teal-900">
+                {todayVisits.filter((v) => !v.doctor_id || v.doctor_id === user?.id).length}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Waiting &amp; Completed in my chamber</div>
+            </div>
+            <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+              <div className="text-xs text-emerald-700 font-bold uppercase mb-1">My Consultation Fees Today</div>
+              <div className="text-3xl font-black text-emerald-900">
+                Rs. {todayVisits.filter((v) => !v.doctor_id || v.doctor_id === user?.id).reduce((s, v) => s + (v.fee_amount || 0), 0).toLocaleString()}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Direct OPD Consultation collection</div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Quick Actions */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" aria-label="Quick actions">

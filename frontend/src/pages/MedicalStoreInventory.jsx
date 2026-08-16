@@ -1,14 +1,32 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getInventory, addInventoryItem } from "../api/store.js";
+import { formatStockBreakdown } from "../api/db.js";
 import { formatCurrency } from "../utils/formatters.js";
 
 export default function MedicalStoreInventory() {
   const navigate = useNavigate();
   const [inventory, setInventory] = useState([]);
   const [showForm,  setShowForm]  = useState(false);
-  const [form,      setForm]      = useState({ medicine_name: "", stock_qty: "", unit_price: "", low_stock_threshold: "10" });
-  const [error,     setError]     = useState("");
+  const [form, setForm] = useState({
+    medicine_name: "",
+    category: "Tablet",
+    strength: "",
+    has_multi_unit: true,
+    box_label: "Box",
+    strip_label: "Strip",
+    unit_label: "Tablet",
+    strips_per_box: "10",
+    units_per_strip: "12",
+    stock_boxes: "5",
+    stock_qty: "0",
+    cost_price_per_box: "600",
+    box_sale_price: "900",
+    strip_sale_price: "96",
+    unit_sale_price: "8",
+    low_stock_threshold: "20"
+  });
+  const [error, setError] = useState("");
 
   function load() {
     const r = getInventory();
@@ -17,30 +35,84 @@ export default function MedicalStoreInventory() {
 
   useEffect(load, []);
 
-  function handleChange(e) { setForm({ ...form, [e.target.name]: e.target.value }); }
+  function handleChange(e) {
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    }));
+  }
 
   function handleAddItem(e) {
     e.preventDefault();
     setError("");
-    const result = addInventoryItem(form);
+
+    // Calculate total base stock
+    let totalBaseStock = 0;
+    const stripsPerBox = parseInt(form.strips_per_box) || 1;
+    const unitsPerStrip = parseInt(form.units_per_strip) || 1;
+
+    if (form.has_multi_unit) {
+      const boxes = parseInt(form.stock_boxes) || 0;
+      totalBaseStock = boxes * (stripsPerBox * unitsPerStrip);
+    } else {
+      totalBaseStock = parseInt(form.stock_qty) || 0;
+    }
+
+    const payload = {
+      ...form,
+      has_multi_unit: form.has_multi_unit,
+      strips_per_box: stripsPerBox,
+      units_per_strip: unitsPerStrip,
+      total_base_stock: totalBaseStock,
+      stock_qty: totalBaseStock,
+      cost_price_per_box: parseFloat(form.cost_price_per_box) || 0,
+      box_sale_price: parseFloat(form.box_sale_price) || 0,
+      strip_sale_price: parseFloat(form.strip_sale_price) || 0,
+      unit_sale_price: parseFloat(form.unit_sale_price) || parseFloat(form.unit_price) || 0,
+      unit_price: parseFloat(form.unit_sale_price) || parseFloat(form.unit_price) || 0,
+      low_stock_threshold: parseInt(form.low_stock_threshold) || 20,
+    };
+
+    const result = addInventoryItem(payload);
     if (result.success) {
       setShowForm(false);
-      setForm({ medicine_name: "", stock_qty: "", unit_price: "", low_stock_threshold: "10" });
+      setForm({
+        medicine_name: "",
+        category: "Tablet",
+        strength: "",
+        has_multi_unit: true,
+        box_label: "Box",
+        strip_label: "Strip",
+        unit_label: "Tablet",
+        strips_per_box: "10",
+        units_per_strip: "12",
+        stock_boxes: "5",
+        stock_qty: "0",
+        cost_price_per_box: "600",
+        box_sale_price: "900",
+        strip_sale_price: "96",
+        unit_sale_price: "8",
+        low_stock_threshold: "20"
+      });
       load();
     } else {
       setError(result.error.message);
     }
   }
 
-  function isLowStock(item) { return item.stock_qty <= item.low_stock_threshold; }
+  function isLowStock(item) {
+    const base = item.total_base_stock ?? item.stock_qty ?? 0;
+    return base <= (item.low_stock_threshold || 20);
+  }
 
   return (
-    <div className="p-3 sm:p-5 md:p-8 flex flex-col gap-lg max-w-4xl mx-auto w-full">
+    <div className="p-3 sm:p-5 md:p-8 flex flex-col gap-lg max-w-5xl mx-auto w-full mobile-safe-bottom touch-scroll overflow-x-hidden">
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Medical Store</h1>
-          <p className="font-body-sm text-body-sm text-outline">Inventory</p>
+          <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Medical Store Inventory</h1>
+          <p className="font-body-sm text-body-sm text-outline">Manage Multi-Unit Packaging (Box ➔ Strip ➔ Tablet) &amp; Stock Levels</p>
         </div>
         <div className="flex gap-sm">
           <button
@@ -64,35 +136,175 @@ export default function MedicalStoreInventory() {
 
       {/* Add Medicine Form */}
       {showForm && (
-        <div className="glass-card p-md">
-          <h2 className="font-headline-md text-headline-md font-bold text-on-surface mb-md">Add New Medicine</h2>
-          <form id="add-medicine-form" onSubmit={handleAddItem} className="flex flex-col gap-sm" noValidate>
-            <div className="flex flex-col md:flex-row gap-sm">
-              <div className="flex flex-col gap-xs flex-1">
-                <label htmlFor="medicine_name" className="font-label-md text-label-md text-on-surface-variant">
+        <div className="glass-card p-md border-2 border-teal-500/20 shadow-xl rounded-3xl">
+          <div className="flex justify-between items-center mb-md border-b border-gray-100 pb-3">
+            <div>
+              <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Add New Medicine / Product</h2>
+              <p className="text-xs text-gray-500">Configure packaging levels, ratios, and tiered prices</p>
+            </div>
+            <label htmlFor="has_multi_unit" className="flex items-center gap-2 bg-teal-50 text-teal-800 px-3 py-1.5 rounded-xl border border-teal-200 cursor-pointer font-bold text-xs">
+              <input
+                id="has_multi_unit"
+                type="checkbox"
+                name="has_multi_unit"
+                checked={form.has_multi_unit}
+                onChange={handleChange}
+                className="accent-teal-600 w-4 h-4"
+              />
+              Multi-Unit Packaging (Box ➔ Strip ➔ Tablet)
+            </label>
+          </div>
+
+          <form id="add-medicine-form" onSubmit={handleAddItem} className="flex flex-col gap-md" noValidate>
+            {/* Row 1: Name, Category, Strength */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-sm">
+              <div className="flex flex-col gap-xs">
+                <label htmlFor="medicine_name" className="font-label-md text-label-md text-on-surface-variant font-bold">
                   Medicine Name <span className="text-error">*</span>
                 </label>
-                <input id="medicine_name" name="medicine_name" type="text" placeholder="Panadol"
-                  value={form.medicine_name} onChange={handleChange} className="input-field" />
+                <input
+                  id="medicine_name"
+                  name="medicine_name"
+                  type="text"
+                  placeholder="e.g. Panadol 500mg"
+                  autoComplete="off"
+                  value={form.medicine_name}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                />
               </div>
-              <div className="flex flex-col gap-xs w-full md:w-32">
-                <label htmlFor="stock_qty" className="font-label-md text-label-md text-on-surface-variant">Stock Qty</label>
-                <input id="stock_qty" name="stock_qty" type="number" min="0" placeholder="100"
-                  value={form.stock_qty} onChange={handleChange} className="input-field" />
+
+              <div className="flex flex-col gap-xs">
+                <label htmlFor="category" className="font-label-md text-label-md text-on-surface-variant font-bold">
+                  Category / Form
+                </label>
+                <select id="category" name="category" value={form.category} onChange={handleChange} className="input-field">
+                  <option value="Tablet">Tablet (Solid)</option>
+                  <option value="Capsule">Capsule (Hard/Softgel)</option>
+                  <option value="Syrup / Suspension">Syrup / Suspension (Liquid)</option>
+                  <option value="Injection / IV">Injection / IV Drip</option>
+                  <option value="Cream / Ointment / Gel">Cream / Ointment / Gel</option>
+                  <option value="Eye / Ear Drops">Eye / Ear Drops</option>
+                  <option value="Inhaler / Respiratory">Inhaler / Nebulizer</option>
+                  <option value="Powder / Sachet">Sachet / Powder</option>
+                </select>
               </div>
-              <div className="flex flex-col gap-xs w-full md:w-32">
-                <label htmlFor="unit_price" className="font-label-md text-label-md text-on-surface-variant">Unit Price</label>
-                <input id="unit_price" name="unit_price" type="number" min="0" placeholder="8"
-                  value={form.unit_price} onChange={handleChange} className="input-field" />
-              </div>
-              <div className="flex flex-col gap-xs w-full md:w-36">
-                <label htmlFor="low_stock_threshold" className="font-label-md text-label-md text-on-surface-variant">Low Stock At</label>
-                <input id="low_stock_threshold" name="low_stock_threshold" type="number" min="0"
-                  value={form.low_stock_threshold} onChange={handleChange} className="input-field" />
+
+              <div className="flex flex-col gap-xs">
+                <label htmlFor="strength" className="font-label-md text-label-md text-on-surface-variant font-bold">
+                  Strength / Dose
+                </label>
+                <input
+                  id="strength"
+                  name="strength"
+                  type="text"
+                  placeholder="e.g. 500 mg, 120 ml"
+                  autoComplete="off"
+                  value={form.strength}
+                  onChange={handleChange}
+                  className="input-field"
+                />
               </div>
             </div>
+
+            {/* Multi-Unit Hierarchy Config Section */}
+            {form.has_multi_unit ? (
+              <div className="bg-teal-50/50 p-4 rounded-2xl border border-teal-100 space-y-3">
+                <div className="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm">widgets</span>
+                  Packaging Hierarchy Ratios (Box ➔ Strips ➔ Base Tablets)
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-sm">
+                  <div className="flex flex-col gap-xs bg-white p-3 rounded-xl border border-teal-100">
+                    <label htmlFor="box_label" className="text-xs font-bold text-gray-700">1. Box / Pack Label</label>
+                    <input id="box_label" name="box_label" type="text" placeholder="Box" autoComplete="off" value={form.box_label} onChange={handleChange} className="input-field text-sm" />
+                    <span className="text-[10px] text-gray-400">Outer wholesale container</span>
+                  </div>
+
+                  <div className="flex flex-col gap-xs bg-white p-3 rounded-xl border border-teal-100">
+                    <label htmlFor="strips_per_box" className="text-xs font-bold text-gray-700">2. Strips Per Box (Pattay)</label>
+                    <input id="strips_per_box" name="strips_per_box" type="number" min="1" placeholder="10" autoComplete="off" value={form.strips_per_box} onChange={handleChange} className="input-field text-sm" />
+                    <span className="text-[10px] text-gray-400">How many pattay in 1 box</span>
+                  </div>
+
+                  <div className="flex flex-col gap-xs bg-white p-3 rounded-xl border border-teal-100">
+                    <label htmlFor="units_per_strip" className="text-xs font-bold text-gray-700">3. Tablets Per Strip</label>
+                    <input id="units_per_strip" name="units_per_strip" type="number" min="1" placeholder="12" autoComplete="off" value={form.units_per_strip} onChange={handleChange} className="input-field text-sm" />
+                    <span className="text-[10px] text-gray-400">Tablets in 1 patta/strip</span>
+                  </div>
+                </div>
+
+                <div className="text-xs font-semibold text-teal-700 bg-white p-2.5 rounded-xl border border-teal-200 text-center">
+                  💡 Calculated Ratio: <strong>1 Box</strong> = <strong>{parseInt(form.strips_per_box) || 0} Strips</strong> = <strong>{(parseInt(form.strips_per_box) || 0) * (parseInt(form.units_per_strip) || 0)} Total Tablets</strong>
+                </div>
+
+                {/* Initial Stock Boxes & Prices */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-sm pt-2">
+                  <div className="flex flex-col gap-xs">
+                    <label htmlFor="stock_boxes" className="text-xs font-bold text-gray-800">Boxes Purchased</label>
+                    <input id="stock_boxes" name="stock_boxes" type="number" min="0" placeholder="5" autoComplete="off" value={form.stock_boxes} onChange={handleChange} className="input-field" />
+                    <span className="text-[10px] text-teal-700 font-bold">
+                      = {(parseInt(form.stock_boxes) || 0) * (parseInt(form.strips_per_box) || 0) * (parseInt(form.units_per_strip) || 0)} Base Tablets
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-xs">
+                    <label htmlFor="box_sale_price" className="text-xs font-bold text-gray-800">Box Retail Price (Rs)</label>
+                    <input id="box_sale_price" name="box_sale_price" type="number" min="0" placeholder="900" autoComplete="off" value={form.box_sale_price} onChange={handleChange} className="input-field" />
+                    <span className="text-[10px] text-gray-400">Rate for full box</span>
+                  </div>
+
+                  <div className="flex flex-col gap-xs">
+                    <label htmlFor="strip_sale_price" className="text-xs font-bold text-gray-800">Strip Retail Price (Rs)</label>
+                    <input id="strip_sale_price" name="strip_sale_price" type="number" min="0" placeholder="96" autoComplete="off" value={form.strip_sale_price} onChange={handleChange} className="input-field" />
+                    <span className="text-[10px] text-gray-400">Rate per patta</span>
+                  </div>
+
+                  <div className="flex flex-col gap-xs">
+                    <label htmlFor="unit_sale_price" className="text-xs font-bold text-gray-800">Single Tablet Price (Rs)</label>
+                    <input id="unit_sale_price" name="unit_sale_price" type="number" min="0" placeholder="8" autoComplete="off" value={form.unit_sale_price} onChange={handleChange} className="input-field" />
+                    <span className="text-[10px] text-gray-400">Loose tablet rate</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Single Unit Product Fields (Syrups / Drops / Tubes) */
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-sm bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                <div className="flex flex-col gap-xs">
+                  <label htmlFor="unit_label" className="font-label-md text-label-md text-on-surface-variant font-bold">Unit Type</label>
+                  <select id="unit_label" name="unit_label" value={form.unit_label} onChange={handleChange} className="input-field">
+                    <option value="Bottle">Bottle / Syringe</option>
+                    <option value="Tube">Tube</option>
+                    <option value="Vial">Vial / Ampoule</option>
+                    <option value="Sachet">Sachet</option>
+                    <option value="Inhaler">Inhaler Device</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-xs">
+                  <label htmlFor="stock_qty" className="font-label-md text-label-md text-on-surface-variant font-bold">Stock Qty</label>
+                  <input id="stock_qty" name="stock_qty" type="number" min="0" placeholder="40" autoComplete="off"
+                    value={form.stock_qty} onChange={handleChange} className="input-field" />
+                </div>
+
+                <div className="flex flex-col gap-xs">
+                  <label htmlFor="unit_sale_price" className="font-label-md text-label-md text-on-surface-variant font-bold">Retail Price (Rs)</label>
+                  <input id="unit_sale_price" name="unit_sale_price" type="number" min="0" placeholder="180" autoComplete="off"
+                    value={form.unit_sale_price} onChange={handleChange} className="input-field" />
+                </div>
+
+                <div className="flex flex-col gap-xs">
+                  <label htmlFor="low_stock_threshold" className="font-label-md text-label-md text-on-surface-variant font-bold">Low Stock Warning At</label>
+                  <input id="low_stock_threshold" name="low_stock_threshold" type="number" min="0" autoComplete="off"
+                    value={form.low_stock_threshold} onChange={handleChange} className="input-field" />
+                </div>
+              </div>
+            )}
+
             {error && <p role="alert" className="text-error font-body-sm text-body-sm">{error}</p>}
-            <div className="flex gap-sm">
+            <div className="flex gap-sm pt-2 justify-end">
               <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
               <button id="save-medicine-btn" type="submit" className="btn-primary">Save Medicine</button>
             </div>
@@ -102,10 +314,9 @@ export default function MedicalStoreInventory() {
 
       {/* Table header — desktop */}
       <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 font-label-md text-label-md text-outline uppercase tracking-wider">
-        <div className="col-span-5">Medicine Name</div>
-        <div className="col-span-2 text-right">Stock Qty</div>
-        <div className="col-span-2 text-right">Unit Price</div>
-        <div className="col-span-3 text-center">Status</div>
+        <div className="col-span-5">Medicine &amp; Category</div>
+        <div className="col-span-4 text-right">Available Stock Breakdown</div>
+        <div className="col-span-3 text-center">Selling Price Tiers</div>
       </div>
 
       {/* Inventory rows */}
@@ -123,25 +334,61 @@ export default function MedicalStoreInventory() {
                   low ? "border-l-4 border-amber-400" : ""
                 }`}
               >
-                <div className="col-span-5 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-primary">medication</span>
-                  <span className="font-body-md text-body-md font-semibold text-on-surface">{item.medicine_name}</span>
+                {/* Name & Category */}
+                <div className="col-span-5 flex items-center gap-3">
+                  <span className="material-symbols-outlined text-2xl text-teal-600 bg-teal-50 p-2.5 rounded-xl border border-teal-100">
+                    {item.has_multi_unit ? "medication" : "vaccines"}
+                  </span>
+                  <div>
+                    <div className="font-body-md text-body-md font-bold text-on-surface flex items-center gap-2">
+                      {item.medicine_name}
+                      {low && <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded">Low Stock</span>}
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className="bg-teal-50 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded-md border border-teal-100">
+                        {item.category || "Tablet"}
+                      </span>
+                      {item.strength && <span className="font-semibold text-gray-700 text-xs">{item.strength}</span>}
+                      {item.has_multi_unit && (
+                        <span className="text-[10px] text-gray-400 font-mono">
+                          (1 Box = {item.strips_per_box || 10} Strips × {item.units_per_strip || 12} {item.unit_label || "Tab"})
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="col-span-2 flex items-center justify-between md:justify-end gap-2">
+
+                {/* Stock breakdown */}
+                <div className="col-span-4 flex flex-col items-start md:items-end justify-center">
                   <span className="md:hidden font-label-md text-outline uppercase text-xs">Stock:</span>
-                  <span className={`font-headline-md text-headline-md font-bold ${low ? "text-error" : "text-on-surface"}`}>
-                    {item.stock_qty}
-                  </span>
+                  <div className={`font-semibold text-sm ${low ? "text-rose-600 font-bold" : "text-gray-900"}`}>
+                    {formatStockBreakdown(item)}
+                  </div>
                 </div>
-                <div className="col-span-2 flex items-center justify-between md:justify-end gap-2">
-                  <span className="md:hidden font-label-md text-outline uppercase text-xs">Price:</span>
-                  <span className="font-body-md text-body-md text-on-surface-variant">{formatCurrency(item.unit_price)}</span>
-                </div>
-                <div className="col-span-3 flex justify-between md:justify-center items-center gap-2">
-                  <span className="md:hidden font-label-md text-outline uppercase text-xs">Status:</span>
-                  <span className={low ? "badge-low-stock" : "badge-in-stock"}>
-                    {low ? "Low Stock" : "In Stock"}
-                  </span>
+
+                {/* Pricing Tiers */}
+                <div className="col-span-3 flex flex-wrap md:flex-col items-start md:items-center justify-center gap-1">
+                  {item.has_multi_unit ? (
+                    <div className="flex flex-wrap gap-1 text-[11px]">
+                      {item.box_sale_price > 0 && (
+                        <span className="bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-100 font-medium">
+                          Box: {formatCurrency(item.box_sale_price)}
+                        </span>
+                      )}
+                      {item.strip_sale_price > 0 && (
+                        <span className="bg-sky-50 text-sky-800 px-2 py-0.5 rounded border border-sky-100 font-medium">
+                          Strip: {formatCurrency(item.strip_sale_price)}
+                        </span>
+                      )}
+                      <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-100 font-bold">
+                        Tab: {formatCurrency(item.unit_sale_price || item.unit_price)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-bold text-gray-900 text-sm">
+                      {formatCurrency(item.unit_sale_price || item.unit_price)} / {item.unit_label || "unit"}
+                    </span>
+                  )}
                 </div>
               </div>
             );

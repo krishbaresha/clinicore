@@ -454,3 +454,44 @@
     margin-top: 24px;
   }
 }
+
+/* Global Mobile Touch & Smooth Inertia Scroll Rules */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+}
+
+/* Custom Sleek Scrollbars for Touch & Desktop */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 118, 110, 0.25);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 118, 110, 0.5);
+}
+
+/* Touch friendly mobile scroll container utility */
+.touch-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* Mobile Bottom Navigation Safe Clearance */
+@media (max-width: 768px) {
+  .mobile-safe-bottom {
+    padding-bottom: 90px !important;
+  }
+}

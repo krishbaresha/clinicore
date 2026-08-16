@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { dbPatients, dbVisits } from "../api/db.js";
+import { dbPatients, dbVisits, dbPatientLedger } from "../api/db.js";
 
 // Placeholder prescription image — used when mock data has a URL path (not a real data-url)
 const RX_PLACEHOLDER = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 140' fill='none'%3E%3Crect width='200' height='140' rx='8' fill='%23f0fdf4'/%3E%3Ctext x='100' y='55' font-family='sans-serif' font-size='36' text-anchor='middle' fill='%2316a34a'%3E%E2%80%8B%F0%9F%93%8B%3C/text%3E%3Ctext x='100' y='85' font-family='sans-serif' font-size='11' text-anchor='middle' fill='%2316a34a' font-weight='600'%3EPrescription Photo%3C/text%3E%3Ctext x='100' y='103' font-family='sans-serif' font-size='9' text-anchor='middle' fill='%2315803d'%3E(demo placeholder)%3C/text%3E%3C/svg%3E`;
@@ -153,6 +153,10 @@ export default function PatientProfile() {
   const [visits, setVisits] = useState([]);
   const [error, setError] = useState("");
 
+  // Patient Khata Receive Payment Modal
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [khataPayInput, setKhataPayInput] = useState("");
+
   useEffect(() => {
     const p = dbPatients.getById(id);
     if (!p) { setError("Patient not found."); return; }
@@ -228,6 +232,31 @@ export default function PatientProfile() {
             </div>
             <div className="text-xs text-teal-200">Patient Since</div>
           </div>
+          
+          {/* Patient Khata Balance Card */}
+          {(() => {
+            const ledger = dbPatientLedger.getByPatient(patient.id);
+            const due = ledger?.balance_due || 0;
+            return (
+              <div className="ml-auto bg-white/10 px-3 py-1.5 rounded-xl flex items-center gap-3 border border-white/20">
+                <div>
+                  <div className="text-xs text-teal-100 uppercase font-semibold">Khata Balance</div>
+                  <div className={`text-lg font-black ${due > 0 ? "text-amber-300" : "text-emerald-200"}`}>
+                    Rs. {due.toLocaleString()}
+                  </div>
+                </div>
+                {due > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPayModal(true)}
+                    className="bg-amber-400 text-teal-950 text-xs px-2.5 py-1 rounded-lg font-bold hover:bg-amber-300 shadow"
+                  >
+                    Receive Due
+                  </button>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -278,6 +307,65 @@ export default function PatientProfile() {
           </>
         )}
       </section>
+
+      {/* Khata Receive Payment Modal */}
+      {showPayModal && (() => {
+        const ledger = dbPatientLedger.getByPatient(patient.id);
+        const due = ledger?.balance_due || 0;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const amt = Number(khataPayInput);
+                if (!amt || amt <= 0) return;
+                dbPatientLedger.receivePayment(patient.id, amt);
+                setKhataPayInput("");
+                setShowPayModal(false);
+              }}
+              className="bg-white p-6 rounded-3xl max-w-sm w-full space-y-4 shadow-2xl"
+            >
+              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600">payments</span>
+                Receive Khata Payment
+              </h3>
+              <div className="text-xs text-gray-600 space-y-1 bg-teal-50 p-3 rounded-xl border border-teal-100">
+                <div>Patient Name: <strong className="text-gray-900">{patient.full_name}</strong></div>
+                <div>Current Khata Outstanding: <strong className="text-amber-700">Rs. {due.toLocaleString()}</strong></div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Payment Amount Received (Rs) *</label>
+                <input
+                  type="number"
+                  max={due}
+                  value={khataPayInput}
+                  onChange={(e) => setKhataPayInput(e.target.value)}
+                  placeholder={`Max Rs. ${due}`}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-500 font-bold"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowPayModal(false); setKhataPayInput(""); }}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-teal-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-teal-700 shadow-md shadow-teal-600/20"
+                >
+                  Confirm Payment
+                </button>
+              </div>
+            </form>
+          </div>
+        );
+      })()}
     </div>
   );
 }

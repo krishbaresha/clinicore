@@ -40,6 +40,11 @@ const SEED_DATA = {
       clinic_id: "clinic_001",
       name: "Dr. Asif Ashraf",
       role: "doctor",
+      is_owner: true,
+      can_view_financials: true,
+      specialization: "General Physician / M.B.B.S",
+      room_number: "Room 1 (General OPD)",
+      consultation_fee: 800,
       phone: "03001234567",
       email: "dr.asif@example.com",
       password: "password",
@@ -49,6 +54,8 @@ const SEED_DATA = {
       clinic_id: "clinic_001",
       name: "Sana Malik",
       role: "receptionist",
+      is_owner: false,
+      can_view_financials: true,
       phone: "03111234567",
       email: "sana.reception@example.com",
       password: "password",
@@ -58,6 +65,8 @@ const SEED_DATA = {
       clinic_id: "clinic_001",
       name: "Kamran Iqbal",
       role: "pharmacist",
+      is_owner: false,
+      can_view_financials: false,
       phone: "03221234567",
       email: "kamran.store@example.com",
       password: "password",
@@ -67,8 +76,27 @@ const SEED_DATA = {
       clinic_id: "clinic_001",
       name: "Dr. Fatima Khan",
       role: "doctor",
+      is_owner: false,
+      can_view_financials: false,
+      specialization: "Gynecologist & Lady Doctor",
+      room_number: "Room 2 (Gyne & Female OPD)",
+      consultation_fee: 1000,
       phone: "03009998877",
       email: "dr.fatima@example.com",
+      password: "password",
+    },
+    {
+      id: "user_005",
+      clinic_id: "clinic_001",
+      name: "Dr. Tariq Mahmood",
+      role: "doctor",
+      is_owner: false,
+      can_view_financials: false,
+      specialization: "Child Specialist / Pediatrician",
+      room_number: "Room 3 (Children OPD)",
+      consultation_fee: 900,
+      phone: "03335551122",
+      email: "dr.tariq@example.com",
       password: "password",
     },
   ],
@@ -257,19 +285,154 @@ const SEED_DATA = {
     },
   ],
   store_inventory: [
-    { id: "inv_001", clinic_id: "clinic_001", medicine_name: "Panadol",          unit_label: "strip",  stock_qty: 120, unit_price: 8,   low_stock_threshold: 20 },
-    { id: "inv_002", clinic_id: "clinic_001", medicine_name: "Amoxicillin 500mg", unit_label: "pack",   stock_qty: 15,  unit_price: 25,  low_stock_threshold: 20 },
-    { id: "inv_003", clinic_id: "clinic_001", medicine_name: "Ascoril Syrup",     unit_label: "bottle", stock_qty: 40,  unit_price: 180, low_stock_threshold: 10 },
-    { id: "inv_004", clinic_id: "clinic_001", medicine_name: "Ferrous Sulphate",  unit_label: "strip",  stock_qty: 8,   unit_price: 12,  low_stock_threshold: 15 },
+    {
+      id: "inv_001",
+      clinic_id: "clinic_001",
+      medicine_name: "Panadol 500mg",
+      category: "Tablet",
+      strength: "500mg",
+      has_multi_unit: true,
+      strips_per_box: 10,
+      units_per_strip: 12,
+      box_label: "Box",
+      strip_label: "Strip",
+      unit_label: "Tablet",
+      cost_price_per_box: 600,
+      box_sale_price: 900,
+      strip_sale_price: 96,
+      unit_sale_price: 8,
+      total_base_stock: 600,
+      stock_qty: 600,
+      unit_price: 8,
+      cost_price: 5.5,
+      low_stock_threshold: 120,
+      supplier_id: "sup_001",
+      batch_no: "BAT-9981",
+      expiry_date: getRelativeDateString(180)
+    },
+    {
+      id: "inv_002",
+      clinic_id: "clinic_001",
+      medicine_name: "Amoxicillin 500mg",
+      category: "Capsule",
+      strength: "500mg",
+      has_multi_unit: true,
+      strips_per_box: 10,
+      units_per_strip: 10,
+      box_label: "Pack",
+      strip_label: "Strip",
+      unit_label: "Capsule",
+      cost_price_per_box: 1800,
+      box_sale_price: 2400,
+      strip_sale_price: 250,
+      unit_sale_price: 28,
+      total_base_stock: 150,
+      stock_qty: 150,
+      unit_price: 25,
+      cost_price: 18,
+      low_stock_threshold: 50,
+      supplier_id: "sup_002",
+      batch_no: "BAT-4412",
+      expiry_date: getRelativeDateString(25)
+    },
+    {
+      id: "inv_003",
+      clinic_id: "clinic_001",
+      medicine_name: "Ascoril Syrup",
+      category: "Syrup / Suspension",
+      strength: "120ml",
+      has_multi_unit: false,
+      strips_per_box: 1,
+      units_per_strip: 1,
+      box_label: "Box",
+      strip_label: "Bottle",
+      unit_label: "Bottle",
+      cost_price_per_box: 130,
+      box_sale_price: 180,
+      strip_sale_price: 180,
+      unit_sale_price: 180,
+      total_base_stock: 40,
+      stock_qty: 40,
+      unit_price: 180,
+      cost_price: 130,
+      low_stock_threshold: 10,
+      supplier_id: "sup_001",
+      batch_no: "BAT-1102",
+      expiry_date: getRelativeDateString(360)
+    },
+    {
+      id: "inv_004",
+      clinic_id: "clinic_001",
+      medicine_name: "Ferrous Sulphate",
+      category: "Tablet",
+      strength: "200mg",
+      has_multi_unit: true,
+      strips_per_box: 10,
+      units_per_strip: 10,
+      box_label: "Box",
+      strip_label: "Strip",
+      unit_label: "Tablet",
+      cost_price_per_box: 700,
+      box_sale_price: 1000,
+      strip_sale_price: 110,
+      unit_sale_price: 12,
+      total_base_stock: 80,
+      stock_qty: 80,
+      unit_price: 12,
+      cost_price: 8.5,
+      low_stock_threshold: 100,
+      supplier_id: "sup_003",
+      batch_no: "BAT-3091",
+      expiry_date: getRelativeDateString(15)
+    },
+  ],
+  suppliers: [
+    { id: "sup_001", name: "Getz Pharma Distribution", contact_person: "Tariq Mahmood", phone: "0300-8881122", address: "Site Area, Hyderabad", balance_due: 45000 },
+    { id: "sup_002", name: "Searle Medical Agencies",   contact_person: "Zubair Ahmed",  phone: "0321-4445566", address: "Saddar, Hyderabad", balance_due: 18500 },
+    { id: "sup_003", name: "AGP Pharma Traders",        contact_person: "Rashid Ali",    phone: "0333-7776655", address: "Latifabad, Hyderabad", balance_due: 0 },
+  ],
+  purchases: [
+    {
+      id: "pur_001",
+      supplier_id: "sup_001",
+      supplier_name: "Getz Pharma Distribution",
+      invoice_no: "INV-2026-881",
+      purchase_date: getRelativeISOString(-10),
+      total_amount: 50000,
+      paid_amount: 5000,
+      balance_due: 45000,
+      payment_status: "partial", // paid, unpaid, partial
+      items: [
+        { medicine_name: "Panadol 500mg", batch_no: "BAT-9981", expiry_date: getRelativeDateString(180), qty: 150, cost_price: 5.5, sale_price: 8, line_total: 825 },
+        { medicine_name: "Ascoril Syrup", batch_no: "BAT-1102", expiry_date: getRelativeDateString(360), qty: 50, cost_price: 130, sale_price: 180, line_total: 6500 }
+      ]
+    }
+  ],
+  patient_ledgers: [
+    {
+      id: "pledge_001",
+      patient_id: "pat_001",
+      patient_name: "Muhammad Bilal",
+      total_credit: 1200,
+      total_paid: 400,
+      balance_due: 800,
+      transactions: [
+        { id: "tx_1", date: getRelativeISOString(-3), description: "Pharmacy POS Sale #sale_001 (Udhaar)", amount: 1200, type: "debit" },
+        { id: "tx_2", date: getRelativeISOString(-1), description: "Cash Payment Received", amount: 400, type: "credit" }
+      ]
+    }
   ],
   store_sales: [
     {
       id: "sale_001",
       clinic_id: "clinic_001",
       visit_id: "visit_002",
+      payment_type: "cash", // cash, card, credit, partial
+      amount_paid: 196,
+      balance_due: 0,
       items: [
-        { inventory_id: "inv_003", medicine_name: "Ascoril Syrup", unit_label: "bottle", quantity: 1, unit_price: 180, line_total: 180 },
-        { inventory_id: "inv_001", medicine_name: "Panadol",       unit_label: "strip",  quantity: 2, unit_price: 8,   line_total: 16  },
+        { inventory_id: "inv_003", medicine_name: "Ascoril Syrup", unit_label: "bottle", quantity: 1, unit_price: 180, line_total: 180, batch_no: "BAT-1102" },
+        { inventory_id: "inv_001", medicine_name: "Panadol 500mg", unit_label: "strip",  quantity: 2, unit_price: 8,   line_total: 16, batch_no: "BAT-9981"  },
       ],
       subtotal_amount: 196,
       discount_amount: 0,
@@ -281,8 +444,11 @@ const SEED_DATA = {
       id: "sale_002",
       clinic_id: "clinic_001",
       visit_id: null, // Walk-in Customer
+      payment_type: "cash",
+      amount_paid: 40,
+      balance_due: 0,
       items: [
-        { inventory_id: "inv_001", medicine_name: "Panadol", unit_label: "strip", quantity: 5, unit_price: 8, line_total: 40 }
+        { inventory_id: "inv_001", medicine_name: "Panadol 500mg", unit_label: "strip", quantity: 5, unit_price: 8, line_total: 40, batch_no: "BAT-9981" }
       ],
       subtotal_amount: 40,
       discount_amount: 0,
@@ -294,8 +460,11 @@ const SEED_DATA = {
       id: "sale_003",
       clinic_id: "clinic_001",
       visit_id: "visit_001",
+      payment_type: "cash",
+      amount_paid: 310,
+      balance_due: 0,
       items: [
-        { inventory_id: "inv_003", medicine_name: "Ascoril Syrup", unit_label: "bottle", quantity: 2, unit_price: 180, line_total: 360 }
+        { inventory_id: "inv_003", medicine_name: "Ascoril Syrup", unit_label: "bottle", quantity: 2, unit_price: 180, line_total: 360, batch_no: "BAT-1102" }
       ],
       subtotal_amount: 360,
       discount_amount: 50,
@@ -304,20 +473,78 @@ const SEED_DATA = {
       sale_date: getRelativeISOString(-1),
     },
   ],
+  store_expenses: [
+    { id: "exp_001", date: getRelativeISOString(-1), category: "Tea & Refreshment", amount: 180, description: "Tea for pharmacy staff", recorded_by: "Kamran Iqbal" },
+    { id: "exp_002", date: getRelativeISOString(-3), category: "Electricity & Utilities", amount: 2500, description: "Monthly pharmacy AC & lighting bill", recorded_by: "Sana Malik" },
+    { id: "exp_003", date: getRelativeISOString(-5), category: "Delivery & Freight", amount: 350, description: "Rider delivery charge for urgent medicine stock", recorded_by: "Kamran Iqbal" }
+  ],
+  store_returns: [
+    {
+      id: "ret_001",
+      sale_id: "sale_002",
+      patient_name: "Muhammad Bilal",
+      return_date: getRelativeISOString(-1),
+      reason: "Doctor changed prescription formula",
+      refund_type: "cash",
+      refund_amount: 16,
+      items: [
+        { medicine_name: "Panadol 500mg", unit_label: "strip", quantity_returned: 2, base_units_returned: 24, refund_price: 16 }
+      ]
+    }
+  ]
 };
 
 // Keys used in localStorage
 const KEYS = {
-  SEEDED:     "cf_seeded_v6",   // bumped to v6 for multi-doctor seed update
-  CLINIC:     "cf_clinic",
-  USERS:      "cf_users",
-  PATIENTS:   "cf_patients",
-  VISITS:     "cf_visits",
-  INVENTORY:  "cf_store_inventory",
-  SALES:      "cf_store_sales",
-  DOCUMENTS:  "cf_documents",
-  SERVICES:   "cf_clinic_services",
+  SEEDED:          "cf_seeded_v11",   // bumped to v11 for doctor financial permission controls
+  CLINIC:          "cf_clinic",
+  USERS:           "cf_users",
+  PATIENTS:        "cf_patients",
+  VISITS:          "cf_visits",
+  INVENTORY:       "cf_store_inventory",
+  SALES:           "cf_store_sales",
+  DOCUMENTS:       "cf_documents",
+  SERVICES:        "cf_clinic_services",
+  SUPPLIERS:       "cf_suppliers",
+  PURCHASES:       "cf_purchases",
+  PATIENT_LEDGER:  "cf_patient_ledgers",
+  EXPENSES:        "cf_store_expenses",
+  RETURNS:         "cf_store_returns",
+  STOCK_TRANSFERS: "cf_stock_transfers",
+  B2B_SALES:       "cf_b2b_sales",
 };
+
+/** Atomic Sequential Invoice / Voucher Generator with distinct prefixes */
+export function generateSequentialInvoiceNo(prefix = "INV") {
+  const currentYear = new Date().getFullYear();
+  const counterKey = `cf_seq_${prefix}_${currentYear}`;
+  let count = Number(localStorage.getItem(counterKey) || 0) + 1;
+  localStorage.setItem(counterKey, String(count));
+  const serial = String(count).padStart(4, "0");
+  return `${prefix}-${currentYear}-${serial}`;
+}
+
+/** Force reset database to clean demo data */
+export function resetDatabaseToDemoData() {
+  Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
+  ["cf_seeded", "cf_seeded_v2", "cf_seeded_v3", "cf_seeded_v4", "cf_seeded_v5", "cf_seeded_v6", "cf_seeded_v7", "cf_seeded_v8"].forEach((k) => localStorage.removeItem(k));
+  
+  localStorage.setItem(KEYS.CLINIC,         JSON.stringify(SEED_DATA.clinic));
+  localStorage.setItem(KEYS.USERS,          JSON.stringify(SEED_DATA.users));
+  localStorage.setItem(KEYS.PATIENTS,       JSON.stringify(SEED_DATA.patients));
+  localStorage.setItem(KEYS.VISITS,         JSON.stringify(SEED_DATA.visits));
+  localStorage.setItem(KEYS.INVENTORY,      JSON.stringify(SEED_DATA.store_inventory));
+  localStorage.setItem(KEYS.SALES,          JSON.stringify(SEED_DATA.store_sales));
+  localStorage.setItem(KEYS.SERVICES,       JSON.stringify(SEED_DATA.clinic_services));
+  localStorage.setItem(KEYS.SUPPLIERS,      JSON.stringify(SEED_DATA.suppliers));
+  localStorage.setItem(KEYS.PURCHASES,      JSON.stringify(SEED_DATA.purchases));
+  localStorage.setItem(KEYS.PATIENT_LEDGER, JSON.stringify(SEED_DATA.patient_ledgers));
+  localStorage.setItem(KEYS.EXPENSES,       JSON.stringify(SEED_DATA.store_expenses));
+  localStorage.setItem(KEYS.RETURNS,        JSON.stringify(SEED_DATA.store_returns));
+  localStorage.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
+  localStorage.setItem(KEYS.B2B_SALES,       JSON.stringify([]));
+  localStorage.setItem(KEYS.SEEDED, "1");
+}
 
 /** Ensure the localStorage DB is initialized with seed data on first load. */
 export function initDB() {
@@ -327,22 +554,18 @@ export function initDB() {
   if (!localStorage.getItem(KEYS.SERVICES)) {
     localStorage.setItem(KEYS.SERVICES, JSON.stringify([]));
   }
+  if (!localStorage.getItem(KEYS.STOCK_TRANSFERS)) {
+    localStorage.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
+  }
+  if (!localStorage.getItem(KEYS.B2B_SALES)) {
+    localStorage.setItem(KEYS.B2B_SALES, JSON.stringify([]));
+  }
 
-  // If seeded version 6 is already active, return
+  // If seeded version 9 is already active, return
   if (localStorage.getItem(KEYS.SEEDED) === "1") return;
 
-  // Clean old seeds to avoid data version conflicts
-  ["cf_seeded", "cf_seeded_v2", "cf_seeded_v3", "cf_seeded_v4", "cf_seeded_v5"].forEach((k) => localStorage.removeItem(k));
-  localStorage.removeItem("cf_prescription_items"); // old schema, no longer used
-
-  localStorage.setItem(KEYS.CLINIC,     JSON.stringify(SEED_DATA.clinic));
-  localStorage.setItem(KEYS.USERS,      JSON.stringify(SEED_DATA.users));
-  localStorage.setItem(KEYS.PATIENTS,   JSON.stringify(SEED_DATA.patients));
-  localStorage.setItem(KEYS.VISITS,     JSON.stringify(SEED_DATA.visits));
-  localStorage.setItem(KEYS.INVENTORY,  JSON.stringify(SEED_DATA.store_inventory));
-  localStorage.setItem(KEYS.SALES,      JSON.stringify(SEED_DATA.store_sales));
-  localStorage.setItem(KEYS.SERVICES,   JSON.stringify(SEED_DATA.clinic_services));
-  localStorage.setItem(KEYS.SEEDED, "1");
+  // Otherwise, clear and re-seed clean mock data
+  resetDatabaseToDemoData();
 }
 
 // ---------- Generic helpers ----------
@@ -369,6 +592,11 @@ export const dbUsers = {
     const newUser = { ...user, id: generateId("user") };
     setCollection(KEYS.USERS, [...users, newUser]);
     return newUser;
+  },
+  update: (id, data) => {
+    const users = getCollection(KEYS.USERS);
+    const updated = users.map((u) => (u.id === id ? { ...u, ...data } : u));
+    setCollection(KEYS.USERS, updated);
   },
 };
 
@@ -479,6 +707,41 @@ export const dbVisits = {
     return updated.find((v) => v.id === id);
   },
 
+  /** Re-issue a new token for a late skipped patient at the END of the queue with Rs. 0 fee (Pre-paid link). */
+  reissueLateToken: (visitId) => {
+    const visits = getCollection(KEYS.VISITS);
+    const originalVisit = visits.find((v) => v.id === visitId);
+    if (!originalVisit) return null;
+
+    // 1. Mark original visit as 'skipped_reissued'
+    const updatedVisits = visits.map((v) =>
+      v.id === visitId ? { ...v, status: "skipped_reissued" } : v
+    );
+    setCollection(KEYS.VISITS, updatedVisits);
+
+    // 2. Issue a NEW fresh token for today at the end of the queue with fee_amount = 0 (Pre-paid)
+    const token_number = dbVisits.nextTokenNumber();
+    const newVisit = {
+      id: "visit_" + Date.now(),
+      patient_id: originalVisit.patient_id,
+      clinic_id: originalVisit.clinic_id || "clinic_001",
+      doctor_id: originalVisit.doctor_id,
+      token_number,
+      visit_type: originalVisit.visit_type || "new",
+      status: "waiting",
+      visit_date: new Date().toISOString(),
+      fee_amount: 0, // Zero fee because fee was already paid on originalVisit
+      fee_waived_reason: `Re-issued from Skipped Token #${originalVisit.token_number} (Already Paid)`,
+      original_visit_id: originalVisit.id,
+      prescription_image_url: null,
+      report_image_urls: [],
+      notes: `Late Arrival — Re-issued from Token #${originalVisit.token_number}`,
+    };
+
+    setCollection(KEYS.VISITS, [...getCollection(KEYS.VISITS), newVisit]);
+    return newVisit;
+  },
+
   /** Complete a visit — saves prescription photo + report photos.
    *  If forcedStatus is provided, uses that explicitly ('completed' vs 'completed_reports_pending').
    *  Otherwise, defaults to 'completed' if report_image_urls > 0, else 'completed_reports_pending'.
@@ -528,11 +791,81 @@ export const dbVisits = {
   },
 };
 
+// ---------- Multi-Unit Inventory Helpers ----------
+export function convertUnitsToBase(qty, unitType, item) {
+  const quantity = Number(qty) || 0;
+  if (!item || !item.has_multi_unit) return quantity;
+
+  const stripsPerBox = Number(item.strips_per_box) || 1;
+  const unitsPerStrip = Number(item.units_per_strip) || 1;
+
+  if (unitType === "box") {
+    return quantity * (stripsPerBox * unitsPerStrip);
+  } else if (unitType === "strip") {
+    return quantity * unitsPerStrip;
+  }
+  return quantity; // "unit" / tablet
+}
+
+export function formatStockBreakdown(item) {
+  if (!item) return "0 Units";
+  const baseStock = Math.max(0, Number(item.total_base_stock ?? item.stock_qty) || 0);
+
+  if (!item.has_multi_unit) {
+    const label = item.unit_label || "unit";
+    return `${baseStock} ${label}${baseStock === 1 ? "" : "s"}`;
+  }
+
+  const stripsPerBox = Number(item.strips_per_box) || 1;
+  const unitsPerStrip = Number(item.units_per_strip) || 1;
+  const unitsPerBox = stripsPerBox * unitsPerStrip;
+
+  if (unitsPerBox <= 1) {
+    return `${baseStock} ${item.unit_label || "Tablet"}s`;
+  }
+
+  const boxes = Math.floor(baseStock / unitsPerBox);
+  const remAfterBoxes = baseStock % unitsPerBox;
+  const strips = Math.floor(remAfterBoxes / unitsPerStrip);
+  const looseUnits = remAfterBoxes % unitsPerStrip;
+
+  const parts = [];
+  if (boxes > 0) parts.push(`${boxes} ${item.box_label || "Box"}${boxes > 1 ? "es" : ""}`);
+  if (strips > 0) parts.push(`${strips} ${item.strip_label || "Strip"}${strips > 1 ? "s" : ""}`);
+  if (looseUnits > 0 || parts.length === 0) parts.push(`${looseUnits} ${item.unit_label || "Tablet"}${looseUnits > 1 ? "s" : ""}`);
+
+  return `${parts.join(", ")} (${baseStock} Total ${item.unit_label || "Tablet"}s)`;
+}
+
+export function formatStockShort(item) {
+  if (!item) return "0 Units";
+  const baseStock = Math.max(0, Number(item.total_base_stock ?? item.stock_qty) || 0);
+  if (!item.has_multi_unit) {
+    return `${baseStock} ${item.unit_label || "unit"}`;
+  }
+
+  const stripsPerBox = Number(item.strips_per_box) || 1;
+  const unitsPerStrip = Number(item.units_per_strip) || 1;
+  const unitsPerBox = stripsPerBox * unitsPerStrip;
+
+  const boxes = Math.floor(baseStock / unitsPerBox);
+  const remAfterBoxes = baseStock % unitsPerBox;
+  const strips = Math.floor(remAfterBoxes / unitsPerStrip);
+  const loose = remAfterBoxes % unitsPerStrip;
+
+  const parts = [];
+  if (boxes > 0) parts.push(`${boxes} Box`);
+  if (strips > 0) parts.push(`${strips} Strip`);
+  if (loose > 0 || parts.length === 0) parts.push(`${loose} ${item.unit_label || "Tab"}`);
+
+  return parts.join(", ");
+}
+
 // ---------- Store Inventory ----------
 export const dbInventory = {
   getAll:      ()   => getCollection(KEYS.INVENTORY),
   getById:     (id) => getCollection(KEYS.INVENTORY).find((i) => i.id === id) || null,
-  getLowStock: ()   => getCollection(KEYS.INVENTORY).filter((i) => i.stock_qty <= i.low_stock_threshold),
+  getLowStock: ()   => getCollection(KEYS.INVENTORY).filter((i) => (i.total_base_stock ?? i.stock_qty) <= (i.low_stock_threshold || 20)),
 
   search: (query) => {
     if (!query || query.trim() === "") return getCollection(KEYS.INVENTORY);
@@ -544,16 +877,72 @@ export const dbInventory = {
 
   add: (item) => {
     const inventory = getCollection(KEYS.INVENTORY);
-    const newItem = { ...item, id: generateId("inv"), clinic_id: "clinic_001" };
+    const stripsPerBox = Number(item.strips_per_box) || 10;
+    const unitsPerStrip = Number(item.units_per_strip) || 12;
+
+    let baseStock = Number(item.total_base_stock);
+    if (isNaN(baseStock) || baseStock === undefined) {
+      baseStock = item.has_multi_unit
+        ? (Number(item.stock_qty) || 0) * (stripsPerBox * unitsPerStrip)
+        : (Number(item.stock_qty) || 0);
+    }
+
+    const newItem = {
+      ...item,
+      id: generateId("inv"),
+      clinic_id: "clinic_001",
+      has_multi_unit: Boolean(item.has_multi_unit),
+      strips_per_box: stripsPerBox,
+      units_per_strip: unitsPerStrip,
+      box_label: item.box_label || "Box",
+      strip_label: item.strip_label || "Strip",
+      unit_label: item.unit_label || "Tablet",
+      cost_price_per_box: Number(item.cost_price_per_box) || 0,
+      box_sale_price: Number(item.box_sale_price) || 0,
+      strip_sale_price: Number(item.strip_sale_price) || 0,
+      unit_sale_price: Number(item.unit_sale_price) || Number(item.unit_price) || 0,
+      total_base_stock: baseStock,
+      stock_qty: baseStock,
+      unit_price: Number(item.unit_sale_price) || Number(item.unit_price) || 0,
+      low_stock_threshold: Number(item.low_stock_threshold) || 20,
+    };
     setCollection(KEYS.INVENTORY, [...inventory, newItem]);
     return newItem;
   },
 
-  deductStock: (id, qty) => {
+  deductStock: (id, baseQty) => {
     const inventory = getCollection(KEYS.INVENTORY);
-    const updated = inventory.map((i) =>
-      i.id === id ? { ...i, stock_qty: Math.max(0, i.stock_qty - qty) } : i
-    );
+    const updated = inventory.map((i) => {
+      if (i.id !== id) return i;
+      const currentBase = i.total_base_stock ?? i.stock_qty ?? 0;
+      const newBase = Math.max(0, currentBase - baseQty);
+      const currentStore = i.store_stock ?? currentBase;
+      const newStore = Math.max(0, currentStore - baseQty);
+      return {
+        ...i,
+        total_base_stock: newBase,
+        stock_qty: newStore,
+        store_stock: newStore,
+      };
+    });
+    setCollection(KEYS.INVENTORY, updated);
+  },
+
+  addStock: (id, baseQty) => {
+    const inventory = getCollection(KEYS.INVENTORY);
+    const updated = inventory.map((i) => {
+      if (i.id !== id) return i;
+      const currentBase = i.total_base_stock ?? i.stock_qty ?? 0;
+      const newBase = currentBase + baseQty;
+      const currentWarehouse = i.warehouse_stock ?? currentBase;
+      const newWarehouse = currentWarehouse + baseQty;
+      return {
+        ...i,
+        total_base_stock: newBase,
+        warehouse_stock: newWarehouse,
+        stock_qty: i.store_stock ?? newBase,
+      };
+    });
     setCollection(KEYS.INVENTORY, updated);
   },
 
@@ -592,9 +981,11 @@ export const dbSales = {
       sale_date: new Date().toISOString(),
     };
     setCollection(KEYS.SALES, [...sales, newSale]);
-    // Deduct stock for each line item
+    // Deduct stock for each line item (converting to base units if needed)
     (sale.items || []).forEach((item) => {
-      dbInventory.deductStock(item.inventory_id, item.quantity);
+      const invItem = dbInventory.getById(item.inventory_id);
+      const baseQty = item.base_units_deducted || convertUnitsToBase(item.quantity, item.selected_unit_type || "unit", invItem);
+      dbInventory.deductStock(item.inventory_id, baseQty);
     });
     return newSale;
   },
@@ -630,3 +1021,439 @@ export const dbClinicServices = {
     setCollection(KEYS.SERVICES, services.filter((s) => s.id !== id));
   },
 };
+
+// ---------- Pharma Suppliers ----------
+export const dbSuppliers = {
+  getAll: () => getCollection(KEYS.SUPPLIERS),
+  getById: (id) => getCollection(KEYS.SUPPLIERS).find((s) => s.id === id) || null,
+  add: (supplier) => {
+    const suppliers = getCollection(KEYS.SUPPLIERS);
+    const newSup = { ...supplier, id: generateId("sup"), balance_due: 0 };
+    setCollection(KEYS.SUPPLIERS, [...suppliers, newSup]);
+    return newSup;
+  },
+  recordPayment: (supplierId, paymentAmount) => {
+    const suppliers = getCollection(KEYS.SUPPLIERS);
+    const sup = suppliers.find((s) => s.id === supplierId);
+    const amt = Number(paymentAmount) || 0;
+    const updated = suppliers.map((s) =>
+      s.id === supplierId
+        ? { ...s, balance_due: Math.max(0, (s.balance_due || 0) - amt) }
+        : s
+    );
+    setCollection(KEYS.SUPPLIERS, updated);
+
+    // Auto-record Supplier Khata Payment in Clinic Daily Expenses
+    if (amt > 0) {
+      dbExpenses.add({
+        category: "Supplier Khata Payment",
+        amount: amt,
+        expense_date: new Date().toISOString(),
+        notes: `Cash Payment to Distributor (${sup?.name || "Pharma Supplier"})`
+      });
+    }
+  },
+};
+
+// ---------- Company Purchases (Stock Receiving & Bills) ----------
+export const dbPurchases = {
+  getAll: () => getCollection(KEYS.PURCHASES),
+  add: (purchase) => {
+    const purchases = getCollection(KEYS.PURCHASES);
+    const suppliers = getCollection(KEYS.SUPPLIERS);
+
+    const total_amount = Number(purchase.total_amount) || 0;
+    const paid_amount = Number(purchase.paid_amount) || 0;
+    const balance_due = Math.max(0, total_amount - paid_amount);
+    const payment_status = balance_due === 0 ? "paid" : paid_amount > 0 ? "partial" : "unpaid";
+
+    const newPurchase = {
+      ...purchase,
+      id: generateId("pur"),
+      total_amount,
+      paid_amount,
+      balance_due,
+      payment_status,
+      purchase_date: new Date().toISOString(),
+    };
+
+    setCollection(KEYS.PURCHASES, [...purchases, newPurchase]);
+
+    // Auto-record Supplier Payment in Clinic Daily Expenses if paid upfront cash
+    if (paid_amount > 0) {
+      dbExpenses.add({
+        category: "Stock Purchase Cash Payment",
+        amount: paid_amount,
+        expense_date: new Date().toISOString(),
+        notes: `Bill #${newPurchase.invoice_no || newPurchase.id} (${newPurchase.supplier_name || "Supplier"})`
+      });
+    }
+
+    // Update Supplier Balance
+    if (balance_due > 0 && purchase.supplier_id) {
+      const updatedSuppliers = suppliers.map((s) =>
+        s.id === purchase.supplier_id
+          ? { ...s, balance_due: (s.balance_due || 0) + balance_due }
+          : s
+      );
+      setCollection(KEYS.SUPPLIERS, updatedSuppliers);
+    }
+
+    // Add or update items in inventory
+    (purchase.items || []).forEach((item) => {
+      const invList = dbInventory.getAll();
+      const existing = invList.find((i) => i.medicine_name.toLowerCase() === item.medicine_name.toLowerCase());
+      
+      const receivedUnitType = item.received_unit_type || (item.has_multi_unit ? "box" : "unit");
+      const baseQtyAdded = convertUnitsToBase(Number(item.qty), receivedUnitType, existing || item);
+
+      if (existing) {
+        dbInventory.addStock(existing.id, baseQtyAdded);
+        dbInventory.update(existing.id, {
+          cost_price_per_box: Number(item.cost_price) || existing.cost_price_per_box,
+          box_sale_price: Number(item.sale_price) || existing.box_sale_price,
+          unit_sale_price: Number(item.unit_sale_price) || existing.unit_sale_price,
+          strip_sale_price: Number(item.strip_sale_price) || existing.strip_sale_price,
+          batch_no: item.batch_no || existing.batch_no,
+          expiry_date: item.expiry_date || existing.expiry_date,
+        });
+      } else {
+        const stripsPerBox = Number(item.strips_per_box) || 10;
+        const unitsPerStrip = Number(item.units_per_strip) || 12;
+        dbInventory.add({
+          medicine_name: item.medicine_name,
+          category: item.category || "Tablet",
+          strength: item.strength || "",
+          has_multi_unit: Boolean(item.has_multi_unit ?? true),
+          strips_per_box: stripsPerBox,
+          units_per_strip: unitsPerStrip,
+          box_label: item.box_label || "Box",
+          strip_label: item.strip_label || "Strip",
+          unit_label: item.unit_label || "Tablet",
+          cost_price_per_box: Number(item.cost_price) || 0,
+          box_sale_price: Number(item.sale_price) || 0,
+          strip_sale_price: Number(item.strip_sale_price) || 0,
+          unit_sale_price: Number(item.unit_sale_price) || 0,
+          total_base_stock: baseQtyAdded,
+          stock_qty: baseQtyAdded,
+          low_stock_threshold: 20,
+          supplier_id: purchase.supplier_id,
+          batch_no: item.batch_no,
+          expiry_date: item.expiry_date,
+        });
+      }
+    });
+
+    return newPurchase;
+  },
+
+  deleteInvoice: (id) => {
+    const purchases = getCollection(KEYS.PURCHASES);
+    const target = purchases.find((p) => p.id === id || p.invoice_no === id);
+    if (!target) return;
+
+    // 1. Revert Supplier Balance Due
+    if (target.supplier_id && target.balance_due > 0) {
+      const suppliers = getCollection(KEYS.SUPPLIERS);
+      const updatedSuppliers = suppliers.map((s) =>
+        s.id === target.supplier_id
+          ? { ...s, balance_due: Math.max(0, (s.balance_due || 0) - target.balance_due) }
+          : s
+      );
+      setCollection(KEYS.SUPPLIERS, updatedSuppliers);
+    }
+
+    // 2. Revert/Deduct Added Inventory Stock
+    (target.items || []).forEach((item) => {
+      const invList = dbInventory.getAll();
+      const existing = invList.find((i) => i.medicine_name.toLowerCase() === item.medicine_name.toLowerCase());
+      if (existing) {
+        const receivedUnitType = item.received_unit_type || (item.has_multi_unit ? "box" : "unit");
+        const baseQty = convertUnitsToBase(Number(item.qty), receivedUnitType, existing);
+        dbInventory.deductStock(existing.id, baseQty);
+      }
+    });
+
+    // 3. Remove purchase record
+    setCollection(KEYS.PURCHASES, purchases.filter((p) => p.id !== target.id));
+  },
+};
+
+// ---------- Patient Credit / Udhaar Ledger ----------
+export const dbPatientLedger = {
+  getAll: () => getCollection(KEYS.PATIENT_LEDGER),
+  getByPatient: (patientId) => getCollection(KEYS.PATIENT_LEDGER).find((l) => l.patient_id === patientId) || null,
+  addCredit: (patientId, patientName, amount, description) => {
+    const ledgers = getCollection(KEYS.PATIENT_LEDGER);
+    const existing = ledgers.find((l) => l.patient_id === patientId);
+
+    const tx = {
+      id: generateId("tx"),
+      date: new Date().toISOString(),
+      description: description || "Pharmacy Purchase Udhaar",
+      amount: Number(amount),
+      type: "debit",
+    };
+
+    if (existing) {
+      const updated = ledgers.map((l) =>
+        l.patient_id === patientId
+          ? {
+              ...l,
+              total_credit: l.total_credit + Number(amount),
+              balance_due: l.balance_due + Number(amount),
+              transactions: [tx, ...(l.transactions || [])],
+            }
+          : l
+      );
+      setCollection(KEYS.PATIENT_LEDGER, updated);
+    } else {
+      const newLedger = {
+        id: generateId("pledge"),
+        patient_id: patientId,
+        patient_name: patientName,
+        total_credit: Number(amount),
+        total_paid: 0,
+        balance_due: Number(amount),
+        transactions: [tx],
+      };
+      setCollection(KEYS.PATIENT_LEDGER, [...ledgers, newLedger]);
+    }
+  },
+  receivePayment: (patientId, amount) => {
+    const ledgers = getCollection(KEYS.PATIENT_LEDGER);
+    const tx = {
+      id: generateId("tx"),
+      date: new Date().toISOString(),
+      description: "Cash Payment Received",
+      amount: Number(amount),
+      type: "credit",
+    };
+    const updated = ledgers.map((l) =>
+      l.patient_id === patientId
+        ? {
+            ...l,
+            total_paid: (l.total_paid || 0) + Number(amount),
+            balance_due: Math.max(0, l.balance_due - Number(amount)),
+            transactions: [tx, ...(l.transactions || [])],
+          }
+        : l
+    );
+    setCollection(KEYS.PATIENT_LEDGER, updated);
+  },
+};
+
+// ---------- Pharmacy Daily Expenses (Kharchay) ----------
+export const dbExpenses = {
+  getAll: () => getCollection(KEYS.EXPENSES),
+  add: (expense) => {
+    const list = getCollection(KEYS.EXPENSES);
+    const newExp = {
+      ...expense,
+      id: generateId("exp"),
+      amount: Number(expense.amount) || 0,
+      date: expense.date || new Date().toISOString()
+    };
+    setCollection(KEYS.EXPENSES, [newExp, ...list]);
+    return newExp;
+  },
+  delete: (id) => {
+    const list = getCollection(KEYS.EXPENSES);
+    setCollection(KEYS.EXPENSES, list.filter((e) => e.id !== id));
+  }
+};
+
+// ---------- Sales Returns & Exchanges ----------
+export const dbReturns = {
+  getAll: () => getCollection(KEYS.RETURNS),
+  processReturn: ({ sale_id, return_items, reason, refund_type }) => {
+    const sales = getCollection(KEYS.SALES);
+    const targetSale = sales.find((s) => s.id === sale_id);
+    if (!targetSale) throw new Error("Sale receipt not found.");
+
+    // Proportional discount factor: if receipt had a discount, scale line refunds proportionally
+    const saleSubtotal = Number(targetSale.subtotal_amount) || Number(targetSale.total_amount) || 1;
+    const saleNetTotal = Number(targetSale.total_amount) || saleSubtotal;
+    const discountRatio = saleSubtotal > 0 ? (saleNetTotal / saleSubtotal) : 1;
+
+    let totalRefundAmount = 0;
+    const processedReturnItems = [];
+
+    (return_items || []).forEach((rItem) => {
+      const invItem = dbInventory.getById(rItem.inventory_id);
+      const qtyReturned = Number(rItem.quantity_returned) || 0;
+      if (qtyReturned <= 0) return;
+
+      const baseUnitsReturned = rItem.base_units_returned || convertUnitsToBase(qtyReturned, rItem.selected_unit_type || "unit", invItem);
+      
+      // Restock inventory automatically
+      if (invItem) {
+        dbInventory.addStock(invItem.id, baseUnitsReturned);
+      }
+
+      const grossPrice = (Number(rItem.unit_price) || 0) * qtyReturned;
+      const itemLineRefund = Number((grossPrice * discountRatio).toFixed(2));
+      totalRefundAmount += itemLineRefund;
+
+      processedReturnItems.push({
+        inventory_id: rItem.inventory_id,
+        medicine_name: rItem.medicine_name,
+        selected_unit_type: rItem.selected_unit_type,
+        unit_label: rItem.unit_label,
+        quantity_returned: qtyReturned,
+        base_units_returned: baseUnitsReturned,
+        refund_price: itemLineRefund
+      });
+    });
+
+    totalRefundAmount = Number(totalRefundAmount.toFixed(2));
+
+    const returns = getCollection(KEYS.RETURNS);
+    const newReturn = {
+      id: generateId("ret"),
+      sale_id,
+      patient_name: targetSale.patient_name || "Walk-in Customer",
+      return_date: new Date().toISOString(),
+      reason: reason || "Customer request",
+      refund_type: refund_type || "cash",
+      refund_amount: totalRefundAmount,
+      items: processedReturnItems
+    };
+
+    setCollection(KEYS.RETURNS, [newReturn, ...returns]);
+
+    // Auto-record cash refund in daily expenses
+    if (refund_type === "cash" && totalRefundAmount > 0) {
+      dbExpenses.add({
+        category: "Sales Return Refund",
+        amount: totalRefundAmount,
+        expense_date: new Date().toISOString(),
+        notes: `Cash Refund for Sale Receipt #${targetSale.id}`
+      });
+    }
+
+    // If refund_type is credit and targetSale had balance_due / linkedPatient
+    if (refund_type === "credit" && targetSale.patient_name) {
+      const patients = getCollection(KEYS.PATIENTS);
+      const patient = patients.find((p) => p.full_name.toLowerCase() === targetSale.patient_name.toLowerCase());
+      if (patient) {
+        dbPatientLedger.receivePayment(patient.id, totalRefundAmount);
+      }
+    }
+
+    return newReturn;
+  }
+};
+
+// ---------- Internal Stock Transfers (Warehouse -> Store) ----------
+export const dbStockTransfers = {
+  getAll: () => getCollection(KEYS.STOCK_TRANSFERS),
+  transfer: (data) => {
+    // data = { inventory_id, medicine_name, qty, from_loc, to_loc, notes, transferred_by }
+    const transfers = getCollection(KEYS.STOCK_TRANSFERS);
+    const transferNo = generateSequentialInvoiceNo("TRF");
+    const newTransfer = {
+      ...data,
+      id: generateId("trf"),
+      transfer_no: transferNo,
+      transfer_date: new Date().toISOString(),
+    };
+    setCollection(KEYS.STOCK_TRANSFERS, [newTransfer, ...transfers]);
+
+    // Move inventory stock from warehouse to store
+    const inv = dbInventory.getById(data.inventory_id);
+    if (inv) {
+      const qty = Number(data.qty) || 0;
+      const wStock = Math.max(0, (inv.warehouse_stock ?? inv.total_base_stock ?? inv.stock_qty ?? 0) - qty);
+      const sStock = Math.max(0, (inv.store_stock ?? 0) + qty);
+      dbInventory.update(inv.id, {
+        warehouse_stock: wStock,
+        store_stock: sStock,
+        total_base_stock: wStock + sStock,
+        stock_qty: sStock, // store stock active for retail POS
+      });
+    }
+    return newTransfer;
+  },
+};
+
+// ---------- Wholesale B2B Sales (Warehouse -> Other Clinics / Chemists) ----------
+export const dbB2BSales = {
+  getAll: () => getCollection(KEYS.B2B_SALES),
+  checkout: (saleData) => {
+    // saleData = { buyer_name, buyer_phone, buyer_address, items: [...], total_amount, paid_amount, balance_due, payment_type: "cash"|"credit" }
+    const sales = getCollection(KEYS.B2B_SALES);
+    const invoiceNo = generateSequentialInvoiceNo("WHO");
+    const paidAmount = Number(saleData.paid_amount) || 0;
+    const totalAmount = Number(saleData.total_amount) || 0;
+    const balanceDue = Math.max(0, totalAmount - paidAmount);
+
+    const newB2BSale = {
+      ...saleData,
+      id: generateId("b2b"),
+      invoice_no: invoiceNo,
+      total_amount: totalAmount,
+      paid_amount: paidAmount,
+      balance_due: balanceDue,
+      sale_date: new Date().toISOString(),
+    };
+
+    setCollection(KEYS.B2B_SALES, [newB2BSale, ...sales]);
+
+    // Deduct stock from Warehouse Stock
+    (saleData.items || []).forEach((item) => {
+      const inv = dbInventory.getById(item.inventory_id);
+      if (inv) {
+        const qty = Number(item.qty_base_units || item.quantity || item.qty) || 0;
+        const wStock = Math.max(0, (inv.warehouse_stock ?? inv.total_base_stock ?? inv.stock_qty ?? 0) - qty);
+        const sStock = inv.store_stock ?? 0;
+        dbInventory.update(inv.id, {
+          warehouse_stock: wStock,
+          total_base_stock: wStock + sStock,
+        });
+      }
+    });
+
+    // If Credit, update Buyer Khata Ledger
+    if (balanceDue > 0 && saleData.buyer_id) {
+      dbPatientLedger.addCredit(saleData.buyer_id, saleData.buyer_name, balanceDue, `Wholesale Invoice #${invoiceNo}`);
+    }
+
+    return newB2BSale;
+  },
+};
+
+/** Export entire clinic database to a standalone JSON object for backup */
+export function exportFullDatabase() {
+  const backup = {
+    version: "3.2.0",
+    export_date: new Date().toISOString(),
+    clinic_name: dbClinic.get()?.name || "ClinicFlow",
+    data: {}
+  };
+  Object.entries(KEYS).forEach(([_, storageKey]) => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      backup.data[storageKey] = raw ? JSON.parse(raw) : null;
+    } catch {
+      backup.data[storageKey] = null;
+    }
+  });
+  return backup;
+}
+
+/** Restore/Import clinic database from a JSON backup file */
+export function importFullDatabase(backupObj) {
+  if (!backupObj || typeof backupObj !== "object" || !backupObj.data) {
+    throw new Error("Invalid backup file format. Must contain valid data object.");
+  }
+  Object.entries(backupObj.data).forEach(([storageKey, value]) => {
+    if (value !== null && value !== undefined) {
+      localStorage.setItem(storageKey, JSON.stringify(value));
+    }
+  });
+  localStorage.setItem(KEYS.SEEDED, "1");
+  return true;
+}
+
+

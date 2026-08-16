@@ -197,13 +197,26 @@ export default function DoctorQueue() {
                       </>
                     )}
                     {visit.status === "skipped" && (
-                      <button
-                        onClick={() => { dbVisits.updateStatus(visit.id, "waiting"); loadQueue(); }}
-                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-amber-300 text-amber-700 px-3 py-1.5 rounded-xl text-xs font-medium hover:bg-amber-50 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-sm">undo</span>
-                        Recall
-                      </button>
+                      <div className="flex sm:flex-col flex-row gap-1">
+                        <button
+                          onClick={() => {
+                            dbVisits.reissueLateToken(visit.id);
+                            loadQueue();
+                          }}
+                          title="Re-issue new token at END of queue with Rs. 0 Fee"
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-amber-300 text-amber-900 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-amber-50 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">confirmation_number</span>
+                          Re-issue (End Queue)
+                        </button>
+                        <button
+                          onClick={() => { dbVisits.updateStatus(visit.id, "waiting"); loadQueue(); }}
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-teal-300 text-teal-700 px-3 py-1.5 rounded-xl text-xs font-medium hover:bg-teal-50 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">undo</span>
+                          Recall Next
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,19 +1,24 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { dbVisits, dbPatients } from "../api/db.js";
+import { dbVisits, dbPatients, dbClinic, dbUsers } from "../api/db.js";
+import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
 
 const STATUS_META = {
   waiting:                  { label: "Waiting",         bg: "bg-amber-100",  text: "text-amber-800",  dot: "bg-amber-500" },
-  in_consultation:          { label: "In Consultation", bg: "bg-teal-100",   text: "text-teal-800",   dot: "bg-teal-500 animate-pulse" },
+  in_consultation:          { label: "In Room",         bg: "bg-teal-100",   text: "text-teal-800",   dot: "bg-teal-500 animate-pulse" },
   completed:                { label: "Done",            bg: "bg-gray-100",   text: "text-gray-500",   dot: "bg-gray-400" },
   completed_reports_pending:{ label: "Reports Pending", bg: "bg-orange-100", text: "text-orange-800", dot: "bg-orange-500" },
   skipped:                  { label: "Skipped",         bg: "bg-rose-100",   text: "text-rose-700",   dot: "bg-rose-400" },
+  skipped_reissued:         { label: "Re-issued",       bg: "bg-purple-100", text: "text-purple-800", dot: "bg-purple-500" },
 };
 
 export default function ReceptionQueue() {
   const navigate = useNavigate();
   const [visits, setVisits] = useState([]);
   const [patients, setPatients] = useState({});
+  const [doctors, setDoctors] = useState([]);
+  const [selectedDoctorFilter, setSelectedDoctorFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("active"); // 'active' | 'completed' | 'skipped' | 'all'
 
   const load = useCallback(() => {
     const all = dbVisits.getTodayAll();
@@ -23,28 +28,47 @@ export default function ReceptionQueue() {
       if (!pMap[v.patient_id]) pMap[v.patient_id] = dbPatients.getById(v.patient_id);
     });
     setPatients(pMap);
+    setDoctors(dbUsers.getAll().filter((u) => u.role === "doctor"));
   }, []);
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 20000);
+    const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
   }, [load]);
 
-  const waiting        = visits.filter((v) => v.status === "waiting");
-  const inConsultation = visits.filter((v) => v.status === "in_consultation");
-  const done           = visits.filter((v) => v.status === "completed" || v.status === "skipped");
-  const currentToken   = inConsultation[0]?.token_number ?? "—";
-  const nextToken      = waiting[0]?.token_number ?? "—";
+  const filteredVisitsByDoc = selectedDoctorFilter === "all"
+    ? visits
+    : visits.filter((v) => v.doctor_id === selectedDoctorFilter);
+
+  const waitingList = filteredVisitsByDoc.filter((v) => v.status === "waiting");
+  const inRoomList  = filteredVisitsByDoc.filter((v) => v.status === "in_consultation");
+  const completedList = filteredVisitsByDoc.filter((v) => v.status === "completed" || v.status === "completed_reports_pending");
+  const skippedList = filteredVisitsByDoc.filter((v) => v.status === "skipped" || v.status === "skipped_reissued");
+
+  const currentToken = inRoomList[0]?.token_number ?? "—";
+  const nextToken    = waitingList[0]?.token_number ?? "—";
+
+  // Tab Filtering
+  let displayedVisits = [];
+  if (activeTab === "active") {
+    displayedVisits = [...inRoomList, ...waitingList];
+  } else if (activeTab === "completed") {
+    displayedVisits = completedList;
+  } else if (activeTab === "skipped") {
+    displayedVisits = skippedList;
+  } else {
+    displayedVisits = filteredVisitsByDoc;
+  }
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>event_note</span>
-            Today&apos;s Queue
+            Reception Desk Queue
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {new Date().toLocaleDateString("en-PK", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
@@ -53,92 +77,246 @@ export default function ReceptionQueue() {
         <div className="flex gap-2">
           <button
             onClick={load}
-            className="flex items-center gap-1.5 text-sm text-teal-600 border border-teal-200 px-3 py-2 rounded-xl hover:bg-teal-50 transition-colors font-medium"
+            className="flex items-center gap-1.5 text-sm text-teal-700 bg-white border border-teal-200 px-3.5 py-2 rounded-xl hover:bg-teal-50 transition-colors font-medium shadow-sm"
           >
             <span className="material-symbols-outlined text-lg">refresh</span>
+            Refresh
           </button>
           <button
             onClick={() => navigate("/reception/register")}
-            className="flex items-center gap-1.5 text-sm bg-teal-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-teal-700 transition-colors"
+            className="flex items-center gap-1.5 text-sm bg-teal-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-teal-700 transition-colors shadow-md shadow-teal-200"
           >
             <span className="material-symbols-outlined text-lg">person_add</span>
-            Register
+            New Token Registration
           </button>
         </div>
       </div>
 
-      {/* Current / Next Tokens */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-2xl p-5 text-center shadow-xl shadow-teal-600/20">
-          <div className="text-xs font-medium uppercase tracking-widest opacity-80 mb-1">Currently Seeing</div>
-          <div className="text-5xl font-black">{currentToken}</div>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center shadow-sm">
-          <div className="text-xs font-medium uppercase tracking-widest text-amber-700 mb-1">Next Up</div>
-          <div className="text-5xl font-black text-amber-600">{nextToken}</div>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        {[
-          { label: "Total", value: visits.length, color: "text-gray-700" },
-          { label: "Waiting", value: waiting.length, color: "text-amber-600" },
-          { label: "In Room", value: inConsultation.length, color: "text-teal-600" },
-          { label: "Done", value: done.length, color: "text-gray-400" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center shadow-sm">
-            <div className={`text-2xl font-black ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-gray-500 font-medium mt-0.5">{s.label}</div>
+      {/* Call Banner */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-gradient-to-r from-teal-700 to-teal-800 text-white rounded-2xl p-4 flex items-center justify-between shadow-md shadow-teal-700/20">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-teal-100">Now In Doctor Room</div>
+            <div className="text-3xl font-black mt-0.5">Token #{currentToken}</div>
           </div>
-        ))}
+          <span className="material-symbols-outlined text-4xl text-teal-200 animate-pulse">stethoscope</span>
+        </div>
+        <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl p-4 flex items-center justify-between shadow-md shadow-amber-500/20">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-amber-100">Next Up Patient</div>
+            <div className="text-3xl font-black mt-0.5">Token #{nextToken}</div>
+          </div>
+          <span className="material-symbols-outlined text-4xl text-amber-200">group</span>
+        </div>
       </div>
 
-      {/* All visits */}
-      {visits.length === 0 ? (
-        <div className="text-center py-16">
-          <span className="material-symbols-outlined text-5xl text-gray-200 block mb-3">event_busy</span>
-          <div className="text-gray-500">No visits registered today yet</div>
-          <button
-            onClick={() => navigate("/reception/register")}
-            className="mt-4 inline-flex items-center gap-2 bg-teal-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold"
-          >
-            <span className="material-symbols-outlined text-lg">person_add</span>
-            Register First Patient
-          </button>
+      {/* Doctor Filter Bar */}
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-3.5 flex items-center gap-2 flex-wrap shadow-sm">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider px-2">Filter Doctor:</span>
+        <button
+          onClick={() => setSelectedDoctorFilter("all")}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            selectedDoctorFilter === "all"
+              ? "bg-teal-600 text-white shadow-md shadow-teal-200"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
+        >
+          All Doctors ({visits.length})
+        </button>
+        {doctors.map((doc) => {
+          const docCount = visits.filter((v) => v.doctor_id === doc.id).length;
+          return (
+            <button
+              key={doc.id}
+              onClick={() => setSelectedDoctorFilter(doc.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedDoctorFilter === doc.id
+                  ? "bg-teal-600 text-white shadow-md shadow-teal-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              👨‍⚕️ {doc.name} ({docCount})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Queue View Categorization Tabs */}
+      <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("active")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+            activeTab === "active"
+              ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
+              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+          }`}
+        >
+          <span>📋 Active Queue</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === "active" ? "bg-teal-900 text-teal-100" : "bg-amber-100 text-amber-900"}`}>
+            {inRoomList.length + waitingList.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("completed")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+            activeTab === "completed"
+              ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
+              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+          }`}
+        >
+          <span>✅ Completed Visits</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === "completed" ? "bg-teal-900 text-teal-100" : "bg-gray-100 text-gray-700"}`}>
+            {completedList.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("skipped")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+            activeTab === "skipped"
+              ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
+              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+          }`}
+        >
+          <span>⏭️ Skipped &amp; Re-issued</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === "skipped" ? "bg-teal-900 text-teal-100" : "bg-rose-100 text-rose-800"}`}>
+            {skippedList.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("all")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+            activeTab === "all"
+              ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
+              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+          }`}
+        >
+          <span>📁 All Today Visits</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === "all" ? "bg-teal-900 text-teal-100" : "bg-gray-100 text-gray-700"}`}>
+            {filteredVisitsByDoc.length}
+          </span>
+        </button>
+      </div>
+
+      {/* Visits List */}
+      {displayedVisits.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 shadow-sm">
+          <span className="material-symbols-outlined text-5xl text-gray-300 block mb-3">event_busy</span>
+          <div className="text-gray-500 font-medium">No visits found in this category</div>
         </div>
       ) : (
-        <div className="space-y-2">
-          {visits.map((visit) => {
+        <div className="space-y-3">
+          {displayedVisits.map((visit) => {
             const patient = patients[visit.patient_id];
+            const docObj = doctors.find((d) => d.id === visit.doctor_id);
             const meta = STATUS_META[visit.status] || STATUS_META.waiting;
+
             return (
               <div
                 key={visit.id}
-                className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-3.5 shadow-sm"
+                className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm hover:shadow-md transition-all space-y-3"
               >
-                {/* Token */}
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shrink-0 ${
-                  visit.status === "in_consultation" ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-600"
-                }`}>
-                  {visit.token_number}
-                </div>
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900 text-sm truncate">
-                    {patient?.full_name ?? "—"}
+                {/* Top Row: Token # + Patient Name + Doctor Badge + Status Badge */}
+                <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shrink-0 ${
+                      visit.status === "in_consultation" ? "bg-teal-600 text-white shadow-md shadow-teal-200" : "bg-gray-100 text-gray-800"
+                    }`}>
+                      #{visit.token_number}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-gray-900 text-base leading-tight truncate">
+                        {patient?.full_name ?? "—"}
+                      </h3>
+                      <div className="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
+                        <span>{patient?.relation_name ? `${patient.relation_type === "husband" ? "W/O" : "S/O"} ${patient.relation_name}` : ""}</span>
+                        <span>•</span>
+                        <span className="capitalize">{visit.visit_type === "follow_up" ? "Follow-up" : "New Visit"}</span>
+                        <span>•</span>
+                        <span>{new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {patient?.relation_name && `${patient.relation_type === "husband" ? "W/O" : "S/O"} ${patient.relation_name} · `}
-                    {visit.visit_type === "follow_up" ? "Follow-up" : "New"} ·{" "}
-                    {new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {docObj && (
+                      <span className="text-xs bg-teal-50 text-teal-800 border border-teal-200/80 px-3 py-1 rounded-full font-bold whitespace-nowrap">
+                        👨‍⚕️ {docObj.name}
+                      </span>
+                    )}
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${meta.bg} ${meta.text}`}>
+                      <span className={`w-2 h-2 rounded-full ${meta.dot}`} />
+                      {meta.label}
+                    </span>
                   </div>
                 </div>
-                {/* Status Badge */}
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 ${meta.bg} ${meta.text}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                  {meta.label}
-                </span>
+
+                {/* Re-issue Note if present */}
+                {visit.fee_waived_reason && (
+                  <div className="text-xs text-amber-900 bg-amber-50 border border-amber-200/80 px-3 py-2 rounded-xl font-medium flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-base text-amber-600">info</span>
+                    <span>{visit.fee_waived_reason}</span>
+                  </div>
+                )}
+
+                {/* Bottom Row: Actions Bar */}
+                <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => printOPDTokenReceipt({ token: visit.token_number, patient, visit, fee: visit.fee_amount }, dbClinic.get())}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200"
+                    >
+                      <span className="material-symbols-outlined text-base">print</span>
+                      Print Token
+                    </button>
+                    <button
+                      onClick={() => navigate("/store/pos", { state: { patientId: visit.patient_id } })}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors border border-teal-200"
+                    >
+                      <span className="material-symbols-outlined text-base">point_of_sale</span>
+                      Pharmacy POS
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {visit.status === "waiting" && (
+                      <button
+                        onClick={() => { dbVisits.updateStatus(visit.id, "skipped"); load(); }}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200"
+                      >
+                        <span className="material-symbols-outlined text-base">person_off</span>
+                        Mark Absent / Skip
+                      </button>
+                    )}
+
+                    {visit.status === "skipped" && (
+                      <>
+                        <button
+                          onClick={() => {
+                            const newV = dbVisits.reissueLateToken(visit.id);
+                            load();
+                            if (newV) {
+                              printOPDTokenReceipt({ token: newV.token_number, patient, visit: newV, fee: 0, doctor: docObj }, dbClinic.get());
+                            }
+                          }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-950 hover:bg-amber-200 transition-colors border border-amber-300"
+                        >
+                          <span className="material-symbols-outlined text-base">confirmation_number</span>
+                          Re-issue Token (End Queue - Rs.0)
+                        </button>
+                        <button
+                          onClick={() => { dbVisits.updateStatus(visit.id, "waiting"); load(); }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors border border-emerald-300"
+                        >
+                          <span className="material-symbols-outlined text-base">schedule</span>
+                          Recall Next
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })}

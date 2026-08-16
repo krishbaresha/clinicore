@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { searchPatients } from "../api/patients.js";
-import { dbVisits } from "../api/db.js";
+import { dbVisits, dbPatientLedger } from "../api/db.js";
 import { formatDate, getInitials } from "../utils/formatters.js";
 
 export default function PatientsList() {
@@ -124,8 +124,19 @@ export default function PatientsList() {
                   </div>
 
                   {/* Total Visits */}
-                  <div className="col-span-2 flex items-center justify-between md:justify-end">
-                    <span className="md:hidden font-label-md text-outline uppercase font-normal">Visits:</span>
+                  <div className="col-span-2 flex items-center justify-between md:justify-end gap-2">
+                    {(() => {
+                      const ledger = dbPatientLedger.getByPatient(patient.id);
+                      const due = ledger?.balance_due || 0;
+                      if (due > 0) {
+                        return (
+                          <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full border border-rose-200" title={`Khata Due: Rs. ${due}`}>
+                            Due: Rs. {due}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                     <span className="font-headline-md text-headline-md font-bold text-primary-container">
                       {totalVisits}
                     </span>

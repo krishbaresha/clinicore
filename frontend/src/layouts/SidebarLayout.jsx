@@ -3,43 +3,50 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getInitials } from "../utils/formatters.js";
 
-// Role-based navigation as defined in 04_Screens_and_Sitemap.md §1
+// Integrated Role Navigation — Single Desk Receptionist/Cashier/Staff unified portal vs Doctor Owner portal
+const UNIFIED_DESK_NAV = [
+  { label: "Dashboard",         icon: "dashboard",          path: "/dashboard" },
+  { label: "Register Patient",  icon: "how_to_reg",         path: "/reception/register" },
+  { label: "Today's Queue",     icon: "event_note",         path: "/reception/queue" },
+  { label: "POS / Pharmacy",    icon: "point_of_sale",      path: "/store/pos" },
+  { label: "Sales Audit & Returns", icon: "receipt_long",   path: "/store/sales" },
+  { label: "Company Purchases", icon: "local_shipping",     path: "/store/purchases" },
+  { label: "Central Warehouse", icon: "warehouse",          path: "/store/warehouse" },
+  { label: "Store Inventory",   icon: "inventory_2",        path: "/store" },
+  { label: "Pending Reports",   icon: "pending_actions",    path: "/reception/pending-reports" },
+  { label: "Patients",          icon: "group",              path: "/patients" },
+  { label: "Fees & Reports",    icon: "payments",           path: "/fees" },
+  { label: "Settings",          icon: "settings",           path: "/settings", spacer: true },
+];
+
 const NAV_BY_ROLE = {
-  receptionist: [
-    { label: "Dashboard",        icon: "dashboard",          path: "/dashboard" },
-    { label: "Register Patient", icon: "how_to_reg",         path: "/reception/register" },
-    { label: "Today's Queue",    icon: "event_note",         path: "/reception/queue" },
-    { label: "Pending Reports",  icon: "pending_actions",    path: "/reception/pending-reports" },
-    { label: "Patients",         icon: "group",              path: "/patients" },
-    { label: "Fees & Reports",   icon: "payments",           path: "/fees" },
-    { label: "Settings",         icon: "settings",           path: "/settings", spacer: true },
-  ],
+  receptionist: UNIFIED_DESK_NAV,
+  cashier: UNIFIED_DESK_NAV,
+  pharmacist: UNIFIED_DESK_NAV,
   doctor: [
-    { label: "Dashboard",        icon: "dashboard",          path: "/dashboard" },
-    { label: "My Queue",         icon: "queue",              path: "/doctor/queue" },
-    { label: "Patients",         icon: "group",              path: "/patients" },
-    { label: "Fees & Reports",   icon: "payments",           path: "/fees" },
-    { label: "Settings",         icon: "settings",           path: "/settings", spacer: true },
-  ],
-  pharmacist: [
-    { label: "POS / Checkout",   icon: "point_of_sale",      path: "/store/pos" },
-    { label: "Inventory",        icon: "inventory_2",        path: "/store" },
-    { label: "Settings",         icon: "settings",           path: "/settings", spacer: true },
+    { label: "Dashboard (Revenue)", icon: "dashboard",     path: "/dashboard" },
+    { label: "My OPD Queue",        icon: "queue",         path: "/doctor/queue" },
+    { label: "Patients & EMR",      icon: "group",         path: "/patients" },
+    { label: "Fees & Analytics",    icon: "payments",      path: "/fees" },
+    { label: "Settings",            icon: "settings",      path: "/settings", spacer: true },
   ],
 };
 
-// Fallback nav for unknown roles — show everything
+// Fallback nav for admin / unknown roles — show all unified modules
 const NAV_DEFAULT = [
-  { label: "Dashboard",        icon: "dashboard",          path: "/dashboard" },
-  { label: "Register Patient", icon: "how_to_reg",         path: "/reception/register" },
-  { label: "Today's Queue",    icon: "event_note",         path: "/reception/queue" },
-  { label: "Pending Reports",  icon: "pending_actions",    path: "/reception/pending-reports" },
-  { label: "My Queue",         icon: "queue",              path: "/doctor/queue" },
-  { label: "Patients",         icon: "group",              path: "/patients" },
-  { label: "POS / Checkout",   icon: "point_of_sale",      path: "/store/pos" },
-  { label: "Inventory",        icon: "inventory_2",        path: "/store" },
-  { label: "Fees & Reports",   icon: "payments",           path: "/fees" },
-  { label: "Settings",         icon: "settings",           path: "/settings", spacer: true },
+  { label: "Dashboard",         icon: "dashboard",          path: "/dashboard" },
+  { label: "Register Patient",  icon: "how_to_reg",         path: "/reception/register" },
+  { label: "Today's Queue",     icon: "event_note",         path: "/reception/queue" },
+  { label: "POS / Pharmacy",    icon: "point_of_sale",      path: "/store/pos" },
+  { label: "Sales Audit & Returns", icon: "receipt_long",   path: "/store/sales" },
+  { label: "Company Purchases", icon: "local_shipping",     path: "/store/purchases" },
+  { label: "Central Warehouse", icon: "warehouse",          path: "/store/warehouse" },
+  { label: "Store Inventory",   icon: "inventory_2",        path: "/store" },
+  { label: "Pending Reports",   icon: "pending_actions",    path: "/reception/pending-reports" },
+  { label: "My Queue",          icon: "queue",              path: "/doctor/queue" },
+  { label: "Patients",          icon: "group",              path: "/patients" },
+  { label: "Fees & Reports",    icon: "payments",           path: "/fees" },
+  { label: "Settings",          icon: "settings",           path: "/settings", spacer: true },
 ];
 
 // Mobile bottom nav — always shows most-used cross-role items
