@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { dbPatients, dbVisits, dbUsers, dbClinic } from "../api/db.js";
+import { dbPatients, dbVisits, dbUsers, dbClinic, dbClinicServices } from "../api/db.js";
 import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
 
 const RELATION_TYPES = ["father", "husband", "wife", "mother", "brother", "sister", "son", "daughter"];
@@ -14,9 +14,10 @@ export default function PatientRegistration() {
   const navigate = useNavigate();
   const searchRef = useRef(null);
 
-  // Clinic & doctors
+  // Clinic, doctors & services
   const [clinic, setClinic] = useState(null);
   const [doctors, setDoctors] = useState([]);
+  const [services, setServices] = useState([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
 
   // Search state
@@ -46,6 +47,7 @@ export default function PatientRegistration() {
     const docs = dbUsers.getAll().filter((u) => u.role === "doctor");
     setDoctors(docs);
     if (docs.length > 0) setSelectedDoctorId(docs[0].id);
+    setServices(dbClinicServices.getAll());
   }, []);
 
   function handleSearch(e) {
@@ -576,7 +578,7 @@ export default function PatientRegistration() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Fee (Rs.)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Consultation / Service Fee (Rs.)</label>
                 <input
                   type="number" min="0" value={feeAmount}
                   onChange={(e) => setFeeAmount(e.target.value)}
@@ -585,6 +587,32 @@ export default function PatientRegistration() {
                 />
               </div>
             </div>
+
+            {/* Quick Clinic Services & Procedures Catalog Pills */}
+            {services.length > 0 && (
+              <div className="bg-teal-50/70 p-3 rounded-2xl border border-teal-100 space-y-1.5">
+                <div className="text-xs font-bold text-teal-800 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">medical_services</span>
+                  Add Procedure / Clinic Service Charge to Token Fee:
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {services.map((srv) => (
+                    <button
+                      key={srv.id}
+                      type="button"
+                      onClick={() => {
+                        const currentFee = Number(feeAmount) || Number(feeDefault) || 0;
+                        setFeeAmount(String(currentFee + Number(srv.price)));
+                      }}
+                      className="text-xs bg-white text-teal-900 border border-teal-200 hover:bg-teal-100 px-2.5 py-1 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1"
+                    >
+                      <span>+ {srv.service_name}</span>
+                      <span className="text-teal-700 font-mono">(Rs. {srv.price})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"

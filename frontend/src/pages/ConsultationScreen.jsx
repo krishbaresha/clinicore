@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { dbVisits, dbPatients, dbUsers } from "../api/db.js";
+import { dbVisits, dbPatients, dbUsers, dbClinicServices } from "../api/db.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [] }) {
@@ -192,6 +192,8 @@ export default function ConsultationScreen() {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
+  const [services, setServices] = useState([]);
+
   useEffect(() => {
     const v = dbVisits.getById(visitId);
     if (!v) return;
@@ -205,6 +207,7 @@ export default function ConsultationScreen() {
     // Restore any existing photos
     if (v.prescription_image_url) setPrescriptionPhoto(v.prescription_image_url);
     if (v.report_image_urls?.length) setReportPhotos(v.report_image_urls);
+    setServices(dbClinicServices.getAll());
   }, [visitId]);
 
   function addReportPhoto(src) {
@@ -383,15 +386,41 @@ export default function ConsultationScreen() {
         />
       </div>
 
+      {/* Clinical Procedures & Services Quick Add */}
+      {services.length > 0 && (
+        <div className="bg-teal-50/70 rounded-2xl border border-teal-100 p-4 mb-4 space-y-2">
+          <div className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-base text-teal-700">medical_services</span>
+            Quick Attach Performed Procedures / Clinic Services:
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {services.map((srv) => (
+              <button
+                key={srv.id}
+                type="button"
+                onClick={() => {
+                  const entry = `• ${srv.service_name} (Rs. ${srv.price})`;
+                  setNotes((prev) => (prev ? `${prev}\n${entry}` : entry));
+                }}
+                className="text-xs bg-white text-teal-900 border border-teal-200 hover:bg-teal-100 px-3 py-1.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1"
+              >
+                <span>+ {srv.service_name}</span>
+                <span className="text-teal-700 font-mono">(Rs. {srv.price})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Optional Notes */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-        <label className="block text-sm font-bold text-gray-700 mb-2">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+        <label className="block text-sm font-bold text-gray-700 mb-2">Clinical Notes &amp; Observations <span className="text-gray-400 font-normal">(optional)</span></label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          placeholder="Any additional observations..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
+          placeholder="Any additional observations or procedure notes..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50 font-medium text-gray-800"
         />
       </div>
 
