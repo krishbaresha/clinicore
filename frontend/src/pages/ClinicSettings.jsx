@@ -647,16 +647,30 @@ export default function ClinicSettings() {
                 </div>
 
                 <div>
-                  <label htmlFor="backup_frequency" className="block text-xs font-bold text-gray-700 mb-1">Automatic Schedule</label>
+                  <label htmlFor="backup_frequency" className="block text-xs font-bold text-gray-700 mb-1">Automatic Schedule (Interval)</label>
                   <select
                     id="backup_frequency"
                     value={clinicForm.backup_frequency || "daily"}
-                    onChange={(e) => setClinicForm({ ...clinicForm, backup_frequency: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      let hrs = 24;
+                      if (val === "1h") hrs = 1;
+                      else if (val === "2h") hrs = 2;
+                      else if (val === "6h") hrs = 6;
+                      else if (val === "12h") hrs = 12;
+                      else if (val === "daily") hrs = 24;
+                      else if (val === "weekly") hrs = 168;
+                      else if (val === "monthly") hrs = 720;
+                      setClinicForm({ ...clinicForm, backup_frequency: val, backup_interval_hours: hrs });
+                    }}
                     className="input-field text-xs font-bold bg-white"
                   >
-                    <option value="daily">⏰ Every 24 Hours (Daily Night Backup)</option>
-                    <option value="weekly">📅 Every Week (Weekly Backup)</option>
-                    <option value="monthly">🗓️ Every Month (Monthly Backup)</option>
+                    <option value="1h">⚡ Every 1 Hour (Ultra-Fast Auto Backup)</option>
+                    <option value="2h">⏰ Every 2 Hours</option>
+                    <option value="6h">⏳ Every 6 Hours</option>
+                    <option value="12h">🌓 Every 12 Hours (Twice Daily)</option>
+                    <option value="daily">📅 Every 24 Hours (Daily Backup)</option>
+                    <option value="weekly">📆 Every Week (Weekly Backup)</option>
                     <option value="manual">🖐️ Manual Dispatch Only</option>
                   </select>
                 </div>

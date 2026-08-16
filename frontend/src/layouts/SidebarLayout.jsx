@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getInitials } from "../utils/formatters.js";
+import { dbClinic, exportFullDatabase } from "../api/db.js";
 
 // Integrated Role Navigation — Single Desk Receptionist/Cashier/Staff unified portal vs Doctor Owner portal
 const UNIFIED_DESK_NAV = [
@@ -85,6 +86,73 @@ export default function SidebarLayout({ children }) {
   const { user, clinic, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Background Automated Backup Timer — runs silently across Doctor/Cashier/Reception desks
+  useEffect(() => {
+    async function checkAndRunAutoBackup() {
+      const c = dbClinic.get();
+      if (!c || !c.backup_email || c.backup_frequency === "manual") return;
+
+      const intervalHours = Number(c.backup_interval_hours) || (c.backup_frequency === "daily" ? 24 : c.backup_frequency === "weekly" ? 168 : 720);
+      const intervalMs = intervalHours * 60 * 60 * 1000;
+      const lastBackupMs = c.last_email_backup ? new Date(c.last_email_backup).getTime() : 0;
+      const nowMs = Date.now();
+
+      if (nowMs - lastBackupMs >= intervalMs) {
+        try {
+          const backup = exportFullDatabase();
+          const backupStr = JSON.stringify(backup, null, 2);
+          const targetEmails = c.backup_email.split(",").map((e) => e.trim()).filter(Boolean);
+          const resendKey = c.resend_api_key || "re_6sDrhkHw_3f5RVMAkBJHDmnqiBza5SQ3z";
+
+          const base64Content = btoa(unescape(encodeURIComponent(backupStr)));
+          const resendPayload = {
+            from: "ClinicFlow Backup <onboarding@resend.dev>",
+            to: targetEmails,
+            subject: `🏥 ClinicFlow Auto Backup - ${c.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
+            html: `
+              <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #ccfbf1;">
+                <h2 style="color: #0f766e; margin-top: 0;">🏥 Automated Clinic Backup (Every ${intervalHours} Hours)</h2>
+                <p><strong>Clinic:</strong> ${c.name || "ClinicFlow Clinic"}</p>
+                <p><strong>Triggered At:</strong> ${new Date().toLocaleString("en-PK")}</p>
+                <p><strong>Summary:</strong> Patients: ${backup.data.patients?.length || 0} | Sales: ${backup.data.sales?.length || 0} | Purchases: ${backup.data.purchases?.length || 0}</p>
+                <p style="background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; font-weight: bold;">
+                  📎 Your automated clinic database backup is attached as a <code>.json</code> file!
+                </p>
+              </div>
+            `,
+            attachments: [{ filename: `ClinicFlow_AutoBackup_${new Date().toISOString().split("T")[0]}.json`, content: base64Content }]
+          };
+
+          let res;
+          try {
+            res = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify(resendPayload)
+            });
+          } catch {
+            res = await fetch("https://corsproxy.io/?" + encodeURIComponent("https://api.resend.com/emails"), {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify(resendPayload)
+            });
+          }
+
+          if (res.ok) {
+            dbClinic.update({ last_email_backup: new Date().toISOString() });
+          }
+        } catch (err) {
+          console.warn("Background auto-backup failed silently:", err);
+        }
+      }
+    }
+
+    // Check every 3 minutes
+    checkAndRunAutoBackup();
+    const timer = setInterval(checkAndRunAutoBackup, 3 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const navItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
 
