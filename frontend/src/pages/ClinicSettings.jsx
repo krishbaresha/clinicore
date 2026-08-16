@@ -601,8 +601,8 @@ export default function ClinicSettings() {
         </section>
       )}
 
-      {/* Database Backup, Disaster Recovery & Local Data Management (Owner Restricted) */}
-      {user?.is_owner && (
+      {/* Database Backup, Disaster Recovery & Local Data Management (Owner / Doctor Access) */}
+      {(user?.is_owner || user?.role === "doctor") && (
         <section className="bg-gradient-to-br from-slate-900 to-teal-950 text-white rounded-3xl p-6 shadow-xl border border-teal-800 space-y-4">
           <div className="flex items-center justify-between border-b border-teal-800/80 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
