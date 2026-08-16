@@ -601,8 +601,8 @@ export default function ClinicSettings() {
         </section>
       )}
 
-      {/* Database Backup, Disaster Recovery & Local Data Management (Teal Glassmorphism Theme) */}
-      {(user?.is_owner || user?.role === "doctor") && (
+      {/* Database Backup, Disaster Recovery & Local Data Management (Doctor & Cashier Access) */}
+      {(user?.is_owner || user?.role === "doctor" || user?.role === "cashier" || user?.role === "receptionist" || user?.role === "pharmacist") && (
         <section className="glass-card p-lg border-2 border-teal-500/20 shadow-xl rounded-3xl space-y-4">
           <div className="flex items-center justify-between border-b border-teal-100 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
