@@ -27,6 +27,7 @@ const SEED_DATA = {
     address: "Lajpat Road, Hyderabad",
     phone: "03001234567",
     default_consultation_fee: 800,
+    resend_api_key: "re_6sDrhkHw_3f5RVMAkBJHDmnqiBza5SQ3z",
     created_at: "2023-01-10T09:00:00Z",
   },
   clinic_services: [
