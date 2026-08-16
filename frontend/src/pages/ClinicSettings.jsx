@@ -601,60 +601,58 @@ export default function ClinicSettings() {
         </section>
       )}
 
-      {/* Database Backup, Disaster Recovery & Local Data Management (Owner / Doctor Access) */}
+      {/* Database Backup, Disaster Recovery & Local Data Management (Teal Glassmorphism Theme) */}
       {(user?.is_owner || user?.role === "doctor") && (
-        <section className="bg-gradient-to-br from-slate-900 to-teal-950 text-white rounded-3xl p-6 shadow-xl border border-teal-800 space-y-4">
-          <div className="flex items-center justify-between border-b border-teal-800/80 pb-3 flex-wrap gap-2">
+        <section className="glass-card p-lg border-2 border-teal-500/20 shadow-xl rounded-3xl space-y-4">
+          <div className="flex items-center justify-between border-b border-teal-100 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-teal-400 text-2xl">cloud_sync</span>
+              <span className="material-symbols-outlined text-teal-600 text-3xl bg-teal-50 p-2 rounded-2xl border border-teal-100">cloud_sync</span>
               <div>
-                <h3 className="font-bold text-lg leading-tight">Database Backup &amp; Disaster Recovery</h3>
-                <p className="text-xs text-teal-200/80">Protect your clinic against data loss, PC crash or browser cache clearing</p>
+                <h3 className="font-headline-md text-headline-md font-bold text-on-surface">Database Backup &amp; Disaster Recovery</h3>
+                <p className="text-xs text-gray-500">Protect your clinic against data loss, PC crash or browser cache clearing</p>
               </div>
             </div>
+            {clinic?.last_email_backup && (
+              <span className="text-[11px] bg-teal-50 text-teal-800 px-3 py-1 rounded-xl border border-teal-200 font-mono font-bold">
+                Last Backup Sent: {new Date(clinic.last_email_backup).toLocaleString("en-PK")}
+              </span>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
             {/* Automated Email Backup Configuration */}
-            <div className="bg-white/10 rounded-2xl p-4 border border-white/10 space-y-3 col-span-1 md:col-span-3">
-              <div className="flex justify-between items-center flex-wrap gap-2">
-                <div>
-                  <h4 className="font-bold text-sm text-teal-200 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-base">mark_email_unread</span>
-                    Automated Email Backup Dispatch Settings
-                  </h4>
-                  <p className="text-xs text-gray-300 mt-0.5">
-                    Configure your primary email address for automatic 24-Hour / Weekly / Monthly clinic database backups.
-                  </p>
-                </div>
-                {clinic?.last_email_backup && (
-                  <span className="text-[11px] bg-teal-500/20 text-teal-300 px-2.5 py-1 rounded-lg border border-teal-500/40 font-mono">
-                    Last Sent: {new Date(clinic.last_email_backup).toLocaleString("en-PK")}
-                  </span>
-                )}
+            <div className="bg-teal-50/60 rounded-2xl p-4 border border-teal-100 space-y-3 col-span-1 md:col-span-2">
+              <div>
+                <h4 className="font-bold text-sm text-teal-900 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-teal-700 text-base">mark_email_unread</span>
+                  Automated Email Backup Dispatch Settings
+                </h4>
+                <p className="text-xs text-teal-800/80 mt-0.5">
+                  Configure your primary email address for automatic 24-Hour / Weekly / Monthly clinic database backups.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div>
-                  <label htmlFor="backup_email" className="block text-xs font-bold text-teal-200 mb-1">Target Backup Email(s) *</label>
+                  <label htmlFor="backup_email" className="block text-xs font-bold text-gray-700 mb-1">Target Backup Email(s) *</label>
                   <input
                     id="backup_email"
                     type="text"
                     placeholder="dr.asif@gmail.com, partner@gmail.com"
                     value={clinicForm.backup_email || ""}
                     onChange={(e) => setClinicForm({ ...clinicForm, backup_email: e.target.value })}
-                    className="w-full border border-teal-700 bg-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold"
+                    className="input-field text-xs font-bold bg-white"
                   />
-                  <span className="text-[10px] text-teal-300/70">Single email or multiple comma-separated emails</span>
+                  <span className="text-[10px] text-gray-500">Single email or comma-separated emails</span>
                 </div>
 
                 <div>
-                  <label htmlFor="backup_frequency" className="block text-xs font-bold text-teal-200 mb-1">Automatic Schedule</label>
+                  <label htmlFor="backup_frequency" className="block text-xs font-bold text-gray-700 mb-1">Automatic Schedule</label>
                   <select
                     id="backup_frequency"
                     value={clinicForm.backup_frequency || "daily"}
                     onChange={(e) => setClinicForm({ ...clinicForm, backup_frequency: e.target.value })}
-                    className="w-full border border-teal-700 bg-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold"
+                    className="input-field text-xs font-bold bg-white"
                   >
                     <option value="daily">⏰ Every 24 Hours (Daily Night Backup)</option>
                     <option value="weekly">📅 Every Week (Weekly Backup)</option>
@@ -677,9 +675,6 @@ export default function ClinicSettings() {
                         backup_email: clinicForm.backup_email.trim(),
                         backup_frequency: clinicForm.backup_frequency || "daily",
                         resend_api_key: clinicForm.resend_api_key?.trim() || "",
-                        emailjs_service_id: clinicForm.emailjs_service_id?.trim() || "",
-                        emailjs_template_id: clinicForm.emailjs_template_id?.trim() || "",
-                        emailjs_public_key: clinicForm.emailjs_public_key?.trim() || "",
                         last_email_backup: new Date().toISOString()
                       });
 
@@ -706,8 +701,8 @@ export default function ClinicSettings() {
                             to: targetEmails,
                             subject: `🏥 ClinicFlow Full Database Backup - ${clinicForm.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
                             html: `
-                              <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px;">
-                                <h2 style="color: #0f766e;">🏥 ClinicFlow Full Database Backup</h2>
+                              <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #ccfbf1;">
+                                <h2 style="color: #0f766e; margin-top: 0;">🏥 ClinicFlow Full Database Backup</h2>
                                 <p><strong>Clinic:</strong> ${clinicForm.name || "ClinicFlow Clinic"}</p>
                                 <p><strong>Date & Time:</strong> ${new Date().toLocaleString("en-PK")}</p>
                                 <p><strong>Summary:</strong> Patients: ${backup.data.patients?.length || 0} | Sales: ${backup.data.sales?.length || 0} | Purchases: ${backup.data.purchases?.length || 0}</p>
@@ -724,17 +719,31 @@ export default function ClinicSettings() {
                             ]
                           };
 
-                          const res = await fetch("https://api.resend.com/emails", {
-                            method: "POST",
-                            headers: {
-                              "Authorization": `Bearer ${clinicForm.resend_api_key.trim()}`,
-                              "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify(resendPayload)
-                          });
+                          let res;
+                          try {
+                            // Direct call first
+                            res = await fetch("https://api.resend.com/emails", {
+                              method: "POST",
+                              headers: {
+                                "Authorization": `Bearer ${clinicForm.resend_api_key.trim()}`,
+                                "Content-Type": "application/json"
+                              },
+                              body: JSON.stringify(resendPayload)
+                            });
+                          } catch {
+                            // CORS Proxy fallback for browser environments
+                            res = await fetch("https://corsproxy.io/?" + encodeURIComponent("https://api.resend.com/emails"), {
+                              method: "POST",
+                              headers: {
+                                "Authorization": `Bearer ${clinicForm.resend_api_key.trim()}`,
+                                "Content-Type": "application/json"
+                              },
+                              body: JSON.stringify(resendPayload)
+                            });
+                          }
 
                           if (res.ok) {
-                            alert(`✅ Resend API Success! Full Database Backup .json attachment silently delivered to inbox (${targetEmails.join(", ")}).`);
+                            alert(`✅ Resend API Success! Full Database Backup .json attachment delivered to inbox (${targetEmails.join(", ")}).`);
                           } else {
                             const errTxt = await res.text();
                             alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local backup JSON was downloaded.`);
@@ -742,45 +751,13 @@ export default function ClinicSettings() {
                         } catch (err) {
                           alert(`⚠️ Resend Dispatch Error: ${err.message}. Local backup JSON was downloaded.`);
                         }
-                      } 
-                      // Option B: Fallback to EmailJS API if configured
-                      else if (clinicForm.emailjs_service_id && clinicForm.emailjs_template_id && clinicForm.emailjs_public_key) {
-                        try {
-                          const payload = {
-                            service_id: clinicForm.emailjs_service_id.trim(),
-                            template_id: clinicForm.emailjs_template_id.trim(),
-                            user_id: clinicForm.emailjs_public_key.trim(),
-                            template_params: {
-                              to_email: clinicForm.backup_email.trim(),
-                              clinic_name: clinicForm.name || "ClinicFlow Clinic",
-                              backup_date: new Date().toLocaleString("en-PK"),
-                              backup_summary: `Patients: ${backup.data.patients?.length || 0}, Sales: ${backup.data.sales?.length || 0}, Purchases: ${backup.data.purchases?.length || 0}`,
-                              backup_json: backupStr.slice(0, 30000)
-                            }
-                          };
-
-                          const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(payload)
-                          });
-
-                          if (res.ok) {
-                            alert(`✅ EmailJS Success! Database Backup summary delivered to inbox (${clinicForm.backup_email}).`);
-                          } else {
-                            const errTxt = await res.text();
-                            alert(`⚠️ EmailJS HTTP error (${res.status}): ${errTxt}. Local backup JSON was downloaded.`);
-                          }
-                        } catch (err) {
-                          alert(`⚠️ EmailJS Dispatch Error: ${err.message}. Local backup JSON was downloaded.`);
-                        }
                       } else {
                         alert(`📧 Backup generated & downloaded to PC! Add your free Resend API Key (re_...) below to enable 100% direct .json file attachment delivery to ${clinicForm.backup_email}.`);
                       }
 
                       if (refreshClinic) refreshClinic();
                     }}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
                   >
                     <span className="material-symbols-outlined text-base">send</span>
                     Send Instant Email Backup Now
@@ -788,39 +765,37 @@ export default function ClinicSettings() {
                 </div>
               </div>
 
-              {/* API Credentials for Direct Cloud Inbox File Attachment Delivery */}
-              <div className="pt-2 border-t border-teal-800/50 space-y-2">
-                <div className="text-xs font-bold text-teal-300 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">key</span>
-                  Recommended: Resend.com API Key (For Direct .json File Attachment Inbox Delivery)
+              {/* API Credentials Configuration */}
+              <div className="pt-2 border-t border-teal-200/60 space-y-2">
+                <div className="text-xs font-bold text-teal-900 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm text-teal-700">key</span>
+                  Resend.com API Key (For Direct .json File Attachment Inbox Delivery)
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                  <div className="sm:col-span-4 bg-teal-950/60 p-2.5 rounded-xl border border-teal-800/80">
-                    <label htmlFor="resend_api_key" className="block text-xs font-bold text-teal-200 mb-1 flex items-center justify-between">
-                      <span>Resend.com API Key (Free 3,000 Emails/Month with .json File Attachments)</span>
-                      <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-[10px] text-teal-400 hover:underline">Get Free Key at Resend.com ➔</a>
-                    </label>
-                    <input
-                      id="resend_api_key"
-                      type="password"
-                      placeholder="re_123456789_abcdef..."
-                      value={clinicForm.resend_api_key || ""}
-                      onChange={(e) => setClinicForm({ ...clinicForm, resend_api_key: e.target.value })}
-                      className="w-full border border-teal-700 bg-slate-900 text-teal-200 font-mono text-xs rounded-lg px-3 py-2"
-                    />
-                  </div>
+                <div className="bg-white p-3 rounded-xl border border-teal-200">
+                  <label htmlFor="resend_api_key" className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+                    <span>Resend.com API Key (Free 3,000 Emails/Month with .json File Attachments)</span>
+                    <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-[10px] text-teal-600 hover:underline font-bold">Get Free Key at Resend.com ➔</a>
+                  </label>
+                  <input
+                    id="resend_api_key"
+                    type="password"
+                    placeholder="re_123456789_abcdef..."
+                    value={clinicForm.resend_api_key || ""}
+                    onChange={(e) => setClinicForm({ ...clinicForm, resend_api_key: e.target.value })}
+                    className="input-field text-xs font-mono text-gray-800 bg-gray-50"
+                  />
                 </div>
               </div>
             </div>
 
             {/* Export Backup Card */}
-            <div className="bg-white/10 rounded-2xl p-4 border border-white/10 space-y-3">
+            <div className="bg-teal-50/60 rounded-2xl p-4 border border-teal-100 space-y-3 flex flex-col justify-between">
               <div>
-                <h4 className="font-bold text-sm text-teal-200 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base">download</span>
+                <h4 className="font-bold text-sm text-teal-900 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-teal-700 text-base">download</span>
                   1-Click Export Database Backup
                 </h4>
-                <p className="text-xs text-gray-300 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                   Download all Patients, Visits, Prescriptions, Pharmacy Sales, Stock &amp; Khata Ledgers into a timestamped JSON file.
                 </p>
               </div>
@@ -836,7 +811,7 @@ export default function ClinicSettings() {
                   URL.revokeObjectURL(url);
                   alert("✅ Database Backup downloaded successfully! Keep this file in a safe folder / USB.");
                 }}
-                className="w-full bg-teal-600 hover:bg-teal-500 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-md"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
               >
                 <span className="material-symbols-outlined text-base">download</span>
                 Download Backup (.json)
@@ -844,17 +819,17 @@ export default function ClinicSettings() {
             </div>
 
             {/* Restore Backup Card */}
-            <div className="bg-white/10 rounded-2xl p-4 border border-white/10 space-y-3">
+            <div className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200 space-y-3 flex flex-col justify-between">
               <div>
-                <h4 className="font-bold text-sm text-amber-300 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base">upload_file</span>
+                <h4 className="font-bold text-sm text-amber-900 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-amber-700 text-base">upload_file</span>
                   Restore / Import Backup File
                 </h4>
-                <p className="text-xs text-gray-300 mt-1">
+                <p className="text-xs text-amber-800/80 mt-1">
                   Restore all database records from a previously saved ClinicFlow backup file.
                 </p>
               </div>
-              <label className="w-full bg-amber-600 hover:bg-amber-500 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md text-center">
+              <label className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center">
                 <span className="material-symbols-outlined text-base">upload</span>
                 Select Backup File to Restore
                 <input
@@ -884,8 +859,8 @@ export default function ClinicSettings() {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-teal-800/60 flex justify-between items-center flex-wrap gap-2 text-xs">
-            <span className="text-gray-400">Want to reset test records back to default demo data?</span>
+          <div className="pt-2 border-t border-teal-100 flex justify-between items-center flex-wrap gap-2 text-xs">
+            <span className="text-gray-500">Want to reset test records back to default demo data?</span>
             <button
               onClick={() => {
                 if (confirm("⚠️ Are you sure you want to RESET all data back to clean factory demo state? All custom added patients and sales will be reset!")) {
@@ -894,7 +869,7 @@ export default function ClinicSettings() {
                   window.location.reload();
                 }
               }}
-              className="bg-rose-950/80 hover:bg-rose-900 border border-rose-700/60 text-rose-200 px-3 py-1.5 rounded-xl font-bold transition-colors"
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl font-bold transition-colors"
             >
               Reset to Factory Demo Data
             </button>
