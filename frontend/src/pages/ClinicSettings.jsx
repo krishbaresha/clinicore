@@ -601,6 +601,122 @@ export default function ClinicSettings() {
         </section>
       )}
 
+      {/* Services & Procedures Catalog Manager (Live CRUD) */}
+      <section className="glass-card p-lg border border-teal-100 shadow-sm rounded-3xl space-y-4">
+        <div className="flex items-center justify-between border-b border-teal-100 pb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-teal-600 text-2xl bg-teal-50 p-2 rounded-xl">medical_services</span>
+            <div>
+              <h3 className="font-headline-md text-headline-md font-bold text-on-surface">Clinic Services &amp; Procedures Catalog</h3>
+              <p className="text-xs text-gray-500">Configure clinic procedure charges (ECG, Dressing, Nebulization, Blood Tests, etc.) for token billing and EMR notes</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setShowServiceForm(!showServiceForm);
+              setServiceForm({ service_name: "", price: "" });
+              setServiceError("");
+            }}
+            className="btn-pill bg-teal-600 text-white font-bold text-xs flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-sm">add</span>
+            Add New Service
+          </button>
+        </div>
+
+        {/* Add Service Form */}
+        {showServiceForm && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!serviceForm.service_name.trim()) {
+                setServiceError("Service name is required");
+                return;
+              }
+              if (!serviceForm.price || Number(serviceForm.price) <= 0) {
+                setServiceError("Valid service price (Rs.) is required");
+                return;
+              }
+              dbClinicServices.add({
+                service_name: serviceForm.service_name.trim(),
+                price: Number(serviceForm.price)
+              });
+              setServices(dbClinicServices.getAll());
+              setShowServiceForm(false);
+              setServiceForm({ service_name: "", price: "" });
+              setServiceError("");
+            }}
+            className="bg-teal-50/70 p-4 rounded-2xl border border-teal-100 space-y-3"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Service / Procedure Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. ECG, Dressing, Blood Test, Ultrasound"
+                  value={serviceForm.service_name}
+                  onChange={(e) => setServiceForm({ ...serviceForm, service_name: e.target.value })}
+                  className="input-field text-xs bg-white font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Standard Charge / Price (Rs.) *</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 1500"
+                  value={serviceForm.price}
+                  onChange={(e) => setServiceForm({ ...serviceForm, price: e.target.value })}
+                  className="input-field text-xs bg-white font-bold"
+                />
+              </div>
+            </div>
+            {serviceError && <p className="text-xs text-rose-600 font-bold">{serviceError}</p>}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowServiceForm(false)}
+                className="btn-pill"
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn-pill bg-teal-600 text-white font-bold">
+                Save Service
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Services List */}
+        {services.length === 0 ? (
+          <p className="text-xs text-gray-500 italic">No custom services added yet. Default clinic services are active.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {services.map((srv) => (
+              <div key={srv.id} className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-bold text-gray-900">{srv.service_name}</div>
+                  <div className="text-xs font-mono font-bold text-teal-700">Rs. {srv.price}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`Delete service "${srv.service_name}"?`)) {
+                      dbClinicServices.delete(srv.id);
+                      setServices(dbClinicServices.getAll());
+                    }
+                  }}
+                  className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50"
+                  title="Delete Service"
+                >
+                  <span className="material-symbols-outlined text-lg">delete</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Database Backup, Disaster Recovery & Local Data Management (Doctor & Cashier Access) */}
       {(user?.is_owner || user?.role === "doctor" || user?.role === "cashier" || user?.role === "receptionist" || user?.role === "pharmacist") && (
         <section className="glass-card p-lg border-2 border-teal-500/20 shadow-xl rounded-3xl space-y-4">
