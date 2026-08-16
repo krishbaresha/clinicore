@@ -33,6 +33,12 @@ export default function ClinicSettings() {
         address: c.address || "",
         logo_url: c.logo_url || "",
         default_consultation_fee: c.default_consultation_fee?.toString() || "800",
+        backup_email: c.backup_email || "",
+        backup_frequency: c.backup_frequency || "daily",
+        resend_api_key: c.resend_api_key || "",
+        emailjs_service_id: c.emailjs_service_id || "",
+        emailjs_template_id: c.emailjs_template_id || "",
+        emailjs_public_key: c.emailjs_public_key || "",
       });
     }
     setStaff(dbUsers.getAll());
@@ -630,15 +636,16 @@ export default function ClinicSettings() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div>
-                  <label htmlFor="backup_email" className="block text-xs font-bold text-teal-200 mb-1">Target Backup Email *</label>
+                  <label htmlFor="backup_email" className="block text-xs font-bold text-teal-200 mb-1">Target Backup Email(s) *</label>
                   <input
                     id="backup_email"
-                    type="email"
-                    placeholder="e.g. dr.asif@gmail.com"
+                    type="text"
+                    placeholder="dr.asif@gmail.com, partner@gmail.com"
                     value={clinicForm.backup_email || ""}
                     onChange={(e) => setClinicForm({ ...clinicForm, backup_email: e.target.value })}
                     className="w-full border border-teal-700 bg-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold"
                   />
+                  <span className="text-[10px] text-teal-300/70">Single email or multiple comma-separated emails</span>
                 </div>
 
                 <div>
@@ -659,18 +666,28 @@ export default function ClinicSettings() {
                 <div className="flex items-end">
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!clinicForm.backup_email?.trim()) {
                         alert("Please enter a valid backup email address first.");
                         return;
                       }
+                      
+                      // Save settings first
                       dbClinic.update({
                         backup_email: clinicForm.backup_email.trim(),
                         backup_frequency: clinicForm.backup_frequency || "daily",
+                        resend_api_key: clinicForm.resend_api_key?.trim() || "",
+                        emailjs_service_id: clinicForm.emailjs_service_id?.trim() || "",
+                        emailjs_template_id: clinicForm.emailjs_template_id?.trim() || "",
+                        emailjs_public_key: clinicForm.emailjs_public_key?.trim() || "",
                         last_email_backup: new Date().toISOString()
                       });
+
                       const backup = exportFullDatabase();
-                      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+                      const backupStr = JSON.stringify(backup, null, 2);
+
+                      // Always trigger local JSON file download safeguard
+                      const blob = new Blob([backupStr], { type: "application/json" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
@@ -678,7 +695,89 @@ export default function ClinicSettings() {
                       a.click();
                       URL.revokeObjectURL(url);
 
-                      alert(`📧 Backup generated & dispatched to ${clinicForm.backup_email}! Backup file downloaded to local storage.`);
+                      const targetEmails = clinicForm.backup_email.split(",").map((e) => e.trim()).filter(Boolean);
+
+                      // Option A: If Resend API Key is provided, send real .json attachment via Resend API!
+                      if (clinicForm.resend_api_key?.trim()) {
+                        try {
+                          const base64Content = btoa(unescape(encodeURIComponent(backupStr)));
+                          const resendPayload = {
+                            from: "ClinicFlow Backup <onboarding@resend.dev>",
+                            to: targetEmails,
+                            subject: `🏥 ClinicFlow Full Database Backup - ${clinicForm.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
+                            html: `
+                              <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px;">
+                                <h2 style="color: #0f766e;">🏥 ClinicFlow Full Database Backup</h2>
+                                <p><strong>Clinic:</strong> ${clinicForm.name || "ClinicFlow Clinic"}</p>
+                                <p><strong>Date & Time:</strong> ${new Date().toLocaleString("en-PK")}</p>
+                                <p><strong>Summary:</strong> Patients: ${backup.data.patients?.length || 0} | Sales: ${backup.data.sales?.length || 0} | Purchases: ${backup.data.purchases?.length || 0}</p>
+                                <p style="background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; font-weight: bold;">
+                                  📎 Your full un-truncated database backup is attached to this email as a <code>.json</code> file!
+                                </p>
+                              </div>
+                            `,
+                            attachments: [
+                              {
+                                filename: `ClinicFlow_Backup_${new Date().toISOString().split("T")[0]}.json`,
+                                content: base64Content
+                              }
+                            ]
+                          };
+
+                          const res = await fetch("https://api.resend.com/emails", {
+                            method: "POST",
+                            headers: {
+                              "Authorization": `Bearer ${clinicForm.resend_api_key.trim()}`,
+                              "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify(resendPayload)
+                          });
+
+                          if (res.ok) {
+                            alert(`✅ Resend API Success! Full Database Backup .json attachment silently delivered to inbox (${targetEmails.join(", ")}).`);
+                          } else {
+                            const errTxt = await res.text();
+                            alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local backup JSON was downloaded.`);
+                          }
+                        } catch (err) {
+                          alert(`⚠️ Resend Dispatch Error: ${err.message}. Local backup JSON was downloaded.`);
+                        }
+                      } 
+                      // Option B: Fallback to EmailJS API if configured
+                      else if (clinicForm.emailjs_service_id && clinicForm.emailjs_template_id && clinicForm.emailjs_public_key) {
+                        try {
+                          const payload = {
+                            service_id: clinicForm.emailjs_service_id.trim(),
+                            template_id: clinicForm.emailjs_template_id.trim(),
+                            user_id: clinicForm.emailjs_public_key.trim(),
+                            template_params: {
+                              to_email: clinicForm.backup_email.trim(),
+                              clinic_name: clinicForm.name || "ClinicFlow Clinic",
+                              backup_date: new Date().toLocaleString("en-PK"),
+                              backup_summary: `Patients: ${backup.data.patients?.length || 0}, Sales: ${backup.data.sales?.length || 0}, Purchases: ${backup.data.purchases?.length || 0}`,
+                              backup_json: backupStr.slice(0, 30000)
+                            }
+                          };
+
+                          const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload)
+                          });
+
+                          if (res.ok) {
+                            alert(`✅ EmailJS Success! Database Backup summary delivered to inbox (${clinicForm.backup_email}).`);
+                          } else {
+                            const errTxt = await res.text();
+                            alert(`⚠️ EmailJS HTTP error (${res.status}): ${errTxt}. Local backup JSON was downloaded.`);
+                          }
+                        } catch (err) {
+                          alert(`⚠️ EmailJS Dispatch Error: ${err.message}. Local backup JSON was downloaded.`);
+                        }
+                      } else {
+                        alert(`📧 Backup generated & downloaded to PC! Add your free Resend API Key (re_...) below to enable 100% direct .json file attachment delivery to ${clinicForm.backup_email}.`);
+                      }
+
                       if (refreshClinic) refreshClinic();
                     }}
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
@@ -686,6 +785,30 @@ export default function ClinicSettings() {
                     <span className="material-symbols-outlined text-base">send</span>
                     Send Instant Email Backup Now
                   </button>
+                </div>
+              </div>
+
+              {/* API Credentials for Direct Cloud Inbox File Attachment Delivery */}
+              <div className="pt-2 border-t border-teal-800/50 space-y-2">
+                <div className="text-xs font-bold text-teal-300 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">key</span>
+                  Recommended: Resend.com API Key (For Direct .json File Attachment Inbox Delivery)
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <div className="sm:col-span-4 bg-teal-950/60 p-2.5 rounded-xl border border-teal-800/80">
+                    <label htmlFor="resend_api_key" className="block text-xs font-bold text-teal-200 mb-1 flex items-center justify-between">
+                      <span>Resend.com API Key (Free 3,000 Emails/Month with .json File Attachments)</span>
+                      <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-[10px] text-teal-400 hover:underline">Get Free Key at Resend.com ➔</a>
+                    </label>
+                    <input
+                      id="resend_api_key"
+                      type="password"
+                      placeholder="re_123456789_abcdef..."
+                      value={clinicForm.resend_api_key || ""}
+                      onChange={(e) => setClinicForm({ ...clinicForm, resend_api_key: e.target.value })}
+                      className="w-full border border-teal-700 bg-slate-900 text-teal-200 font-mono text-xs rounded-lg px-3 py-2"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

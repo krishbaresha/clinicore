@@ -1423,14 +1423,30 @@ export const dbB2BSales = {
   },
 };
 
-/** Export entire clinic database to a standalone JSON object for backup */
+/** Export entire clinic database to a standalone JSON object for backup (Includes 100% Data, Photos & Sequences) */
 export function exportFullDatabase() {
   const backup = {
-    version: "3.2.0",
+    version: "3.6.0",
     export_date: new Date().toISOString(),
     clinic_name: dbClinic.get()?.name || "ClinicFlow",
-    data: {}
+    data: {},
+    all_cf_keys: {}
   };
+
+  // Export ALL localStorage keys starting with "cf_" (includes all collections, photos, sequence counters & settings)
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("cf_")) {
+      try {
+        const raw = localStorage.getItem(key);
+        backup.all_cf_keys[key] = raw ? JSON.parse(raw) : null;
+      } catch {
+        backup.all_cf_keys[key] = localStorage.getItem(key);
+      }
+    }
+  }
+
+  // Populate explicit data object for backward compatibility
   Object.entries(KEYS).forEach(([_, storageKey]) => {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -1439,19 +1455,34 @@ export function exportFullDatabase() {
       backup.data[storageKey] = null;
     }
   });
+
   return backup;
 }
 
-/** Restore/Import clinic database from a JSON backup file */
+/** Restore/Import clinic database from a JSON backup file without data loss or corruption */
 export function importFullDatabase(backupObj) {
-  if (!backupObj || typeof backupObj !== "object" || !backupObj.data) {
+  if (!backupObj || typeof backupObj !== "object" || (!backupObj.data && !backupObj.all_cf_keys)) {
     throw new Error("Invalid backup file format. Must contain valid data object.");
   }
-  Object.entries(backupObj.data).forEach(([storageKey, value]) => {
-    if (value !== null && value !== undefined) {
-      localStorage.setItem(storageKey, JSON.stringify(value));
-    }
-  });
+
+  // Restore all "cf_" prefixed keys (collections, images, sequence counters, settings)
+  if (backupObj.all_cf_keys) {
+    Object.entries(backupObj.all_cf_keys).forEach(([storageKey, value]) => {
+      if (value !== null && value !== undefined) {
+        localStorage.setItem(storageKey, typeof value === "object" ? JSON.stringify(value) : value);
+      }
+    });
+  }
+
+  // Fallback for older legacy backups
+  if (backupObj.data) {
+    Object.entries(backupObj.data).forEach(([storageKey, value]) => {
+      if (value !== null && value !== undefined) {
+        localStorage.setItem(storageKey, typeof value === "object" ? JSON.stringify(value) : value);
+      }
+    });
+  }
+
   localStorage.setItem(KEYS.SEEDED, "1");
   return true;
 }
