@@ -53,14 +53,37 @@ const NAV_DEFAULT = [
   { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
 
-// Mobile bottom nav — always shows most-used cross-role items
-const MOBILE_NAV = [
-  { label: "Home", icon: "home", path: "/dashboard" },
-  { label: "Queue", icon: "queue", path: "/doctor/queue" },
-  { label: "Register", icon: "how_to_reg", path: "/reception/register" },
-  { label: "Store", icon: "point_of_sale", path: "/store/pos" },
-  { label: "Patients", icon: "group", path: "/patients" },
-];
+// Mobile bottom nav — filtered cleanly per role so doctors don't see cashier POS/register
+const MOBILE_NAV_BY_ROLE = {
+  doctor: [
+    { label: "Home", icon: "dashboard", path: "/dashboard" },
+    { label: "My Queue", icon: "queue", path: "/doctor/queue" },
+    { label: "Patients", icon: "group", path: "/patients" },
+    { label: "Fees", icon: "payments", path: "/fees" },
+    { label: "Settings", icon: "settings", path: "/settings" },
+  ],
+  receptionist: [
+    { label: "Home", icon: "dashboard", path: "/dashboard" },
+    { label: "Register", icon: "how_to_reg", path: "/reception/register" },
+    { label: "Queue", icon: "event_note", path: "/reception/queue" },
+    { label: "POS Store", icon: "point_of_sale", path: "/store/pos" },
+    { label: "Reports", icon: "pending_actions", path: "/reception/pending-reports" },
+  ],
+  cashier: [
+    { label: "POS", icon: "point_of_sale", path: "/store/pos" },
+    { label: "Sales Log", icon: "receipt_long", path: "/store/sales" },
+    { label: "Inventory", icon: "inventory_2", path: "/store" },
+    { label: "Purchases", icon: "local_shipping", path: "/store/purchases" },
+    { label: "Warehouse", icon: "warehouse", path: "/store/warehouse" },
+  ],
+  pharmacist: [
+    { label: "POS", icon: "point_of_sale", path: "/store/pos" },
+    { label: "Sales Log", icon: "receipt_long", path: "/store/sales" },
+    { label: "Inventory", icon: "inventory_2", path: "/store" },
+    { label: "Purchases", icon: "local_shipping", path: "/store/purchases" },
+    { label: "Warehouse", icon: "warehouse", path: "/store/warehouse" },
+  ],
+};
 
 function NavItems({ items, onItemClick }) {
   return (
@@ -299,22 +322,23 @@ export default function SidebarLayout({ children }) {
         {children}
       </main>
 
-      {/* ── Mobile Bottom Navigation ─────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-45 bg-surface/90 backdrop-blur-lg rounded-t-xl border-t border-white/20 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
-        <ul className="flex justify-around items-center h-16 px-2">
-          {MOBILE_NAV.map((item) => (
-            <li key={item.path}>
+      {/* ── Mobile Bottom Navigation (Role-Tailored) ─────── */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-45 bg-white/95 backdrop-blur-lg border-t border-teal-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <ul className="flex justify-around items-center h-16 px-1">
+          {(MOBILE_NAV_BY_ROLE[user?.role] || MOBILE_NAV_BY_ROLE.doctor).map((item) => (
+            <li key={item.path} className="flex-1 text-center">
               <NavLink
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center px-3 py-1 rounded-xl touch-manipulation transition-colors ${isActive
-                    ? "bg-primary-container text-on-primary-container"
-                    : "text-on-surface-variant"
+                  `flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all ${
+                    isActive
+                      ? "text-teal-800 font-extrabold bg-teal-50"
+                      : "text-gray-500 font-medium hover:text-teal-700"
                   }`
                 }
               >
                 <span className="material-symbols-outlined text-2xl">{item.icon}</span>
-                <span className="text-xs mt-0.5 font-medium">{item.label}</span>
+                <span className="text-[11px] mt-0.5 tracking-tight truncate max-w-full">{item.label}</span>
               </NavLink>
             </li>
           ))}

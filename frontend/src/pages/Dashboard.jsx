@@ -77,28 +77,52 @@ export default function Dashboard() {
     : 0;
   const newRatio = 100 - repeatRatio;
 
+  const myWaitingVisits = myTodayVisits.filter((v) => v.status === "waiting");
+  const myInRoomVisit = myTodayVisits.find((v) => v.status === "in_consultation");
+
   return (
-    <div className="p-md md:p-lg flex flex-col gap-lg max-w-[calc(1440px-260px)]">
+    <div className="p-4 sm:p-6 md:p-8 flex flex-col gap-6 w-full max-w-full overflow-x-hidden">
       {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-4 md:mt-0">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-on-surface">
             {getGreeting()}, {user?.name || "Doctor"}
           </h2>
-          <p className="font-body-lg text-body-lg text-outline">{formatTodayLong()}</p>
+          <p className="text-xs sm:text-sm text-outline mt-0.5">{formatTodayLong()}</p>
         </div>
-        <button
-          id="dashboard-add-patient-btn"
-          onClick={() => navigate("/patients/new")}
-          className="btn-pill"
-        >
-          <span className="material-symbols-outlined text-sm">person_add</span>
-          Add New Patient
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {user?.role === "doctor" ? (
+            <>
+              <button
+                onClick={() => navigate("/doctor/queue")}
+                className="btn-primary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/20"
+              >
+                <span className="material-symbols-outlined text-base">queue</span>
+                Open My OPD Queue
+              </button>
+              <button
+                onClick={() => navigate("/patients/new")}
+                className="btn-secondary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">person_add</span>
+                Add Patient
+              </button>
+            </>
+          ) : (
+            <button
+              id="dashboard-add-patient-btn"
+              onClick={() => navigate("/reception/register")}
+              className="btn-primary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/20"
+            >
+              <span className="material-symbols-outlined text-base">how_to_reg</span>
+              Register Patient Token
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Stats Bento Grid */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6" aria-label="Key metrics">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-label="Key metrics">
         {/* Patients Today */}
         <StatCard
           label={canViewFinancials ? "Clinic Patients Today" : "My Patients Today"}
@@ -123,48 +147,102 @@ export default function Dashboard() {
           iconBg="bg-primary-container/10"
         />
 
-        {/* New vs Repeat */}
-        <div className="glass-card p-md flex flex-col justify-between gap-4 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
-          <p className="font-label-md text-label-md text-outline mb-2 uppercase tracking-wider">New vs Repeat</p>
-          <div>
-            <div className="flex items-end gap-2 mb-1">
-              <span className="font-headline-lg text-headline-lg font-bold text-primary">{newRatio}%</span>
-              <span className="font-body-sm text-body-sm text-outline pb-1">New</span>
-            </div>
-            <div className="flex items-end gap-2">
-              <span className="font-headline-md text-headline-md font-semibold text-tertiary">{repeatRatio}%</span>
-              <span className="font-body-sm text-body-sm text-outline pb-1">Repeat</span>
-            </div>
-          </div>
-          <div className="flex w-full h-3 rounded-full overflow-hidden">
-            <div className="bg-primary" style={{ width: `${newRatio}%` }} />
-            <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
-          </div>
-        </div>
-
-        {/* Low Stock Alerts */}
-        <div className="glass-card p-md flex flex-col gap-4 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-error-container/50 bg-error-container/10">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">Low Stock Alerts</p>
-              <h3 className="font-display-lg text-display-lg font-bold text-error">{lowStockItems.length}</h3>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-error-container flex items-center justify-center text-error">
-              <span className="material-symbols-outlined text-2xl">warning</span>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            {lowStockItems.slice(0, 2).map((item) => (
-              <div key={item.id} className="flex items-center justify-between font-body-sm text-body-sm">
-                <span className="text-on-surface">{item.medicine_name}</span>
-                <span className="text-error font-semibold">{item.stock_qty} left</span>
+        {/* Doctor-tailored 3rd Card: Waiting Queue or New vs Repeat */}
+        {user?.role === "doctor" ? (
+          <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-teal-200/60 bg-teal-50/40">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-label-md text-label-md text-teal-800 mb-1 uppercase tracking-wider font-bold">
+                  Waiting In Chamber Queue
+                </p>
+                <h3 className="text-3xl sm:text-4xl font-black text-teal-950">
+                  {myWaitingVisits.length} <span className="text-sm font-semibold text-gray-500">Patients</span>
+                </h3>
               </div>
-            ))}
-            {lowStockItems.length === 0 && (
-              <p className="font-body-sm text-body-sm text-outline">All stock levels OK</p>
-            )}
+              <div className="w-11 h-11 rounded-2xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
+                <span className="material-symbols-outlined text-2xl">hourglass_top</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-teal-100 flex items-center justify-between">
+              <span className="text-xs font-semibold text-teal-800">
+                {myInRoomVisit
+                  ? `In Room: #${myInRoomVisit.token_number} (${myInRoomVisit.patient_name})`
+                  : myWaitingVisits.length > 0
+                  ? `Next: Token #${myWaitingVisits[0].token_number}`
+                  : "Queue is Clear"}
+              </span>
+              <button
+                onClick={() => navigate("/doctor/queue")}
+                className="text-xs font-extrabold text-teal-700 hover:text-teal-900 underline flex items-center gap-0.5"
+              >
+                Call Next →
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+            <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">New vs Repeat</p>
+            <div>
+              <div className="flex items-end gap-2 mb-1">
+                <span className="text-2xl font-black text-primary">{newRatio}%</span>
+                <span className="text-xs text-outline pb-0.5">New</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
+                <span className="text-xs text-outline pb-0.5">Repeat</span>
+              </div>
+            </div>
+            <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
+              <div className="bg-primary" style={{ width: `${newRatio}%` }} />
+              <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
+            </div>
+          </div>
+        )}
+
+        {/* 4th Card: New vs Repeat (for Doctor) OR Low Stock (for Staff) */}
+        {user?.role === "doctor" ? (
+          <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+            <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">New vs Repeat</p>
+            <div>
+              <div className="flex items-end gap-2 mb-1">
+                <span className="text-2xl font-black text-primary">{newRatio}%</span>
+                <span className="text-xs text-outline pb-0.5">New Patients</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
+                <span className="text-xs text-outline pb-0.5">Repeat</span>
+              </div>
+            </div>
+            <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
+              <div className="bg-primary" style={{ width: `${newRatio}%` }} />
+              <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-error-container/50 bg-error-container/10">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">Low Stock Alerts</p>
+                <h3 className="text-3xl font-black text-error">{lowStockItems.length}</h3>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-error-container flex items-center justify-center text-error">
+                <span className="material-symbols-outlined text-2xl">warning</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {lowStockItems.slice(0, 2).map((item) => (
+                <div key={item.id} className="flex items-center justify-between text-xs">
+                  <span className="text-on-surface truncate max-w-[120px]">{item.medicine_name}</span>
+                  <span className="text-error font-semibold">{item.stock_qty} left</span>
+                </div>
+              ))}
+              {lowStockItems.length === 0 && (
+                <p className="text-xs text-outline">All stock levels OK</p>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Executive Financial Revenue Breakdown — Available for Staff and Owner */}
