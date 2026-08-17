@@ -379,10 +379,10 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
             </thead>
             <tbody>
               ${[5000, 1000, 500, 100, 50, 20, 10].map(n => {
-                const qty = den[`note${n}`] || 0;
-                if (qty === 0) return '';
-                return `<tr><td>Rs. ${n}</td><td>${qty}</td><td>Rs. ${(n * qty).toLocaleString()}</td></tr>`;
-              }).join('')}
+    const qty = den[`note${n}`] || 0;
+    if (qty === 0) return '';
+    return `<tr><td>Rs. ${n}</td><td>${qty}</td><td>Rs. ${(n * qty).toLocaleString()}</td></tr>`;
+  }).join('')}
             </tbody>
           </table>
         ` : ''}

@@ -106,14 +106,15 @@ export default function LandingPage() {
 
           {/* Action CTAs */}
           <div className="flex items-center gap-3">
-            {/* Live TV Screen Button */}
-            <Link
-              to="/live"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-all shadow-xs"
+            <a
+              href="https://wa.me/923142291356?text=Hi%20Krish,%20I%20am%20interested%20in%20deploying%20ClinicFlow."
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-xs"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Live TV Screen (/live)
-            </Link>
+              <span className="material-symbols-outlined text-base">chat</span>
+              WhatsApp Inquiry
+            </a>
 
             <a
               href="https://krishbaresha.tech"
@@ -155,32 +156,32 @@ export default function LandingPage() {
 
           {/* Hero Action Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/live"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-base font-extrabold bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-xl shadow-teal-700/25 hover:shadow-2xl hover:shadow-teal-700/35 hover:-translate-y-0.5 transition-all"
-            >
-              <span className="material-symbols-outlined text-2xl">tv</span>
-              Open Waiting Lounge Screen (/live)
-            </Link>
-
             <a
               href="https://wa.me/923142291356?text=Hi%20Krish,%20I%20am%20interested%20in%20deploying%20ClinicFlow%20System."
               target="_blank"
               rel="noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl text-base font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-all shadow-xs"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-base font-extrabold bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-xl shadow-teal-700/25 hover:shadow-2xl hover:shadow-teal-700/35 hover:-translate-y-0.5 transition-all"
             >
-              <span className="material-symbols-outlined text-2xl text-emerald-600">chat</span>
-              WhatsApp Inquiry
+              <span className="material-symbols-outlined text-2xl">chat</span>
+              WhatsApp Inquiry (03142291356)
+            </a>
+
+            <a
+              href="#modules"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl text-base font-bold bg-white text-teal-900 border border-teal-200 hover:bg-teal-50 shadow-xs hover:shadow-sm transition-all"
+            >
+              <span className="material-symbols-outlined text-2xl text-teal-600">view_quilt</span>
+              Explore Clinical Modules
             </a>
 
             <a
               href="https://krishbaresha.tech"
               target="_blank"
               rel="noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl text-base font-bold bg-white text-teal-900 border border-teal-200 hover:bg-teal-50 shadow-xs hover:shadow-sm transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl text-base font-bold bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100 shadow-xs hover:shadow-sm transition-all"
             >
-              <span className="material-symbols-outlined text-2xl text-teal-600">language</span>
-              Visit Portfolio
+              <span className="material-symbols-outlined text-2xl text-teal-700">language</span>
+              krishbaresha.tech
             </a>
           </div>
 
@@ -336,21 +337,21 @@ export default function LandingPage() {
               </ul>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  to="/live"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-teal-700 text-white hover:bg-teal-800 shadow-md shadow-teal-700/20 transition-all"
-                >
-                  <span className="material-symbols-outlined text-lg">tv</span>
-                  Open Live TV Screen (/live)
-                </Link>
                 <a
-                  href="https://wa.me/923142291356?text=Hi%20Krish,%20I%20want%20to%20know%20more%20about%20ClinicFlow%20System."
+                  href={`https://wa.me/923142291356?text=Hi%20Krish,%20I%20am%20interested%20in%20the%20${encodeURIComponent(currentModule.title)}%20module%20of%20ClinicFlow.`}
                   target="_blank"
                   rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-teal-700 text-white hover:bg-teal-800 shadow-md shadow-teal-700/20 transition-all"
+                >
+                  <span className="material-symbols-outlined text-lg">chat</span>
+                  Inquire About This Module
+                </a>
+                <a
+                  href="#contact"
                   className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold bg-white text-teal-900 border border-teal-300 hover:bg-teal-50 transition-all"
                 >
-                  <span className="material-symbols-outlined text-lg text-emerald-600">chat</span>
-                  Inquire on WhatsApp
+                  <span className="material-symbols-outlined text-lg text-teal-600">contact_support</span>
+                  Developer Contact
                 </a>
               </div>
             </div>
@@ -520,7 +521,9 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-6">
-            <Link to="/live" className="hover:text-teal-400 transition-colors">Waiting Lounge (/live)</Link>
+            <a href="#features" className="hover:text-teal-400 transition-colors">Features</a>
+            <a href="#modules" className="hover:text-teal-400 transition-colors">Clinical Modules</a>
+            <a href="#contact" className="hover:text-teal-400 transition-colors">Contact</a>
             <a href="https://krishbaresha.tech" target="_blank" rel="noreferrer" className="hover:text-teal-400 transition-colors">Developer Portfolio</a>
             <span className="text-slate-600">|</span>
             <span className="text-emerald-400 font-medium flex items-center gap-1.5">

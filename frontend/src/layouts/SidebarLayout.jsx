@@ -6,19 +6,19 @@ import { dbClinic, exportFullDatabase } from "../api/db.js";
 
 // Integrated Role Navigation — Single Desk Receptionist/Cashier/Staff unified portal vs Doctor Owner portal
 const UNIFIED_DESK_NAV = [
-  { label: "Dashboard",         icon: "dashboard",          path: "/dashboard" },
-  { label: "Register Patient",  icon: "how_to_reg",         path: "/reception/register" },
-  { label: "Today's Queue",     icon: "event_note",         path: "/reception/queue" },
-  { label: "Live TV Screen",    icon: "tv",                 path: "/live", target: "_blank" },
-  { label: "POS / Pharmacy",    icon: "point_of_sale",      path: "/store/pos" },
-  { label: "Sales Audit & Returns", icon: "receipt_long",   path: "/store/sales" },
-  { label: "Company Purchases", icon: "local_shipping",     path: "/store/purchases" },
-  { label: "Central Warehouse", icon: "warehouse",          path: "/store/warehouse" },
-  { label: "Store Inventory",   icon: "inventory_2",        path: "/store" },
-  { label: "Pending Reports",   icon: "pending_actions",    path: "/reception/pending-reports" },
-  { label: "Patients",          icon: "group",              path: "/patients" },
-  { label: "Fees & Reports",    icon: "payments",           path: "/fees" },
-  { label: "Settings",          icon: "settings",           path: "/settings", spacer: true },
+  { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
+  { label: "Register Patient", icon: "how_to_reg", path: "/reception/register" },
+  { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
+  { label: "Live TV Screen", icon: "tv", path: "/live", target: "_blank" },
+  { label: "POS / Pharmacy", icon: "point_of_sale", path: "/store/pos" },
+  { label: "Sales Audit & Returns", icon: "receipt_long", path: "/store/sales" },
+  { label: "Company Purchases", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Central Warehouse", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Store Inventory", icon: "inventory_2", path: "/store" },
+  { label: "Pending Reports", icon: "pending_actions", path: "/reception/pending-reports" },
+  { label: "Patients", icon: "group", path: "/patients" },
+  { label: "Fees & Reports", icon: "payments", path: "/fees" },
+  { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
 
 const NAV_BY_ROLE = {
@@ -26,40 +26,40 @@ const NAV_BY_ROLE = {
   cashier: UNIFIED_DESK_NAV,
   pharmacist: UNIFIED_DESK_NAV,
   doctor: [
-    { label: "Dashboard (Revenue)", icon: "dashboard",     path: "/dashboard" },
-    { label: "My OPD Queue",        icon: "queue",         path: "/doctor/queue" },
-    { label: "Live TV Screen",       icon: "tv",            path: "/live", target: "_blank" },
-    { label: "Patients & EMR",      icon: "group",         path: "/patients" },
-    { label: "Fees & Analytics",    icon: "payments",      path: "/fees" },
-    { label: "Settings",            icon: "settings",      path: "/settings", spacer: true },
+    { label: "Dashboard (Revenue)", icon: "dashboard", path: "/dashboard" },
+    { label: "My OPD Queue", icon: "queue", path: "/doctor/queue" },
+    { label: "Live TV Screen", icon: "tv", path: "/live", target: "_blank" },
+    { label: "Patients & EMR", icon: "group", path: "/patients" },
+    { label: "Fees & Analytics", icon: "payments", path: "/fees" },
+    { label: "Settings", icon: "settings", path: "/settings", spacer: true },
   ],
 };
 
 // Fallback nav for admin / unknown roles — show all unified modules
 const NAV_DEFAULT = [
-  { label: "Dashboard",         icon: "dashboard",          path: "/dashboard" },
-  { label: "Register Patient",  icon: "how_to_reg",         path: "/reception/register" },
-  { label: "Today's Queue",     icon: "event_note",         path: "/reception/queue" },
-  { label: "Live TV Screen",    icon: "tv",                 path: "/live", target: "_blank" },
-  { label: "POS / Pharmacy",    icon: "point_of_sale",      path: "/store/pos" },
-  { label: "Sales Audit & Returns", icon: "receipt_long",   path: "/store/sales" },
-  { label: "Company Purchases", icon: "local_shipping",     path: "/store/purchases" },
-  { label: "Central Warehouse", icon: "warehouse",          path: "/store/warehouse" },
-  { label: "Store Inventory",   icon: "inventory_2",        path: "/store" },
-  { label: "Pending Reports",   icon: "pending_actions",    path: "/reception/pending-reports" },
-  { label: "My Queue",          icon: "queue",              path: "/doctor/queue" },
-  { label: "Patients",          icon: "group",              path: "/patients" },
-  { label: "Fees & Reports",    icon: "payments",           path: "/fees" },
-  { label: "Settings",          icon: "settings",           path: "/settings", spacer: true },
+  { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
+  { label: "Register Patient", icon: "how_to_reg", path: "/reception/register" },
+  { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
+  { label: "Live TV Screen", icon: "tv", path: "/live", target: "_blank" },
+  { label: "POS / Pharmacy", icon: "point_of_sale", path: "/store/pos" },
+  { label: "Sales Audit & Returns", icon: "receipt_long", path: "/store/sales" },
+  { label: "Company Purchases", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Central Warehouse", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Store Inventory", icon: "inventory_2", path: "/store" },
+  { label: "Pending Reports", icon: "pending_actions", path: "/reception/pending-reports" },
+  { label: "My Queue", icon: "queue", path: "/doctor/queue" },
+  { label: "Patients", icon: "group", path: "/patients" },
+  { label: "Fees & Reports", icon: "payments", path: "/fees" },
+  { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
 
 // Mobile bottom nav — always shows most-used cross-role items
 const MOBILE_NAV = [
-  { label: "Home",     icon: "home",         path: "/dashboard" },
-  { label: "Queue",    icon: "queue",        path: "/doctor/queue" },
-  { label: "Register", icon: "how_to_reg",   path: "/reception/register" },
-  { label: "Store",    icon: "point_of_sale",path: "/store/pos" },
-  { label: "Patients", icon: "group",        path: "/patients" },
+  { label: "Home", icon: "home", path: "/dashboard" },
+  { label: "Queue", icon: "queue", path: "/doctor/queue" },
+  { label: "Register", icon: "how_to_reg", path: "/reception/register" },
+  { label: "Store", icon: "point_of_sale", path: "/store/pos" },
+  { label: "Patients", icon: "group", path: "/patients" },
 ];
 
 function NavItems({ items, onItemClick }) {
@@ -87,8 +87,7 @@ function NavItems({ items, onItemClick }) {
               end={item.path === "/store" || item.end}
               onClick={onItemClick}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 ${
-                  isActive ? "nav-item-active" : "nav-item"
+                `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 ${isActive ? "nav-item-active" : "nav-item"
                 }`
               }
             >
@@ -308,10 +307,9 @@ export default function SidebarLayout({ children }) {
               <NavLink
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center px-3 py-1 rounded-xl touch-manipulation transition-colors ${
-                    isActive
-                      ? "bg-primary-container text-on-primary-container"
-                      : "text-on-surface-variant"
+                  `flex flex-col items-center justify-center px-3 py-1 rounded-xl touch-manipulation transition-colors ${isActive
+                    ? "bg-primary-container text-on-primary-container"
+                    : "text-on-surface-variant"
                   }`
                 }
               >
