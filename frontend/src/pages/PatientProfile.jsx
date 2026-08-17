@@ -211,7 +211,6 @@ export default function PatientProfile() {
             <span>🎂 Age: {formatPatientAge(patient)}</span>
             {patient.gender && <span className="capitalize">👤 {patient.gender}</span>}
             {patient.phone && <span>📞 {patient.phone}</span>}
-            {patient.cnic && <span>🪪 {patient.cnic}</span>}
             <button
               type="button"
               onClick={() => {

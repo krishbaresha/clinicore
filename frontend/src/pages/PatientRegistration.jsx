@@ -30,7 +30,7 @@ export default function PatientRegistration() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState({
     full_name: "", relation_type: "father", relation_name: "",
-    phone: "", age: "", gender: "male", cnic: "",
+    phone: "", age: "", gender: "male",
   });
 
   // Visit form (after patient is selected or added)
@@ -84,7 +84,6 @@ export default function PatientRegistration() {
       phone:         form.phone.trim(),
       age:           form.age !== "" && !isNaN(Number(form.age)) ? Number(form.age) : null,
       gender:        form.gender,
-      cnic:          form.cnic.trim(),
     });
     setSelected(newPatient);
     setShowAddForm(false);
@@ -143,7 +142,7 @@ export default function PatientRegistration() {
     setResults(null);
     setSelected(null);
     setShowAddForm(false);
-    setForm({ full_name: "", relation_type: "father", relation_name: "", phone: "", age: "", gender: "male", cnic: "" });
+    setForm({ full_name: "", relation_type: "father", relation_name: "", phone: "", age: "", gender: "male" });
     setVisitType("new");
     setFeeAmount("");
     setTimeout(() => searchRef.current?.focus(), 100);
@@ -228,6 +227,18 @@ export default function PatientRegistration() {
                 <div className="rx-token-num text-6xl font-black leading-none">
                   {String(receipt.token).padStart(2, "0")}
                 </div>
+              </div>
+            </div>
+
+            {/* ── Attending Doctor Chamber Box ── */}
+            <div className="mx-4 mt-3 p-3 bg-teal-50/90 border border-teal-200/90 rounded-2xl flex items-center justify-between shadow-xs">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700">Attending Doctor</div>
+                <div className="font-black text-teal-950 text-sm">👨‍⚕️ {receipt.doctor?.name || "Dr. Asif Ashraf"}</div>
+                <div className="text-[11px] font-semibold text-teal-700">{receipt.doctor?.specialization || "General Physician"}</div>
+              </div>
+              <div className="bg-teal-700 text-white px-2.5 py-1 rounded-xl text-xs font-black shadow-xs">
+                🚪 {receipt.doctor?.room_number || "Room 1"}
               </div>
             </div>
 
@@ -491,15 +502,6 @@ export default function PatientRegistration() {
                   <option value="female">Female</option>
                   <option value="other">Other</option>
                 </select>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">CNIC <span className="font-normal text-gray-400">(optional)</span></label>
-                <input
-                  value={form.cnic}
-                  onChange={(e) => handleFormChange("cnic", e.target.value)}
-                  placeholder="41304-1234567-1"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
-                />
               </div>
             </div>
             <div className="flex gap-3 pt-2">

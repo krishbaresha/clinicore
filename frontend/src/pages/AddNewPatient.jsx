@@ -10,7 +10,6 @@ export default function AddNewPatient() {
     phone: "",
     age: "",
     gender: "",
-    cnic: "",
   });
   const [error,   setError]   = useState("");
   const [loading, setLoading] = useState(false);
@@ -113,22 +112,6 @@ export default function AddNewPatient() {
                 <option value="other">Other</option>
               </select>
             </div>
-          </div>
-
-          {/* CNIC */}
-          <div className="flex flex-col gap-xs">
-            <label htmlFor="cnic" className="font-label-md text-label-md text-on-surface-variant">
-              CNIC <span className="text-outline text-xs font-normal">(optional)</span>
-            </label>
-            <input
-              id="cnic"
-              name="cnic"
-              type="text"
-              placeholder="XXXXX-XXXXXXX-X"
-              value={form.cnic}
-              onChange={handleChange}
-              className="input-field"
-            />
           </div>
 
           {/* Error */}

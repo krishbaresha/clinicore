@@ -673,55 +673,55 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
           * {
             box-sizing: border-box;
             -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             width: 76mm;
             margin: 0 auto;
-            padding: 12px 6px;
-            color: #222;
+            padding: 10px 6px;
+            color: #000;
             background: #fff;
             font-size: 12px;
             line-height: 1.35;
           }
-          .logo-badge {
-            width: 46px;
-            height: 46px;
-            background: linear-gradient(135deg, #0d9488, #0f766e);
-            color: #fff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 22px;
-            margin: 0 auto 6px auto;
-            box-shadow: 0 4px 10px rgba(13, 148, 136, 0.25);
+          .text-center { text-align: center; }
+          .divider-single {
+            border-top: 1px solid #000;
+            margin: 6px 0;
           }
-          .clinic-header {
+          .divider-double {
+            border-top: 2.5px double #000;
+            margin: 6px 0;
+          }
+          .token-box {
+            border: 2.5px solid #000;
+            border-radius: 12px;
+            padding: 8px 4px;
+            margin: 6px 0;
             text-align: center;
-            margin-bottom: 8px;
-          }
-          .dotted-line {
-            border-top: 1.5px dotted #999;
-            margin: 8px 0;
-          }
-          .token-banner {
-            border: 2.5px solid #0f766e;
-            border-radius: 16px;
-            padding: 10px 4px;
-            margin: 8px 0;
-            text-align: center;
-            background: #f0fdf4;
+            background: #fff;
           }
           .token-num {
-            font-size: 34px;
+            font-size: 44px;
             font-weight: 900;
-            color: #0f766e;
+            color: #000;
             line-height: 1;
             margin-top: 2px;
           }
-          
+          .doctor-box {
+            border: 2px solid #000;
+            padding: 6px 8px;
+            border-radius: 6px;
+            margin: 6px 0;
+            background: #fff;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-top: 2px;
+          }
           @media print {
             body { width: 76mm; padding: 4px; }
           }
@@ -729,25 +729,31 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
       </head>
       <body>
         <div class="text-center">
-          <div style="font-size: 18px; font-weight: 900;">${clinicName}</div>
-          <div style="font-size: 11px; color: #111; font-weight: bold;">${clinicAddress} · Ph: ${clinicPhone}</div>
-          <div style="font-size: 14px; font-weight: 900; margin-top: 4px; letter-spacing: 1px; text-decoration: underline;">OPD CONSULTATION TOKEN</div>
+          <div style="font-size: 17px; font-weight: 900;">${clinicName}</div>
+          <div style="font-size: 10px; color: #222; font-weight: bold;">${clinicAddress} · Ph: ${clinicPhone}</div>
+          <div style="font-size: 13px; font-weight: 900; margin-top: 4px; letter-spacing: 1px; text-decoration: underline;">OPD CONSULTATION TOKEN</div>
+          <div style="font-size: 10px; color: #444; margin-top: 2px;">${dateTimeStr}</div>
         </div>
 
         <div class="divider-double"></div>
 
-        <!-- Attending Doctor Box -->
-        <div style="border: 2px solid #000; padding: 6px; border-radius: 4px; margin-bottom: 6px; background: #fff;">
-          <div style="font-size: 14px; font-weight: 900;">👨‍⚕️ ${doctorName}</div>
-          <div style="font-size: 11px; font-weight: bold; color: #333;">${doctorSpecialization}</div>
-          <div style="font-size: 12px; font-weight: 900; margin-top: 2px;">🚪 Chamber: ${doctorRoom}</div>
-        </div>
-
+        <!-- Big Token Box -->
         <div class="token-box">
-          <div style="font-size: 11px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;">PATIENT TOKEN NUMBER</div>
+          <div style="font-size: 10px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;">PATIENT TOKEN NUMBER</div>
           <div class="token-num">${tokenNo}</div>
         </div>
 
+        <!-- Attending Doctor Box -->
+        <div class="doctor-box">
+          <div style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: #333; letter-spacing: 1px;">Attending Doctor:</div>
+          <div style="font-size: 15px; font-weight: 900; color: #000; margin-top: 1px;">👨‍⚕️ ${doctorName}</div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: #222; margin-top: 3px;">
+            <span>${doctorSpecialization}</span>
+            <span style="font-weight: 900; background: #000; color: #fff; padding: 1px 6px; border-radius: 4px;">🚪 Chamber: ${doctorRoom}</span>
+          </div>
+        </div>
+
+        <!-- Patient Info -->
         <div style="font-size: 13px; font-weight: bold; margin-top: 4px;">
           <div><span style="font-weight: 900;">Patient:</span> ${patientName}</div>
           <div class="info-row">
@@ -769,33 +775,62 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
 
         <div class="divider-double"></div>
 
-        <div class="text-center" style="font-size: 11px; margin-top: 8px; font-weight: bold;">
+        <div class="text-center" style="font-size: 11px; margin-top: 6px; font-weight: bold;">
           <div>Please wait in waiting area for your token call.</div>
           <div style="margin-top: 4px; padding: 4px; background: #f0fdfa; border: 1px dashed #0d9488; border-radius: 4px; font-size: 11px; color: #0f766e;">
             🌐 <strong>Live Token Tracker:</strong> Open <code>/live</code> on your phone to track queue!
           </div>
-          <div style="font-size: 11px; font-weight: 900; margin-top: 6px;">Software Powered by: K.B Software</div>
-          <div style="font-size: 11px; font-weight: 900;">📞 Contact: 03142291356</div>
+          <div style="font-size: 10px; font-weight: 900; margin-top: 6px; color: #333;">Software Powered by: K.B Software</div>
+          <div style="font-size: 10px; font-weight: 900; color: #0d9488;">📞 Contact: 03142291356</div>
         </div>
-
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            }, 250);
-          };
-        </script>
       </body>
     </html>
   `;
 
-  const printWindow = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-  if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(receiptHtml);
-    printWindow.document.close();
-  } else {
-    alert("Pop-up blocker prevented opening token window. Please allow popups for this site.");
+  try {
+    let iframe = document.getElementById("thermal-print-iframe");
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "thermal-print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(receiptHtml);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch {
+        // Fallback to window.open if iframe is blocked
+        const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
+        if (win) {
+          win.document.open();
+          win.document.write(receiptHtml);
+          win.document.close();
+          setTimeout(() => { win.print(); }, 250);
+        }
+      }
+    }, 250);
+  } catch (err) {
+    const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
+    if (win) {
+      win.document.open();
+      win.document.write(receiptHtml);
+      win.document.close();
+      setTimeout(() => { win.print(); }, 250);
+    } else {
+      window.print();
+    }
   }
 }
+
