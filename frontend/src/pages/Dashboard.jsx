@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers } from "../api/db.js";
+import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients } from "../api/db.js";
 import { formatCurrency, formatTodayLong, getGreeting } from "../utils/formatters.js";
 
 function StatCard({ label, value, icon, subline, iconBg, labelColor, valueColor, children }) {
@@ -167,7 +167,7 @@ export default function Dashboard() {
             <div className="pt-2 border-t border-teal-100 flex items-center justify-between">
               <span className="text-xs font-semibold text-teal-800">
                 {myInRoomVisit
-                  ? `In Room: #${myInRoomVisit.token_number} (${myInRoomVisit.patient_name})`
+                  ? `In Room: #${myInRoomVisit.token_number} (${myInRoomVisit.patient_name || dbPatients.getById(myInRoomVisit.patient_id)?.full_name || "Patient"})`
                   : myWaitingVisits.length > 0
                   ? `Next: Token #${myWaitingVisits[0].token_number}`
                   : "Queue is Clear"}

@@ -110,19 +110,11 @@ export default function DoctorQueue() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => window.open("/live", "_blank")}
-            title="Open Waiting Room Public TV Screen in new window"
-            className="flex items-center gap-1.5 text-xs text-teal-800 bg-teal-50 border border-teal-200 px-3 py-2 rounded-xl hover:bg-teal-100 transition-colors font-bold shadow-sm"
-          >
-            <span className="material-symbols-outlined text-base">tv</span>
-            Waiting Area TV Screen
-          </button>
-          <button
             onClick={loadQueue}
-            className="flex items-center gap-1.5 text-xs text-gray-700 bg-white border border-gray-200 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors font-medium shadow-sm"
+            className="flex items-center gap-1.5 text-xs text-teal-800 bg-white border border-teal-200 px-3.5 py-2 rounded-xl hover:bg-teal-50 transition-colors font-bold shadow-sm"
           >
             <span className="material-symbols-outlined text-base">refresh</span>
-            Refresh
+            Refresh Queue
           </button>
         </div>
       </div>

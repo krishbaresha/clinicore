@@ -94,22 +94,39 @@ export default function PublicLiveQueue() {
       };
 
       if (inRoom) {
-        currentCalls[doc.id] = inRoom.token_number;
+        currentCalls[doc.id] = { token: inRoom.token_number, room: doc.room_number || "Room 1" };
       }
     });
 
     setDoctorQueues(qMap);
 
-    // Audio Chime notification when a new token is called
+    // Audio Chime & Speech notification when a new token is called
     if (!isInitialLoad.current && soundEnabledRef.current) {
-      let hasNewCall = false;
+      let newlyCalled = null;
       Object.keys(currentCalls).forEach((docId) => {
-        if (currentCalls[docId] && currentCalls[docId] !== lastCalledTokensRef.current[docId]) {
-          hasNewCall = true;
+        const lastCall = lastCalledTokensRef.current[docId];
+        const newCall = currentCalls[docId];
+        if (newCall && (!lastCall || lastCall.token !== newCall.token)) {
+          newlyCalled = newCall;
         }
       });
-      if (hasNewCall) {
+
+      if (newlyCalled) {
         playTokenCallChime();
+        try {
+          if ("speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+            const text = `Token Number ${newlyCalled.token}, please proceed to ${newlyCalled.room}`;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.95;
+            utterance.pitch = 1.0;
+            setTimeout(() => {
+              window.speechSynthesis.speak(utterance);
+            }, 600);
+          }
+        } catch (voiceErr) {
+          console.warn("Speech synthesis notice:", voiceErr);
+        }
       }
     }
 

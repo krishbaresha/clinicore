@@ -7,9 +7,11 @@ export default function AddNewPatient() {
 
   const [form, setForm] = useState({
     full_name: "",
+    relation_type: "father",
+    relation_name: "",
     phone: "",
     age: "",
-    gender: "",
+    gender: "male",
   });
   const [error,   setError]   = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,37 +39,72 @@ export default function AddNewPatient() {
       <button
         id="back-from-add-patient"
         onClick={() => navigate("/patients")}
-        className="flex items-center gap-1 text-primary font-body-sm text-body-sm hover:underline self-start"
+        className="flex items-center gap-1 text-primary font-body-sm text-body-sm hover:underline self-start font-bold"
       >
         <span className="material-symbols-outlined text-[18px]">arrow_back</span>
         Back to Patients
       </button>
 
-      <div className="glass-card p-lg flex flex-col gap-md">
+      <div className="glass-card p-6 md:p-8 rounded-3xl flex flex-col gap-md">
         <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Add New Patient</h1>
 
-        <form id="add-patient-form" onSubmit={handleSubmit} className="flex flex-col gap-sm" noValidate>
+        <form id="add-patient-form" onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           {/* Full Name */}
           <div className="flex flex-col gap-xs">
-            <label htmlFor="full_name" className="font-label-md text-label-md text-on-surface-variant">
-              Full Name <span className="text-error">*</span>
+            <label htmlFor="full_name" className="font-label-md text-label-md text-on-surface-variant font-bold">
+              Patient Full Name <span className="text-error">*</span>
             </label>
             <input
               id="full_name"
               name="full_name"
               type="text"
-              placeholder="Muhammad Bilal"
+              placeholder="e.g. Muhammad Bilal"
               value={form.full_name}
               onChange={handleChange}
               required
-              className="input-field"
+              className="input-field font-semibold"
             />
+          </div>
+
+          {/* Relation S/O, W/O, D/O */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex flex-col gap-xs sm:col-span-1">
+              <label htmlFor="relation_type" className="font-label-md text-label-md text-on-surface-variant font-bold">
+                Relation Type
+              </label>
+              <select
+                id="relation_type"
+                name="relation_type"
+                value={form.relation_type}
+                onChange={handleChange}
+                className="input-field font-semibold bg-gray-50"
+              >
+                <option value="father">S/O (Son/Daughter)</option>
+                <option value="husband">W/O (Wife of)</option>
+                <option value="wife">H/O (Husband of)</option>
+                <option value="mother">D/O (Mother)</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-xs sm:col-span-2">
+              <label htmlFor="relation_name" className="font-label-md text-label-md text-on-surface-variant font-bold">
+                Father / Guardian / Husband Name
+              </label>
+              <input
+                id="relation_name"
+                name="relation_name"
+                type="text"
+                placeholder="e.g. Abdul Rasheed"
+                value={form.relation_name}
+                onChange={handleChange}
+                className="input-field"
+              />
+            </div>
           </div>
 
           {/* Phone */}
           <div className="flex flex-col gap-xs">
-            <label htmlFor="phone" className="font-label-md text-label-md text-on-surface-variant">
-              Phone <span className="text-error">*</span>
+            <label htmlFor="phone" className="font-label-md text-label-md text-on-surface-variant font-bold">
+              Phone Number <span className="text-error">*</span>
             </label>
             <input
               id="phone"
@@ -77,7 +114,7 @@ export default function AddNewPatient() {
               value={form.phone}
               onChange={handleChange}
               required
-              className="input-field"
+              className="input-field font-mono"
             />
           </div>
 

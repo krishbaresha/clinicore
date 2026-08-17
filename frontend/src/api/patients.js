@@ -10,10 +10,18 @@ export function getPatient(id)        {
 }
 
 export function createPatient(formData) {
-  const { full_name, phone, age, gender, cnic } = formData;
+  const { full_name, relation_name, relation_type, phone, age, gender, cnic } = formData;
   if (!full_name?.trim()) return { success: false, data: null, error: { code: "VALIDATION", message: "Full name is required." } };
   if (!phone?.trim())     return { success: false, data: null, error: { code: "VALIDATION", message: "Phone number is required." } };
-  const patient = dbPatients.add({ full_name: full_name.trim(), phone: phone.trim(), age: parseInt(age) || null, gender: gender || null, cnic: cnic?.trim() || "" });
+  const patient = dbPatients.add({
+    full_name: full_name.trim(),
+    relation_name: relation_name?.trim() || "",
+    relation_type: relation_type || "father",
+    phone: phone.trim(),
+    age: parseInt(age) || null,
+    gender: gender || null,
+    cnic: cnic?.trim() || ""
+  });
   return { success: true, data: patient, error: null };
 }
 
