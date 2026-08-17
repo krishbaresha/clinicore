@@ -66,6 +66,7 @@ function NavItems({ items, onItemClick }) {
         <li key={item.path} className={item.spacer ? "mt-4" : ""}>
           <NavLink
             to={item.path}
+            end={item.path === "/store" || item.end}
             onClick={onItemClick}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 ${
