@@ -67,7 +67,7 @@ const SEED_DATA = {
       name: "Kamran Iqbal",
       role: "pharmacist",
       is_owner: false,
-      can_view_financials: false,
+      can_view_financials: true,
       phone: "03221234567",
       email: "kamran.store@example.com",
       password: "password",

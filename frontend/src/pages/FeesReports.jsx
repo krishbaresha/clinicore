@@ -29,7 +29,7 @@ export default function FeesReports() {
   const [closingNotes, setClosingNotes] = useState("");
   const [savedClosings, setSavedClosings] = useState([]);
 
-  const canViewAllFinancials = user?.is_owner || user?.can_view_financials;
+  const canViewAllFinancials = user?.is_owner || user?.can_view_financials || user?.role === "receptionist" || user?.role === "cashier" || user?.role === "pharmacist";
   const targetDoctorId = canViewAllFinancials ? null : user?.id;
 
   useEffect(() => {

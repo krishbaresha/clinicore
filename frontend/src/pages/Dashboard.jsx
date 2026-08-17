@@ -30,6 +30,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const canViewFinancials = user?.is_owner || user?.can_view_financials || user?.role === "receptionist" || user?.role === "cashier" || user?.role === "pharmacist";
+
   // Compute live stats from the mock DB
   const allVisits = dbVisits.getAll();
   const today = new Date().toDateString();
@@ -99,14 +101,14 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6" aria-label="Key metrics">
         {/* Patients Today */}
         <StatCard
-          label={user?.is_owner || user?.can_view_financials ? "Clinic Patients Today" : "My Patients Today"}
-          value={user?.is_owner || user?.can_view_financials ? todayVisits.length : myTodayVisits.length}
+          label={canViewFinancials ? "Clinic Patients Today" : "My Patients Today"}
+          value={canViewFinancials ? todayVisits.length : myTodayVisits.length}
           icon="group"
           iconBg="bg-secondary-container/50"
           subline={
             <>
               <span className="material-symbols-outlined text-sm">calendar_today</span>
-              {user?.is_owner || user?.can_view_financials
+              {canViewFinancials
                 ? `${todayVisits.length} total OPD visit${todayVisits.length === 1 ? "" : "s"}`
                 : `${myTodayVisits.length} visit${myTodayVisits.length === 1 ? "" : "s"} in my OPD chamber`}
             </>
@@ -115,8 +117,8 @@ export default function Dashboard() {
 
         {/* Fees Collected Today */}
         <StatCard
-          label={user?.is_owner || user?.can_view_financials ? "Total Fees Collected" : "My Fees Today"}
-          value={formatCurrency(user?.is_owner || user?.can_view_financials ? feesToday : myFeesToday)}
+          label={canViewFinancials ? "Total Fees Collected" : "My Fees Today"}
+          value={formatCurrency(canViewFinancials ? feesToday : myFeesToday)}
           icon="payments"
           iconBg="bg-primary-container/10"
         />
@@ -165,8 +167,8 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Executive Financial Revenue Breakdown — Only for Owner Doctor or Doctors with Financial Access */}
-      {(user?.is_owner || user?.can_view_financials) ? (
+      {/* Executive Financial Revenue Breakdown — Available for Staff and Owner */}
+      {canViewFinancials ? (
         <section className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white rounded-3xl p-6 shadow-xl border border-teal-700/50 space-y-4">
           <div className="flex items-center justify-between border-b border-teal-700/60 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
