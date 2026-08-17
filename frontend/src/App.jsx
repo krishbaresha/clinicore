@@ -28,6 +28,7 @@ import WarehouseManagement       from "./pages/WarehouseManagement.jsx";
 import PublicLiveQueue           from "./pages/PublicLiveQueue.jsx";
 import LandingPage               from "./pages/LandingPage.jsx";
 import ClinicPublicPage          from "./pages/ClinicPublicPage.jsx";
+import DeveloperAdminPanel       from "./pages/DeveloperAdminPanel.jsx";
 
 /**
  * ProtectedRoute — wraps pages that require a logged-in session.
@@ -77,14 +78,16 @@ function OwnerLayout({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public Pages (No Login Required) */}
-      <Route path="/"        element={<LandingPage />} />
-      <Route path="/landing" element={<LandingPage />} />
-      <Route path="/clinic"  element={<ClinicPublicPage />} />
-      <Route path="/dr-asif" element={<ClinicPublicPage />} />
-      <Route path="/login"   element={<LoginScreen />} />
-      <Route path="/live"    element={<PublicLiveQueue />} />
-      <Route path="/display" element={<PublicLiveQueue />} />
+      {/* Public & Super-Admin Pages (No Login Required) */}
+      <Route path="/"            element={<LandingPage />} />
+      <Route path="/landing"     element={<LandingPage />} />
+      <Route path="/clinic"      element={<ClinicPublicPage />} />
+      <Route path="/dr-asif"     element={<ClinicPublicPage />} />
+      <Route path="/super-admin" element={<DeveloperAdminPanel />} />
+      <Route path="/developer"   element={<DeveloperAdminPanel />} />
+      <Route path="/login"       element={<LoginScreen />} />
+      <Route path="/live"        element={<PublicLiveQueue />} />
+      <Route path="/display"     element={<PublicLiveQueue />} />
 
       {/* ─── Reception / Counter Flow ─────────────────────────── */}
       <Route path="/reception/register"        element={<AuthenticatedLayout><PatientRegistration /></AuthenticatedLayout>} />

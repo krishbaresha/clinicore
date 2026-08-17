@@ -536,6 +536,7 @@ const KEYS = {
   STOCK_TRANSFERS: "cf_stock_transfers",
   B2B_SALES:       "cf_b2b_sales",
   SHIFT_CLOSINGS:  "cf_shift_closings",
+  TENANTS:         "cf_tenants_registry",
 };
 
 /** Atomic Sequential Invoice / Voucher Generator with distinct prefixes */
@@ -617,6 +618,80 @@ export const dbClinic = {
     setRecord(KEYS.CLINIC, updated);
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return updated;
+  }
+};
+
+// ---------- Multi-Clinic / Tenant Registry (Developer Master Plane) ----------
+export const dbTenants = {
+  getAll: () => {
+    const list = getCollection(KEYS.TENANTS);
+    if (!list || list.length === 0) {
+      const defaultTenant = {
+        id: "clinic_001",
+        name: "Dr. Asif Ashraf's Clinic",
+        doctor_name: "Dr. Asif Ashraf",
+        specialization: "Consultant Homeopath & Family Physician",
+        phone: "03001234567",
+        city: "Hyderabad",
+        address: "Lajpat Road, Hyderabad",
+        fee: 800,
+        room: "Room 1",
+        license_key: "KB-PRO-2026-ASIF-001",
+        status: "active", // 'active' | 'renewal_due' | 'suspended'
+        plan: "Pro Tier (Rs. 5,000 / mo)",
+        monthly_fee: 5000,
+        created_at: "2024-01-15T00:00:00Z",
+        features: { opd: true, emr: true, pharmacy: true, warehouse: true, backups: true },
+      };
+      setCollection(KEYS.TENANTS, [defaultTenant]);
+      return [defaultTenant];
+    }
+    return list;
+  },
+  getById: (id) => dbTenants.getAll().find((t) => t.id === id) || null,
+  add: (tenant) => {
+    const list = dbTenants.getAll();
+    const newTenant = {
+      ...tenant,
+      id: tenant.id || generateId("clinic"),
+      created_at: new Date().toISOString(),
+      status: tenant.status || "active",
+      license_key: tenant.license_key || `KB-PRO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      features: tenant.features || { opd: true, emr: true, pharmacy: true, warehouse: true, backups: true },
+    };
+    setCollection(KEYS.TENANTS, [...list, newTenant]);
+    return newTenant;
+  },
+  update: (id, data) => {
+    const list = dbTenants.getAll();
+    const updated = list.map((t) => (t.id === id ? { ...t, ...data } : t));
+    setCollection(KEYS.TENANTS, updated);
+  },
+  delete: (id) => {
+    const list = dbTenants.getAll();
+    setCollection(KEYS.TENANTS, list.filter((t) => t.id !== id));
+  },
+  switchToTenant: (tenantId) => {
+    const t = dbTenants.getById(tenantId);
+    if (!t) return false;
+    dbClinic.update({
+      id: t.id,
+      name: t.name,
+      address: t.address,
+      phone: t.phone,
+      default_consultation_fee: t.fee,
+    });
+    // Sync primary doctor in users
+    const users = dbUsers.getAll();
+    const doc = users.find((u) => u.role === "doctor");
+    if (doc) {
+      dbUsers.update(doc.id, {
+        name: t.doctor_name,
+        specialization: t.specialization,
+        room_number: t.room || "Room 1",
+      });
+    }
+    return true;
   }
 };
 
