@@ -104,7 +104,8 @@ export default function SidebarLayout({ children }) {
           const backup = exportFullDatabase();
           const backupStr = JSON.stringify(backup, null, 2);
           const targetEmails = c.backup_email.split(",").map((e) => e.trim()).filter(Boolean);
-          const resendKey = c.resend_api_key || "re_6sDrhkHw_3f5RVMAkBJHDmnqiBza5SQ3z";
+          const resendKey = c.resend_api_key;
+          if (!resendKey) return; // No API key configured — skip email backup silently
 
           const base64Content = btoa(unescape(encodeURIComponent(backupStr)));
           const resendPayload = {
@@ -132,12 +133,9 @@ export default function SidebarLayout({ children }) {
               headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
               body: JSON.stringify(resendPayload)
             });
-          } catch {
-            res = await fetch("https://corsproxy.io/?" + encodeURIComponent("https://api.resend.com/emails"), {
-              method: "POST",
-              headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify(resendPayload)
-            });
+          } catch (fetchErr) {
+            console.warn("Backup email send failed (CORS or network):", fetchErr.message);
+            return;
           }
 
           if (res.ok) {
@@ -155,7 +153,9 @@ export default function SidebarLayout({ children }) {
     return () => clearInterval(timer);
   }, []);
 
-  const navItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
+  // Build nav items — hide Settings for non-owner users (route is also guarded)
+  const rawNavItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
+  const navItems = user?.is_owner ? rawNavItems : rawNavItems.filter((item) => item.path !== "/settings");
 
   function handleLogout() {
     logout();

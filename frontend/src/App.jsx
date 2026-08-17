@@ -37,6 +37,18 @@ function ProtectedRoute({ children }) {
 }
 
 /**
+ * OwnerRoute — restricts page to clinic owner only.
+ * Non-owner users get redirected to dashboard.
+ */
+function OwnerRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user)         return <Navigate to="/login" replace />;
+  if (!user.is_owner) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+/**
  * AuthenticatedLayout — wraps protected pages in the SidebarLayout.
  */
 function AuthenticatedLayout({ children }) {
@@ -44,6 +56,17 @@ function AuthenticatedLayout({ children }) {
     <ProtectedRoute>
       <SidebarLayout>{children}</SidebarLayout>
     </ProtectedRoute>
+  );
+}
+
+/**
+ * OwnerLayout — wraps owner-only pages in the SidebarLayout.
+ */
+function OwnerLayout({ children }) {
+  return (
+    <OwnerRoute>
+      <SidebarLayout>{children}</SidebarLayout>
+    </OwnerRoute>
   );
 }
 
@@ -75,7 +98,7 @@ function AppRoutes() {
       <Route path="/patients/new" element={<AuthenticatedLayout><AddNewPatient /></AuthenticatedLayout>} />
       <Route path="/patients/:id" element={<AuthenticatedLayout><PatientProfile /></AuthenticatedLayout>} />
       <Route path="/fees"        element={<AuthenticatedLayout><FeesReports /></AuthenticatedLayout>} />
-      <Route path="/settings"    element={<AuthenticatedLayout><ClinicSettings /></AuthenticatedLayout>} />
+      <Route path="/settings"    element={<OwnerLayout><ClinicSettings /></OwnerLayout>} />
 
       {/* Default redirect */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

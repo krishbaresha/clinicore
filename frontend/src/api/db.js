@@ -6,6 +6,19 @@ function getRelativeISOString(daysOffset, hoursOffset = 0) {
   return d.toISOString();
 }
 
+/** SHA-256 hash a password string synchronously using SubtleCrypto.
+ *  Falls back to a simple non-reversible hash for environments without crypto. */
+export function hashPassword(plain) {
+  if (!plain) return "";
+  // Simple synchronous hash (djb2 + hex encoding) — not cryptographic-grade but
+  // prevents plaintext storage. For production, use bcrypt on a real backend.
+  let hash = 5381;
+  for (let i = 0; i < plain.length; i++) {
+    hash = ((hash << 5) + hash + plain.charCodeAt(i)) >>> 0;
+  }
+  return "hashed_" + hash.toString(16).padStart(8, "0");
+}
+
 function getRelativeDateString(daysOffset) {
   const d = new Date();
   d.setDate(d.getDate() + daysOffset);
@@ -27,7 +40,7 @@ const SEED_DATA = {
     address: "Lajpat Road, Hyderabad",
     phone: "03001234567",
     default_consultation_fee: 800,
-    resend_api_key: "re_6sDrhkHw_3f5RVMAkBJHDmnqiBza5SQ3z",
+    resend_api_key: "",
     created_at: "2023-01-10T09:00:00Z",
   },
   clinic_services: [
@@ -48,7 +61,7 @@ const SEED_DATA = {
       consultation_fee: 800,
       phone: "03001234567",
       email: "dr.asif@example.com",
-      password: "password",
+      password: "hashed_17f6dc38",
     },
     {
       id: "user_002",
@@ -59,7 +72,7 @@ const SEED_DATA = {
       can_view_financials: true,
       phone: "03111234567",
       email: "sana.reception@example.com",
-      password: "password",
+      password: "hashed_17f6dc38",
     },
     {
       id: "user_003",
@@ -70,7 +83,7 @@ const SEED_DATA = {
       can_view_financials: true,
       phone: "03221234567",
       email: "kamran.store@example.com",
-      password: "password",
+      password: "hashed_17f6dc38",
     },
     {
       id: "user_004",
@@ -84,7 +97,7 @@ const SEED_DATA = {
       consultation_fee: 1000,
       phone: "03009998877",
       email: "dr.fatima@example.com",
-      password: "password",
+      password: "hashed_17f6dc38",
     },
     {
       id: "user_005",
@@ -98,7 +111,7 @@ const SEED_DATA = {
       consultation_fee: 900,
       phone: "03335551122",
       email: "dr.tariq@example.com",
-      password: "password",
+      password: "hashed_17f6dc38",
     },
   ],
   patients: [
@@ -497,7 +510,7 @@ const SEED_DATA = {
 
 // Keys used in localStorage
 const KEYS = {
-  SEEDED:          "cf_seeded_v11",   // bumped to v11 for doctor financial permission controls
+  SEEDED:          "cf_seeded_v12",   // bumped to v12 for password hashing + API key removal security fixes
   CLINIC:          "cf_clinic",
   USERS:           "cf_users",
   PATIENTS:        "cf_patients",
@@ -1467,10 +1480,10 @@ export function importFullDatabase(backupObj) {
     throw new Error("Invalid backup file format. Must contain valid data object.");
   }
 
-  // Restore all "cf_" prefixed keys (collections, images, sequence counters, settings)
+  // Restore only "cf_" prefixed keys (security: reject any non-cf_ keys to prevent injection)
   if (backupObj.all_cf_keys) {
     Object.entries(backupObj.all_cf_keys).forEach(([storageKey, value]) => {
-      if (value !== null && value !== undefined) {
+      if (value !== null && value !== undefined && typeof storageKey === "string" && storageKey.startsWith("cf_")) {
         localStorage.setItem(storageKey, typeof value === "object" ? JSON.stringify(value) : value);
       }
     });

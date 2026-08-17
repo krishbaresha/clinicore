@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { dbClinic, dbUsers, dbClinicServices, exportFullDatabase, importFullDatabase, resetDatabaseToDemoData } from "../api/db.js";
+import { dbClinic, dbUsers, dbClinicServices, exportFullDatabase, importFullDatabase, resetDatabaseToDemoData, hashPassword } from "../api/db.js";
 
 export default function ClinicSettings() {
   const { user, clinic, refreshClinic, refreshUser } = useAuth();
@@ -390,14 +390,18 @@ export default function ClinicSettings() {
                   // Update
                   const updated = users.map((u) => {
                     if (u.id === editingStaff.id) {
-                      return {
+                      const updatedUser = {
                         ...u,
                         name: staffForm.name.trim(),
                         email: staffForm.email.trim(),
                         phone: staffForm.phone.trim(),
                         role: staffForm.role,
-                        password: staffForm.password || "password"
                       };
+                      // Only update password if a new one was entered
+                      if (staffForm.password.trim()) {
+                        updatedUser.password = hashPassword(staffForm.password.trim());
+                      }
+                      return updatedUser;
                     }
                     return u;
                   });
@@ -411,7 +415,7 @@ export default function ClinicSettings() {
                     if (refreshUser) refreshUser();
                   }
                 } else {
-                  // Create
+                  // Create — hash password before storage
                   const newUser = {
                     id: "user_" + Date.now(),
                     clinic_id: "clinic_001",
@@ -419,7 +423,7 @@ export default function ClinicSettings() {
                     email: staffForm.email.trim(),
                     phone: staffForm.phone.trim(),
                     role: staffForm.role,
-                    password: staffForm.password || "password"
+                    password: hashPassword(staffForm.password.trim() || "password")
                   };
                   const updated = [...users, newUser];
                   localStorage.setItem("cf_users", JSON.stringify(updated));
@@ -565,7 +569,7 @@ export default function ClinicSettings() {
                           email: s.email,
                           role: s.role,
                           phone: s.phone || "",
-                          password: s.password || ""
+                          password: ""  // Never load existing password hash — require new entry
                         });
                         setShowStaffForm(true);
                         setStaffError("");
@@ -851,7 +855,7 @@ export default function ClinicSettings() {
 
                           let res;
                           try {
-                            // Direct call first
+                            // Direct call to Resend API
                             res = await fetch("https://api.resend.com/emails", {
                               method: "POST",
                               headers: {
@@ -860,16 +864,11 @@ export default function ClinicSettings() {
                               },
                               body: JSON.stringify(resendPayload)
                             });
-                          } catch {
-                            // CORS Proxy fallback for browser environments
-                            res = await fetch("https://corsproxy.io/?" + encodeURIComponent("https://api.resend.com/emails"), {
-                              method: "POST",
-                              headers: {
-                                "Authorization": `Bearer ${clinicForm.resend_api_key.trim()}`,
-                                "Content-Type": "application/json"
-                              },
-                              body: JSON.stringify(resendPayload)
-                            });
+                          } catch (fetchErr) {
+                            // Network/CORS error — do NOT proxy through third-party
+                            alert(`⚠️ Email send failed (network/CORS): ${fetchErr.message}. Local backup JSON was downloaded. Configure a backend proxy for reliable email delivery.`);
+                            if (refreshClinic) refreshClinic();
+                            return;
                           }
 
                           if (res.ok) {
