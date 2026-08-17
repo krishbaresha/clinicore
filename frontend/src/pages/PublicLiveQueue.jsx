@@ -1,12 +1,28 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { dbClinic, dbUsers, dbVisits } from "../api/db.js";
 
+// Audio Context singleton
+let globalAudioCtx = null;
+
+function getAudioContext() {
+  if (!globalAudioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      globalAudioCtx = new AudioContext();
+    }
+  }
+  return globalAudioCtx;
+}
+
 // Gentle dual-tone airport/hospital style chime using browser Web Audio API
 function playTokenCallChime() {
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+      return;
+    }
 
     const now = ctx.currentTime;
     
@@ -46,9 +62,11 @@ export default function PublicLiveQueue() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [themeMode, setThemeMode] = useState("light"); // 'light' (ClinicFlow Signature) | 'dark' (TV Lounge)
-  const [lastCalledTokens, setLastCalledTokens] = useState({});
 
   const isInitialLoad = useRef(true);
+  const lastCalledTokensRef = useRef({});
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
   const loadData = useCallback(() => {
     const c = dbClinic.get() || {};
@@ -83,10 +101,10 @@ export default function PublicLiveQueue() {
     setDoctorQueues(qMap);
 
     // Audio Chime notification when a new token is called
-    if (!isInitialLoad.current && soundEnabled) {
+    if (!isInitialLoad.current && soundEnabledRef.current) {
       let hasNewCall = false;
       Object.keys(currentCalls).forEach((docId) => {
-        if (currentCalls[docId] && currentCalls[docId] !== lastCalledTokens[docId]) {
+        if (currentCalls[docId] && currentCalls[docId] !== lastCalledTokensRef.current[docId]) {
           hasNewCall = true;
         }
       });
@@ -95,9 +113,25 @@ export default function PublicLiveQueue() {
       }
     }
 
-    setLastCalledTokens(currentCalls);
+    lastCalledTokensRef.current = currentCalls;
     isInitialLoad.current = false;
-  }, [soundEnabled, lastCalledTokens]);
+  }, []);
+
+  // Unlock AudioContext on first user interaction
+  useEffect(() => {
+    const unlockAudio = () => {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+    };
+    window.addEventListener("click", unlockAudio, { once: true });
+    window.addEventListener("keydown", unlockAudio, { once: true });
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
+  }, []);
 
   useEffect(() => {
     loadData();
