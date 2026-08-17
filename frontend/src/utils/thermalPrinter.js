@@ -264,7 +264,17 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
   const returnsRefunds = Number(closing.returns_refunds || 0);
   const totalOutflow = expenses + supplierPayments + returnsRefunds;
 
-  const netCashInHand = totalInflow - totalOutflow;
+  const netCashInHand = closing.expected_cash !== undefined ? Number(closing.expected_cash) : totalInflow - totalOutflow;
+  const physicalCash = closing.physical_cash !== undefined ? Number(closing.physical_cash) : null;
+  const cashVariance = closing.cash_variance !== undefined ? Number(closing.cash_variance) : null;
+  const den = closing.denominations || null;
+
+  let varianceText = "";
+  if (cashVariance !== null) {
+    if (cashVariance === 0) varianceText = "BALANCED (Rs. 0)";
+    else if (cashVariance > 0) varianceText = `SURPLUS OVER (+Rs. ${cashVariance.toLocaleString()})`;
+    else varianceText = `SHORTAGE (-Rs. ${Math.abs(cashVariance).toLocaleString()})`;
+  }
 
   const receiptHtml = `
     <!DOCTYPE html>
@@ -297,7 +307,9 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
           .double-line { border-top: 3px double #000; margin: 8px 0; }
           .row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 3px; }
           .row-bold { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; margin: 4px 0; }
-          .row-large { display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; color: #000; padding: 6px 8px; background: #f0fdf4; border: 1.5px solid #0f766e; border-radius: 8px; margin: 6px 0; }
+          .row-large { display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #000; padding: 6px 8px; background: #f0fdf4; border: 1.5px solid #0f766e; border-radius: 8px; margin: 6px 0; }
+          .den-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 4px; }
+          .den-table th, .den-table td { border: 1px solid #ccc; padding: 2px 4px; text-align: center; }
           @media print { body { width: 76mm; padding: 4px; } .no-print { display: none !important; } }
         </style>
       </head>
@@ -341,14 +353,42 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
         <div class="double-line"></div>
 
         <div class="row-large">
-          <span>NET CASH IN HAND:</span>
+          <span>SYSTEM EXPECTED CASH:</span>
           <span>Rs. ${netCashInHand.toLocaleString()}</span>
         </div>
+
+        ${physicalCash !== null ? `
+          <div class="row-bold" style="background: #fffbe6; padding: 4px 6px; border-radius: 6px; border: 1px solid #f59e0b;">
+            <span>PHYSICAL COUNTED:</span>
+            <span>Rs. ${physicalCash.toLocaleString()}</span>
+          </div>
+          <div class="row-bold" style="color: ${cashVariance === 0 ? '#059669' : cashVariance < 0 ? '#dc2626' : '#2563eb'}; margin-top: 2px;">
+            <span>CASH AUDIT VARIANCE:</span>
+            <span>${varianceText}</span>
+          </div>
+        ` : ''}
+
+        ${den ? `
+          <div class="dotted-line"></div>
+          <div style="font-size: 10px; font-weight: 800; text-transform: uppercase;">CASH DENOMINATIONS COUNT:</div>
+          <table class="den-table">
+            <thead>
+              <tr style="background: #f3f4f6;"><th>Note</th><th>Qty</th><th>Subtotal</th></tr>
+            </thead>
+            <tbody>
+              ${[5000, 1000, 500, 100, 50, 20, 10].map(n => {
+                const qty = den[`note${n}`] || 0;
+                if (qty === 0) return '';
+                return `<tr><td>Rs. ${n}</td><td>${qty}</td><td>Rs. ${(n * qty).toLocaleString()}</td></tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        ` : ''}
 
         <div class="dotted-line"></div>
 
         <div style="text-align: center; font-size: 11px; font-weight: 800; color: #374151; margin-top: 8px;">
-          <div>Verified Daily Cash Drawer Closure</div>
+          <div>Verified Cash Drawer Shift Audit</div>
           <div style="margin-top: 4px;">Software Powered by: K.B Software</div>
           <div style="color: #0d9488; font-family: monospace; font-size: 12px; font-weight: 900;">📞 Contact: 03142291356</div>
         </div>

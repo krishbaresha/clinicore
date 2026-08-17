@@ -36,6 +36,13 @@ Today's session completed end-to-end multi-doctor OPD queue management, role-bas
 - Replaced mandatory modal popup delay with **Direct 1-Click Action Pill Buttons** right on the medicine search row (`[ + Strip ]`, `[ + Tab ]`, `[ + Box ]`).
 - Added mouse-free hotkeys (<kbd>F2</kbd>, <kbd>F4</kbd>, <kbd>F8</kbd>, <kbd>F9</kbd>/<kbd>Ctrl+Enter</kbd>, <kbd>Esc</kbd>) with sticky helper legend bar.
 
+### 4. 📊 End-of-Day (EOD) Shift Closing & Cash Drawer Summary Sheet (`FeesReports.jsx`, `thermalPrinter.js`, `db.js`)
+- Added **Interactive Cash Denomination Counter** (Rs. 5000, 1000, 500, 100, 50, 20, 10 notes) with live total physical cash calculation.
+- Integrated **Real-Time Cash Audit Variance Engine** (Shortage / Surplus / Balanced status badges).
+- Added **Lock & Archive Shift Closing** functionality into persistent `dbShiftClosings` storage.
+- Upgraded **Thermal Z-Report Slip (80mm)** to render full physical count vs system expected cash and denomination breakdowns.
+- Added **Archived Shift Closings History Log** table with 1-click Z-Report slip re-printing.
+
 ---
 
 ## 🔮 Planned Next Scenarios & Enhancements
@@ -43,14 +50,13 @@ Today's session completed end-to-end multi-doctor OPD queue management, role-bas
 1. **Emergency / VIP Priority Queue Bumping** (`🚨 Bump to Emergency Top #1`).
 2. **Pharmacy 30-Day Expiry Warning & 1-Click Supplier Auto Purchase Order Generator**.
 3. **OPD Fee Discount / Waiver Audit Tracking** (`Zakat/Welfare`, `Staff Relative`, `Doctor Concession`).
-4. **End-of-Day (EOD) Shift Closing & Cash Drawer Summary Sheet**.
-5. **1-Click WhatsApp OPD Token & Follow-Up Reminder Dispatch**.
+4. **1-Click WhatsApp OPD Token & Follow-Up Reminder Dispatch**.
 
 ---
 
 ## 🧪 Production Verification
 
 - **Build Tool**: Vite v8.2.1
-- **Build Status**: `npm run build` passed cleanly (**0 errors**, 341ms build time).
+- **Build Status**: `npm run build` passed cleanly (**0 errors**, 340ms build time).
 - **GitHub Repository**: Pushed to `origin main` at [`https://github.com/krishbaresha/clinicflow.git`](https://github.com/krishbaresha/clinicflow.git).
 - **All Core Workflows**: Verified & Enterprise Ready.

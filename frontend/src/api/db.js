@@ -513,6 +513,7 @@ const KEYS = {
   RETURNS:         "cf_store_returns",
   STOCK_TRANSFERS: "cf_stock_transfers",
   B2B_SALES:       "cf_b2b_sales",
+  SHIFT_CLOSINGS:  "cf_shift_closings",
 };
 
 /** Atomic Sequential Invoice / Voucher Generator with distinct prefixes */
@@ -1487,5 +1488,44 @@ export function importFullDatabase(backupObj) {
   localStorage.setItem(KEYS.SEEDED, "1");
   return true;
 }
+
+/** EOD Shift Closing & Cash Drawer Summary Storage */
+export const dbShiftClosings = {
+  getAll: () => getCollection(KEYS.SHIFT_CLOSINGS) || [],
+  getByDate: (dateStr) => {
+    const all = getCollection(KEYS.SHIFT_CLOSINGS) || [];
+    return all.filter((c) => c.date === dateStr);
+  },
+  add: (closingData) => {
+    const closings = getCollection(KEYS.SHIFT_CLOSINGS) || [];
+    const newRecord = {
+      id: generateId("shift"),
+      date: closingData.date || new Date().toISOString().split("T")[0],
+      closed_at: new Date().toISOString(),
+      closed_by: closingData.closed_by || "Cashier",
+      shift_name: closingData.shift_name || "Day-End",
+      total_tokens: Number(closingData.total_tokens || 0),
+      opd_fees: Number(closingData.opd_fees || 0),
+      pharmacy_sales: Number(closingData.pharmacy_sales || 0),
+      wholesale_sales: Number(closingData.wholesale_sales || 0),
+      total_inflow: Number(closingData.total_inflow || 0),
+      expenses: Number(closingData.expenses || 0),
+      supplier_payments: Number(closingData.supplier_payments || 0),
+      returns_refunds: Number(closingData.returns_refunds || 0),
+      total_outflow: Number(closingData.total_outflow || 0),
+      expected_cash: Number(closingData.expected_cash || 0),
+      physical_cash: Number(closingData.physical_cash || 0),
+      cash_variance: Number(closingData.cash_variance || 0),
+      denominations: closingData.denominations || {},
+      notes: closingData.notes || "",
+    };
+    setCollection(KEYS.SHIFT_CLOSINGS, [newRecord, ...closings]);
+    return newRecord;
+  },
+  delete: (id) => {
+    const closings = getCollection(KEYS.SHIFT_CLOSINGS) || [];
+    setCollection(KEYS.SHIFT_CLOSINGS, closings.filter((c) => c.id !== id));
+  }
+};
 
 
