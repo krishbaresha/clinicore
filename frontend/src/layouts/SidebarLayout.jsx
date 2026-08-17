@@ -210,11 +210,31 @@ export default function SidebarLayout({ children }) {
           <NavItems items={navItems} onItemClick={onItemClick} />
         </nav>
 
+        {/* Quick Public View Links */}
+        <div className="px-2 pt-2 border-t border-outline-variant/30 space-y-1">
+          <NavLink
+            to="/live"
+            target="_blank"
+            className="flex items-center gap-3 px-4 py-2 text-primary hover:bg-primary-container/30 rounded-xl transition-colors text-xs font-semibold"
+          >
+            <span className="material-symbols-outlined text-lg">tv</span>
+            Public TV Screen (/live)
+          </NavLink>
+          <NavLink
+            to="/"
+            target="_blank"
+            className="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors text-xs font-medium"
+          >
+            <span className="material-symbols-outlined text-lg">public</span>
+            Product Landing Page
+          </NavLink>
+        </div>
+
         {/* Logout */}
-        <div className="px-2 mt-4">
+        <div className="px-2 mt-2">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/30 rounded-xl transition-colors text-sm font-medium"
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-error hover:bg-error-container/30 rounded-xl transition-colors text-sm font-medium"
           >
             <span className="material-symbols-outlined">logout</span>
             Logout

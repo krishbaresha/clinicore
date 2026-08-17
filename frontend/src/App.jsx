@@ -26,6 +26,7 @@ import SupplierPurchases         from "./pages/SupplierPurchases.jsx";
 import MedicalStoreSalesLog      from "./pages/MedicalStoreSalesLog.jsx";
 import WarehouseManagement       from "./pages/WarehouseManagement.jsx";
 import PublicLiveQueue           from "./pages/PublicLiveQueue.jsx";
+import LandingPage               from "./pages/LandingPage.jsx";
 
 /**
  * ProtectedRoute — wraps pages that require a logged-in session.
@@ -76,6 +77,8 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public Pages (No Login Required) */}
+      <Route path="/"        element={<LandingPage />} />
+      <Route path="/landing" element={<LandingPage />} />
       <Route path="/login"   element={<LoginScreen />} />
       <Route path="/live"    element={<PublicLiveQueue />} />
       <Route path="/display" element={<PublicLiveQueue />} />
@@ -105,8 +108,7 @@ function AppRoutes() {
       <Route path="/settings"    element={<OwnerLayout><ClinicSettings /></OwnerLayout>} />
 
       {/* Default redirect */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/"  element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
