@@ -7,45 +7,29 @@ export default function LandingPage() {
   const modules = [
     {
       id: "opd",
-      title: "OPD Tokens & Queue",
+      title: "OPD & Token Management",
       icon: "confirmation_number",
-      badge: "Zero Waiting Chaos",
-      heading: "Instant 80mm Thermal Token Generation with Doctor Chamber Routing",
-      desc: "Register patients in under 15 seconds. Issue thermal slips with assigned doctor chamber room number, smart age auto-advancement, and duplicate token prevention.",
+      badge: "Zero Waiting Congestion",
+      heading: "Instant 80mm Thermal Token Generation & Chamber Dispatching",
+      desc: "Designed for high-volume OPD clinics. Issue thermal slips with assigned doctor chamber numbers, smart dynamic age calculation, and duplicate token prevention.",
       highlights: [
-        "1-Click 80mm thermal token receipt printer engine",
-        "Assigned doctor and chamber room number on every slip",
+        "1-Click 80mm & 58mm thermal receipt printing engine",
+        "Assigned doctor and chamber room routing on every slip",
         "Smart dynamic age calculation with zero compulsory fields",
         "Duplicate active token safeguard to prevent double-booking",
       ],
-      previewGradient: "from-teal-600 to-emerald-700",
-      previewBadge: "OPD Chamber Dispatcher",
-    },
-    {
-      id: "live_tv",
-      title: "Public TV Screen",
-      icon: "tv",
-      badge: "100% Privacy Safe",
-      heading: "Airport-Grade Waiting Lounge Display Screen (/live)",
-      desc: "Mount any smart TV or browser in the clinic waiting area. Display live tokens, doctor availability statuses (🟢 Available, 🟡 Break, 🔴 Away), and gentle dual-tone hospital audio chimes.",
-      highlights: [
-        "Zero privacy breach: displays only Token # and Chamber (No patient names)",
-        "Gentle Web Audio API dual-tone hospital chime on token calls",
-        "Live Doctor status bars updated directly by doctor or reception",
-        "Built-in 1-click Dark TV Lounge & Fullscreen modes",
-      ],
-      previewGradient: "from-cyan-700 to-teal-800",
-      previewBadge: "Live Waiting Lounge Hub",
+      previewGradient: "from-teal-700 to-emerald-800",
+      previewBadge: "OPD Flow Architecture",
     },
     {
       id: "emr",
       title: "Doctor Chamber & EMR",
       icon: "stethoscope",
-      badge: "0.2s Search",
-      heading: "Lightning Fast Patient History, Paperless Rx & Camera Snapshots",
-      desc: "Instantly pull up 5-year patient history by phone number or name. Capture physical prescription photos via high-res camera and manage diagnostic reports with zero paperwork.",
+      badge: "0.2s Instant Lookup",
+      heading: "Lightning Fast Patient History, Paperless Rx & Camera Archiving",
+      desc: "Instantly search multi-year patient records by phone number or name. Capture physical prescription photos via high-res camera and manage diagnostic attachments.",
       highlights: [
-        "Instant patient history search across years in 0.2s",
+        "Instant multi-year patient history search across visits in 0.2s",
         "Camera snapshot capture for physical paper prescriptions",
         "Diagnostic lab report tracking and pending image uploads",
         "1-click follow-up scheduling and digital Rx generation",
@@ -58,7 +42,7 @@ export default function LandingPage() {
       title: "Pharmacy POS & Inventory",
       icon: "local_pharmacy",
       badge: "2-Tier Warehouse",
-      heading: "Integrated Medical Store POS, Batch Expiry & Supplier Purchases",
+      heading: "Integrated Medical Store POS, Batch Expiry & Supplier Ledger",
       desc: "Seamlessly bill walk-in or clinic-linked patients with barcode POS. Track main godown stock, inter-counter branch transfers, supplier purchase ledgers, and customer khata balances.",
       highlights: [
         "Rapid barcode thermal POS billing with automatic stock deduction",
@@ -69,12 +53,28 @@ export default function LandingPage() {
       previewGradient: "from-teal-800 to-slate-900",
       previewBadge: "Pharmacy & Godown POS",
     },
+    {
+      id: "security",
+      title: "Offline-First & Security",
+      icon: "security",
+      badge: "100% Data Ownership",
+      heading: "Local Encrypted Database with Automated Cloud Email Backups",
+      desc: "Runs completely offline without depending on unstable internet. Includes deterministic encryption, role-based access control, and automated daily email JSON backups.",
+      highlights: [
+        "100% offline-first local database: zero latency and no internet downtime",
+        "Automated background database export attached and emailed to clinic owner",
+        "Role-based permissions: Doctor, Receptionist, Pharmacist, and Admin",
+        "FBR-ready POS calculations with tamper-proof transaction logs",
+      ],
+      previewGradient: "from-slate-800 to-teal-950",
+      previewBadge: "Enterprise Security Layer",
+    },
   ];
 
   const currentModule = modules.find((m) => m.id === activeTab) || modules[0];
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] text-[#181c1c] font-sans selection:bg-teal-500 selection:text-white flex flex-col">
+    <div className="min-h-screen bg-[#f8faf9] text-[#181c1c] font-sans selection:bg-teal-600 selection:text-white flex flex-col">
       {/* ─── STICKY NAVBAR ────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-teal-100/80 shadow-[0_4px_24px_rgba(15,118,110,0.04)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
@@ -89,7 +89,7 @@ export default function LandingPage() {
               <div className="flex items-center gap-1.5">
                 <span className="text-xl font-black tracking-tight text-teal-950">ClinicFlow</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                  Enterprise
+                  v4.0
                 </span>
               </div>
               <p className="text-[11px] font-semibold text-gray-500">by K.B Software</p>
@@ -98,9 +98,9 @@ export default function LandingPage() {
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-gray-600">
-            <a href="#features" className="hover:text-teal-700 transition-colors">Features</a>
+            <a href="#features" className="hover:text-teal-700 transition-colors">Key Features</a>
             <a href="#modules" className="hover:text-teal-700 transition-colors">Clinical Modules</a>
-            <a href="#workflow" className="hover:text-teal-700 transition-colors">How It Works</a>
+            <a href="#workflow" className="hover:text-teal-700 transition-colors">Architecture</a>
             <a href="#contact" className="hover:text-teal-700 transition-colors">Contact Developer</a>
           </nav>
 
@@ -136,22 +136,22 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* Top Pill */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs sm:text-sm font-bold shadow-xs mb-6 animate-bounce">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs sm:text-sm font-bold shadow-xs mb-6">
             <span className="text-base">✨</span>
-            The Modern Clinic, OPD Queue & Pharmacy Operating System
+            The Modern Clinic, OPD &amp; Pharmacy Operating System
           </div>
 
           {/* Main Headline */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-teal-950 max-w-4xl mx-auto leading-[1.15]">
-            Run Your Clinic & Pharmacy with{" "}
+            The Complete Operating System for{" "}
             <span className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 bg-clip-text text-transparent">
-              Zero Waiting Chaos
+              Clinics &amp; Medical Stores
             </span>
           </h1>
 
           {/* Subtitle */}
           <p className="mt-6 text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto font-medium leading-relaxed">
-            Smart 80mm thermal token ticketing, multi-doctor chamber routing, real-time public TV waiting lounge, paperless EMR with camera archiving, and integrated barcode pharmacy inventory.
+            Smart 80mm thermal OPD ticketing, multi-chamber routing, paperless EMR with prescription camera archiving, and integrated barcode pharmacy inventory — built specifically for modern healthcare facilities.
           </p>
 
           {/* Hero Action Buttons */}
@@ -163,7 +163,7 @@ export default function LandingPage() {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-base font-extrabold bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-xl shadow-teal-700/25 hover:shadow-2xl hover:shadow-teal-700/35 hover:-translate-y-0.5 transition-all"
             >
               <span className="material-symbols-outlined text-2xl">chat</span>
-              WhatsApp Inquiry (03142291356)
+              Get Software for Your Clinic
             </a>
 
             <a
@@ -186,10 +186,10 @@ export default function LandingPage() {
           </div>
 
           {/* Metric Badges */}
-          <div className="mt-12 pt-8 border-t border-teal-100/80 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+          <div id="features" className="mt-12 pt-8 border-t border-teal-100/80 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
             <div className="p-4 bg-white/70 backdrop-blur rounded-2xl border border-teal-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-black text-teal-900">0.2s</div>
-              <div className="text-xs font-semibold text-gray-500 mt-1">Patient History Retrieval</div>
+              <div className="text-xs font-semibold text-gray-500 mt-1">Instant Patient EMR Lookup</div>
             </div>
             <div className="p-4 bg-white/70 backdrop-blur rounded-2xl border border-teal-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-black text-teal-900">80mm</div>
@@ -197,7 +197,7 @@ export default function LandingPage() {
             </div>
             <div className="p-4 bg-white/70 backdrop-blur rounded-2xl border border-teal-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-black text-teal-900">100%</div>
-              <div className="text-xs font-semibold text-gray-500 mt-1">Patient Privacy Guaranteed</div>
+              <div className="text-xs font-semibold text-gray-500 mt-1">Offline-First Data Durability</div>
             </div>
             <div className="p-4 bg-white/70 backdrop-blur rounded-2xl border border-teal-100 shadow-xs">
               <div className="text-2xl sm:text-3xl font-black text-teal-900">2-Tier</div>
@@ -207,9 +207,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── LIVE HERO SHOWCASE CARD ──────────────────────────────── */}
+      {/* ─── ARCHITECTURE OVERVIEW CARD ───────────────────────────── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 mb-20">
-        <div className="bg-gradient-to-tr from-teal-900 via-teal-950 to-slate-950 rounded-3xl p-4 sm:p-8 text-white shadow-2xl border border-teal-800/50 relative overflow-hidden">
+        <div className="bg-gradient-to-tr from-teal-900 via-teal-950 to-slate-950 rounded-3xl p-6 sm:p-10 text-white shadow-2xl border border-teal-800/50 relative overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-teal-800/60 pb-4 mb-6 flex-wrap gap-3">
             <div className="flex items-center gap-3">
@@ -218,60 +218,46 @@ export default function LandingPage() {
                 <span className="w-3 h-3 rounded-full bg-amber-500"></span>
                 <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
               </div>
-              <span className="text-xs font-mono text-teal-300 font-bold">ClinicFlow OPD & Chamber Live Console</span>
+              <span className="text-xs font-mono text-teal-300 font-bold">ClinicFlow Integrated System Architecture</span>
             </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-              Active Simulation
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Enterprise Grade
             </span>
           </div>
 
-          {/* Interactive Live Layout Columns */}
+          {/* Architecture Columns */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Column 1: Token Issuance */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-              <div className="text-xs font-bold uppercase tracking-wider text-teal-300 mb-2">1. Reception Token Desk</div>
-              <div className="bg-white rounded-xl p-3 text-slate-900 shadow-sm">
-                <div className="flex justify-between items-center text-xs font-semibold text-gray-500 mb-1">
-                  <span>Patient Token Slip</span>
-                  <span className="text-teal-700 font-bold">80mm Thermal</span>
-                </div>
-                <div className="text-3xl font-black text-teal-900 text-center py-2 bg-teal-50 rounded-lg border border-teal-200">
-                  TOKEN #12
-                </div>
-                <div className="text-xs font-bold text-gray-800 mt-2">Nival · S/O Raju (23 yrs)</div>
-                <div className="text-[11px] text-teal-700 font-semibold mt-0.5">👨‍⚕️ Dr. Asif Ashraf · 🚪 Room 1</div>
+            {/* Column 1 */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-teal-500 text-teal-950 flex items-center justify-center font-bold mb-3">
+                <span className="material-symbols-outlined">confirmation_number</span>
               </div>
+              <h4 className="text-base font-bold text-white">OPD &amp; Counter Desk</h4>
+              <p className="text-xs text-teal-100/80 mt-2 leading-relaxed">
+                Fast 15-second patient registration, optional age handling, 80mm thermal token printing, and multi-doctor chamber routing.
+              </p>
             </div>
 
-            {/* Column 2: Public TV Display */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-              <div className="text-xs font-bold uppercase tracking-wider text-teal-300 mb-2">2. Waiting TV Screen (/live)</div>
-              <div className="bg-slate-900 rounded-xl p-3 border border-slate-700 text-white">
-                <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">NOW CALLING</div>
-                <div className="text-4xl font-black text-amber-400 my-1">TOKEN #12</div>
-                <div className="text-xs font-bold text-slate-200">Dr. Asif Ashraf (Chamber 1)</div>
-                <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-1.5">
-                  <span>Waiting: 4 Patients</span>
-                  <span className="text-emerald-400 font-semibold">🔊 Audio Chime Active</span>
-                </div>
+            {/* Column 2 */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-emerald-950 flex items-center justify-center font-bold mb-3">
+                <span className="material-symbols-outlined">stethoscope</span>
               </div>
+              <h4 className="text-base font-bold text-white">Doctor EMR Workstation</h4>
+              <p className="text-xs text-teal-100/80 mt-2 leading-relaxed">
+                Instant retrieval of past visits across years in 0.2s, paper Rx camera snapshot archiving, and digital prescription generator.
+              </p>
             </div>
 
-            {/* Column 3: Doctor Chamber */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-              <div className="text-xs font-bold uppercase tracking-wider text-teal-300 mb-2">3. Doctor Consultation</div>
-              <div className="bg-white rounded-xl p-3 text-slate-900 shadow-sm">
-                <div className="flex justify-between items-center text-xs font-bold text-teal-900 mb-1">
-                  <span>Patient Profile</span>
-                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[10px]">In Chamber</span>
-                </div>
-                <div className="text-xs font-bold text-gray-900">Nival (23 yrs)</div>
-                <div className="text-[11px] text-gray-500">History: 3 Past Visits retrieved in 0.2s</div>
-                <div className="mt-2 text-[10px] font-bold text-teal-800 bg-teal-50 p-1.5 rounded border border-teal-100 text-center">
-                  📷 Rx Camera Snapshot & Print Ready
-                </div>
+            {/* Column 3 */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500 text-cyan-950 flex items-center justify-center font-bold mb-3">
+                <span className="material-symbols-outlined">local_pharmacy</span>
               </div>
+              <h4 className="text-base font-bold text-white">Pharmacy POS &amp; Godown</h4>
+              <p className="text-xs text-teal-100/80 mt-2 leading-relaxed">
+                Barcode sales billing, batch expiry warnings, supplier purchase ledgers, and 2-tier main warehouse stock management.
+              </p>
             </div>
           </div>
         </div>
@@ -285,10 +271,10 @@ export default function LandingPage() {
               Complete Clinic Ecosystem
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-teal-950 mt-3 tracking-tight">
-              Four Connected Modules for Complete Clinical Flow
+              Designed for Speed, Durability &amp; Simplicity
             </h2>
             <p className="text-gray-600 mt-3 text-base">
-              Everything works in seamless real-time sync with zero cloud delay and offline durability.
+              Everything runs locally in lightning-fast sync with zero lag, no internet breakdown risk, and automated backups.
             </p>
           </div>
 
@@ -362,7 +348,7 @@ export default function LandingPage() {
                 <span className="text-xs uppercase font-extrabold tracking-widest text-teal-200">
                   {currentModule.previewBadge}
                 </span>
-                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="w-3 h-3 rounded-full bg-emerald-400"></span>
               </div>
               <div className="my-6">
                 <div className="text-4xl sm:text-5xl font-black tracking-tight">{currentModule.title}</div>
@@ -377,15 +363,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── HOW IT WORKS WORKFLOW ─────────────────────────────────── */}
+      {/* ─── SYSTEM WORKFLOW ───────────────────────────────────────── */}
       <section id="workflow" className="py-20 bg-[#f7faf8]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-extrabold tracking-wider uppercase text-teal-700 bg-teal-50 px-3.5 py-1 rounded-full border border-teal-200">
-              Streamlined Workflow
+              Complete Lifecycle
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-teal-950 mt-3 tracking-tight">
-              How Patient Journey Flows in ClinicFlow
+              How ClinicFlow Streamlines Operations
             </h2>
           </div>
 
@@ -406,9 +392,9 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white font-black text-xl flex items-center justify-center mb-4 shadow-md shadow-teal-700/20">
                 2
               </div>
-              <h4 className="text-lg font-bold text-teal-950">Lounge TV Display</h4>
+              <h4 className="text-lg font-bold text-teal-950">Doctor Consultation</h4>
               <p className="text-sm text-gray-600 mt-2">
-                Waiting TV screen (/live) rings dual-tone chime when token is called. Patients see live chamber availability without any privacy breach.
+                Doctor views entire multi-year visit history in 0.2s, records clinical notes, snaps paper Rx photos, and prescribes medicines.
               </p>
             </div>
 
@@ -417,9 +403,9 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white font-black text-xl flex items-center justify-center mb-4 shadow-md shadow-teal-700/20">
                 3
               </div>
-              <h4 className="text-lg font-bold text-teal-950">Doctor Consultation</h4>
+              <h4 className="text-lg font-bold text-teal-950">Pharmacy &amp; POS</h4>
               <p className="text-sm text-gray-600 mt-2">
-                Doctor views entire multi-year visit history in 0.2s, records clinical notes, snaps paper Rx photos, and prescribes medicines.
+                Medical store dispenses prescription with barcode scan, manages customer khata ledger, and deducts batch inventory.
               </p>
             </div>
 
@@ -428,9 +414,9 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white font-black text-xl flex items-center justify-center mb-4 shadow-md shadow-teal-700/20">
                 4
               </div>
-              <h4 className="text-lg font-bold text-teal-950">Pharmacy &amp; POS</h4>
+              <h4 className="text-lg font-bold text-teal-950">Reports &amp; Backups</h4>
               <p className="text-sm text-gray-600 mt-2">
-                Medical store dispenses prescription with barcode scan, manages khata balance, and deducts live batch inventory automatically.
+                Clinic owner views daily fee revenue, doctor commissions, supplier balances, and automated email database backups.
               </p>
             </div>
           </div>
