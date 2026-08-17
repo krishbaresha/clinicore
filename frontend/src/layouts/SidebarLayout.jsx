@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../hooks/useAuth.js";
 import { getInitials } from "../utils/formatters.js";
 import { dbClinic, exportFullDatabase } from "../api/db.js";
 

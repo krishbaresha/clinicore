@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { dbVisits, dbPatients, dbUsers } from "../api/db.js";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../hooks/useAuth.js";
 
 const STATUS_STYLES = {
   waiting:                  { bg: "bg-amber-50",  border: "border-amber-200",  badge: "bg-amber-100 text-amber-800",  dot: "bg-amber-500",  label: "Waiting"         },

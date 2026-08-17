@@ -1,8 +1,8 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect } from "react";
 import { getSession, login as apiLogin, logout as apiLogout } from "../api/auth.js";
-import { dbClinic, dbUsers } from "../api/db.js";
+import { dbClinic } from "../api/db.js";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser]     = useState(null);   // { userId, name, role, clinic_id, is_owner, can_view_financials }
@@ -51,11 +51,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-/** Hook for consuming the auth context in any component. */
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
-  return ctx;
 }

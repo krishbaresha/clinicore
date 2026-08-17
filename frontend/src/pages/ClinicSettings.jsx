@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../hooks/useAuth.js";
 import { dbClinic, dbUsers, dbClinicServices, exportFullDatabase, importFullDatabase, resetDatabaseToDemoData, hashPassword } from "../api/db.js";
 
 export default function ClinicSettings() {

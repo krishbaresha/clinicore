@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { dbVisits, dbPatients, dbUsers, dbClinicServices } from "../api/db.js";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../hooks/useAuth.js";
 
 function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [] }) {
   const fileInputRef = useRef(null);

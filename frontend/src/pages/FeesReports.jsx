@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../hooks/useAuth.js";
 import { getFeesSummary } from "../api/visits.js";
 import { dbVisits, dbSales, dbExpenses, dbPurchases, dbReturns, dbB2BSales, dbClinic, dbShiftClosings } from "../api/db.js";
 import { formatCurrency } from "../utils/formatters.js";

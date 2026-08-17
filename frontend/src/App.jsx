@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { initDB } from "./api/db.js";
-import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
+import { AuthProvider } from "./context/AuthContext.jsx";
+import { useAuth } from "./hooks/useAuth.js";
 import SidebarLayout from "./layouts/SidebarLayout.jsx";
 
 // Pages — existing
