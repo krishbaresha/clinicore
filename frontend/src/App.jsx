@@ -24,6 +24,7 @@ import MedicalStorePOS           from "./pages/MedicalStorePOS.jsx";
 import SupplierPurchases         from "./pages/SupplierPurchases.jsx";
 import MedicalStoreSalesLog      from "./pages/MedicalStoreSalesLog.jsx";
 import WarehouseManagement       from "./pages/WarehouseManagement.jsx";
+import PublicLiveQueue           from "./pages/PublicLiveQueue.jsx";
 
 /**
  * ProtectedRoute — wraps pages that require a logged-in session.
@@ -73,8 +74,10 @@ function OwnerLayout({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
-      <Route path="/login" element={<LoginScreen />} />
+      {/* Public Pages (No Login Required) */}
+      <Route path="/login"   element={<LoginScreen />} />
+      <Route path="/live"    element={<PublicLiveQueue />} />
+      <Route path="/display" element={<PublicLiveQueue />} />
 
       {/* ─── Reception / Counter Flow ─────────────────────────── */}
       <Route path="/reception/register"        element={<AuthenticatedLayout><PatientRegistration /></AuthenticatedLayout>} />

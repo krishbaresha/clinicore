@@ -762,8 +762,11 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
 
         <div class="text-center" style="font-size: 11px; margin-top: 8px; font-weight: bold;">
           <div>Please wait in waiting area for your token call.</div>
-          <div style="font-size: 12px; font-weight: 900; margin-top: 4px;">Software Powered by: K.B Software</div>
-          <div style="font-size: 12px; font-weight: 900;">📞 Contact: 03142291356</div>
+          <div style="margin-top: 4px; padding: 4px; background: #f0fdfa; border: 1px dashed #0d9488; border-radius: 4px; font-size: 11px; color: #0f766e;">
+            🌐 <strong>Live Token Tracker:</strong> Open <code>/live</code> on your phone to track queue!
+          </div>
+          <div style="font-size: 11px; font-weight: 900; margin-top: 6px;">Software Powered by: K.B Software</div>
+          <div style="font-size: 11px; font-weight: 900;">📞 Contact: 03142291356</div>
         </div>
 
         <script>

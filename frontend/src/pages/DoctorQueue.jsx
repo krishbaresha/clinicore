@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { dbVisits, dbPatients } from "../api/db.js";
+import { dbVisits, dbPatients, dbUsers } from "../api/db.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const STATUS_STYLES = {
@@ -21,6 +21,9 @@ export default function DoctorQueue() {
   const [queue, setQueue] = useState([]);
   const [patients, setPatients] = useState({});
   const [now, setNow] = useState(new Date());
+  const [docProfile, setDocProfile] = useState(null);
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [customNote, setCustomNote] = useState("");
 
   const doctorId = user?.userId || user?.id;
 
@@ -34,15 +37,42 @@ export default function DoctorQueue() {
       if (!pMap[v.patient_id]) pMap[v.patient_id] = dbPatients.getById(v.patient_id);
     });
     setPatients(pMap);
+
+    if (doctorId) {
+      const p = dbUsers.getById(doctorId);
+      setDocProfile(p);
+      if (p?.status_note) setCustomNote(p.status_note);
+    }
   }, [doctorId]);
 
   useEffect(() => {
     loadQueue();
-    // Auto-refresh every 15 seconds (simulates live queue)
-    const interval = setInterval(loadQueue, 15000);
+    // Auto-refresh every 10 seconds (simulates live queue)
+    const interval = setInterval(loadQueue, 10000);
     const clock = setInterval(() => setNow(new Date()), 1000);
-    return () => { clearInterval(interval); clearInterval(clock); };
+
+    const handleCustomUpdate = () => loadQueue();
+    window.addEventListener("clinicflow_status_update", handleCustomUpdate);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(clock);
+      window.removeEventListener("clinicflow_status_update", handleCustomUpdate);
+    };
   }, [loadQueue]);
+
+  function handleSetAvailability(status, defaultNote = "") {
+    const note = status === "available" ? "" : (defaultNote || docProfile?.status_note || "");
+    dbUsers.updateDoctorStatus(doctorId, status, note);
+    setDocProfile(dbUsers.getById(doctorId));
+  }
+
+  function handleSaveCustomNote(e) {
+    e.preventDefault();
+    dbUsers.updateDoctorStatus(doctorId, docProfile?.availability_status || "break", customNote.trim());
+    setDocProfile(dbUsers.getById(doctorId));
+    setShowNoteInput(false);
+  }
 
   function callNext() {
     const nextWaiting = queue.find((v) => v.status === "waiting");
@@ -62,31 +92,128 @@ export default function DoctorQueue() {
 
   const inConsultation = queue.filter((v) => v.status === "in_consultation");
   const waiting = queue.filter((v) => v.status === "waiting");
+  const currentStatus = docProfile?.availability_status || "available";
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>queue</span>
-            {user?.name ? `${user.name}'s Live Queue` : "Doctor's Live Queue"}
+            {user?.name ? `${user.name}'s OPD Chamber` : "Doctor's Live Queue"}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {now.toLocaleString("en-PK", { weekday: "long", hour: "2-digit", minute: "2-digit" })}
+            {now.toLocaleString("en-PK", { weekday: "long", hour: "2-digit", minute: "2-digit" })} • {docProfile?.room_number || "OPD Chamber"}
           </p>
         </div>
-        <button
-          onClick={loadQueue}
-          className="flex items-center gap-1.5 text-sm text-teal-600 border border-teal-200 px-3 py-2 rounded-xl hover:bg-teal-50 transition-colors font-medium"
-        >
-          <span className="material-symbols-outlined text-lg">refresh</span>
-          Refresh
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => window.open("/live", "_blank")}
+            title="Open Waiting Room Public TV Screen in new window"
+            className="flex items-center gap-1.5 text-xs text-teal-800 bg-teal-50 border border-teal-200 px-3 py-2 rounded-xl hover:bg-teal-100 transition-colors font-bold shadow-sm"
+          >
+            <span className="material-symbols-outlined text-base">tv</span>
+            Waiting Area TV Screen
+          </button>
+          <button
+            onClick={loadQueue}
+            className="flex items-center gap-1.5 text-xs text-gray-700 bg-white border border-gray-200 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors font-medium shadow-sm"
+          >
+            <span className="material-symbols-outlined text-base">refresh</span>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* ─── DOCTOR LIVE AVAILABILITY CONTROL BAR ──────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">My Live Chamber Status:</span>
+            <span className="text-xs text-gray-400">(Broadcasts to Waiting Room TV & Patient Mobile)</span>
+          </div>
+          {docProfile?.status_note && (
+            <span className="text-xs bg-amber-50 text-amber-800 font-semibold px-2.5 py-0.5 rounded-md border border-amber-200">
+              Notice: {docProfile.status_note}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {/* Option 1: Available */}
+          <button
+            onClick={() => handleSetAvailability("available")}
+            className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
+              currentStatus === "available"
+                ? "bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-600/20"
+                : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+            }`}
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping"></span>
+            🟢 Available (In Room)
+          </button>
+
+          {/* Option 2: 15-Min Short Break */}
+          <button
+            onClick={() => handleSetAvailability("break", "15-Min Break — Back soon")}
+            className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
+              currentStatus === "break"
+                ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20"
+                : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">coffee</span>
+            🟡 Short Break (15m)
+          </button>
+
+          {/* Option 3: Unavailable / Done for Today */}
+          <button
+            onClick={() => handleSetAvailability("unavailable", "Shift Ended for Today")}
+            className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
+              currentStatus === "unavailable"
+                ? "bg-slate-700 text-white border-slate-800 shadow-md shadow-slate-700/20"
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">do_not_disturb_on</span>
+            🔴 Shift Ended / Away
+          </button>
+        </div>
+
+        {/* Custom Status Note Toggle */}
+        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
+          <button
+            type="button"
+            onClick={() => setShowNoteInput(!showNoteInput)}
+            className="text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-sm">edit_note</span>
+            {showNoteInput ? "Hide Custom Note" : "Add / Edit Custom Status Note (e.g. Back at 6:30 PM)"}
+          </button>
+        </div>
+
+        {showNoteInput && (
+          <form onSubmit={handleSaveCustomNote} className="flex gap-2 pt-1">
+            <input
+              type="text"
+              value={customNote}
+              onChange={(e) => setCustomNote(e.target.value)}
+              placeholder="e.g. Tea Break • Available from 5:30 PM"
+              className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+            <button
+              type="submit"
+              className="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+            >
+              Save Note
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
           <div className="text-3xl font-black text-teal-600">{inConsultation.length}</div>
           <div className="text-xs font-medium text-gray-500 mt-1">In Consultation</div>
@@ -105,7 +232,7 @@ export default function DoctorQueue() {
       {waiting.length > 0 && inConsultation.length === 0 && (
         <button
           onClick={callNext}
-          className="w-full mb-6 bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 transition-colors shadow-xl shadow-teal-600/25 flex items-center justify-center gap-3"
+          className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 transition-colors shadow-xl shadow-teal-600/25 flex items-center justify-center gap-3"
         >
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>call</span>
           Call Next Patient (Token #{waiting[0]?.token_number})

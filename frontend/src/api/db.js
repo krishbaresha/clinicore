@@ -40,6 +40,9 @@ const SEED_DATA = {
     address: "Lajpat Road, Hyderabad",
     phone: "03001234567",
     default_consultation_fee: 800,
+    clinic_status: "open", // 'open' | 'break' | 'closed'
+    clinic_status_note: "",
+    public_notice: "Welcome to Dr. Asif Ashraf's Clinic — Please take your token slip at the reception desk.",
     resend_api_key: "",
     created_at: "2023-01-10T09:00:00Z",
   },
@@ -56,6 +59,8 @@ const SEED_DATA = {
       role: "doctor",
       is_owner: true,
       can_view_financials: true,
+      availability_status: "available", // 'available' | 'break' | 'unavailable'
+      status_note: "In Room 1 (General OPD)",
       specialization: "General Physician / M.B.B.S",
       room_number: "Room 1 (General OPD)",
       consultation_fee: 800,
@@ -92,6 +97,8 @@ const SEED_DATA = {
       role: "doctor",
       is_owner: false,
       can_view_financials: false,
+      availability_status: "available",
+      status_note: "In Room 2 (Gyne OPD)",
       specialization: "Gynecologist & Lady Doctor",
       room_number: "Room 2 (Gyne & Female OPD)",
       consultation_fee: 1000,
@@ -106,6 +113,8 @@ const SEED_DATA = {
       role: "doctor",
       is_owner: false,
       can_view_financials: false,
+      availability_status: "break",
+      status_note: "Available from 6:00 PM",
       specialization: "Child Specialist / Pediatrician",
       room_number: "Room 3 (Children OPD)",
       consultation_fee: 900,
@@ -593,26 +602,60 @@ function generateId(prefix)      { return `${prefix}_${Date.now()}_${Math.random
 // ---------- Clinic ----------
 export const dbClinic = {
   get:    ()     => getRecord(KEYS.CLINIC),
-  update: (data) => { setRecord(KEYS.CLINIC, { ...getRecord(KEYS.CLINIC), ...data }); },
+  update: (data) => {
+    setRecord(KEYS.CLINIC, { ...getRecord(KEYS.CLINIC), ...data });
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+  },
+  updateClinicStatus: (clinic_status, public_notice, clinic_status_note = "") => {
+    const current = getRecord(KEYS.CLINIC) || {};
+    const updated = {
+      ...current,
+      clinic_status,
+      public_notice: public_notice !== undefined ? public_notice : current.public_notice,
+      clinic_status_note
+    };
+    setRecord(KEYS.CLINIC, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return updated;
+  }
 };
 
 // ---------- Users ----------
 export const dbUsers = {
-  getAll:     ()        => getCollection(KEYS.USERS),
-  getById:    (id)      => getCollection(KEYS.USERS).find((u) => u.id === id) || null,
+  getAll:     ()        => getCollection(KEYS.USERS).map((u) => ({
+    ...u,
+    availability_status: u.availability_status || (u.role === "doctor" ? "available" : undefined)
+  })),
+  getById:    (id)      => {
+    const u = getCollection(KEYS.USERS).find((x) => x.id === id);
+    if (!u) return null;
+    return {
+      ...u,
+      availability_status: u.availability_status || (u.role === "doctor" ? "available" : undefined)
+    };
+  },
   getByEmail: (email)   => getCollection(KEYS.USERS).find((u) => u.email === email) || null,
   getByPhone: (phone)   => getCollection(KEYS.USERS).find((u) => u.phone === phone) || null,
   add: (user) => {
     const users = getCollection(KEYS.USERS);
     const newUser = { ...user, id: generateId("user") };
     setCollection(KEYS.USERS, [...users, newUser]);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newUser;
   },
   update: (id, data) => {
     const users = getCollection(KEYS.USERS);
     const updated = users.map((u) => (u.id === id ? { ...u, ...data } : u));
     setCollection(KEYS.USERS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   },
+  updateDoctorStatus: (id, availability_status, status_note = "") => {
+    const users = getCollection(KEYS.USERS);
+    const updated = users.map((u) => (u.id === id ? { ...u, availability_status, status_note } : u));
+    setCollection(KEYS.USERS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return updated.find((u) => u.id === id);
+  }
 };
 
 // ---------- Patients ----------
@@ -712,6 +755,7 @@ export const dbVisits = {
       report_image_urls: [],
     };
     setCollection(KEYS.VISITS, [...visits, newVisit]);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newVisit;
   },
 
@@ -719,6 +763,7 @@ export const dbVisits = {
     const visits = getCollection(KEYS.VISITS);
     const updated = visits.map((v) => (v.id === id ? { ...v, status } : v));
     setCollection(KEYS.VISITS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return updated.find((v) => v.id === id);
   },
 

@@ -9,6 +9,7 @@ const UNIFIED_DESK_NAV = [
   { label: "Dashboard",         icon: "dashboard",          path: "/dashboard" },
   { label: "Register Patient",  icon: "how_to_reg",         path: "/reception/register" },
   { label: "Today's Queue",     icon: "event_note",         path: "/reception/queue" },
+  { label: "Live TV Screen",    icon: "tv",                 path: "/live", target: "_blank" },
   { label: "POS / Pharmacy",    icon: "point_of_sale",      path: "/store/pos" },
   { label: "Sales Audit & Returns", icon: "receipt_long",   path: "/store/sales" },
   { label: "Company Purchases", icon: "local_shipping",     path: "/store/purchases" },
@@ -27,6 +28,7 @@ const NAV_BY_ROLE = {
   doctor: [
     { label: "Dashboard (Revenue)", icon: "dashboard",     path: "/dashboard" },
     { label: "My OPD Queue",        icon: "queue",         path: "/doctor/queue" },
+    { label: "Live TV Screen",       icon: "tv",            path: "/live", target: "_blank" },
     { label: "Patients & EMR",      icon: "group",         path: "/patients" },
     { label: "Fees & Analytics",    icon: "payments",      path: "/fees" },
     { label: "Settings",            icon: "settings",      path: "/settings", spacer: true },
@@ -38,6 +40,7 @@ const NAV_DEFAULT = [
   { label: "Dashboard",         icon: "dashboard",          path: "/dashboard" },
   { label: "Register Patient",  icon: "how_to_reg",         path: "/reception/register" },
   { label: "Today's Queue",     icon: "event_note",         path: "/reception/queue" },
+  { label: "Live TV Screen",    icon: "tv",                 path: "/live", target: "_blank" },
   { label: "POS / Pharmacy",    icon: "point_of_sale",      path: "/store/pos" },
   { label: "Sales Audit & Returns", icon: "receipt_long",   path: "/store/sales" },
   { label: "Company Purchases", icon: "local_shipping",     path: "/store/purchases" },
@@ -64,19 +67,35 @@ function NavItems({ items, onItemClick }) {
     <ul className="space-y-1">
       {items.map((item) => (
         <li key={item.path} className={item.spacer ? "mt-4" : ""}>
-          <NavLink
-            to={item.path}
-            end={item.path === "/store" || item.end}
-            onClick={onItemClick}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 ${
-                isActive ? "nav-item-active" : "nav-item"
-              }`
-            }
-          >
-            <span className="material-symbols-outlined">{item.icon}</span>
-            <span className="font-body-md text-body-md">{item.label}</span>
-          </NavLink>
+          {item.target === "_blank" ? (
+            <a
+              href={item.path}
+              target="_blank"
+              rel="noreferrer"
+              onClick={onItemClick}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 nav-item hover:bg-teal-50 hover:text-teal-800 text-slate-700"
+            >
+              <span className="material-symbols-outlined text-teal-600">{item.icon}</span>
+              <span className="font-body-md text-body-md flex items-center justify-between flex-1">
+                {item.label}
+                <span className="material-symbols-outlined text-xs text-gray-400">open_in_new</span>
+              </span>
+            </a>
+          ) : (
+            <NavLink
+              to={item.path}
+              end={item.path === "/store" || item.end}
+              onClick={onItemClick}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 ${
+                  isActive ? "nav-item-active" : "nav-item"
+                }`
+              }
+            >
+              <span className="material-symbols-outlined">{item.icon}</span>
+              <span className="font-body-md text-body-md">{item.label}</span>
+            </NavLink>
+          )}
         </li>
       ))}
     </ul>
