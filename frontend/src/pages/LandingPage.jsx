@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 export default function LandingPage() {
   const [activeTab, setActiveTab] = useState("opd");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const modules = [
     {
@@ -76,57 +77,115 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#f8faf9] text-[#181c1c] font-sans selection:bg-teal-600 selection:text-white flex flex-col">
       {/* ─── STICKY NAVBAR ────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-teal-100/80 shadow-[0_4px_24px_rgba(15,118,110,0.04)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-teal-100/80 shadow-[0_4px_24px_rgba(15,118,110,0.04)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-teal-700/25 group-hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-teal-700/25 group-hover:scale-105 transition-transform shrink-0">
+              <span className="material-symbols-outlined text-xl sm:text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
                 medical_services
               </span>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xl font-black tracking-tight text-teal-950">ClinicFlow</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
+                <span className="text-lg sm:text-xl font-black tracking-tight text-teal-950">ClinicFlow</span>
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
                   v4.0
                 </span>
               </div>
-              <p className="text-[11px] font-semibold text-gray-500">by K.B Software</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-gray-500">by K.B Software</p>
             </div>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-gray-600">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-semibold text-gray-600">
             <a href="#features" className="hover:text-teal-700 transition-colors">Key Features</a>
             <a href="#modules" className="hover:text-teal-700 transition-colors">Clinical Modules</a>
             <a href="#workflow" className="hover:text-teal-700 transition-colors">Architecture</a>
             <a href="#contact" className="hover:text-teal-700 transition-colors">Contact Developer</a>
           </nav>
 
-          {/* Action CTAs */}
-          <div className="flex items-center gap-3">
+          {/* Action CTAs & Mobile Hamburger */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <a
               href="https://wa.me/923142291356?text=Hi%20Krish,%20I%20am%20interested%20in%20deploying%20ClinicFlow."
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-extrabold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-xs"
             >
-              <span className="material-symbols-outlined text-base">chat</span>
-              WhatsApp Inquiry
+              <span className="material-symbols-outlined text-sm sm:text-base">chat</span>
+              <span className="hidden xs:inline">WhatsApp Inquiry</span>
+              <span className="xs:hidden">WhatsApp</span>
             </a>
 
             <a
               href="https://krishbaresha.tech"
               target="_blank"
               rel="noreferrer"
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100 transition-all shadow-xs"
+              className="hidden lg:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100 transition-all shadow-xs"
             >
               <span className="material-symbols-outlined text-base text-teal-600">language</span>
               krishbaresha.tech
             </a>
+
+            {/* Mobile Hamburger Toggle Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 focus:outline-none"
+              aria-label="Toggle Navigation Menu"
+            >
+              <span className="material-symbols-outlined text-2xl">
+                {mobileMenuOpen ? "close" : "menu"}
+              </span>
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer / Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-teal-100 bg-white/95 backdrop-blur-xl px-4 py-4 space-y-3 animate-fade-in shadow-xl">
+            <nav className="flex flex-col space-y-2 text-sm font-bold text-gray-700">
+              <a
+                href="#features"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-teal-50 hover:text-teal-800 transition-colors"
+              >
+                Key Features
+              </a>
+              <a
+                href="#modules"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-teal-50 hover:text-teal-800 transition-colors"
+              >
+                Clinical Modules
+              </a>
+              <a
+                href="#workflow"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-teal-50 hover:text-teal-800 transition-colors"
+              >
+                Architecture &amp; Workflow
+              </a>
+              <a
+                href="#contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-teal-50 hover:text-teal-800 transition-colors"
+              >
+                Contact Developer (Krish Baresha)
+              </a>
+              <a
+                href="https://krishbaresha.tech"
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl bg-teal-50 text-teal-900 border border-teal-200 flex items-center justify-between"
+              >
+                <span>Developer Portfolio</span>
+                <span className="material-symbols-outlined text-xs">open_in_new</span>
+              </a>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* ─── HERO SECTION ─────────────────────────────────────────── */}

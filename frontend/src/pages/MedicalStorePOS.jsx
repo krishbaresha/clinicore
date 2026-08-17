@@ -686,7 +686,7 @@ export default function MedicalStorePOS() {
 
         {/* Right: Cart */}
         <div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sticky top-4">
+          <div id="pos-checkout-cart-panel" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sticky top-4">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
               <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
               <h2 className="font-bold text-gray-900">Checkout Cart</h2>
@@ -909,6 +909,30 @@ export default function MedicalStorePOS() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Floating Cart Summary Bar */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-20 left-4 right-4 z-40 animate-fade-in">
+          <button
+            onClick={() => {
+              const cartEl = document.getElementById("pos-checkout-cart-panel");
+              if (cartEl) cartEl.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="w-full bg-teal-800 text-white p-3.5 rounded-2xl font-bold shadow-2xl flex items-center justify-between border border-teal-600 active:scale-95 transition-transform"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-amber-400 text-teal-950 text-xs font-black flex items-center justify-center">
+                {cart.length}
+              </span>
+              <span className="text-xs font-bold">Items In Cart</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black text-amber-300">Rs. {finalTotal.toLocaleString()}</span>
+              <span className="text-[11px] bg-teal-600 px-2 py-1 rounded-lg">View Cart &amp; Pay ➔</span>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Barcode Generator Modal */}
       {barcodeModalItem && (

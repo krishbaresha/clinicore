@@ -317,7 +317,7 @@ export default function ConsultationScreen() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto pb-24">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto pb-48 md:pb-28">
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <button
