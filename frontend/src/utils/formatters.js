@@ -50,3 +50,60 @@ export function getGreeting() {
 export function formatTodayLong() {
   return new Date().toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
+
+/**
+ * Calculate dynamic patient age.
+ * Handles:
+ * - Exact Date of Birth (DOB) -> auto-increments on every birthday.
+ * - Initial approx age stored at registration -> auto-advances dynamically based on years elapsed since registration.
+ * - Missing / unstated age -> returns null cleanly.
+ */
+export function getPatientCalculatedAge(patient, asOfDate = new Date()) {
+  if (!patient) return null;
+
+  // 1. If exact Date of Birth is recorded
+  if (patient.dob) {
+    const dob = new Date(patient.dob);
+    if (!isNaN(dob.getTime())) {
+      const target = new Date(asOfDate);
+      let age = target.getFullYear() - dob.getFullYear();
+      const m = target.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && target.getDate() < dob.getDate())) {
+        age--;
+      }
+      return age >= 0 ? age : null;
+    }
+  }
+
+  // 2. If initial approx age was recorded at registration
+  if (patient.age !== null && patient.age !== undefined && patient.age !== "" && !isNaN(Number(patient.age))) {
+    const initialAge = Number(patient.age);
+    if (initialAge === 0) return 0; // Infant / newborn
+
+    const regDateStr = patient.created_at || patient.registration_date;
+    if (regDateStr) {
+      const regDate = new Date(regDateStr);
+      if (!isNaN(regDate.getTime())) {
+        const target = new Date(asOfDate);
+        const yearsElapsed = Math.floor((target.getTime() - regDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        return initialAge + Math.max(0, yearsElapsed);
+      }
+    }
+    return initialAge;
+  }
+
+  return null;
+}
+
+/**
+ * Returns formatted age string:
+ * - e.g. "37 yrs" (auto-advanced from 35 yrs 2 years ago)
+ * - e.g. "< 1 yr" (for infants)
+ * - e.g. "—" (when age was not provided by patient)
+ */
+export function formatPatientAge(patient, asOfDate = new Date()) {
+  const calculated = getPatientCalculatedAge(patient, asOfDate);
+  if (calculated === null || calculated === undefined) return "—";
+  if (calculated === 0) return "< 1 yr";
+  return `${calculated} yrs`;
+}

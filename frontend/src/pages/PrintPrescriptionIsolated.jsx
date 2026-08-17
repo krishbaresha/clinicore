@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getVisit } from "../api/visits.js";
 import { dbClinic, dbPatients } from "../api/db.js";
-import { formatDate } from "../utils/formatters.js";
+import { formatDate, formatPatientAge } from "../utils/formatters.js";
 
 export default function PrintPrescriptionIsolated() {
   const { id } = useParams();
@@ -80,7 +80,7 @@ export default function PrintPrescriptionIsolated() {
       <div className="receipt-info-block">
         <div><strong>Patient:</strong> {patient.full_name}</div>
         <div>
-          Age {patient.age ?? "—"} &bull; {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : "—"}
+          Age: {formatPatientAge(patient)} &bull; {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : "—"}
         </div>
         {visit.diagnosis && (
           <div style={{ marginTop: "4px" }}>

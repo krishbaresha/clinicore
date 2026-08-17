@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getVisit } from "../api/visits.js";
 import { dbClinic, dbPatients } from "../api/db.js";
-import { formatDate } from "../utils/formatters.js";
+import { formatDate, formatPatientAge } from "../utils/formatters.js";
 
 export default function PrintablePrescriptionView() {
   const { id }   = useParams();
@@ -85,7 +85,7 @@ export default function PrintablePrescriptionView() {
             <p className="font-label-md text-label-md text-outline uppercase mb-xs">Patient</p>
             <p className="font-body-lg text-body-lg font-semibold text-on-surface">{patient.full_name}</p>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Age {patient.age ?? "—"} &bull; {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : "—"}
+              Age: {formatPatientAge(patient)} &bull; {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : "—"}
             </p>
           </div>
           {visit.diagnosis && (
@@ -186,7 +186,7 @@ export default function PrintablePrescriptionView() {
         <div className="receipt-info-block">
           <div><strong>Patient:</strong> {patient.full_name}</div>
           <div>
-            Age {patient.age ?? "—"} &bull; {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : "—"}
+            Age: {formatPatientAge(patient)} &bull; {patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : "—"}
           </div>
           {visit.diagnosis && (
             <div className="mt-xs">

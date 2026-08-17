@@ -3,6 +3,8 @@
  * Features high-visibility large typography, crisp contrast, exact 80mm page size reset, zero margin overflow, zero double-printing, and HTML escaping security.
  */
 
+import { formatPatientAge } from "./formatters.js";
+
 function escapeHtml(str) {
   if (!str) return "";
   return String(str)
@@ -648,7 +650,14 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
 
   const doctorName = escapeHtml(receipt.doctor?.name || receipt.visit?.doctor_name || "Dr. Asif Ashraf");
   const doctorSpecialization = escapeHtml(receipt.doctor?.specialization || receipt.visit?.doctor_specialization || "General Physician");
+  const doctorRoom = escapeHtml(receipt.doctor?.room_number || receipt.visit?.room_number || "Room 1");
   const receptionistName = escapeHtml(receipt.receptionist_name || "Reception Desk");
+  const clinicAddress = escapeHtml(clinicData?.address || "Lajpat Road, Hyderabad");
+  const clinicPhone = escapeHtml(clinicData?.phone || "03001234567");
+  const phone = escapeHtml(receipt.patient?.phone || receipt.phone || "—");
+  const age = escapeHtml(formatPatientAge(receipt.patient));
+  const dateStr = escapeHtml(dateTimeStr);
+  const visitType = escapeHtml(receipt.visit_type === "follow_up" || receipt.visit?.visit_type === "follow_up" ? "Follow-up" : "New Visit");
 
   const receiptHtml = `
     <!DOCTYPE html>

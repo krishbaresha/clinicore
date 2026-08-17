@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { dbPatients, dbVisits, dbUsers, dbClinic, dbClinicServices } from "../api/db.js";
 import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
+import { formatPatientAge } from "../utils/formatters.js";
 
 const RELATION_TYPES = ["father", "husband", "wife", "mother", "brother", "sister", "son", "daughter"];
 
@@ -81,7 +82,7 @@ export default function PatientRegistration() {
       relation_name: form.relation_name.trim(),
       relation_type: form.relation_type,
       phone:         form.phone.trim(),
-      age:           Number(form.age) || 0,
+      age:           form.age !== "" && !isNaN(Number(form.age)) ? Number(form.age) : null,
       gender:        form.gender,
       cnic:          form.cnic.trim(),
     });
@@ -249,7 +250,7 @@ export default function PatientRegistration() {
                 </div>
                 <div>
                   <div className="text-[10px] text-gray-400 uppercase">Age</div>
-                  <div className="font-medium text-gray-800">{receipt.patient.age ? `${receipt.patient.age} yrs` : "—"}</div>
+                  <div className="font-medium text-gray-800">{formatPatientAge(receipt.patient)}</div>
                 </div>
                 <div>
                   <div className="text-[10px] text-gray-400 uppercase">Type</div>
@@ -382,7 +383,7 @@ export default function PatientRegistration() {
                             <RelationTypeBadge type={p.relation_type} />
                             <span>{p.relation_name}</span>
                           </div>
-                          <div className="text-sm text-gray-400 mt-1">{p.phone} · {p.age}y · {p.gender}</div>
+                          <div className="text-sm text-gray-400 mt-1">{p.phone} · {formatPatientAge(p)} · {p.gender}</div>
                         </div>
                         {selected?.id === p.id && (
                           <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
@@ -465,14 +466,14 @@ export default function PatientRegistration() {
                 />
               </div>
               <div>
-                <label htmlFor="reg_age" className="block text-xs font-semibold text-gray-600 mb-1">Age *</label>
+                <label htmlFor="reg_age" className="block text-xs font-semibold text-gray-600 mb-1">Age (Optional)</label>
                 <input
                   id="reg_age"
                   name="age"
                   autoComplete="off"
-                  required type="number" min="0" max="120" value={form.age}
+                  type="number" min="0" max="120" value={form.age}
                   onChange={(e) => handleFormChange("age", e.target.value)}
-                  placeholder="35"
+                  placeholder="e.g. 35 (or leave blank if unknown)"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
                 />
               </div>
@@ -523,15 +524,33 @@ export default function PatientRegistration() {
       {/* Visit Registration Form */}
       {selected && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-start gap-3 mb-4 p-3 bg-teal-50 rounded-xl border border-teal-100">
-            <div className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="flex items-start gap-3 mb-4 p-3.5 bg-teal-50/80 rounded-2xl border border-teal-100/90 shadow-sm">
+            <div className="w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-sm">
               {selected.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
             </div>
-            <div>
-              <div className="font-bold text-gray-900">{selected.full_name}</div>
-              <div className="text-sm text-gray-600">
+            <div className="flex-1">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="font-bold text-gray-900 text-base">{selected.full_name}</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newAge = prompt(`Update age for ${selected.full_name}: (leave empty if unknown)`, selected.age ?? "");
+                    if (newAge !== null) {
+                      const parsed = newAge.trim() === "" ? null : Number(newAge);
+                      dbPatients.update(selected.id, { age: parsed });
+                      const updated = dbPatients.getById(selected.id);
+                      setSelected(updated);
+                    }
+                  }}
+                  className="text-xs font-semibold text-teal-800 bg-white hover:bg-teal-100/70 border border-teal-200 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-xs transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[14px]">edit</span>
+                  Update Age
+                </button>
+              </div>
+              <div className="text-sm text-gray-600 mt-0.5">
                 {selected.relation_type === "father" ? "S/O" : selected.relation_type === "husband" ? "W/O" : "H/O"}{" "}
-                {selected.relation_name} · {selected.phone}
+                {selected.relation_name} · 📞 {selected.phone} · <span className="font-semibold text-teal-900">🎂 Age: {formatPatientAge(selected)}</span> ({selected.gender})
               </div>
             </div>
           </div>

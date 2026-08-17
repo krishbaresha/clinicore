@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { dbPatients, dbVisits, dbPatientLedger } from "../api/db.js";
+import { formatPatientAge } from "../utils/formatters.js";
 
 // Placeholder prescription image — used when mock data has a URL path (not a real data-url)
 const RX_PLACEHOLDER = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 140' fill='none'%3E%3Crect width='200' height='140' rx='8' fill='%23f0fdf4'/%3E%3Ctext x='100' y='55' font-family='sans-serif' font-size='36' text-anchor='middle' fill='%2316a34a'%3E%E2%80%8B%F0%9F%93%8B%3C/text%3E%3Ctext x='100' y='85' font-family='sans-serif' font-size='11' text-anchor='middle' fill='%2316a34a' font-weight='600'%3EPrescription Photo%3C/text%3E%3Ctext x='100' y='103' font-family='sans-serif' font-size='9' text-anchor='middle' fill='%2315803d'%3E(demo placeholder)%3C/text%3E%3C/svg%3E`;
@@ -206,11 +207,25 @@ export default function PatientProfile() {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-3 mt-2 text-xs text-teal-100">
-            {patient.age && <span>🎂 {patient.age} yrs</span>}
+          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-teal-100">
+            <span>🎂 Age: {formatPatientAge(patient)}</span>
             {patient.gender && <span className="capitalize">👤 {patient.gender}</span>}
             {patient.phone && <span>📞 {patient.phone}</span>}
             {patient.cnic && <span>🪪 {patient.cnic}</span>}
+            <button
+              type="button"
+              onClick={() => {
+                const newAge = prompt(`Update age for ${patient.full_name}: (leave empty if unknown)`, patient.age ?? "");
+                if (newAge !== null) {
+                  const parsed = newAge.trim() === "" ? null : Number(newAge);
+                  dbPatients.update(patient.id, { age: parsed });
+                  setPatient(dbPatients.getById(patient.id));
+                }
+              }}
+              className="text-[11px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-md font-medium text-white transition-colors"
+            >
+              ✏️ Edit Age
+            </button>
           </div>
         </div>
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { dbVisits, dbPatients, dbUsers } from "../api/db.js";
 import { useAuth } from "../hooks/useAuth.js";
+import { formatPatientAge } from "../utils/formatters.js";
 
 const STATUS_STYLES = {
   waiting:                  { bg: "bg-amber-50",  border: "border-amber-200",  badge: "bg-amber-100 text-amber-800",  dot: "bg-amber-500",  label: "Waiting"         },
@@ -284,7 +285,7 @@ export default function DoctorQueue() {
                       {patient && (
                         <div className="text-sm text-gray-500 mt-0.5">
                           {getRelLabel(patient.relation_type)} {patient.relation_name}
-                          {patient.age ? ` · ${patient.age}y` : ""}
+                          {formatPatientAge(patient) !== "—" ? ` · ${formatPatientAge(patient)}` : ""}
                           {patient.phone ? ` · ${patient.phone}` : ""}
                         </div>
                       )}

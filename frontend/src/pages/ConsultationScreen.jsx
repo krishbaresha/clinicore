@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { dbVisits, dbPatients, dbUsers, dbClinicServices } from "../api/db.js";
 import { useAuth } from "../hooks/useAuth.js";
+import { formatPatientAge } from "../utils/formatters.js";
 
 function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [] }) {
   const fileInputRef = useRef(null);
@@ -343,10 +344,24 @@ export default function ConsultationScreen() {
               {patient.relation_type === "father" ? "S/O" : patient.relation_type === "husband" ? "W/O" : "H/O"}{" "}
               {patient.relation_name}
             </div>
-            <div className="flex gap-3 mt-2 text-xs text-teal-100">
-              {patient.age && <span>{patient.age} yrs</span>}
-              {patient.gender && <span className="capitalize">{patient.gender}</span>}
-              {patient.phone && <span>{patient.phone}</span>}
+            <div className="flex items-center gap-3 mt-2 text-xs text-teal-100 flex-wrap">
+              <span>🎂 Age: {formatPatientAge(patient)}</span>
+              {patient.gender && <span className="capitalize">👤 {patient.gender}</span>}
+              {patient.phone && <span>📞 {patient.phone}</span>}
+              <button
+                type="button"
+                onClick={() => {
+                  const newAge = prompt(`Update age for ${patient.full_name}: (leave blank if unknown)`, patient.age ?? "");
+                  if (newAge !== null) {
+                    const parsed = newAge.trim() === "" ? null : Number(newAge);
+                    dbPatients.update(patient.id, { age: parsed });
+                    setPatient(dbPatients.getById(patient.id));
+                  }
+                }}
+                className="text-[11px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-md font-medium text-white transition-colors"
+              >
+                ✏️ Edit Age
+              </button>
             </div>
           </div>
           <div className="text-right">
