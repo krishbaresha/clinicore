@@ -29,7 +29,6 @@ const NAV_BY_ROLE = {
     { label: "Dashboard (Revenue)", icon: "dashboard", path: "/dashboard" },
     { label: "My OPD Queue", icon: "queue", path: "/doctor/queue" },
     { label: "Patients & EMR", icon: "group", path: "/patients" },
-    { label: "Fees & Analytics", icon: "payments", path: "/fees" },
     { label: "Settings", icon: "settings", path: "/settings", spacer: true },
   ],
 };

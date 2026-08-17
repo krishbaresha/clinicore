@@ -352,7 +352,7 @@ export default function Dashboard() {
       )}
 
       {/* Quick Actions (Role Tailored) */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" aria-label="Quick actions">
+      <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4" aria-label="Quick actions">
         {user?.role === "doctor" ? (
           <>
             <button
@@ -370,11 +370,11 @@ export default function Dashboard() {
               <span className="font-label-md text-label-md font-bold">Patients &amp; EMR Records</span>
             </button>
             <button
-              onClick={() => navigate("/fees")}
+              onClick={() => navigate("/settings")}
               className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
             >
-              <span className="material-symbols-outlined">payments</span>
-              <span className="font-label-md text-label-md font-bold">Fees &amp; Revenue Analytics</span>
+              <span className="material-symbols-outlined">settings</span>
+              <span className="font-label-md text-label-md font-bold">Clinic Profile &amp; Settings</span>
             </button>
           </>
         ) : (
