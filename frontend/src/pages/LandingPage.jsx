@@ -1,10 +1,7 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth.js";
+import { Link } from "react-router-dom";
 
 export default function LandingPage() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("opd");
 
   const modules = [
@@ -112,29 +109,21 @@ export default function LandingPage() {
             {/* Live TV Screen Button */}
             <Link
               to="/live"
-              className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-all shadow-xs"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-all shadow-xs"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Live TV Screen
+              Live TV Screen (/live)
             </Link>
 
-            {user ? (
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-teal-600 text-white hover:bg-teal-700 transition-all shadow-md shadow-teal-600/25 hover:shadow-lg hover:shadow-teal-600/35"
-              >
-                <span className="material-symbols-outlined text-lg">dashboard</span>
-                Go to Dashboard
-              </Link>
-            ) : (
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-teal-600 text-white hover:bg-teal-700 transition-all shadow-md shadow-teal-600/25 hover:shadow-lg hover:shadow-teal-600/35"
-              >
-                <span className="material-symbols-outlined text-lg">lock</span>
-                Staff Portal Login
-              </Link>
-            )}
+            <a
+              href="https://krishbaresha.tech"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100 transition-all shadow-xs"
+            >
+              <span className="material-symbols-outlined text-base text-teal-600">language</span>
+              krishbaresha.tech
+            </a>
           </div>
         </div>
       </header>
@@ -167,29 +156,31 @@ export default function LandingPage() {
           {/* Hero Action Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              to={user ? "/dashboard" : "/login"}
+              to="/live"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-base font-extrabold bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-xl shadow-teal-700/25 hover:shadow-2xl hover:shadow-teal-700/35 hover:-translate-y-0.5 transition-all"
             >
-              <span className="material-symbols-outlined text-2xl">rocket_launch</span>
-              Access Staff Portal
-            </Link>
-
-            <Link
-              to="/live"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-base font-bold bg-white text-teal-900 border border-teal-200 hover:bg-teal-50 shadow-sm hover:shadow-md transition-all"
-            >
-              <span className="material-symbols-outlined text-2xl text-teal-600">tv</span>
+              <span className="material-symbols-outlined text-2xl">tv</span>
               Open Waiting Lounge Screen (/live)
             </Link>
 
             <a
-              href="https://wa.me/923142291356?text=Hi%20K.B%20Software,%20I%20am%20interested%20in%20ClinicFlow%20System."
+              href="https://wa.me/923142291356?text=Hi%20Krish,%20I%20am%20interested%20in%20deploying%20ClinicFlow%20System."
               target="_blank"
               rel="noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl text-base font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-all shadow-xs"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl text-base font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-all shadow-xs"
             >
               <span className="material-symbols-outlined text-2xl text-emerald-600">chat</span>
               WhatsApp Inquiry
+            </a>
+
+            <a
+              href="https://krishbaresha.tech"
+              target="_blank"
+              rel="noreferrer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl text-base font-bold bg-white text-teal-900 border border-teal-200 hover:bg-teal-50 shadow-xs hover:shadow-sm transition-all"
+            >
+              <span className="material-symbols-outlined text-2xl text-teal-600">language</span>
+              Visit Portfolio
             </a>
           </div>
 
@@ -344,23 +335,23 @@ export default function LandingPage() {
                 ))}
               </ul>
 
-              <div className="mt-8 flex gap-3">
+              <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  to={user ? "/dashboard" : "/login"}
+                  to="/live"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-teal-700 text-white hover:bg-teal-800 shadow-md shadow-teal-700/20 transition-all"
                 >
-                  <span className="material-symbols-outlined text-lg">login</span>
-                  Open {currentModule.title}
+                  <span className="material-symbols-outlined text-lg">tv</span>
+                  Open Live TV Screen (/live)
                 </Link>
-                {currentModule.id === "live_tv" && (
-                  <Link
-                    to="/live"
-                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold bg-white text-teal-900 border border-teal-300 hover:bg-teal-50 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-lg">tv</span>
-                    Launch Live Screen
-                  </Link>
-                )}
+                <a
+                  href="https://wa.me/923142291356?text=Hi%20Krish,%20I%20want%20to%20know%20more%20about%20ClinicFlow%20System."
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold bg-white text-teal-900 border border-teal-300 hover:bg-teal-50 transition-all"
+                >
+                  <span className="material-symbols-outlined text-lg text-emerald-600">chat</span>
+                  Inquire on WhatsApp
+                </a>
               </div>
             </div>
 
@@ -464,7 +455,7 @@ export default function LandingPage() {
                   Built and supported by <strong>K.B Software</strong>. Available with local offline setup, multi-chamber hardware routing, and thermal printer integration.
                 </p>
 
-                <div className="mt-6 space-y-2 text-sm font-semibold text-teal-100">
+                <div className="mt-6 space-y-2.5 text-sm font-semibold text-teal-100">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-emerald-400">code</span>
                     <span>Software Architect &amp; Developer: <strong>Krish Baresha</strong></span>
@@ -474,8 +465,8 @@ export default function LandingPage() {
                     <span>Phone: <strong className="font-mono text-emerald-300">03142291356</strong></span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-emerald-400">location_on</span>
-                    <span>Location: <strong>Lajpat Road, Hyderabad, Sindh, Pakistan</strong></span>
+                    <span className="material-symbols-outlined text-emerald-400">language</span>
+                    <span>Portfolio: <a href="https://krishbaresha.tech" target="_blank" rel="noreferrer" className="text-emerald-300 underline font-mono hover:text-emerald-200 transition-colors">krishbaresha.tech</a></span>
                   </div>
                 </div>
               </div>
@@ -500,13 +491,15 @@ export default function LandingPage() {
                   Call 03142291356
                 </a>
 
-                <Link
-                  to="/login"
-                  className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl text-sm font-bold bg-teal-700/80 hover:bg-teal-700 text-teal-100 transition-all"
+                <a
+                  href="https://krishbaresha.tech"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl text-sm font-bold bg-teal-700/80 hover:bg-teal-700 text-teal-100 transition-all border border-teal-600/50"
                 >
-                  <span className="material-symbols-outlined text-xl">lock</span>
-                  Open Staff Portal
-                </Link>
+                  <span className="material-symbols-outlined text-xl">language</span>
+                  Visit krishbaresha.tech
+                </a>
               </div>
             </div>
           </div>
@@ -528,7 +521,7 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-6">
             <Link to="/live" className="hover:text-teal-400 transition-colors">Waiting Lounge (/live)</Link>
-            <Link to="/login" className="hover:text-teal-400 transition-colors">Staff Login</Link>
+            <a href="https://krishbaresha.tech" target="_blank" rel="noreferrer" className="hover:text-teal-400 transition-colors">Developer Portfolio</a>
             <span className="text-slate-600">|</span>
             <span className="text-emerald-400 font-medium flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
