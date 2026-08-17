@@ -232,28 +232,8 @@ export default function SidebarLayout({ children }) {
           <NavItems items={navItems} onItemClick={onItemClick} />
         </nav>
 
-        {/* Quick Public View Links */}
-        <div className="px-2 pt-2 border-t border-outline-variant/30 space-y-1">
-          <NavLink
-            to="/live"
-            target="_blank"
-            className="flex items-center gap-3 px-4 py-2 text-primary hover:bg-primary-container/30 rounded-xl transition-colors text-xs font-semibold"
-          >
-            <span className="material-symbols-outlined text-lg">tv</span>
-            Public TV Screen (/live)
-          </NavLink>
-          <NavLink
-            to="/"
-            target="_blank"
-            className="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors text-xs font-medium"
-          >
-            <span className="material-symbols-outlined text-lg">public</span>
-            Product Landing Page
-          </NavLink>
-        </div>
-
         {/* Logout */}
-        <div className="px-2 mt-2">
+        <div className="px-2 mt-2 pt-2 border-t border-outline-variant/30">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-error hover:bg-error-container/30 rounded-xl transition-colors text-sm font-medium"
@@ -322,24 +302,37 @@ export default function SidebarLayout({ children }) {
         {children}
       </main>
 
-      {/* ── Mobile Bottom Navigation (Role-Tailored) ─────── */}
+      {/* ── Mobile Bottom Navigation (Identical to PC Sidebar Tabs) ─────── */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full z-45 bg-white/95 backdrop-blur-lg border-t border-teal-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-        <ul className="flex justify-around items-center h-16 px-1">
-          {(MOBILE_NAV_BY_ROLE[user?.role] || MOBILE_NAV_BY_ROLE.doctor).map((item) => (
-            <li key={item.path} className="flex-1 text-center">
-              <NavLink
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all ${
-                    isActive
-                      ? "text-teal-800 font-extrabold bg-teal-50"
-                      : "text-gray-500 font-medium hover:text-teal-700"
-                  }`
-                }
-              >
-                <span className="material-symbols-outlined text-2xl">{item.icon}</span>
-                <span className="text-[11px] mt-0.5 tracking-tight truncate max-w-full">{item.label}</span>
-              </NavLink>
+        <ul className="flex justify-around items-center h-16 px-1 overflow-x-auto">
+          {navItems.map((item) => (
+            <li key={item.path} className="flex-1 min-w-[54px] text-center">
+              {item.target === "_blank" ? (
+                <a
+                  href={item.path}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-gray-500 font-medium hover:text-teal-700 transition-all"
+                >
+                  <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                  <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label.split(" ")[0]}</span>
+                </a>
+              ) : (
+                <NavLink
+                  to={item.path}
+                  end={item.path === "/store" || item.end}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all ${
+                      isActive
+                        ? "text-teal-800 font-black bg-teal-50"
+                        : "text-gray-500 font-medium hover:text-teal-700"
+                    }`
+                  }
+                >
+                  <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                  <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label.split(" ")[0]}</span>
+                </NavLink>
+              )}
             </li>
           ))}
         </ul>

@@ -130,14 +130,10 @@ export default function LoginScreen() {
           </form>
 
           {/* Quick Return Link */}
-          <div className="mt-6 pt-6 border-t border-gray-100 w-full flex items-center justify-between text-xs text-gray-500 font-medium">
-            <Link to="/" className="hover:text-teal-700 transition-colors flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">home</span>
-              Home
-            </Link>
-            <Link to="/clinic" className="hover:text-teal-700 transition-colors flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">medical_services</span>
-              Doctor Clinic Site
+          <div className="mt-6 pt-6 border-t border-gray-100 w-full flex items-center justify-center text-xs text-gray-500 font-medium">
+            <Link to="/clinic" className="hover:text-teal-700 transition-colors flex items-center gap-1.5 font-semibold text-teal-800 bg-teal-50 px-3.5 py-1.5 rounded-xl border border-teal-100">
+              <span className="material-symbols-outlined text-base text-teal-600">medical_services</span>
+              Open Doctor Clinic Public Site (/clinic)
             </Link>
           </div>
         </div>

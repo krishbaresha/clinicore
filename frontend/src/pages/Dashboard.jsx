@@ -101,11 +101,11 @@ export default function Dashboard() {
                 Open My OPD Queue
               </button>
               <button
-                onClick={() => navigate("/patients/new")}
+                onClick={() => navigate("/patients")}
                 className="btn-secondary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-base">person_add</span>
-                Add Patient
+                <span className="material-symbols-outlined text-base">group</span>
+                Patients &amp; EMR
               </button>
             </>
           ) : (
@@ -351,32 +351,59 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Quick Actions */}
+      {/* Quick Actions (Role Tailored) */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" aria-label="Quick actions">
-        <button
-          id="quick-add-patient"
-          onClick={() => navigate("/patients/new")}
-          className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-        >
-          <span className="material-symbols-outlined">person_add</span>
-          <span className="font-label-md text-label-md font-bold">Add New Patient</span>
-        </button>
-        <button
-          id="quick-register-patient"
-          onClick={() => navigate("/reception/register")}
-          className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-        >
-          <span className="material-symbols-outlined">how_to_reg</span>
-          <span className="font-label-md text-label-md font-bold">Register Patient</span>
-        </button>
-        <button
-          id="quick-view-reports"
-          onClick={() => navigate("/fees")}
-          className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-        >
-          <span className="material-symbols-outlined">assessment</span>
-          <span className="font-label-md text-label-md font-bold">View Reports</span>
-        </button>
+        {user?.role === "doctor" ? (
+          <>
+            <button
+              onClick={() => navigate("/doctor/queue")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">queue</span>
+              <span className="font-label-md text-label-md font-bold">My OPD Queue</span>
+            </button>
+            <button
+              onClick={() => navigate("/patients")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">group</span>
+              <span className="font-label-md text-label-md font-bold">Patients &amp; EMR Records</span>
+            </button>
+            <button
+              onClick={() => navigate("/fees")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">payments</span>
+              <span className="font-label-md text-label-md font-bold">Fees &amp; Revenue Analytics</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              id="quick-register-patient"
+              onClick={() => navigate("/reception/register")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">how_to_reg</span>
+              <span className="font-label-md text-label-md font-bold">Register Patient Token</span>
+            </button>
+            <button
+              onClick={() => navigate("/store/pos")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">point_of_sale</span>
+              <span className="font-label-md text-label-md font-bold">POS Store &amp; Pharmacy</span>
+            </button>
+            <button
+              id="quick-view-reports"
+              onClick={() => navigate("/fees")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">assessment</span>
+              <span className="font-label-md text-label-md font-bold">Daily Cash &amp; Reports</span>
+            </button>
+          </>
+        )}
       </section>
     </div>
   );
