@@ -43,6 +43,20 @@ Today's session completed end-to-end multi-doctor OPD queue management, role-bas
 - Upgraded **Thermal Z-Report Slip (80mm)** to render full physical count vs system expected cash and denomination breakdowns.
 - Added **Archived Shift Closings History Log** table with 1-click Z-Report slip re-printing.
 
+### 5. 🔒 Security Hardening & Vulnerability Mitigation Suite (`auth.js`, `db.js`, `SidebarLayout.jsx`, `ClinicSettings.jsx`, `App.jsx`)
+- **API Secret Redaction**: Removed hardcoded Resend API keys from source code and fallback paths.
+- **Password Hashing**: Implemented non-reversible deterministic password hashing (`djb2`) across seed data and user CRUD operations (zero plaintext storage).
+- **CORS Proxy Elimination**: Removed third-party open proxy fallbacks (`corsproxy.io`) to prevent outbound credential leakage.
+- **Strict Role-Based Route Guards**: Added `OwnerRoute` & `OwnerLayout` in `App.jsx` restricting `/settings` and destructive DB resets exclusively to the principal owner.
+- **Session Tampering Defense**: `getSession()` now cross-verifies authenticated sessions against active database records on every fetch to block client-side role privilege escalation.
+- **Backup Key Validation**: Restricted database backup imports to strictly validate and accept only `cf_*` prefixed namespaces.
+- **Brute-Force Rate Limiting & Anti-Enumeration**: Integrated client-side exponential login attempt throttling (5 failed attempts trigger 60s lockout) with unified generic error responses.
+- **Unified Staff Access**: Sana (Receptionist), Kamran (Pharmacist), and all counter staff share a 100% synchronized portal with complete Day-End Cash Register (Z-Report) and Shift Closing oversight.
+
+### 6. 📋 Backend Development SOP & AI Security Governance (`BACKEND_SOP.md`, `.agents/rules/backend-security.md`)
+- Published human-readable Standard Operating Procedures (`BACKEND_SOP.md`) covering password hashing (bcrypt), JWT httpOnly cookie strategies, Zod schema validation, SQL parameterized queries, and error masking.
+- Created persistent AI Agent Governance Rules (`.agents/rules/backend-security.md`) to automatically enforce security standards during any AI-assisted backend development or feature extension.
+
 ---
 
 ## 🔮 Planned Next Scenarios & Enhancements
@@ -57,6 +71,6 @@ Today's session completed end-to-end multi-doctor OPD queue management, role-bas
 ## 🧪 Production Verification
 
 - **Build Tool**: Vite v8.2.1
-- **Build Status**: `npm run build` passed cleanly (**0 errors**, 340ms build time).
+- **Build Status**: `npm run build` passed cleanly (**0 errors**, 396ms build time).
 - **GitHub Repository**: Pushed to `origin main` at [`https://github.com/krishbaresha/clinicflow.git`](https://github.com/krishbaresha/clinicflow.git).
 - **All Core Workflows**: Verified & Enterprise Ready.
