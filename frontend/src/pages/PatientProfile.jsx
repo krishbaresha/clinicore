@@ -323,7 +323,7 @@ export default function PatientProfile() {
                 setKhataPayInput("");
                 setShowPayModal(false);
               }}
-              className="bg-white p-6 rounded-3xl max-w-sm w-full space-y-4 shadow-2xl"
+              className="bg-white p-6 rounded-3xl max-w-sm w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
                 <span className="material-symbols-outlined text-teal-600">payments</span>

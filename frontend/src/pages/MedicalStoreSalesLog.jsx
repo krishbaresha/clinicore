@@ -543,7 +543,7 @@ export default function MedicalStoreSalesLog() {
       {/* PROCESS RETURN / EXCHANGE MODAL */}
       {returnModalSale && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleConfirmReturn} className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 border border-rose-100">
+          <form onSubmit={handleConfirmReturn} className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 border border-rose-100 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Process Medicine Return / Exchange</h3>

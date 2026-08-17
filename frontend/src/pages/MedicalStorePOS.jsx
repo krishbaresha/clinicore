@@ -1003,7 +1003,7 @@ export default function MedicalStorePOS() {
       {/* Prescription Viewer Modal */}
       {showRxModal && linkedVisit?.prescription_image_url && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-4">
+          <div className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-gray-900 text-base">Doctor Prescription Photo</h3>
@@ -1043,7 +1043,7 @@ export default function MedicalStorePOS() {
       {/* Multi-Unit Selling Selection Modal */}
       {unitModalItem && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-teal-100 space-y-5">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-teal-100 space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">{unitModalItem.medicine_name}</h3>

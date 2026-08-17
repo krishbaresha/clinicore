@@ -777,7 +777,7 @@ export default function SupplierPurchases() {
       {/* MODAL: View Invoice Detail */}
       {selectedInvoiceModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white max-w-lg w-full rounded-3xl shadow-2xl p-6 border border-gray-200 space-y-4">
+          <div className="bg-white max-w-lg w-full rounded-3xl shadow-2xl p-6 border border-gray-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-gray-900 text-base">Purchase Voucher #{selectedInvoiceModal.invoice_no}</h3>
@@ -799,7 +799,7 @@ export default function SupplierPurchases() {
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-gray-100 text-gray-700 font-bold">
                   <tr>
@@ -856,7 +856,7 @@ export default function SupplierPurchases() {
       {/* MODAL: Payment Settlement */}
       {paySupplierModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleSupplierPayment} className="bg-white max-w-sm w-full rounded-3xl p-6 border border-gray-200 space-y-4">
+          <form onSubmit={handleSupplierPayment} className="bg-white max-w-sm w-full rounded-3xl p-6 border border-gray-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-gray-900 text-base">Record Supplier Cash Payment</h3>
             <p className="text-xs text-gray-500">Pay cash to <strong>{paySupplierModal.name}</strong></p>
 
@@ -893,7 +893,7 @@ export default function SupplierPurchases() {
       {/* MODAL: Add New Supplier */}
       {showAddSupplier && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleCreateSupplier} className="bg-white max-w-md w-full rounded-3xl p-6 border border-gray-200 space-y-4">
+          <form onSubmit={handleCreateSupplier} className="bg-white max-w-md w-full rounded-3xl p-6 border border-gray-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-gray-900 text-base">Add New Pharma Supplier / Distributor</h3>
             
             <div className="space-y-3 text-xs font-semibold">
