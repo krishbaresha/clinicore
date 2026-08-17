@@ -926,28 +926,28 @@ export default function MedicalStorePOS() {
               }
             }
           `}</style>
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center justify-center gap-2">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-center flex flex-col max-h-[85vh]">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center justify-center gap-2 mb-3">
               <span className="material-symbols-outlined text-teal-600">qr_code_2</span>
               Print Custom Barcode Stickers
             </h3>
 
             {/* Sticker Quantity Control */}
-            <div className="bg-teal-50 p-3 rounded-2xl border border-teal-100 flex items-center justify-between">
+            <div className="bg-teal-50 p-3 rounded-2xl border border-teal-100 flex items-center justify-between mb-3 shrink-0">
               <span className="text-xs font-bold text-gray-700">Stickers Quantity to Print:</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setBarcodePrintQty(Math.max(1, barcodePrintQty - 1))}
-                  className="w-7 h-7 bg-white rounded-lg border border-gray-200 font-bold text-sm"
+                  className="w-8 h-8 bg-white rounded-lg border border-gray-200 font-bold text-sm hover:bg-gray-50 flex items-center justify-center shadow-sm"
                 >
                   -
                 </button>
-                <span className="font-black text-sm w-6 text-center">{barcodePrintQty}</span>
+                <span className="font-black text-sm w-8 text-center">{barcodePrintQty}</span>
                 <button
                   type="button"
                   onClick={() => setBarcodePrintQty(barcodePrintQty + 1)}
-                  className="w-7 h-7 bg-white rounded-lg border border-gray-200 font-bold text-sm"
+                  className="w-8 h-8 bg-white rounded-lg border border-gray-200 font-bold text-sm hover:bg-gray-50 flex items-center justify-center shadow-sm"
                 >
                   +
                 </button>
@@ -955,7 +955,7 @@ export default function MedicalStorePOS() {
             </div>
 
             {/* Printable Sticker Sheet Area */}
-            <div id="barcode-sticker-print-area" className="space-y-2">
+            <div id="barcode-sticker-print-area" className="space-y-2 overflow-y-auto max-h-[50vh] p-1 my-1 print:max-h-none print:overflow-visible pr-1">
               {Array.from({ length: barcodePrintQty }).map((_, idx) => (
                 <div
                   key={idx}
@@ -980,7 +980,7 @@ export default function MedicalStorePOS() {
               ))}
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-3 mt-auto shrink-0 border-t border-gray-100">
               <button
                 type="button"
                 onClick={() => window.print()}
