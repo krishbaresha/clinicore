@@ -301,8 +301,9 @@ export default function Dashboard() {
               {doctorBreakdown.map((doc) => (
                 <div key={doc.id} className="bg-white/10 p-3.5 rounded-2xl border border-white/10 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-white flex items-center gap-1 truncate">
-                      <span>👨‍⚕️ {doc.name}</span>
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                      <span className="material-symbols-outlined text-xs text-teal-300">person</span>
+                      <span>{doc.name}</span>
                       {doc.is_owner && <span className="text-[9px] bg-amber-400 text-teal-950 font-black px-1.5 py-0.2 rounded shrink-0">OWNER</span>}
                     </div>
                     <div className="text-[11px] text-teal-200 truncate">{doc.specialization || "General Physician"}</div>

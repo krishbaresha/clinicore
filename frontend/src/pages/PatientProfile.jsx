@@ -208,9 +208,9 @@ export default function PatientProfile() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-teal-100">
-            <span>🎂 Age: {formatPatientAge(patient)}</span>
-            {patient.gender && <span className="capitalize">👤 {patient.gender}</span>}
-            {patient.phone && <span>📞 {patient.phone}</span>}
+            <span>Age: {formatPatientAge(patient)}</span>
+            {patient.gender && <span className="capitalize">{patient.gender}</span>}
+            {patient.phone && <span>Phone: {patient.phone}</span>}
             <button
               type="button"
               onClick={() => {
@@ -223,7 +223,7 @@ export default function PatientProfile() {
               }}
               className="text-[11px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-md font-medium text-white transition-colors"
             >
-              ✏️ Edit Age
+              Edit Age
             </button>
           </div>
         </div>

@@ -178,7 +178,7 @@ export default function DoctorQueue() {
             }`}
           >
             <span className="material-symbols-outlined text-base">do_not_disturb_on</span>
-            🔴 Shift Ended / Away
+            Shift Ended / Away
           </button>
         </div>
 

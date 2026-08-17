@@ -1071,7 +1071,7 @@ export default function MedicalStorePOS() {
                       : "border-gray-200 hover:bg-gray-50 text-gray-700"
                   }`}
                 >
-                  <span className="text-2xl">📦</span>
+                  <span className="material-symbols-outlined text-2xl text-teal-700">inventory_2</span>
                   <span className="text-xs font-bold">{unitModalItem.box_label || "Box"}</span>
                   <span className="text-[11px] font-black text-teal-700">
                     Rs. {unitModalItem.box_sale_price || (unitModalItem.unit_price * (unitModalItem.strips_per_box || 10) * (unitModalItem.units_per_strip || 12))}
@@ -1088,7 +1088,7 @@ export default function MedicalStorePOS() {
                       : "border-gray-200 hover:bg-gray-50 text-gray-700"
                   }`}
                 >
-                  <span className="text-2xl">💊</span>
+                  <span className="material-symbols-outlined text-2xl text-teal-700">medication</span>
                   <span className="text-xs font-bold">{unitModalItem.strip_label || "Strip"}</span>
                   <span className="text-[11px] font-black text-teal-700">
                     Rs. {unitModalItem.strip_sale_price || (unitModalItem.unit_price * (unitModalItem.units_per_strip || 12))}
@@ -1105,7 +1105,7 @@ export default function MedicalStorePOS() {
                       : "border-gray-200 hover:bg-gray-50 text-gray-700"
                   }`}
                 >
-                  <span className="text-2xl">💊</span>
+                  <span className="material-symbols-outlined text-2xl text-teal-700">grain</span>
                   <span className="text-xs font-bold">{unitModalItem.unit_label || "Tablet"}</span>
                   <span className="text-[11px] font-black text-teal-700">
                     Rs. {unitModalItem.unit_sale_price || unitModalItem.unit_price}

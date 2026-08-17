@@ -114,7 +114,7 @@ export default function ReceptionQueue() {
             className="flex items-center gap-1.5 text-xs text-teal-900 bg-teal-100 hover:bg-teal-200 border border-teal-300 px-3.5 py-2 rounded-xl transition-colors font-bold shadow-sm"
           >
             <span className="material-symbols-outlined text-base">tv</span>
-            📺 Waiting Room TV Screen
+            Waiting Room TV Screen
           </button>
           <button
             onClick={load}
@@ -151,7 +151,7 @@ export default function ReceptionQueue() {
                   : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
               }`}
             >
-              🟢 Open (OPD Active)
+              Open (OPD Active)
             </button>
             <button
               onClick={() => handleSetClinicStatus("break")}
@@ -161,7 +161,7 @@ export default function ReceptionQueue() {
                   : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
               }`}
             >
-              🟡 Midday / Prayer Break
+              Midday / Prayer Break
             </button>
             <button
               onClick={() => handleSetClinicStatus("closed")}
@@ -171,7 +171,7 @@ export default function ReceptionQueue() {
                   : "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100"
               }`}
             >
-              🔴 Closed for Today
+              Closed for Today
             </button>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function ReceptionQueue() {
                           status === "available" ? "bg-emerald-600 text-white border-emerald-700" : "bg-white text-emerald-800 border-gray-200 hover:bg-emerald-50"
                         }`}
                       >
-                        🟢 Available
+                        Available
                       </button>
                       <button
                         onClick={() => handleUpdateDoctorAvailability(doc.id, "break", "15m Break")}
@@ -223,7 +223,7 @@ export default function ReceptionQueue() {
                           status === "break" ? "bg-amber-500 text-white border-amber-600" : "bg-white text-amber-800 border-gray-200 hover:bg-amber-50"
                         }`}
                       >
-                        🟡 Break
+                        Break
                       </button>
                       <button
                         onClick={() => handleUpdateDoctorAvailability(doc.id, "unavailable", "Shift Ended")}
@@ -231,7 +231,7 @@ export default function ReceptionQueue() {
                           status === "unavailable" ? "bg-slate-700 text-white border-slate-800" : "bg-white text-slate-700 border-gray-200 hover:bg-slate-50"
                         }`}
                       >
-                        🔴 Away
+                        Away
                       </button>
                     </div>
                   )}
@@ -320,7 +320,7 @@ export default function ReceptionQueue() {
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              👨‍⚕️ {doc.name} ({docCount})
+              {doc.name} ({docCount})
             </button>
           );
         })}
@@ -336,7 +336,7 @@ export default function ReceptionQueue() {
               : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
           }`}
         >
-          <span>📋 Active Queue</span>
+          <span>Active Queue</span>
           <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === "active" ? "bg-teal-900 text-teal-100" : "bg-amber-100 text-amber-900"}`}>
             {inRoomList.length + waitingList.length}
           </span>
@@ -350,7 +350,7 @@ export default function ReceptionQueue() {
               : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
           }`}
         >
-          <span>✅ Completed Visits</span>
+          <span>Completed Visits</span>
           <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === "completed" ? "bg-teal-900 text-teal-100" : "bg-gray-100 text-gray-700"}`}>
             {completedList.length}
           </span>

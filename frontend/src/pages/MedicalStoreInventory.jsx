@@ -237,7 +237,7 @@ export default function MedicalStoreInventory() {
                 </div>
 
                 <div className="text-xs font-semibold text-teal-700 bg-white p-2.5 rounded-xl border border-teal-200 text-center">
-                  💡 Calculated Ratio: <strong>1 Box</strong> = <strong>{parseInt(form.strips_per_box) || 0} Strips</strong> = <strong>{(parseInt(form.strips_per_box) || 0) * (parseInt(form.units_per_strip) || 0)} Total Tablets</strong>
+                  Calculated Ratio: <strong>1 Box</strong> = <strong>{parseInt(form.strips_per_box) || 0} Strips</strong> = <strong>{(parseInt(form.strips_per_box) || 0) * (parseInt(form.units_per_strip) || 0)} Total Tablets</strong>
                 </div>
 
                 {/* Initial Stock Boxes & Prices */}

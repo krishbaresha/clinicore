@@ -312,7 +312,7 @@ export default function SupplierPurchases() {
                             {sup.name}
                           </h3>
                           <div className="text-xs text-gray-500 font-medium mt-0.5">
-                            👤 {sup.contact_person || "Sales Representative"}
+                            {sup.contact_person || "Sales Representative"}
                           </div>
                         </div>
                       </div>
@@ -537,10 +537,10 @@ export default function SupplierPurchases() {
                     onChange={(e) => handleSelectExistingMedicine(index, e.target.value)}
                     className="w-full border border-teal-200 bg-teal-50/40 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-900 focus:ring-1 focus:ring-teal-500 mb-1"
                   >
-                    <option value="">➕ Custom / New Medicine Entry</option>
+                    <option value="">+ Custom / New Medicine Entry</option>
                     {inventoryList.map((inv) => (
                       <option key={inv.id} value={inv.id}>
-                        💊 {inv.medicine_name} ({inv.strength || inv.category}) — {inv.stock_qty} left
+                        {inv.medicine_name} ({inv.strength || inv.category}) — {inv.stock_qty} left
                       </option>
                     ))}
                   </select>
@@ -577,9 +577,9 @@ export default function SupplierPurchases() {
                     onChange={(e) => handleItemChange(index, "received_unit_type", e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-800 bg-white"
                   >
-                    <option value="box">📦 Boxes / Packs</option>
-                    <option value="strip">💊 Strips / Pattay</option>
-                    <option value="unit">💊 Base Units / Tablets</option>
+                    <option value="box">Boxes / Packs</option>
+                    <option value="strip">Strips / Pattay</option>
+                    <option value="unit">Base Units / Tablets</option>
                   </select>
                 </div>
 
@@ -667,12 +667,12 @@ export default function SupplierPurchases() {
             <div className="flex items-start justify-between border-b border-gray-200 pb-4">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  🏢 {selectedSupplierDrawer.name}
+                  {selectedSupplierDrawer.name}
                 </h2>
                 <div className="text-xs text-gray-500 mt-1 flex items-center gap-3">
-                  <span>👤 Rep: {selectedSupplierDrawer.contact_person || "N/A"}</span>
+                  <span>Rep: {selectedSupplierDrawer.contact_person || "N/A"}</span>
                   <span>•</span>
-                  <span>📞 {selectedSupplierDrawer.phone || "N/A"}</span>
+                  <span>Phone: {selectedSupplierDrawer.phone || "N/A"}</span>
                 </div>
               </div>
               <button

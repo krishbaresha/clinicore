@@ -277,11 +277,11 @@ export default function ConsultationScreen() {
           </p>
           {isPendingReports ? (
             <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-xs mb-6 font-medium">
-              📋 Sent to reception as <strong>Completed (Reports Pending)</strong>. Receptionist can attach lab/X-ray report photos anytime.
+              Sent to reception as <strong>Completed (Reports Pending)</strong>. Receptionist can attach lab/X-ray report photos anytime.
             </div>
           ) : (
-            <p className="text-teal-700 text-xs mb-6 font-medium">
-              ✅ All prescription and report photos attached.
+            <p className="text-emerald-800 text-xs mb-6 font-medium">
+              All prescription and report photos attached.
             </p>
           )}
           <div className="flex gap-3 justify-center">
@@ -345,9 +345,9 @@ export default function ConsultationScreen() {
               {patient.relation_name}
             </div>
             <div className="flex items-center gap-3 mt-2 text-xs text-teal-100 flex-wrap">
-              <span>🎂 Age: {formatPatientAge(patient)}</span>
-              {patient.gender && <span className="capitalize">👤 {patient.gender}</span>}
-              {patient.phone && <span>📞 {patient.phone}</span>}
+              <span>Age: {formatPatientAge(patient)}</span>
+              {patient.gender && <span className="capitalize">{patient.gender}</span>}
+              {patient.phone && <span>Phone: {patient.phone}</span>}
               <button
                 type="button"
                 onClick={() => {
@@ -360,7 +360,7 @@ export default function ConsultationScreen() {
                 }}
                 className="text-[11px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-md font-medium text-white transition-colors"
               >
-                ✏️ Edit Age
+                Edit Age
               </button>
             </div>
           </div>
@@ -382,7 +382,7 @@ export default function ConsultationScreen() {
       {/* Prescription Photo Capture */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
         <PhotoCapture
-          label="📋 Prescription Photo"
+          label="Prescription Photo"
           multiple={false}
           photos={prescriptionPhoto ? [prescriptionPhoto] : []}
           onCapture={(src) => setPrescriptionPhoto(src)}
@@ -393,7 +393,7 @@ export default function ConsultationScreen() {
       {/* Report Photos Capture */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
         <PhotoCapture
-          label="🩻 Patient Reports (X-ray, Lab, etc.)"
+          label="Patient Reports (X-ray, Lab, etc.)"
           multiple={true}
           photos={reportPhotos}
           onCapture={addReportPhoto}
@@ -479,8 +479,8 @@ export default function ConsultationScreen() {
           </button>
         </div>
         {!prescriptionPhoto && (
-          <p className="text-center text-xs text-gray-500 mt-1 font-medium">
-            ⚠️ Please capture or upload a prescription photo first to enable completion buttons.
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-center mt-1">
+            Please capture or upload a prescription photo first to enable completion buttons.
           </p>
         )}
       </div>

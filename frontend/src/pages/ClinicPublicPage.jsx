@@ -78,7 +78,7 @@ export default function ClinicPublicPage() {
         status: "in_room",
         token: num,
         doctor: doc,
-        msg: `🎉 Token #${num} is NOW CALLING! Please proceed directly to Chamber ${doc?.room_number || "Room 1"}.`,
+        msg: `Token #${num} is currently being called. Please proceed directly to Chamber ${doc?.room_number || "Room 1"}.`,
       });
     } else if (targetVisit.status === "waiting") {
       const ahead = docQueue.waiting.findIndex((v) => v.id === targetVisit.id);
@@ -93,7 +93,7 @@ export default function ClinicPublicPage() {
         aheadCount: queuePosition,
         estimatedMins: waitMins,
         msg: queuePosition === 0
-          ? `You are NEXT in line! Please be ready outside Chamber ${doc?.room_number || "Room 1"}.`
+          ? `You are next in line. Please be ready outside Chamber ${doc?.room_number || "Room 1"}.`
           : `There are ${queuePosition} patient(s) ahead of you. Estimated wait time is approximately ~${waitMins} minutes.`,
       });
     } else if (targetVisit.status === "completed" || targetVisit.status === "completed_reports_pending") {
@@ -101,7 +101,7 @@ export default function ClinicPublicPage() {
         status: "completed",
         token: num,
         doctor: doc,
-        msg: `✅ Token #${num} consultation is marked completed for today.`,
+        msg: `Token #${num} consultation is marked completed for today.`,
       });
     } else {
       setTokenResult({
@@ -130,12 +130,18 @@ export default function ClinicPublicPage() {
       <div className="bg-teal-900 text-teal-100 text-xs py-2 px-4 border-b border-teal-800">
         <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span className="font-semibold">Dr. Asif Ashraf&apos;s Clinic • Live OPD Queue Portal</span>
           </div>
           <div className="flex items-center gap-4 text-[11px]">
-            <span>📍 Lajpat Road, Hyderabad</span>
-            <span>📞 03001234567</span>
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs text-teal-300">location_on</span>
+              Lajpat Road, Hyderabad
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs text-teal-300">call</span>
+              03001234567
+            </span>
           </div>
         </div>
       </div>
@@ -182,8 +188,8 @@ export default function ClinicPublicPage() {
           {/* Left: Doctor & Clinic Info */}
           <div className="lg:col-span-7">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-4">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              {isClinicOpen ? "Clinic is Currently OPEN" : "Clinic is Currently CLOSED"}
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              {isClinicOpen ? "Clinic is Currently Open" : "Clinic is Currently Closed"}
             </div>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight">
               Dr. Asif Ashraf
@@ -215,7 +221,7 @@ export default function ClinicPublicPage() {
           <div className="lg:col-span-5">
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 text-white shadow-2xl text-center">
               <div className="text-[11px] font-extrabold uppercase tracking-widest text-teal-300">
-                LIVE PATIENT QUEUE
+                Live Patient Queue
               </div>
               <div className="text-xs text-teal-100 mt-0.5">
                 {currentTime.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
@@ -223,12 +229,13 @@ export default function ClinicPublicPage() {
 
               {/* Calling Token Box */}
               <div className="my-5 py-4 px-6 rounded-2xl bg-white text-slate-900 shadow-inner">
-                <div className="text-xs font-bold uppercase tracking-wider text-gray-500">NOW CALLING</div>
+                <div className="text-xs font-bold uppercase tracking-wider text-gray-500">Now Calling</div>
                 <div className="text-5xl sm:text-6xl font-black text-teal-900 my-1">
                   {primaryQueue.inRoom ? `TOKEN #${primaryQueue.inRoom.token_number}` : "WAITING"}
                 </div>
-                <div className="text-xs font-bold text-teal-700">
-                  {primaryQueue.inRoom ? "👨‍⚕️ In Chamber 1 with Doctor" : "Doctor preparing for next token"}
+                <div className="text-xs font-bold text-teal-700 flex items-center justify-center gap-1">
+                  <span className="material-symbols-outlined text-sm">person</span>
+                  {primaryQueue.inRoom ? "In Chamber 1 with Doctor" : "Doctor preparing for next token"}
                 </div>
               </div>
 
@@ -252,8 +259,9 @@ export default function ClinicPublicPage() {
       <section className="max-w-4xl mx-auto px-4 -mt-6 mb-12 relative z-10 w-full">
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-teal-100">
           <div className="text-center max-w-xl mx-auto mb-6">
-            <h3 className="text-xl sm:text-2xl font-black text-teal-950">
-              🔍 Track Your Token Turn Live
+            <h3 className="text-xl sm:text-2xl font-black text-teal-950 flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-teal-700 text-2xl">search</span>
+              Track Your Token Turn Live
             </h3>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
               Enter your Token Number printed on your slip to check how many patients are ahead of you.

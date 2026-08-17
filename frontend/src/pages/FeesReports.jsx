@@ -179,7 +179,7 @@ export default function FeesReports() {
             }`}
           >
             <span className="material-symbols-outlined text-base">receipt_long</span>
-            💰 Daily Day-End Cash Closing &amp; Denominations
+            Daily Day-End Cash Closing &amp; Denominations
           </button>
           <button
             onClick={() => setActiveTab("opd_analytics")}
@@ -188,7 +188,7 @@ export default function FeesReports() {
             }`}
           >
             <span className="material-symbols-outlined text-base">analytics</span>
-            📈 OPD Consultation Fee Trends
+            OPD Consultation Fee Trends
           </button>
         </div>
       )}

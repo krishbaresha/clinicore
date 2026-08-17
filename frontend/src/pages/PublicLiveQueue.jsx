@@ -224,7 +224,7 @@ export default function PublicLiveQueue() {
               )}
             </div>
             <p className={`text-xs font-medium mt-0.5 ${isDark ? "text-slate-400" : "text-gray-500"}`}>
-              📍 {clinic?.address || "Lajpat Road, Hyderabad"} • 📞 {clinic?.phone || "03001234567"}
+              {clinic?.address || "Lajpat Road, Hyderabad"} • Phone: {clinic?.phone || "03001234567"}
             </p>
           </div>
         </div>
@@ -417,7 +417,7 @@ export default function PublicLiveQueue() {
                         Now In Chamber
                       </span>
                       <span className={`text-[10px] font-medium ${isDark ? "text-slate-500" : "text-gray-400"}`}>
-                        🔒 Private Token Only
+                        Private Token Only
                       </span>
                     </div>
 

@@ -234,11 +234,12 @@ export default function PatientRegistration() {
             <div className="mx-4 mt-3 p-3 bg-teal-50/90 border border-teal-200/90 rounded-2xl flex items-center justify-between shadow-xs">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700">Attending Doctor</div>
-                <div className="font-black text-teal-950 text-sm">👨‍⚕️ {receipt.doctor?.name || "Dr. Asif Ashraf"}</div>
+                <div className="font-black text-teal-950 text-sm">{receipt.doctor?.name || "Dr. Asif Ashraf"}</div>
                 <div className="text-[11px] font-semibold text-teal-700">{receipt.doctor?.specialization || "General Physician"}</div>
               </div>
-              <div className="bg-teal-700 text-white px-2.5 py-1 rounded-xl text-xs font-black shadow-xs">
-                🚪 {receipt.doctor?.room_number || "Room 1"}
+              <div className="bg-teal-700 text-white px-2.5 py-1 rounded-xl text-xs font-black shadow-xs flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">meeting_room</span>
+                Chamber {receipt.doctor?.room_number || "Room 1"}
               </div>
             </div>
 
@@ -552,7 +553,7 @@ export default function PatientRegistration() {
               </div>
               <div className="text-sm text-gray-600 mt-0.5">
                 {selected.relation_type === "father" ? "S/O" : selected.relation_type === "husband" ? "W/O" : "H/O"}{" "}
-                {selected.relation_name} · 📞 {selected.phone} · <span className="font-semibold text-teal-900">🎂 Age: {formatPatientAge(selected)}</span> ({selected.gender})
+                {selected.relation_name} · Phone: {selected.phone} · <span className="font-semibold text-teal-900">Age: {formatPatientAge(selected)}</span> ({selected.gender})
               </div>
             </div>
           </div>
@@ -572,7 +573,7 @@ export default function PatientRegistration() {
               >
                 {doctors.map((doc) => (
                   <option key={doc.id} value={doc.id}>
-                    👨‍⚕️ {doc.name} — {doc.specialization || "General Physician"} ({doc.room_number || "Room 1"})
+                    {doc.name} — {doc.specialization || "General Physician"} ({doc.room_number || "Room 1"})
                   </option>
                 ))}
               </select>

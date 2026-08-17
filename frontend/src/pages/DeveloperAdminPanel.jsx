@@ -313,12 +313,12 @@ export default function DeveloperAdminPanel() {
                           )}
                         </div>
                         <div className="text-slate-400 text-xs mt-0.5">
-                          👨‍⚕️ {t.doctor_name} ({t.specialization}) • {t.room || "Room 1"}
+                          {t.doctor_name} ({t.specialization}) • {t.room || "Room 1"}
                         </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-300">
-                        <div>📍 {t.city || "Hyderabad"}</div>
+                        <div>{t.city || "Hyderabad"}</div>
                         <div className="text-slate-400 text-[11px]">{t.phone}</div>
                       </td>
 
@@ -348,7 +348,7 @@ export default function DeveloperAdminPanel() {
                               onClick={() => handleSwitchTenant(t.id)}
                               className="px-3 py-1 rounded-lg text-xs font-bold bg-teal-600/30 text-teal-300 border border-teal-500/30 hover:bg-teal-600 hover:text-white transition-colors"
                             >
-                              ⚡ Switch Active
+                              Switch Active
                             </button>
                           )}
                           <button

@@ -320,7 +320,7 @@ export default function MedicalStoreSalesLog() {
                         </span>
                         {sale.patient_name && (
                           <span className="text-xs bg-sky-50 text-sky-800 px-2 py-0.5 rounded-md font-semibold">
-                            👤 {sale.patient_name}
+                            {sale.patient_name}
                           </span>
                         )}
                       </div>
@@ -329,7 +329,7 @@ export default function MedicalStoreSalesLog() {
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {saleItems.map((item, i) => (
                           <span key={i} className="text-xs bg-gray-50 text-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 font-medium">
-                            💊 {item.medicine_name} ({item.quantity} {item.unit_label || "unit"}{item.quantity > 1 ? "s" : ""})
+                            {item.medicine_name} ({item.quantity} {item.unit_label || "unit"}{item.quantity > 1 ? "s" : ""})
                           </span>
                         ))}
                       </div>
@@ -608,7 +608,7 @@ export default function MedicalStoreSalesLog() {
                     refundType === "cash" ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "border-gray-200 text-gray-500"
                   }`}
                 >
-                  💵 Refund Cash
+                  Refund Cash
                 </button>
                 <button
                   type="button"
@@ -617,7 +617,7 @@ export default function MedicalStoreSalesLog() {
                     refundType === "credit" ? "bg-rose-50 border-rose-300 text-rose-800" : "border-gray-200 text-gray-500"
                   }`}
                 >
-                  📖 Adjust Patient Khata (Udhaar)
+                  Adjust Patient Khata (Udhaar)
                 </button>
               </div>
             </div>

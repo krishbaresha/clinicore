@@ -785,13 +785,13 @@ export default function ClinicSettings() {
                     }}
                     className="input-field text-xs font-bold bg-white"
                   >
-                    <option value="1h">⚡ Every 1 Hour (Ultra-Fast Auto Backup)</option>
-                    <option value="2h">⏰ Every 2 Hours</option>
-                    <option value="6h">⏳ Every 6 Hours</option>
-                    <option value="12h">🌓 Every 12 Hours (Twice Daily)</option>
-                    <option value="daily">📅 Every 24 Hours (Daily Backup)</option>
-                    <option value="weekly">📆 Every Week (Weekly Backup)</option>
-                    <option value="manual">🖐️ Manual Dispatch Only</option>
+                    <option value="1h">Every 1 Hour (Ultra-Fast Auto Backup)</option>
+                    <option value="2h">Every 2 Hours</option>
+                    <option value="6h">Every 6 Hours</option>
+                    <option value="12h">Every 12 Hours (Twice Daily)</option>
+                    <option value="daily">Every 24 Hours (Daily Backup)</option>
+                    <option value="weekly">Every Week (Weekly Backup)</option>
+                    <option value="manual">Manual Dispatch Only</option>
                   </select>
                 </div>
 

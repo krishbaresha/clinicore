@@ -137,7 +137,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* Top Pill */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs sm:text-sm font-bold shadow-xs mb-6">
-            <span className="text-base">✨</span>
+            <span className="material-symbols-outlined text-sm text-teal-600">verified</span>
             The Modern Clinic, OPD &amp; Pharmacy Operating System
           </div>
 

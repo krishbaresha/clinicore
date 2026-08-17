@@ -50,10 +50,13 @@ export default function WarehouseManagement() {
     const wStock = inv.warehouse_stock ?? inv.total_base_stock ?? inv.stock_qty ?? 0;
     const qty = Number(transferQty) || 1;
     if (qty > wStock) {
-      alert(`⚠️ Cannot transfer ${qty} units! Main Warehouse only has ${wStock} units in stock.`);
+      alert(`Cannot transfer ${qty} units! Main Warehouse only has ${wStock} units in stock.`);
       return;
     }
 
+    dbInventory.transferWarehouseToStore(selectedInvForTransfer, qty);
+    alert(`Successfully transferred ${qty} units of ${inv.medicine_name} to Front Counter Store!`);
+    
     dbStockTransfers.transfer({
       inventory_id: inv.id,
       medicine_name: inv.medicine_name,
@@ -64,7 +67,6 @@ export default function WarehouseManagement() {
       transferred_by: "Store Pharmacist"
     });
 
-    alert(`✅ Successfully transferred ${qty} units of ${inv.medicine_name} to Front Counter Store!`);
     setSelectedInvForTransfer("");
     setTransferQty(1);
     setTransferNotes("");
@@ -119,7 +121,7 @@ export default function WarehouseManagement() {
     const paid = b2bPaymentType === "cash" ? subtotal : Number(b2bPaidAmount) || 0;
     const balance = Math.max(0, subtotal - paid);
 
-    const sale = dbB2BSales.checkout({
+    const saleData = {
       buyer_name: b2bBuyerName,
       buyer_phone: b2bBuyerPhone,
       items: validItems,
@@ -128,9 +130,10 @@ export default function WarehouseManagement() {
       balance_due: balance,
       payment_type: b2bPaymentType,
       user_name: "Warehouse Manager"
-    });
+    };
 
-    alert(`✅ Wholesale B2B Invoice #${sale.invoice_no} created successfully! Stock deducted from Main Warehouse.`);
+    const sale = dbB2BSales.add(saleData);
+    alert(`Wholesale B2B Invoice #${sale.invoice_no} created successfully! Stock deducted from Main Warehouse.`);
     
     // Print 80mm B2B Voucher
     printThermalReceipt({
@@ -201,7 +204,7 @@ export default function WarehouseManagement() {
           }`}
         >
           <span className="material-symbols-outlined text-base">sync_alt</span>
-          🔄 Internal Stock Transfer (Warehouse ➔ Store)
+          Internal Stock Transfer (Warehouse to Store)
         </button>
         <button
           onClick={() => setActiveTab("b2b")}
@@ -210,7 +213,7 @@ export default function WarehouseManagement() {
           }`}
         >
           <span className="material-symbols-outlined text-base">storefront</span>
-          💼 Wholesale B2B Sales (Warehouse ➔ Chemists)
+          Wholesale B2B Sales (Warehouse to Chemists)
         </button>
         <button
           onClick={() => setActiveTab("logs")}
@@ -242,8 +245,8 @@ export default function WarehouseManagement() {
                 <tr>
                   <th className="px-4 py-3">Medicine Name</th>
                   <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3 text-center bg-teal-100/50">🏢 Main Warehouse (Godown)</th>
-                  <th className="px-4 py-3 text-center bg-amber-50">🏪 Counter Store (POS)</th>
+                  <th className="px-4 py-3 text-center bg-teal-100/50">Main Warehouse (Godown)</th>
+                  <th className="px-4 py-3 text-center bg-amber-50">Counter Store (POS)</th>
                   <th className="px-4 py-3 text-center font-black">Total Combined Stock</th>
                   <th className="px-4 py-3 text-center">Action</th>
                 </tr>
@@ -324,7 +327,7 @@ export default function WarehouseManagement() {
                   const wStock = inv.warehouse_stock ?? inv.total_base_stock ?? inv.stock_qty ?? 0;
                   return (
                     <option key={inv.id} value={inv.id}>
-                      💊 {inv.medicine_name} ({inv.strength}) — Godown Stock: {wStock} {inv.unit_label || "units"}
+                      {inv.medicine_name} ({inv.strength}) — Godown Stock: {wStock} {inv.unit_label || "units"}
                     </option>
                   );
                 })}
@@ -409,8 +412,8 @@ export default function WarehouseManagement() {
                   onChange={(e) => setB2bPaymentType(e.target.value)}
                   className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold bg-gray-50"
                 >
-                  <option value="cash">💵 Immediate Cash Payment</option>
-                  <option value="credit">📑 Credit Sale (Added to Udhaar Khata)</option>
+                  <option value="cash">Immediate Cash Payment</option>
+                  <option value="credit">Credit Sale (Added to Udhaar Khata)</option>
                 </select>
               </div>
             </div>
@@ -441,7 +444,7 @@ export default function WarehouseManagement() {
                       <option value="">-- Choose Stock Item --</option>
                       {inventory.map((inv) => (
                         <option key={inv.id} value={inv.id}>
-                          💊 {inv.medicine_name} — Godown Stock: {inv.warehouse_stock ?? inv.stock_qty}
+                          {inv.medicine_name} — Godown Stock: {inv.warehouse_stock ?? inv.stock_qty}
                         </option>
                       ))}
                     </select>
@@ -498,7 +501,7 @@ export default function WarehouseManagement() {
       {activeTab === "logs" && (
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-            <h3 className="font-bold text-gray-900 text-sm mb-3">🔄 Internal Stock Transfers Log</h3>
+            <h3 className="font-bold text-gray-900 text-sm mb-3">Internal Stock Transfers Log</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-gray-600">
                 <thead className="bg-gray-100 text-gray-700 font-bold uppercase">
@@ -530,7 +533,7 @@ export default function WarehouseManagement() {
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-            <h3 className="font-bold text-gray-900 text-sm mb-3">💼 Wholesale B2B Sales Log</h3>
+            <h3 className="font-bold text-gray-900 text-sm mb-3">Wholesale B2B Sales Log</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-gray-600">
                 <thead className="bg-gray-100 text-gray-700 font-bold uppercase">

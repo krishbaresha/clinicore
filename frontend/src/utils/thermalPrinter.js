@@ -218,7 +218,7 @@ export function printThermalReceipt(sale, clinicData = null) {
         <div style="text-align: center; margin-top: 8px; font-size: 11px; font-weight: 800; color: #374151; line-height: 1.4;">
           <div>Software Powered by: K.B Software</div>
           <div style="color: #0d9488; font-family: monospace; font-size: 12px; font-weight: 900; margin-top: 2px;">
-            📞 Contact: 03142291356
+            Phone: 03142291356
           </div>
         </div>
 
@@ -392,7 +392,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
         <div style="text-align: center; font-size: 11px; font-weight: 800; color: #374151; margin-top: 8px;">
           <div>Verified Cash Drawer Shift Audit</div>
           <div style="margin-top: 4px;">Software Powered by: K.B Software</div>
-          <div style="color: #0d9488; font-family: monospace; font-size: 12px; font-weight: 900;">📞 Contact: 03142291356</div>
+          <div style="color: #0d9488; font-family: monospace; font-size: 12px; font-weight: 900;">Phone: 03142291356</div>
         </div>
 
         <script>
@@ -607,7 +607,7 @@ export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicDa
         <div style="text-align: center; margin-top: 8px; font-size: 11px; font-weight: 800; color: #374151; line-height: 1.4;">
           <div>Software Powered by: K.B Software</div>
           <div style="color: #0d9488; font-family: monospace; font-size: 12px; font-weight: 900; margin-top: 2px;">
-            📞 Contact: 03142291356
+            Phone: 03142291356
           </div>
         </div>
 
@@ -746,10 +746,10 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
         <!-- Attending Doctor Box -->
         <div class="doctor-box">
           <div style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: #333; letter-spacing: 1px;">Attending Doctor:</div>
-          <div style="font-size: 15px; font-weight: 900; color: #000; margin-top: 1px;">👨‍⚕️ ${doctorName}</div>
+          <div style="font-size: 15px; font-weight: 900; color: #000; margin-top: 1px;">${doctorName}</div>
           <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: #222; margin-top: 3px;">
             <span>${doctorSpecialization}</span>
-            <span style="font-weight: 900; background: #000; color: #fff; padding: 1px 6px; border-radius: 4px;">🚪 Chamber: ${doctorRoom}</span>
+            <span style="font-weight: 900; background: #000; color: #fff; padding: 1px 6px; border-radius: 4px;">Chamber: ${doctorRoom}</span>
           </div>
         </div>
 
@@ -778,10 +778,10 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
         <div class="text-center" style="font-size: 11px; margin-top: 6px; font-weight: bold;">
           <div>Please wait in waiting area for your token call.</div>
           <div style="margin-top: 4px; padding: 4px; background: #f0fdfa; border: 1px dashed #0d9488; border-radius: 4px; font-size: 11px; color: #0f766e;">
-            🌐 <strong>Live Token Tracker:</strong> Open <code>/live</code> on your phone to track queue!
+            <strong>Live Token Tracker:</strong> Open <code>/clinic</code> on your phone to track your turn!
           </div>
           <div style="font-size: 10px; font-weight: 900; margin-top: 6px; color: #333;">Software Powered by: K.B Software</div>
-          <div style="font-size: 10px; font-weight: 900; color: #0d9488;">📞 Contact: 03142291356</div>
+          <div style="font-size: 10px; font-weight: 900; color: #0d9488;">Phone: 03142291356</div>
         </div>
       </body>
     </html>
