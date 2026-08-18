@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, formatStockBreakdown, formatStockShort } from "../api/db.js";
+import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, formatStockShort } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
+import PhotoLightbox from "../components/PhotoLightbox.jsx";
 
 function ReceiptModal({ sale, onClose }) {
   if (!sale) return null;
@@ -19,7 +20,7 @@ function ReceiptModal({ sale, onClose }) {
 
   const cashierName = sale.cashier_name || sale.user_name || "Cashier Desk";
   const customerName = sale.patient_name || (sale.visit_id ? "Linked Patient" : "Walk-In-Customer");
-  const invoiceId = sale.id || `SL_${Math.floor(1000 + Math.random() * 9000)}`;
+  const invoiceId = sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -38,20 +39,20 @@ function ReceiptModal({ sale, onClose }) {
           {/* Top Clinic Branding & Logo */}
           <div className="text-center">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-600 to-teal-800 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-md shadow-teal-200">
-              {(clinic?.name || "Dr. Asif Ashraf's Clinic").charAt(0)}
+              {(clinic?.name || "Dr. Kashif Khan").charAt(0)}
             </div>
             <div className="text-base font-black text-teal-800 mt-1">
-              {clinic?.name || "Dr. Asif Ashraf's Clinic"}
+              {clinic?.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store"}
             </div>
             <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">
-              Medical Store Tax Invoice
+              Retail Medical Store Invoice
             </div>
           </div>
 
           {/* Dotted Line */}
           <div className="border-t border-dotted border-gray-400 my-2" />
 
-          {/* Meta Details List (Relevant Only) */}
+          {/* Meta Details List */}
           <div className="text-xs text-gray-800 font-semibold space-y-1 leading-relaxed">
             <div><span className="text-gray-500 font-medium">Date &amp; Time :</span> {dateTimeStr}</div>
             <div><span className="text-gray-500 font-medium">Cashier :</span> {cashierName}</div>
@@ -68,7 +69,7 @@ function ReceiptModal({ sale, onClose }) {
               <div key={i} className="text-xs space-y-0.5">
                 <div className="font-bold text-gray-900">{item.medicine_name}</div>
                 <div className="flex justify-between items-center text-gray-600 font-medium">
-                  <span>{Number(item.quantity || 1).toFixed(2)} {item.unit_label || "Pc"} X {Number(item.unit_price || 0).toFixed(2)}</span>
+                  <span>{item.quantity || 1} {item.unit_label || "Unit"} × Rs. {Number(item.unit_price || 0).toFixed(2)}</span>
                   <span className="font-extrabold text-gray-900">Rs. {Number(item.line_total || 0).toFixed(2)}</span>
                 </div>
               </div>
@@ -94,29 +95,23 @@ function ReceiptModal({ sale, onClose }) {
               <span>Grand Total</span>
               <span>Rs. {Number(sale.total_amount || subtotal).toFixed(2)}</span>
             </div>
-          </div>
-
-          {/* Dotted Line */}
-          <div className="border-t border-dotted border-gray-400 my-2" />
-
-          {/* Payment Method Table */}
-          <div className="overflow-hidden rounded-lg border border-gray-200">
-            <table className="w-full text-left text-[11px]">
-              <thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-200">
-                <tr>
-                  <th className="px-2 py-1.5">Paid By:</th>
-                  <th className="px-2 py-1.5 text-center">Amount:</th>
-                  <th className="px-2 py-1.5 text-right">Change Return:</th>
-                </tr>
-              </thead>
-              <tbody className="font-semibold text-gray-800">
-                <tr>
-                  <td className="px-2 py-1.5 capitalize font-bold">{sale.payment_type || "Cash"}</td>
-                  <td className="px-2 py-1.5 text-center">{Number(cashTendered).toFixed(2)}</td>
-                  <td className="px-2 py-1.5 text-right">{Number(changeDue).toFixed(2)}</td>
-                </tr>
-              </tbody>
-            </table>
+            {sale.payment_type === "cash" ? (
+              <>
+                <div className="flex justify-between text-gray-600">
+                  <span>Cash Paid</span>
+                  <span>Rs. {Number(cashTendered).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-teal-800 font-bold">
+                  <span>Change Return</span>
+                  <span>Rs. {Number(changeDue).toFixed(2)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between text-amber-700 font-bold">
+                <span>Payment Type</span>
+                <span>Credit / Udhaar (Added to Patient Ledger)</span>
+              </div>
+            )}
           </div>
 
           {/* Dotted Line */}
@@ -124,18 +119,7 @@ function ReceiptModal({ sale, onClose }) {
 
           {/* Centered Thank You Notice */}
           <div className="text-center font-bold text-gray-900 text-xs py-1">
-            Thank You For Shopping With Us .<br />Please Come Again
-          </div>
-
-          {/* Dotted Line */}
-          <div className="border-t border-dotted border-gray-400 my-2" />
-
-          {/* Developer Branding & Contact Footer */}
-          <div className="text-center text-[11px] font-bold text-gray-700 space-y-0.5 pt-1">
-            <div>Software Powered by: K.B Software</div>
-            <div className="text-teal-700 font-mono font-black text-xs">
-              📞 Contact: 03142291356
-            </div>
+            Thank You For Shopping With Us.<br />Please Visit Again
           </div>
 
           {/* Interactive Print Button */}
@@ -160,31 +144,33 @@ export default function MedicalStorePOS() {
   const [inventoryResults, setInventoryResults] = useState([]);
   const [cart, setCart] = useState([]);
   const [receipt, setReceipt] = useState(null);
+  const [selectedInventoryIndex, setSelectedInventoryIndex] = useState(0);
 
-  // Mode: "link" vs "walkin"
-  const [customerMode, setCustomerMode] = useState("walkin"); // "walkin" or "link"
+  // Mode: "walkin" vs "link"
+  const [customerMode, setCustomerMode] = useState("walkin");
   const [visitQuery, setVisitQuery] = useState("");
   const [linkedVisit, setLinkedVisit] = useState(null);
   const [linkedPatient, setLinkedPatient] = useState(null);
   const [visitSearchResults, setVisitSearchResults] = useState([]);
 
-  // Discount, Payment Type, Tendered Cash & Patient Credit
+  // Discount, Payment Type, Tendered Cash
   const [discountInput, setDiscountInput] = useState("");
   const [paymentType, setPaymentType] = useState("cash"); // "cash" or "credit"
   const [amountPaidInput, setAmountPaidInput] = useState("");
   const [cashTenderedInput, setCashTenderedInput] = useState("");
-
-  // Barcode, Rx Viewer & Unit Selection Modals
-  const [barcodeModalItem, setBarcodeModalItem] = useState(null);
-  const [barcodePrintQty, setBarcodePrintQty] = useState(1);
   const [showRxModal, setShowRxModal] = useState(false);
 
-  // Multi-Unit Selection Modal State
-  const [unitModalItem, setUnitModalItem] = useState(null);
-  const [modalUnitType, setModalUnitType] = useState("strip"); // "box", "strip", "unit"
-  const [modalQty, setModalQty] = useState(1);
-
   const searchInputRef = useRef(null);
+  const inventoryListRef = useRef(null);
+
+  useEffect(() => {
+    if (inventoryListRef.current) {
+      const activeEl = inventoryListRef.current.querySelector(`[data-index="${selectedInventoryIndex}"]`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }
+  }, [selectedInventoryIndex]);
 
   useEffect(() => {
     setInventoryResults(dbInventory.getAll());
@@ -205,8 +191,6 @@ export default function MedicalStorePOS() {
         const checkoutBtn = document.getElementById("pos-checkout-btn");
         if (checkoutBtn) checkoutBtn.click();
       } else if (e.key === "Escape") {
-        setUnitModalItem(null);
-        setBarcodeModalItem(null);
         setShowRxModal(false);
       }
     }
@@ -217,105 +201,97 @@ export default function MedicalStorePOS() {
 
   function searchInventory(q) {
     setInventoryQuery(q);
+    setSelectedInventoryIndex(0);
     setInventoryResults(dbInventory.search(q));
   }
 
-  function handleOpenAddModal(item) {
-    if (!item.has_multi_unit) {
-      // Direct add for single packaging items (Syrups, Drops, Injections)
-      addToCartWithUnit(item, "unit", 1);
-    } else {
-      setUnitModalItem(item);
-      setModalUnitType("strip"); // default to Patta / Strip
-      setModalQty(1);
+  function handleSearchInputKeyDown(e) {
+    const visibleList = inventoryResults.slice(0, 40);
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedInventoryIndex((prev) => Math.min(visibleList.length - 1, prev + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedInventoryIndex((prev) => Math.max(0, prev - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (visibleList.length > 0 && visibleList[selectedInventoryIndex]) {
+        addToCart(visibleList[selectedInventoryIndex], 1);
+      }
     }
   }
 
-  function addToCartWithUnit(item, selectedUnitType, quantity) {
-    const qty = Math.max(1, Number(quantity) || 1);
-    const stripsPerBox = Number(item.strips_per_box) || 10;
-    const unitsPerStrip = Number(item.units_per_strip) || 12;
-
-    let baseUnitsDeducted = qty;
-    let unitPrice = Number(item.unit_sale_price || item.unit_price) || 0;
-    let unitLabel = item.unit_label || "tablet";
-
-    if (item.has_multi_unit) {
-      if (selectedUnitType === "box") {
-        baseUnitsDeducted = qty * (stripsPerBox * unitsPerStrip);
-        unitPrice = Number(item.box_sale_price) || (item.unit_price * stripsPerBox * unitsPerStrip);
-        unitLabel = item.box_label || "Box";
-      } else if (selectedUnitType === "strip") {
-        baseUnitsDeducted = qty * unitsPerStrip;
-        unitPrice = Number(item.strip_sale_price) || (item.unit_price * unitsPerStrip);
-        unitLabel = item.strip_label || "Strip";
-      } else {
-        baseUnitsDeducted = qty;
-        unitPrice = Number(item.unit_sale_price || item.unit_price) || 0;
-        unitLabel = item.unit_label || "Tablet";
-      }
-    }
-
-    const cartKey = `${item.id}_${selectedUnitType}`;
-    const lineTotal = parseFloat((unitPrice * qty).toFixed(2));
+  // Direct 1-Click Add To Cart (Quantity based)
+  function addToCart(item, qty = 1) {
+    const unitPrice = Number(item.unit_sale_price || item.sale_price || item.box_sale_price || item.unit_price) || 0;
+    const unitLabel = item.unit_label || "Unit";
 
     setCart((prev) => {
-      const existingIndex = prev.findIndex((c) => c.cart_key === cartKey);
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        const ex = updated[existingIndex];
-        const newQty = ex.quantity + qty;
-        const perUnitBase = baseUnitsDeducted / qty;
-        updated[existingIndex] = {
-          ...ex,
-          quantity: newQty,
-          base_units_deducted: perUnitBase * newQty,
-          line_total: parseFloat((unitPrice * newQty).toFixed(2))
-        };
-        return updated;
+      const existing = prev.find((c) => c.inventory_id === item.id);
+      if (existing) {
+        const newQty = existing.quantity + qty;
+        return prev.map((c) =>
+          c.inventory_id === item.id
+            ? {
+                ...c,
+                quantity: newQty,
+                base_units_deducted: newQty,
+                line_total: parseFloat((unitPrice * newQty).toFixed(2)),
+              }
+            : c
+        );
       }
       return [
         ...prev,
         {
-          cart_key: cartKey,
           inventory_id: item.id,
           medicine_name: item.medicine_name,
-          selected_unit_type: selectedUnitType,
           unit_label: unitLabel,
           quantity: qty,
-          base_units_deducted: baseUnitsDeducted,
+          base_units_deducted: qty,
           unit_price: unitPrice,
-          line_total: lineTotal,
-          batch_no: item.batch_no || "BAT-DEF",
+          line_total: parseFloat((unitPrice * qty).toFixed(2)),
+          batch_no: item.batch_no || item.item_code || "",
           expiry_date: item.expiry_date || null,
         },
       ];
     });
-
-    setUnitModalItem(null);
   }
 
-  function updateQty(cartKey, delta) {
+  function updateQty(inventoryId, delta) {
     setCart((prev) =>
       prev
         .map((c) => {
-          if (c.cart_key !== cartKey && c.inventory_id !== cartKey) return c;
-          const inv = dbInventory.getById(c.inventory_id);
-          const perUnitBase = c.base_units_deducted / c.quantity;
+          if (c.inventory_id !== inventoryId) return c;
           const newQty = Math.max(0, c.quantity + delta);
           return {
             ...c,
             quantity: newQty,
-            base_units_deducted: perUnitBase * newQty,
-            line_total: parseFloat((c.unit_price * newQty).toFixed(2))
+            base_units_deducted: newQty,
+            line_total: parseFloat((c.unit_price * newQty).toFixed(2)),
           };
         })
         .filter((c) => c.quantity > 0)
     );
   }
 
-  function removeFromCart(cartKey) {
-    setCart((prev) => prev.filter((c) => c.cart_key !== cartKey && c.inventory_id !== cartKey));
+  function setExactQty(inventoryId, exactQty) {
+    const q = Math.max(1, parseInt(exactQty) || 1);
+    setCart((prev) =>
+      prev.map((c) => {
+        if (c.inventory_id !== inventoryId) return c;
+        return {
+          ...c,
+          quantity: q,
+          base_units_deducted: q,
+          line_total: parseFloat((c.unit_price * q).toFixed(2)),
+        };
+      })
+    );
+  }
+
+  function removeFromCart(inventoryId) {
+    setCart((prev) => prev.filter((c) => c.inventory_id !== inventoryId));
   }
 
   const subtotal = cart.reduce((sum, c) => sum + c.line_total, 0);
@@ -326,19 +302,22 @@ export default function MedicalStorePOS() {
   const changeDueVal = Math.max(0, tenderedCashVal - finalTotal);
 
   function checkout() {
-    if (cart.length === 0) { alert("Cart is empty."); return; }
+    if (cart.length === 0) {
+      alert("Cart is empty. Please add items to checkout.");
+      return;
+    }
     if (paymentType === "credit" && customerMode !== "link" && !linkedPatient) {
       alert("Credit / Udhaar sale requires linking to a registered Patient.");
       return;
     }
 
-    // Check base stock
+    // Check stock
     for (const cartItem of cart) {
       const inv = dbInventory.getById(cartItem.inventory_id);
-      const availableBaseStock = inv ? (inv.total_base_stock ?? inv.stock_qty ?? 0) : 0;
-      if (!inv || availableBaseStock < cartItem.base_units_deducted) {
-        alert(`Insufficient stock for ${cartItem.medicine_name}. Available base stock: ${availableBaseStock} ${inv?.unit_label || "units"}.`);
-        return;
+      const available = inv ? (inv.store_stock ?? inv.stock_qty ?? inv.total_base_stock ?? 0) : 0;
+      if (available < cartItem.quantity) {
+        const proceed = confirm(`⚠️ Warning: ${cartItem.medicine_name} has only ${available} units in Store Counter stock, but you are selling ${cartItem.quantity}.\n\nDo you want to proceed anyway?`);
+        if (!proceed) return;
       }
     }
 
@@ -347,877 +326,469 @@ export default function MedicalStorePOS() {
 
     const sale = dbSales.checkout({
       visit_id: customerMode === "link" ? (linkedVisit?.id || null) : null,
-      patient_name: linkedPatient?.full_name || null,
-      payment_type: paymentType,
-      amount_paid: paidVal,
+      patient_id: customerMode === "link" ? (linkedPatient?.id || null) : null,
+      patient_name: linkedPatient?.full_name || "Walk-in Patient",
+      items: cart,
+      subtotal_amount: subtotal,
+      discount_amount: discountVal,
+      total_amount: finalTotal,
+      paid_amount: paidVal,
       balance_due: balanceDue,
+      payment_type: paymentType,
       cash_tendered: paymentType === "cash" ? tenderedCashVal : paidVal,
       change_due: paymentType === "cash" ? changeDueVal : 0,
-      items: cart.map((c) => ({
-        inventory_id: c.inventory_id,
-        medicine_name: c.medicine_name,
-        selected_unit_type: c.selected_unit_type,
-        unit_label: c.unit_label,
-        quantity: c.quantity,
-        base_units_deducted: c.base_units_deducted,
-        unit_price: c.unit_price,
-        line_total: c.line_total,
-        batch_no: c.batch_no,
-      })),
-      discount_amount: discountVal,
-      tax_amount: 0,
+      cashier_name: "Store Staff",
     });
 
-    // Record in Patient Ledger if Udhaar
-    if (balanceDue > 0 && linkedPatient) {
+    if (paymentType === "credit" && linkedPatient) {
       dbPatientLedger.addCredit(
         linkedPatient.id,
         linkedPatient.full_name,
         balanceDue,
-        `Pharmacy POS Sale Udhaar (#${sale.id})`
+        `Pharmacy POS Invoice #${sale.receipt_no || sale.id}`
       );
     }
 
     setReceipt(sale);
     setCart([]);
     setDiscountInput("");
-    setAmountPaidInput("");
     setCashTenderedInput("");
-    setPaymentType("cash");
+    setAmountPaidInput("");
+    setLinkedVisit(null);
+    setLinkedPatient(null);
     setInventoryResults(dbInventory.getAll());
   }
 
-  // Visit search (for linking)
   function searchVisits(q) {
     setVisitQuery(q);
-    if (!q.trim()) { setVisitSearchResults([]); return; }
-    const tokenNum = parseInt(q, 10);
-    const today = new Date().toISOString().split("T")[0];
-    const todayVisits = dbVisits.getTodayAll ? dbVisits.getTodayAll() : dbVisits.getAll().filter((v) => v.visit_date?.startsWith(today));
-    const matches = todayVisits.filter((v) => {
-      const p = dbPatients.getById(v.patient_id);
+    if (!q.trim()) {
+      setVisitSearchResults([]);
+      return;
+    }
+    const today = dbVisits.getTodayAll();
+    const allPat = dbPatients.getAll();
+    const matches = today.filter((v) => {
+      const pat = allPat.find((p) => p.id === v.patient_id);
       return (
-        (tokenNum && v.token_number === tokenNum) ||
-        (p && p.full_name.toLowerCase().includes(q.toLowerCase()))
+        String(v.token_number).includes(q) ||
+        (pat?.full_name || "").toLowerCase().includes(q.toLowerCase()) ||
+        (pat?.phone || "").includes(q)
       );
     });
-    setVisitSearchResults(matches.slice(0, 5));
+    setVisitSearchResults(matches);
   }
 
-  function linkVisit(visit) {
-    setLinkedVisit(visit);
-    setLinkedPatient(dbPatients.getById(visit.patient_id));
-    setVisitSearchResults([]);
+  function linkVisit(v) {
+    setLinkedVisit(v);
+    const pat = dbPatients.getById(v.patient_id);
+    setLinkedPatient(pat);
     setVisitQuery("");
+    setVisitSearchResults([]);
   }
 
   return (
-    <div className="p-3 sm:p-5 md:p-8 max-w-6xl mx-auto w-full mobile-safe-bottom touch-scroll overflow-x-hidden">
-      {receipt && (
-        <ReceiptModal
-          sale={receipt}
-          onClose={() => {
-            setReceipt(null);
-            setLinkedVisit(null);
-            setLinkedPatient(null);
-            setDiscountInput("");
-            setInventoryQuery("");
-            setInventoryResults(dbInventory.getAll());
-          }}
-        />
-      )}
-
-      {/* Header */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-24 font-sans">
+      {/* Top Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>storefront</span>
-            Medical Store POS
+          <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-600 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+              point_of_sale
+            </span>
+            Medical Store POS Counter
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Point of Sale checkout with inventory deduction</p>
+          <p className="text-xs text-gray-500 mt-0.5">Fast Walk-in &amp; OPD Prescription Dispensing Terminal</p>
         </div>
 
-        {/* Customer Mode Toggle */}
-        <div className="bg-gray-100 p-1 rounded-2xl flex items-center gap-1 border border-gray-200">
+        {/* Customer Mode Switcher */}
+        <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
           <button
             type="button"
-            onClick={() => { setCustomerMode("walkin"); setLinkedVisit(null); setLinkedPatient(null); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              customerMode === "walkin" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-800"
+            onClick={() => setCustomerMode("walkin")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              customerMode === "walkin"
+                ? "bg-teal-600 text-white shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
             }`}
           >
-            <span className="material-symbols-outlined text-base">directions_walk</span>
-            Walk-in Customer
+            Walk-In Customer
           </button>
           <button
             type="button"
             onClick={() => setCustomerMode("link")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              customerMode === "link" ? "bg-teal-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-800"
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              customerMode === "link"
+                ? "bg-teal-600 text-white shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
             }`}
           >
-            <span className="material-symbols-outlined text-base">receipt_long</span>
-            Link to Visit
+            Link OPD Patient (F4)
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 md:gap-6">
-        {/* Left: Inventory + optional visit link */}
-        <div className="space-y-4">
-          {/* Linked Visit selector (if customerMode === 'link') */}
-          {customerMode === "link" && (
-            <div className="bg-white rounded-2xl border border-teal-200 shadow-sm p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="material-symbols-outlined text-teal-600 text-lg">receipt_long</span>
-                <span className="text-sm font-bold text-gray-800">Linked Consultation Visit</span>
-              </div>
-
-              {linkedVisit ? (
-                <div className="flex items-center justify-between bg-teal-50 border border-teal-100 rounded-xl p-3">
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">
-                      Token #{linkedVisit.token_number} — {linkedPatient?.full_name}
-                      <span className="ml-2 text-[10px] bg-teal-200 text-teal-800 px-1.5 py-0.5 rounded font-mono">
-                        ID: {linkedPatient?.id}
-                      </span>
-                    </div>
-                    {linkedVisit.prescription_image_url ? (
+      {/* Linked Patient Bar (If linked mode is active) */}
+      {customerMode === "link" && (
+        <div className="bg-teal-50/70 border border-teal-200 p-3.5 rounded-2xl space-y-2">
+          {!linkedPatient ? (
+            <div>
+              <label className="block text-xs font-bold text-teal-900 mb-1.5">
+                Search Today&apos;s OPD Queue Patient (By Name, Token # or Phone):
+              </label>
+              <input
+                type="text"
+                value={visitQuery}
+                onChange={(e) => searchVisits(e.target.value)}
+                placeholder="Type patient name or token #..."
+                className="w-full bg-white border border-teal-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+              {visitSearchResults.length > 0 && (
+                <div className="mt-2 bg-white rounded-xl border border-gray-200 shadow-lg p-2 space-y-1 max-h-40 overflow-y-auto">
+                  {visitSearchResults.map((v) => {
+                    const p = dbPatients.getById(v.patient_id);
+                    return (
                       <button
+                        key={v.id}
                         type="button"
-                        onClick={() => setShowRxModal(true)}
-                        className="text-xs text-teal-700 hover:text-teal-900 font-bold underline flex items-center gap-1 mt-1 bg-white px-2.5 py-1 rounded-lg border border-teal-200 shadow-sm"
+                        onClick={() => linkVisit(v)}
+                        className="w-full text-left p-2 hover:bg-teal-50 rounded-lg text-xs flex items-center justify-between"
                       >
-                        <span className="material-symbols-outlined text-sm">visibility</span>
-                        View Prescription Photo
+                        <span className="font-bold text-gray-900">Token #{v.token_number} — {p?.full_name}</span>
+                        <span className="text-gray-500">{p?.phone || "No phone"}</span>
                       </button>
-                    ) : (
-                      <span className="text-[11px] text-amber-700 italic block mt-0.5">No prescription photo attached for today&apos;s visit</span>
-                    )}
-                  </div>
-                  <button onClick={() => { setLinkedVisit(null); setLinkedPatient(null); }} className="text-gray-400 hover:text-red-500 ml-2">
-                    <span className="material-symbols-outlined text-xl">close</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={visitQuery}
-                    onChange={(e) => searchVisits(e.target.value)}
-                    placeholder="Search today's visits by token number or patient name..."
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
-                  />
-                  {visitSearchResults.length > 0 && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden">
-                      {visitSearchResults.map((v) => {
-                        const p = dbPatients.getById(v.patient_id);
-                        return (
-                          <button
-                            key={v.id}
-                            onClick={() => linkVisit(v)}
-                            className="w-full text-left px-4 py-2.5 hover:bg-teal-50 border-b border-gray-50 last:border-0 transition-colors"
-                          >
-                            <div className="text-sm font-semibold text-gray-900">Token #{v.token_number} — {p?.full_name}</div>
-                            <div className="text-xs text-gray-400 capitalize">{v.status}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-700">person</span>
+                <span className="font-black text-teal-950 text-sm">{linkedPatient.full_name}</span>
+                <span className="text-xs bg-teal-200/60 text-teal-900 font-bold px-2 py-0.5 rounded-full">
+                  Token #{linkedVisit.token_number}
+                </span>
+                {linkedVisit.prescription_image_url && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRxModal(true)}
+                    className="text-xs bg-white text-teal-800 border border-teal-300 px-2 py-0.5 rounded font-bold hover:bg-teal-100 flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-xs">visibility</span>
+                    View Dr. Prescription
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLinkedPatient(null);
+                  setLinkedVisit(null);
+                }}
+                className="text-xs text-rose-600 font-bold hover:underline"
+              >
+                Unlink
+              </button>
             </div>
           )}
+        </div>
+      )}
 
-          {/* Medicine Search */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <div className="mb-3">
-              <label className="block text-sm font-bold text-gray-700 mb-2">Search Medicines</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-xl">medication</span>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={inventoryQuery}
-                  onChange={(e) => searchInventory(e.target.value)}
-                  placeholder="Type medicine name (Press F2 to focus)..."
-                  className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
-                />
-              </div>
+      {/* Main Grid: Products on Left (7 cols), Cart on Right (5 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left Column: Product Search & Inventory Table */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+            {/* Search Input */}
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                search
+              </span>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={inventoryQuery}
+                onChange={(e) => searchInventory(e.target.value)}
+                onKeyDown={handleSearchInputKeyDown}
+                placeholder="Search medicine by name or code (F2)... [↑ / ↓ to navigate, Enter to add]"
+                className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-teal-600 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none transition-all"
+              />
             </div>
 
-            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-              {inventoryResults.length === 0 && (
-                <div className="text-center py-6 text-sm text-gray-400">No medicines found</div>
-              )}
-              {inventoryResults.map((item) => {
-                const inCart = cart.some((c) => c.inventory_id === item.id);
-                const baseStock = item.total_base_stock ?? item.stock_qty ?? 0;
-                const isLow = baseStock <= (item.low_stock_threshold || 20);
-                const unitLabel = item.unit_label || "Tablet";
+            {/* Inventory List */}
+            <div ref={inventoryListRef} className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto pr-1">
+              {inventoryResults.length === 0 ? (
+                <div className="py-8 text-center text-xs text-gray-400">
+                  No medicine matches &quot;{inventoryQuery}&quot;.
+                </div>
+              ) : (
+                <>
+                  {inventoryResults.slice(0, 40).map((item, idx) => {
+                    const stock = item.store_stock ?? item.stock_qty ?? item.total_base_stock ?? 0;
+                    const price = item.unit_sale_price || item.sale_price || item.box_sale_price || item.unit_price || 0;
+                    const isLow = stock <= (item.low_stock_threshold || 6);
+                    const isHighlighted = idx === selectedInventoryIndex;
 
-                return (
-                  <div
-                    key={item.id}
-                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                      inCart ? "border-teal-200 bg-teal-50/50" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                    return (
+                      <div
+                        key={item.id}
+                        data-index={idx}
+                        onClick={() => {
+                          setSelectedInventoryIndex(idx);
+                          addToCart(item, 1);
+                        }}
+                        className={`py-3 px-3 rounded-2xl flex items-center justify-between transition-all cursor-pointer ${
+                          isHighlighted
+                            ? "bg-teal-50 border-2 border-teal-500 shadow-sm"
+                            : "hover:bg-gray-50 border border-transparent"
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0 pr-3">
+                          <div className="font-bold text-sm text-gray-900 truncate flex items-center gap-2">
+                            {item.medicine_name}
+                            {isHighlighted && (
+                              <span className="text-[10px] bg-teal-600 text-white font-bold px-1.5 py-0.2 rounded font-mono">
+                                ↵ Enter
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                            <span className="font-bold text-teal-800">Rs. {price}</span>
+                            <span>·</span>
+                            <span className={`font-semibold ${stock === 0 ? "text-rose-600 font-bold" : isLow ? "text-amber-700" : "text-gray-600"}`}>
+                              Stock: {stock} {item.unit_label || "Units"}
+                            </span>
+                            {item.item_code && (
+                              <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-mono">
+                                {item.item_code}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Add Button */}
                         <button
                           type="button"
-                          onClick={() => handleOpenAddModal(item)}
-                          className="font-bold text-gray-900 text-sm truncate hover:text-teal-700 hover:underline text-left"
-                          title="Click to open custom quantity options"
-                        >
-                          {item.medicine_name}
-                        </button>
-                        <span className="text-[10px] bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded font-bold uppercase">
-                          {item.category || "Tablet"}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                        <span className="text-xs text-gray-600 font-bold">
-                          {item.has_multi_unit
-                            ? `Tab: Rs. ${item.unit_sale_price || item.unit_price} | Strip: Rs. ${item.strip_sale_price || "-"}`
-                            : `Rs. ${item.unit_sale_price || item.unit_price} / ${unitLabel}`}
-                        </span>
-                        {item.batch_no && (
-                          <span className="text-[10px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-mono">
-                            {item.batch_no}
-                          </span>
-                        )}
-                        {item.expiry_date && (() => {
-                          const exp = new Date(item.expiry_date);
-                          const today = new Date();
-                          const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-                          if (diffDays < 0) {
-                            return (
-                              <span className="text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.5 rounded font-bold">
-                                ⛔ Expired ({item.expiry_date})
-                              </span>
-                            );
-                          } else if (diffDays <= 45) {
-                            return (
-                              <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded font-bold">
-                                ⚠️ Exp: {diffDays}d ({item.expiry_date})
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()}
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                          baseStock === 0
-                            ? "bg-red-100 text-red-700"
-                            : isLow
-                            ? "bg-amber-100 text-amber-700 font-bold"
-                            : "bg-emerald-50 text-emerald-800"
-                        }`}>
-                          {baseStock === 0 ? "Out of Stock" : formatStockShort(item)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 ml-3">
-                      <button
-                        type="button"
-                        onClick={() => setBarcodeModalItem(item)}
-                        title="Generate & Print Custom Barcode Sticker"
-                        className="p-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors flex items-center justify-center shrink-0"
-                      >
-                        <span className="material-symbols-outlined text-sm">qr_code_2</span>
-                      </button>
-
-                      {item.has_multi_unit ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => addToCartWithUnit(item, "strip", 1)}
-                            disabled={baseStock === 0}
-                            title="Add 1 Strip (Patta) directly to cart"
-                            className="bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold px-2 py-1.5 rounded-lg shadow-sm flex items-center gap-0.5"
-                          >
-                            <span className="material-symbols-outlined text-[13px]">add</span>
-                            Strip
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => addToCartWithUnit(item, "unit", 1)}
-                            disabled={baseStock === 0}
-                            title="Add 1 Single Tablet directly to cart"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2 py-1.5 rounded-lg shadow-sm flex items-center gap-0.5"
-                          >
-                            <span className="material-symbols-outlined text-[13px]">add</span>
-                            Tab
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => addToCartWithUnit(item, "box", 1)}
-                            disabled={baseStock === 0}
-                            title="Add 1 Box directly to cart"
-                            className="bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-bold px-2 py-1.5 rounded-lg shadow-sm flex items-center gap-0.5"
-                          >
-                            <span className="material-symbols-outlined text-[13px]">add</span>
-                            Box
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => addToCartWithUnit(item, "unit", 1)}
-                          disabled={baseStock === 0}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                            baseStock === 0
-                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              : "bg-teal-600 text-white hover:bg-teal-700 shadow-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedInventoryIndex(idx);
+                            addToCart(item, 1);
+                          }}
+                          className={`font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1 shadow-sm transition-all shrink-0 ${
+                            isHighlighted
+                              ? "bg-teal-700 text-white shadow-teal-700/20"
+                              : "bg-teal-600 hover:bg-teal-700 text-white"
                           }`}
                         >
                           <span className="material-symbols-outlined text-sm">add</span>
                           Add
                         </button>
-                      )}
+                      </div>
+                    );
+                  })}
+                  {inventoryResults.length > 40 && (
+                    <div className="py-2 text-center text-[11px] text-gray-400 font-medium bg-gray-50/50 rounded-lg my-1">
+                      Showing top 40 of {inventoryResults.length} matching items. Type to narrow search.
                     </div>
-                  </div>
-                );
-              })}
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right: Cart */}
-        <div>
-          <div id="pos-checkout-cart-panel" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sticky top-4">
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-              <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
-              <h2 className="font-bold text-gray-900">Checkout Cart</h2>
-              {cart.length > 0 && (
-                <span className="ml-auto text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-bold">{cart.length}</span>
-              )}
+        {/* Right Column: Checkout Cart */}
+        <div className="lg:col-span-5">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm sticky top-4 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="font-black text-gray-900 flex items-center gap-1.5 text-base">
+                <span className="material-symbols-outlined text-teal-600">shopping_cart</span>
+                Checkout Cart
+              </div>
+              <span className="text-xs bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded-full border border-teal-200">
+                {cart.length} item{cart.length !== 1 ? "s" : ""}
+              </span>
             </div>
 
+            {/* Cart Items List */}
             {cart.length === 0 ? (
-              <div className="text-center py-10">
-                <span className="material-symbols-outlined text-4xl text-gray-200 block mb-2">shopping_cart</span>
-                <div className="text-sm text-gray-400">Add medicines from the left panel</div>
+              <div className="py-12 text-center text-gray-400 space-y-2">
+                <span className="material-symbols-outlined text-4xl text-gray-300">shopping_cart</span>
+                <p className="text-xs">Cart is empty. Click &quot;Add&quot; on any medicine.</p>
               </div>
             ) : (
-              <>
-                <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-1">
-                  {cart.map((item) => (
-                    <div key={item.cart_key || item.inventory_id} className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-900 truncate">{item.medicine_name}</div>
-                        <div className="text-xs text-teal-800 font-bold">
-                          {item.quantity} {item.unit_label}{item.quantity > 1 ? "s" : ""} × Rs. {item.unit_price}
-                        </div>
+              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                {cart.map((item) => (
+                  <div
+                    key={item.inventory_id}
+                    className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-xs text-gray-900 truncate">
+                        {item.medicine_name}
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => updateQty(item.cart_key || item.inventory_id, -1)}
-                          className="w-6 h-6 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 text-xs font-bold"
-                        >
-                          -
-                        </button>
-                        <span className="w-5 text-center text-xs font-bold text-gray-900">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQty(item.cart_key || item.inventory_id, 1)}
-                          className="w-6 h-6 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 text-xs font-bold"
-                        >
-                          +
-                        </button>
+                      <div className="text-[11px] text-gray-500 font-medium mt-0.5">
+                        Rs. {item.unit_price} / unit
                       </div>
-                      <div className="text-xs font-bold text-gray-900 w-16 text-right">Rs. {item.line_total}</div>
-                      <button
-                        onClick={() => removeFromCart(item.cart_key || item.inventory_id)}
-                        className="text-gray-300 hover:text-red-500 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-base">delete</span>
-                      </button>
                     </div>
-                  ))}
-                </div>
 
-                {/* Subtotal, Discount & Tax inputs */}
-                <div className="border-t border-dashed border-gray-200 pt-3 space-y-2 mb-4 text-xs">
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span>Subtotal</span>
-                    <span className="font-semibold">Rs. {subtotal.toLocaleString()}</span>
-                  </div>
-
-                  {/* Discount Field with Quick Presets */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center gap-2">
-                      <label className="text-gray-600 font-medium flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm text-teal-600">local_offer</span>
-                        Discount (Rs)
-                      </label>
+                    {/* Quantity Input Box & Controls */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => updateQty(item.inventory_id, -1)}
+                        className="w-7 h-7 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg text-gray-700 font-black text-sm flex items-center justify-center transition-colors"
+                      >
+                        -
+                      </button>
                       <input
                         type="number"
-                        min="0"
-                        max={subtotal}
-                        value={discountInput}
-                        onChange={(e) => setDiscountInput(e.target.value)}
-                        placeholder="0"
-                        className="w-24 border border-gray-200 rounded-lg px-2.5 py-1 text-right text-xs font-bold focus:outline-none focus:ring-1 focus:ring-teal-500 bg-gray-50"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => setExactQty(item.inventory_id, e.target.value)}
+                        className="w-12 bg-white border border-gray-300 rounded-lg py-1 text-center text-xs font-black text-gray-900 focus:outline-none focus:border-teal-600"
                       />
-                    </div>
-                    {subtotal > 0 && (
-                      <div className="flex gap-1 justify-end pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setDiscountInput(Math.round(subtotal * 0.05).toString())}
-                          className="text-[10px] bg-teal-50 text-teal-800 border border-teal-200 px-1.5 py-0.5 rounded font-bold hover:bg-teal-100"
-                        >
-                          5%
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDiscountInput(Math.round(subtotal * 0.10).toString())}
-                          className="text-[10px] bg-teal-50 text-teal-800 border border-teal-200 px-1.5 py-0.5 rounded font-bold hover:bg-teal-100"
-                        >
-                          10%
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDiscountInput(Math.round(subtotal * 0.15).toString())}
-                          className="text-[10px] bg-teal-50 text-teal-800 border border-teal-200 px-1.5 py-0.5 rounded font-bold hover:bg-teal-100"
-                        >
-                          15%
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDiscountInput("50")}
-                          className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-bold hover:bg-amber-100"
-                        >
-                          -50 Rs
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Tax Field (Shown but inactive/0) */}
-                  <div className="flex justify-between items-center text-gray-400">
-                    <span className="flex items-center gap-1">
-                      Tax (0%) <span className="text-[10px] bg-gray-100 text-gray-400 px-1 rounded">Tax-exempt</span>
-                    </span>
-                    <span className="font-mono">Rs. 0</span>
-                  </div>
-
-                  {/* Payment Type Selection (Cash vs Credit/Udhaar) */}
-                  <div className="pt-2 border-t border-gray-100 space-y-2">
-                    <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Payment Method</div>
-                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => setPaymentType("cash")}
-                        className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1 ${
-                          paymentType === "cash"
-                            ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                            : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                        }`}
+                        onClick={() => updateQty(item.inventory_id, 1)}
+                        className="w-7 h-7 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg text-gray-700 font-black text-sm flex items-center justify-center transition-colors"
                       >
-                        <span className="material-symbols-outlined text-sm">payments</span> Cash Full
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentType("credit")}
-                        className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1 ${
-                          paymentType === "credit"
-                            ? "bg-rose-50 border-rose-300 text-rose-800"
-                            : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-sm">credit_score</span> Credit / Udhaar
+                        +
                       </button>
                     </div>
 
-                    {paymentType === "cash" && (
-                      <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 space-y-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <label htmlFor="pos-cash-tendered-input" className="font-semibold text-emerald-900">Cash Given by Patient (F8):</label>
-                          <input
-                            id="pos-cash-tendered-input"
-                            type="number"
-                            value={cashTenderedInput}
-                            onChange={(e) => setCashTenderedInput(e.target.value)}
-                            placeholder={finalTotal.toString()}
-                            className="w-24 border border-emerald-300 rounded px-2 py-0.5 text-right font-bold text-xs bg-white"
-                          />
-                        </div>
-                        {/* Quick Cash Note Presets */}
-                        <div className="flex gap-1 justify-end flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => setCashTenderedInput(finalTotal.toString())}
-                            className="text-[10px] bg-white border border-emerald-300 text-emerald-800 px-1.5 py-0.5 rounded font-bold hover:bg-emerald-100"
-                          >
-                            Exact
-                          </button>
-                          {[100, 500, 1000, 5000].map((note) => (
-                            <button
-                              key={note}
-                              type="button"
-                              onClick={() => setCashTenderedInput(note.toString())}
-                              className="text-[10px] bg-white border border-emerald-300 text-emerald-800 px-1.5 py-0.5 rounded font-bold hover:bg-emerald-100"
-                            >
-                              Rs. {note}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex justify-between text-[11px] font-bold text-emerald-800 pt-1 border-t border-emerald-200/50">
-                          <span>Change Returned (Baqaya):</span>
-                          <span>Rs. {changeDueVal.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {paymentType === "credit" && (
-                      <div className="bg-rose-50 p-2.5 rounded-xl border border-rose-200 space-y-1.5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-semibold text-rose-900">Cash Received Now:</span>
-                          <input
-                            type="number"
-                            value={amountPaidInput}
-                            onChange={(e) => setAmountPaidInput(e.target.value)}
-                            placeholder="0"
-                            className="w-20 border border-rose-300 rounded px-2 py-0.5 text-right font-bold text-xs"
-                          />
-                        </div>
-                        <div className="flex justify-between text-[11px] font-bold text-rose-700">
-                          <span>Added to Patient Khata:</span>
-                          <span>Rs. {Math.max(0, finalTotal - (Number(amountPaidInput) || 0)).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    )}
+                    {/* Line Total */}
+                    <div className="text-right w-16 shrink-0">
+                      <div className="text-xs font-black text-teal-950">Rs. {item.line_total}</div>
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(item.inventory_id)}
+                        className="text-[10px] text-rose-600 hover:underline mt-0.5"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
 
-                  <div className="border-t border-gray-200 pt-2 flex justify-between items-center">
-                    <span className="font-bold text-gray-800 text-sm">Final Total</span>
-                    <span className="text-xl font-black text-teal-700">Rs. {finalTotal.toLocaleString()}</span>
-                  </div>
+            {/* Calculations & Payment Options */}
+            {cart.length > 0 && (
+              <div className="border-t border-gray-100 pt-3 space-y-3 text-xs">
+                <div className="flex justify-between items-center text-gray-600">
+                  <span>Subtotal:</span>
+                  <span className="font-bold text-gray-900 text-sm">Rs. {subtotal.toLocaleString()}</span>
                 </div>
 
+                {/* Discount */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-gray-600 font-medium">Discount (Rs):</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={subtotal}
+                    value={discountInput}
+                    onChange={(e) => setDiscountInput(e.target.value)}
+                    placeholder="0"
+                    className="w-24 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-right text-xs font-bold focus:outline-none focus:border-teal-600"
+                  />
+                </div>
+
+                {/* Grand Total */}
+                <div className="flex justify-between items-center bg-teal-50 p-3 rounded-xl border border-teal-200">
+                  <span className="font-bold text-teal-950 text-sm">Net Payable:</span>
+                  <span className="font-black text-teal-950 text-lg">Rs. {finalTotal.toLocaleString()}</span>
+                </div>
+
+                {/* Payment Method Switch */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentType("cash")}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                      paymentType === "cash"
+                        ? "bg-teal-700 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    💵 Cash Sale
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentType("credit")}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                      paymentType === "credit"
+                        ? "bg-amber-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    📒 Udhaar / Credit
+                  </button>
+                </div>
+
+                {/* Cash Tendered & Change Return */}
+                {paymentType === "cash" ? (
+                  <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <label htmlFor="pos-cash-tendered-input" className="text-gray-700 font-bold">
+                        Cash Given (F8):
+                      </label>
+                      <input
+                        id="pos-cash-tendered-input"
+                        type="number"
+                        min="0"
+                        value={cashTenderedInput}
+                        onChange={(e) => setCashTenderedInput(e.target.value)}
+                        placeholder={finalTotal.toString()}
+                        className="w-28 bg-white border border-gray-300 rounded-lg px-2.5 py-1 text-right text-sm font-black focus:outline-none focus:border-teal-600"
+                      />
+                    </div>
+                    {changeDueVal > 0 && (
+                      <div className="flex justify-between items-center text-teal-800 font-bold text-xs pt-1 border-t border-gray-200">
+                        <span>Change to Return:</span>
+                        <span className="text-sm font-black">Rs. {changeDueVal.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
+                    <div className="font-bold">Patient Credit / Udhaar Sale</div>
+                    <p className="text-[11px] text-amber-700">
+                      Balance will be automatically posted to {linkedPatient ? linkedPatient.full_name : "Linked Patient"}&apos;s credit ledger.
+                    </p>
+                  </div>
+                )}
+
+                {/* Checkout Action */}
                 <button
+                  id="pos-checkout-btn"
+                  type="button"
                   onClick={checkout}
-                  className="w-full bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-base hover:bg-teal-700 transition-colors shadow-xl shadow-teal-600/25 flex items-center justify-center gap-2"
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-teal-700/25 flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>point_of_sale</span>
-                  Checkout — Rs. {finalTotal.toLocaleString()}
+                  <span className="material-symbols-outlined text-lg">receipt_long</span>
+                  Complete Sale &amp; Print (F9)
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Mobile Floating Cart Summary Bar */}
-      {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-20 left-4 right-4 z-40 animate-fade-in">
-          <button
-            onClick={() => {
-              const cartEl = document.getElementById("pos-checkout-cart-panel");
-              if (cartEl) cartEl.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="w-full bg-teal-800 text-white p-3.5 rounded-2xl font-bold shadow-2xl flex items-center justify-between border border-teal-600 active:scale-95 transition-transform"
-          >
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-amber-400 text-teal-950 text-xs font-black flex items-center justify-center">
-                {cart.length}
-              </span>
-              <span className="text-xs font-bold">Items In Cart</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-amber-300">Rs. {finalTotal.toLocaleString()}</span>
-              <span className="text-[11px] bg-teal-600 px-2 py-1 rounded-lg">View Cart &amp; Pay ➔</span>
-            </div>
-          </button>
-        </div>
+      {/* HD Prescription Viewer Modal */}
+      {showRxModal && linkedVisit && linkedVisit.prescription_image_url && (
+        <PhotoLightbox
+          src={linkedVisit.prescription_image_url}
+          alt={`Doctor Prescription (Token #${linkedVisit.token_number} - ${linkedPatient?.full_name || "Patient"})`}
+          onClose={() => setShowRxModal(false)}
+        />
       )}
 
-      {/* Barcode Generator Modal */}
-      {barcodeModalItem && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          {/* Print CSS for Barcode Sticker */}
-          <style>{`
-            @media print {
-              body * { visibility: hidden !important; }
-              #barcode-sticker-print-area, #barcode-sticker-print-area * { visibility: visible !important; }
-              #barcode-sticker-print-area {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-              }
-            }
-          `}</style>
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-center flex flex-col max-h-[85vh]">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center justify-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-teal-600">qr_code_2</span>
-              Print Custom Barcode Stickers
-            </h3>
-
-            {/* Sticker Quantity Control */}
-            <div className="bg-teal-50 p-3 rounded-2xl border border-teal-100 flex items-center justify-between mb-3 shrink-0">
-              <span className="text-xs font-bold text-gray-700">Stickers Quantity to Print:</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBarcodePrintQty(Math.max(1, barcodePrintQty - 1))}
-                  className="w-8 h-8 bg-white rounded-lg border border-gray-200 font-bold text-sm hover:bg-gray-50 flex items-center justify-center shadow-sm"
-                >
-                  -
-                </button>
-                <span className="font-black text-sm w-8 text-center">{barcodePrintQty}</span>
-                <button
-                  type="button"
-                  onClick={() => setBarcodePrintQty(barcodePrintQty + 1)}
-                  className="w-8 h-8 bg-white rounded-lg border border-gray-200 font-bold text-sm hover:bg-gray-50 flex items-center justify-center shadow-sm"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Printable Sticker Sheet Area */}
-            <div id="barcode-sticker-print-area" className="space-y-2 overflow-y-auto max-h-[50vh] p-1 my-1 print:max-h-none print:overflow-visible pr-1">
-              {Array.from({ length: barcodePrintQty }).map((_, idx) => (
-                <div
-                  key={idx}
-                  className="border-2 border-dashed border-gray-300 rounded-2xl p-3 bg-gray-50 text-center space-y-0.5 font-mono print:border-none print:bg-white"
-                >
-                  <div className="text-xs font-bold text-gray-900 truncate">{barcodeModalItem.medicine_name}</div>
-                  <div className="text-[10px] text-gray-600 font-semibold">
-                    {barcodeModalItem.category ? `${barcodeModalItem.category} · ` : ""}
-                    {barcodeModalItem.strength ? `${barcodeModalItem.strength} · ` : ""}
-                    Rs. {barcodeModalItem.unit_price}
-                  </div>
-                  <div className="bg-white p-1.5 rounded border border-gray-200 inline-block my-0.5 shadow-inner">
-                    <div className="h-8 w-40 flex items-center justify-between px-2 bg-black text-white text-[8px] tracking-widest font-black uppercase">
-                      ||||| | |||| ||| |||| |
-                    </div>
-                    <div className="text-[9px] text-gray-700 font-bold mt-0.5">
-                      {barcodeModalItem.batch_no || `BAR-${barcodeModalItem.id.slice(-6).toUpperCase()}`}
-                    </div>
-                  </div>
-                  <div className="text-[9px] text-gray-400">Exp: {barcodeModalItem.expiry_date || "N/A"}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2 pt-3 mt-auto shrink-0 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex-1 bg-teal-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-teal-700 transition-colors flex items-center justify-center gap-1 shadow-md shadow-teal-600/20"
-              >
-                <span className="material-symbols-outlined text-sm">print</span> Print {barcodePrintQty} Sticker{barcodePrintQty > 1 ? "s" : ""}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setBarcodeModalItem(null); setBarcodePrintQty(1); }}
-                className="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-200"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Prescription Viewer Modal */}
-      {showRxModal && linkedVisit?.prescription_image_url && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="font-bold text-gray-900 text-base">Doctor Prescription Photo</h3>
-                <p className="text-xs text-gray-500">Token #{linkedVisit.token_number} — {linkedPatient?.full_name}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowRxModal(false)}
-                className="p-1 rounded-full text-gray-400 hover:bg-gray-100"
-              >
-                <span className="material-symbols-outlined text-2xl">close</span>
-              </button>
-            </div>
-
-            <div className="bg-gray-900 rounded-2xl overflow-hidden flex items-center justify-center max-h-[65vh]">
-              <img
-                src={linkedVisit.prescription_image_url}
-                alt="Doctor Prescription"
-                className="max-h-[60vh] w-full object-contain"
-              />
-            </div>
-
-            <div className="flex justify-between items-center text-xs text-gray-500 pt-1">
-              <span>Date: {new Date(linkedVisit.visit_date).toLocaleDateString("en-PK")}</span>
-              <button
-                type="button"
-                onClick={() => setShowRxModal(false)}
-                className="bg-teal-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-teal-700"
-              >
-                Done / Back to Billing
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Multi-Unit Selling Selection Modal */}
-      {unitModalItem && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-teal-100 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">{unitModalItem.medicine_name}</h3>
-                <p className="text-xs text-teal-700 font-semibold mt-0.5">
-                  Available Stock: {formatStockBreakdown(unitModalItem)}
-                </p>
-              </div>
-              <button onClick={() => setUnitModalItem(null)} className="text-gray-400 hover:text-gray-600 p-1">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Select Selling Unit Format *
-              </label>
-              <div className="grid grid-cols-3 gap-2.5">
-                {/* Box Option */}
-                <button
-                  type="button"
-                  onClick={() => setModalUnitType("box")}
-                  className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 ${
-                    modalUnitType === "box"
-                      ? "border-teal-600 bg-teal-50 text-teal-900 ring-2 ring-teal-500/20 font-bold"
-                      : "border-gray-200 hover:bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-2xl text-teal-700">inventory_2</span>
-                  <span className="text-xs font-bold">{unitModalItem.box_label || "Box"}</span>
-                  <span className="text-[11px] font-black text-teal-700">
-                    Rs. {unitModalItem.box_sale_price || (unitModalItem.unit_price * (unitModalItem.strips_per_box || 10) * (unitModalItem.units_per_strip || 12))}
-                  </span>
-                </button>
-
-                {/* Strip Option */}
-                <button
-                  type="button"
-                  onClick={() => setModalUnitType("strip")}
-                  className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 ${
-                    modalUnitType === "strip"
-                      ? "border-teal-600 bg-teal-50 text-teal-900 ring-2 ring-teal-500/20 font-bold"
-                      : "border-gray-200 hover:bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-2xl text-teal-700">medication</span>
-                  <span className="text-xs font-bold">{unitModalItem.strip_label || "Strip"}</span>
-                  <span className="text-[11px] font-black text-teal-700">
-                    Rs. {unitModalItem.strip_sale_price || (unitModalItem.unit_price * (unitModalItem.units_per_strip || 12))}
-                  </span>
-                </button>
-
-                {/* Single Unit Option */}
-                <button
-                  type="button"
-                  onClick={() => setModalUnitType("unit")}
-                  className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 ${
-                    modalUnitType === "unit"
-                      ? "border-teal-600 bg-teal-50 text-teal-900 ring-2 ring-teal-500/20 font-bold"
-                      : "border-gray-200 hover:bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-2xl text-teal-700">grain</span>
-                  <span className="text-xs font-bold">{unitModalItem.unit_label || "Tablet"}</span>
-                  <span className="text-[11px] font-black text-teal-700">
-                    Rs. {unitModalItem.unit_sale_price || unitModalItem.unit_price}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between bg-teal-50/50 p-3.5 rounded-2xl border border-teal-100">
-              <label className="text-xs font-bold text-gray-700">Quantity to Sell:</label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setModalQty((q) => Math.max(1, q - 1))}
-                  className="w-8 h-8 rounded-xl bg-white border border-gray-300 font-bold text-gray-700 hover:bg-gray-100 flex items-center justify-center text-sm shadow-sm"
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  value={modalQty}
-                  onChange={(e) => setModalQty(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-14 text-center border border-gray-300 rounded-xl py-1 text-sm font-black bg-white"
-                />
-                <button
-                  type="button"
-                  onClick={() => setModalQty((q) => q + 1)}
-                  className="w-8 h-8 rounded-xl bg-white border border-gray-300 font-bold text-gray-700 hover:bg-gray-100 flex items-center justify-center text-sm shadow-sm"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pt-2">
-              <div>
-                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">Line Item Total:</span>
-                <span className="text-xl font-black text-teal-700">
-                  Rs. {(
-                    (modalUnitType === "box"
-                      ? (unitModalItem.box_sale_price || (unitModalItem.unit_price * (unitModalItem.strips_per_box || 10) * (unitModalItem.units_per_strip || 12)))
-                      : modalUnitType === "strip"
-                      ? (unitModalItem.strip_sale_price || (unitModalItem.unit_price * (unitModalItem.units_per_strip || 12)))
-                      : (unitModalItem.unit_sale_price || unitModalItem.unit_price)) * modalQty
-                  ).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setUnitModalItem(null)}
-                  className="px-4 py-2.5 rounded-xl border border-gray-200 font-bold text-xs text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addToCartWithUnit(unitModalItem, modalUnitType, modalQty)}
-                  className="bg-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-teal-700 shadow-md flex items-center gap-1.5"
-                >
-                  <span className="material-symbols-outlined text-base">add_shopping_cart</span>
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* POS Rapid Rush-Hour Hotkey Legend Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-slate-900 text-teal-200 px-4 py-2 text-xs font-mono font-bold flex items-center justify-around overflow-x-auto border-t border-teal-800/80 shadow-2xl backdrop-blur-md">
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <kbd className="bg-teal-700 text-white px-2 py-0.5 rounded shadow text-[10px]">F2</kbd> Search Medicine
-        </div>
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <kbd className="bg-teal-700 text-white px-2 py-0.5 rounded shadow text-[10px]">F4</kbd> Switch Customer Mode
-        </div>
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <kbd className="bg-teal-700 text-white px-2 py-0.5 rounded shadow text-[10px]">F8</kbd> Tender Cash Input
-        </div>
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <kbd className="bg-emerald-600 text-white px-2 py-0.5 rounded shadow text-[10px]">F9 / Ctrl+Enter</kbd> Instant Sale &amp; Print
-        </div>
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <kbd className="bg-slate-700 text-white px-2 py-0.5 rounded shadow text-[10px]">Esc</kbd> Close / Clear
-        </div>
-      </div>
+      {/* Receipt Output Modal */}
+      {receipt && <ReceiptModal sale={receipt} onClose={() => setReceipt(null)} />}
     </div>
   );
 }

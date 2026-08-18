@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { dbVisits, dbPatients, dbUsers, dbClinicServices } from "../api/db.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { formatPatientAge } from "../utils/formatters.js";
+import { compressImageFile } from "../utils/imageCompressor.js";
 
 function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [] }) {
   const fileInputRef = useRef(null);
@@ -10,6 +11,7 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [capturedPreview, setCapturedPreview] = useState(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   async function openCamera() {
     try {
@@ -34,14 +36,19 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
     setCapturedPreview(null);
   }
 
-  function snap() {
+  async function snap() {
     if (!videoRef.current) return;
     const canvas = document.createElement("canvas");
     canvas.width  = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-    setCapturedPreview(dataUrl);
+    const rawData = canvas.toDataURL("image/jpeg", 0.9);
+    try {
+      const compressed = await compressImageFile(rawData);
+      setCapturedPreview(compressed);
+    } catch {
+      setCapturedPreview(rawData);
+    }
     cameraStream?.getTracks().forEach((t) => t.stop());
     setCameraStream(null);
   }
@@ -53,12 +60,18 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
     setShowCamera(false);
   }
 
-  function handleFile(e) {
-    Array.from(e.target.files || []).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => onCapture(reader.result);
-      reader.readAsDataURL(file);
-    });
+  async function handleFile(e) {
+    const files = Array.from(e.target.files || []);
+    setIsCompressing(true);
+    for (const file of files) {
+      try {
+        const compressed = await compressImageFile(file);
+        onCapture(compressed);
+      } catch (err) {
+        console.error("Compression error:", err);
+      }
+    }
+    setIsCompressing(false);
     e.target.value = "";
   }
 
@@ -219,15 +232,11 @@ export default function ConsultationScreen() {
   }
 
   async function completeVisit(targetStatus = "completed") {
-    if (!prescriptionPhoto) {
-      alert("Please take or upload a prescription photo before completing the visit.");
-      return;
-    }
     setSaving(true);
     const completedVisit = dbVisits.complete(visitId, {
-      prescription_image_url: prescriptionPhoto,
-      report_image_urls: reportPhotos,
-      notes,
+      prescription_image_url: prescriptionPhoto || null,
+      report_image_urls: reportPhotos || [],
+      notes: notes || "",
       forcedStatus: targetStatus,
     });
     setSaving(false);
@@ -447,19 +456,15 @@ export default function ConsultationScreen() {
             id="complete-visit-btn"
             type="button"
             onClick={() => completeVisit("completed")}
-            disabled={saving || !prescriptionPhoto}
-            className={`flex-1 py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md ${
-              prescriptionPhoto
-                ? "bg-teal-600 text-white hover:bg-teal-700 active:scale-98 shadow-teal-600/20"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed opacity-75"
-            }`}
+            disabled={saving}
+            className="flex-1 py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md bg-teal-600 text-white hover:bg-teal-700 active:scale-98 shadow-teal-600/20 disabled:opacity-50"
           >
             {saving ? (
               <span className="material-symbols-outlined animate-spin text-lg">refresh</span>
             ) : (
               <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
             )}
-            <span>Complete Visit</span>
+            <span>Complete Consultation</span>
           </button>
 
           {/* Secondary: Complete & Forward Reports to Reception */}
@@ -467,22 +472,13 @@ export default function ConsultationScreen() {
             id="forward-reception-btn"
             type="button"
             onClick={() => completeVisit("completed_reports_pending")}
-            disabled={saving || !prescriptionPhoto}
-            className={`flex-1 py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all border ${
-              prescriptionPhoto
-                ? "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100 active:scale-98 shadow-sm"
-                : "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-75"
-            }`}
+            disabled={saving}
+            className="flex-1 py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all border bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100 active:scale-98 shadow-sm disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-lg">forward_to_inbox</span>
-            <span>Complete &amp; Forward Reports to Reception</span>
+            <span>Reports Pending at Reception</span>
           </button>
         </div>
-        {!prescriptionPhoto && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-center mt-1">
-            Please capture or upload a prescription photo first to enable completion buttons.
-          </p>
-        )}
       </div>
     </div>
   );

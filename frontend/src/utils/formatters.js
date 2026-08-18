@@ -9,6 +9,8 @@ export function formatCurrency(amount) {
   return `Rs. ${Number(amount).toLocaleString("en-PK")}`;
 }
 
+export const formatPKR = formatCurrency;
+
 /** Format an ISO date string or Date object as "15-Mar-2023" */
 export function formatDate(dateStr) {
   if (!dateStr) return "—";

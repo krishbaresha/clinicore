@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { dbVisits, dbPatients } from "../api/db.js";
+import { compressImageFile } from "../utils/imageCompressor.js";
 
 function PhotoCaptureModal({ visit, patient, onClose, onSave }) {
   const fileInputRef = useRef(null);
@@ -34,14 +35,19 @@ function PhotoCaptureModal({ visit, patient, onClose, onSave }) {
     setCapturedPreview(null);
   }
 
-  function snap() {
+  async function snap() {
     if (!videoRef.current) return;
     const canvas = document.createElement("canvas");
     canvas.width  = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-    setCapturedPreview(dataUrl);
+    const rawData = canvas.toDataURL("image/jpeg", 0.9);
+    try {
+      const compressed = await compressImageFile(rawData);
+      setCapturedPreview(compressed);
+    } catch {
+      setCapturedPreview(rawData);
+    }
     cameraStream?.getTracks().forEach((t) => t.stop());
     setCameraStream(null);
   }
@@ -53,12 +59,16 @@ function PhotoCaptureModal({ visit, patient, onClose, onSave }) {
     setShowCamera(false);
   }
 
-  function handleFile(e) {
-    Array.from(e.target.files || []).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => setReportPhotos((prev) => [...prev, reader.result]);
-      reader.readAsDataURL(file);
-    });
+  async function handleFile(e) {
+    const files = Array.from(e.target.files || []);
+    for (const file of files) {
+      try {
+        const compressed = await compressImageFile(file);
+        setReportPhotos((prev) => [...prev, compressed]);
+      } catch (err) {
+        console.error("Compression error:", err);
+      }
+    }
     e.target.value = "";
   }
 

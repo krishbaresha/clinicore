@@ -4,19 +4,37 @@ import { useAuth } from "../hooks/useAuth.js";
 import { getInitials } from "../utils/formatters.js";
 import { dbClinic, exportFullDatabase } from "../api/db.js";
 
-// Integrated Role Navigation — Single Desk Receptionist/Cashier/Staff unified portal vs Doctor Owner portal
+// 1. Unified Front Desk & Medical Store Operator (Receptionist + Pharmacist / Cashier)
 const UNIFIED_DESK_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Register Patient", icon: "how_to_reg", path: "/reception/register" },
   { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
-  { label: "Live TV Screen", icon: "tv", path: "/live", target: "_blank" },
-  { label: "POS / Pharmacy", icon: "point_of_sale", path: "/store/pos" },
-  { label: "Sales Audit & Returns", icon: "receipt_long", path: "/store/sales" },
-  { label: "Company Purchases", icon: "local_shipping", path: "/store/purchases" },
-  { label: "Central Warehouse", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Counter POS", icon: "point_of_sale", path: "/store/pos" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
+  { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
+  { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Warehouse & Wholesale", icon: "warehouse", path: "/store/warehouse" },
   { label: "Pending Reports", icon: "pending_actions", path: "/reception/pending-reports" },
   { label: "Patients", icon: "group", path: "/patients" },
+  { label: "Fees & CashBook", icon: "payments", path: "/fees" },
+  { label: "Live TV Screen", icon: "tv", path: "/live", target: "_blank" },
+  { label: "Settings", icon: "settings", path: "/settings", spacer: true },
+];
+
+// 2. Warehouse & Wholesale Distribution Portal
+const WAREHOUSE_NAV = [
+  { label: "Godown & Wholesale", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Company Purchases (GRN)", icon: "add_business", path: "/store/purchases" },
+  { label: "Store Counter Inventory", icon: "inventory_2", path: "/store" },
+  { label: "Fees & CashBook", icon: "payments", path: "/fees" },
+  { label: "Settings", icon: "settings", path: "/settings", spacer: true },
+];
+
+// 3. Doctor Consultation Portal
+const DOCTOR_NAV = [
+  { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
+  { label: "My OPD Queue", icon: "queue", path: "/doctor/queue" },
+  { label: "Patients & EMR", icon: "group", path: "/patients" },
   { label: "Fees & Reports", icon: "payments", path: "/fees" },
   { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
@@ -25,61 +43,57 @@ const NAV_BY_ROLE = {
   receptionist: UNIFIED_DESK_NAV,
   cashier: UNIFIED_DESK_NAV,
   pharmacist: UNIFIED_DESK_NAV,
-  doctor: [
-    { label: "Dashboard (Revenue)", icon: "dashboard", path: "/dashboard" },
-    { label: "My OPD Queue", icon: "queue", path: "/doctor/queue" },
-    { label: "Patients & EMR", icon: "group", path: "/patients" },
-    { label: "Settings", icon: "settings", path: "/settings", spacer: true },
-  ],
+  warehouse: WAREHOUSE_NAV,
+  doctor: DOCTOR_NAV,
 };
 
-// Fallback nav for admin / unknown roles — show all unified modules
+// Fallback nav for owner / admin — full multi-portal switcher
 const NAV_DEFAULT = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Register Patient", icon: "how_to_reg", path: "/reception/register" },
   { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
+  { label: "Doctor OPD Queue", icon: "queue", path: "/doctor/queue" },
   { label: "Live TV Screen", icon: "tv", path: "/live", target: "_blank" },
-  { label: "POS / Pharmacy", icon: "point_of_sale", path: "/store/pos" },
-  { label: "Sales Audit & Returns", icon: "receipt_long", path: "/store/sales" },
-  { label: "Company Purchases", icon: "local_shipping", path: "/store/purchases" },
-  { label: "Central Warehouse", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Retail POS", icon: "point_of_sale", path: "/store/pos" },
+  { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
+  { label: "Purchases (GRN)", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Central Warehouse & B2B", icon: "warehouse", path: "/store/warehouse" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
-  { label: "Pending Reports", icon: "pending_actions", path: "/reception/pending-reports" },
-  { label: "My Queue", icon: "queue", path: "/doctor/queue" },
-  { label: "Patients", icon: "group", path: "/patients" },
-  { label: "Fees & Reports", icon: "payments", path: "/fees" },
+  { label: "Patients & EMR", icon: "group", path: "/patients" },
+  { label: "Fees & CashBook", icon: "payments", path: "/fees" },
   { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
 
-// Mobile bottom nav — filtered cleanly per role so doctors don't see cashier POS/register
+// Mobile bottom nav per role
 const MOBILE_NAV_BY_ROLE = {
   doctor: [
     { label: "Home", icon: "dashboard", path: "/dashboard" },
-    { label: "My Queue", icon: "queue", path: "/doctor/queue" },
+    { label: "Queue", icon: "queue", path: "/doctor/queue" },
     { label: "Patients", icon: "group", path: "/patients" },
     { label: "Fees", icon: "payments", path: "/fees" },
-    { label: "Settings", icon: "settings", path: "/settings" },
   ],
   receptionist: [
     { label: "Home", icon: "dashboard", path: "/dashboard" },
     { label: "Register", icon: "how_to_reg", path: "/reception/register" },
     { label: "Queue", icon: "event_note", path: "/reception/queue" },
-    { label: "POS Store", icon: "point_of_sale", path: "/store/pos" },
     { label: "Reports", icon: "pending_actions", path: "/reception/pending-reports" },
-  ],
-  cashier: [
-    { label: "POS", icon: "point_of_sale", path: "/store/pos" },
-    { label: "Sales Log", icon: "receipt_long", path: "/store/sales" },
-    { label: "Inventory", icon: "inventory_2", path: "/store" },
-    { label: "Purchases", icon: "local_shipping", path: "/store/purchases" },
-    { label: "Warehouse", icon: "warehouse", path: "/store/warehouse" },
   ],
   pharmacist: [
     { label: "POS", icon: "point_of_sale", path: "/store/pos" },
-    { label: "Sales Log", icon: "receipt_long", path: "/store/sales" },
-    { label: "Inventory", icon: "inventory_2", path: "/store" },
+    { label: "Sales", icon: "receipt_long", path: "/store/sales" },
+    { label: "Stock", icon: "inventory_2", path: "/store" },
     { label: "Purchases", icon: "local_shipping", path: "/store/purchases" },
-    { label: "Warehouse", icon: "warehouse", path: "/store/warehouse" },
+  ],
+  cashier: [
+    { label: "POS", icon: "point_of_sale", path: "/store/pos" },
+    { label: "Sales", icon: "receipt_long", path: "/store/sales" },
+    { label: "Stock", icon: "inventory_2", path: "/store" },
+  ],
+  warehouse: [
+    { label: "Godown", icon: "warehouse", path: "/store/warehouse" },
+    { label: "Purchases", icon: "add_business", path: "/store/purchases" },
+    { label: "Stock", icon: "inventory_2", path: "/store" },
+    { label: "CashBook", icon: "payments", path: "/fees" },
   ],
 };
 
@@ -205,39 +219,48 @@ export default function SidebarLayout({ children }) {
     return (
       <>
         {/* Logo */}
-        <div className="px-5 mb-6 flex items-center gap-2">
+        <div className="px-5 mb-4 flex items-center gap-2 shrink-0">
           <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
             medical_services
           </span>
-          <h1 className="font-bold text-xl text-primary truncate">{clinic?.name || "ClinicFlow"}</h1>
+          <h1 className="font-bold text-lg text-primary truncate">{clinic?.name || "ClinicFlow"}</h1>
         </div>
 
-        {/* User Chip */}
+        {/* User Chip with Quick Logout Button */}
         {user && (
-          <div className="mx-2 mb-4 flex items-center gap-2 bg-surface-container-low/50 rounded-xl px-3 py-2">
-            <div className="w-9 h-9 rounded-full bg-secondary-container text-primary flex items-center justify-center font-bold text-xs shrink-0">
-              {getInitials(user.name)}
+          <div className="mx-2 mb-3 flex items-center justify-between gap-2 bg-teal-50/80 border border-teal-100 rounded-2xl px-3 py-2 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                {getInitials(user.name)}
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-xs text-gray-900 truncate">{user.name}</p>
+                <p className="text-[10px] font-semibold text-teal-700 capitalize">{user.role}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-sm text-on-surface truncate">{user.name}</p>
-              <p className="text-xs text-outline capitalize">{user.role}</p>
-            </div>
+            <button
+              onClick={handleLogout}
+              title="Sign Out / Switch User"
+              className="p-1.5 text-rose-600 hover:text-white hover:bg-rose-600 rounded-xl transition-all flex items-center justify-center shrink-0 border border-rose-200"
+            >
+              <span className="material-symbols-outlined text-base">logout</span>
+            </button>
           </div>
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2">
+        <nav className="flex-1 overflow-y-auto px-2 touch-scroll">
           <NavItems items={navItems} onItemClick={onItemClick} />
         </nav>
 
-        {/* Logout */}
-        <div className="px-2 mt-2 pt-2 border-t border-outline-variant/30">
+        {/* Logout Pinned Bottom */}
+        <div className="px-2 mt-auto pt-2 border-t border-gray-200 shrink-0 bg-white/90">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-error hover:bg-error-container/30 rounded-xl transition-colors text-sm font-medium"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 rounded-xl transition-all text-xs font-bold shadow-xs"
           >
-            <span className="material-symbols-outlined">logout</span>
-            Logout
+            <span className="material-symbols-outlined text-base">logout</span>
+            Sign Out / Exit Portal
           </button>
         </div>
       </>
@@ -251,24 +274,35 @@ export default function SidebarLayout({ children }) {
         <SidebarContent onItemClick={undefined} />
       </aside>
 
-      {/* ── Mobile Top App Bar ───────────────────────────── */}
-      <header className="md:hidden sticky top-0 z-40 w-full flex justify-between items-center px-4 py-3 bg-background/80 backdrop-blur-md border-b border-outline-variant/30">
+      {/* ── Mobile & Tablet Top App Bar with Direct 1-Click Logout ── */}
+      <header className="md:hidden sticky top-0 z-40 w-full flex justify-between items-center px-3 py-2.5 bg-white/95 backdrop-blur-md border-b border-teal-100 shadow-xs">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="p-1 text-on-surface-variant hover:bg-surface-container-high rounded-full focus:outline-none flex items-center justify-center"
+            className="p-1.5 text-gray-700 hover:bg-teal-50 rounded-xl focus:outline-none flex items-center justify-center"
             aria-label="Open navigation menu"
           >
             <span className="material-symbols-outlined text-2xl">menu</span>
           </button>
-          <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <span className="material-symbols-outlined text-teal-700 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
             medical_services
           </span>
-          <span className="font-bold text-base text-primary">{clinic?.name || "ClinicFlow"}</span>
+          <span className="font-bold text-sm text-teal-950 truncate max-w-[140px] sm:max-w-[220px]">{clinic?.name || "ClinicFlow"}</span>
         </div>
+
         {user && (
-          <div className="w-9 h-9 rounded-full bg-secondary-container text-primary flex items-center justify-center font-bold text-xs">
-            {getInitials(user.name)}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleLogout}
+              title="Sign Out Portal"
+              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white px-2.5 py-1 rounded-xl text-xs font-bold border border-rose-200 transition-all shadow-xs"
+            >
+              <span className="material-symbols-outlined text-sm">logout</span>
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+            <div className="w-7 h-7 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-[10px] shadow-xs">
+              {getInitials(user.name)}
+            </div>
           </div>
         )}
       </header>

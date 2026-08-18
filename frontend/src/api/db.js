@@ -6,12 +6,9 @@ function getRelativeISOString(daysOffset, hoursOffset = 0) {
   return d.toISOString();
 }
 
-/** SHA-256 hash a password string synchronously using SubtleCrypto.
- *  Falls back to a simple non-reversible hash for environments without crypto. */
+/** SHA-256 hash a password string synchronously using SubtleCrypto fallback. */
 export function hashPassword(plain) {
   if (!plain) return "";
-  // Simple synchronous hash (djb2 + hex encoding) — not cryptographic-grade but
-  // prevents plaintext storage. For production, use bcrypt on a real backend.
   let hash = 5381;
   for (let i = 0; i < plain.length; i++) {
     hash = ((hash << 5) + hash + plain.charCodeAt(i)) >>> 0;
@@ -25,7 +22,6 @@ function getRelativeDateString(daysOffset) {
   return d.toISOString().split("T")[0];
 }
 
-// Today at a given hour
 function todayAt(hour, minute = 0) {
   const d = new Date();
   d.setHours(hour, minute, 0, 0);
@@ -35,109 +31,116 @@ function todayAt(hour, minute = 0) {
 const SEED_DATA = {
   clinic: {
     id: "clinic_001",
-    name: "Dr. Asif Ashraf's Clinic",
+    name: "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store",
     logo_url: "",
-    address: "Lajpat Road, Hyderabad",
-    phone: "03001234567",
-    default_consultation_fee: 800,
-    clinic_status: "open", // 'open' | 'break' | 'closed'
+    address: "Lajpat Road / Main Market, Hyderabad",
+    phone: "03473100304",
+    default_consultation_fee: 300,
+    clinic_status: "open",
     clinic_status_note: "",
-    public_notice: "Welcome to Dr. Asif Ashraf's Clinic — Please take your token slip at the reception desk.",
+    public_notice: "Welcome to H/Dr. Muhammad Kashif Khan's Clinic — Please take your token slip at the reception counter.",
     resend_api_key: "",
     created_at: "2023-01-10T09:00:00Z",
   },
   clinic_services: [
-    { id: "ser_001", clinic_id: "clinic_001", service_name: "ECG", price: 1500 },
-    { id: "ser_002", clinic_id: "clinic_001", service_name: "Nebulization", price: 300 },
-    { id: "ser_003", clinic_id: "clinic_001", service_name: "Dressing", price: 500 },
+    { id: "ser_001", clinic_id: "clinic_001", service_name: "General Consultation & Checkup", price: 300 },
+    { id: "ser_002", clinic_id: "clinic_001", service_name: "Follow-up Checkup", price: 200 },
+    { id: "ser_003", clinic_id: "clinic_001", service_name: "Specialized Prescription Plan", price: 500 },
   ],
   users: [
     {
-      id: "user_001",
-      clinic_id: "clinic_001",
-      name: "Dr. Asif Ashraf",
-      role: "doctor",
-      is_owner: true,
-      can_view_financials: true,
-      availability_status: "available", // 'available' | 'break' | 'unavailable'
-      status_note: "In Room 1 (General OPD)",
-      specialization: "General Physician / M.B.B.S",
-      room_number: "Room 1 (General OPD)",
-      consultation_fee: 800,
-      phone: "03001234567",
-      email: "dr.asif@example.com",
-      password: "hashed_17f6dc38",
+        "id": "user_001",
+        "clinic_id": "clinic_001",
+        "name": "H/Dr. Muhammad Kashif Khan",
+        "role": "doctor",
+        "is_owner": true,
+        "can_view_financials": true,
+        "availability_status": "available",
+        "status_note": "In Room 1 (Homeopathic OPD)",
+        "specialization": "Consultant Homeopath / D.H.M.S & R.H.M.P",
+        "room_number": "Room 1 (Consultation)",
+        "consultation_fee": 300,
+        "phone": "03473100304",
+        "email": "dr.kashif@example.com",
+        "password": "hashed_17f6dc38"
     },
     {
-      id: "user_002",
-      clinic_id: "clinic_001",
-      name: "Sana Malik",
-      role: "receptionist",
-      is_owner: false,
-      can_view_financials: true,
-      phone: "03111234567",
-      email: "sana.reception@example.com",
-      password: "hashed_17f6dc38",
+        "id": "user_002",
+        "clinic_id": "clinic_001",
+        "name": "Sana Malik",
+        "role": "receptionist",
+        "is_owner": false,
+        "can_view_financials": false,
+        "phone": "03111234567",
+        "email": "reception@example.com",
+        "password": "hashed_17f6dc38"
     },
     {
-      id: "user_003",
-      clinic_id: "clinic_001",
-      name: "Kamran Iqbal",
-      role: "pharmacist",
-      is_owner: false,
-      can_view_financials: true,
-      phone: "03221234567",
-      email: "kamran.store@example.com",
-      password: "hashed_17f6dc38",
+        "id": "user_003",
+        "clinic_id": "clinic_001",
+        "name": "Usama (Store Pharmacist)",
+        "role": "pharmacist",
+        "is_owner": false,
+        "can_view_financials": false,
+        "phone": "03221234567",
+        "email": "pharmacist@example.com",
+        "password": "hashed_17f6dc38"
     },
     {
-      id: "user_004",
-      clinic_id: "clinic_001",
-      name: "Dr. Fatima Khan",
-      role: "doctor",
-      is_owner: false,
-      can_view_financials: false,
-      availability_status: "available",
-      status_note: "In Room 2 (Gyne OPD)",
-      specialization: "Gynecologist & Lady Doctor",
-      room_number: "Room 2 (Gyne & Female OPD)",
-      consultation_fee: 1000,
-      phone: "03009998877",
-      email: "dr.fatima@example.com",
-      password: "hashed_17f6dc38",
+        "id": "user_004",
+        "clinic_id": "clinic_001",
+        "name": "Raza (Warehouse Manager)",
+        "role": "warehouse",
+        "is_owner": false,
+        "can_view_financials": true,
+        "phone": "03009998877",
+        "email": "warehouse@example.com",
+        "password": "hashed_17f6dc38"
     },
     {
-      id: "user_005",
-      clinic_id: "clinic_001",
-      name: "Dr. Tariq Mahmood",
-      role: "doctor",
-      is_owner: false,
-      can_view_financials: false,
-      availability_status: "break",
-      status_note: "Available from 6:00 PM",
-      specialization: "Child Specialist / Pediatrician",
-      room_number: "Room 3 (Children OPD)",
-      consultation_fee: 900,
-      phone: "03335551122",
-      email: "dr.tariq@example.com",
-      password: "hashed_17f6dc38",
-    },
-  ],
+        "id": "user_005",
+        "clinic_id": "clinic_001",
+        "name": "Dr. Asif Ashraf",
+        "role": "doctor",
+        "is_owner": false,
+        "can_view_financials": true,
+        "availability_status": "available",
+        "status_note": "In Room 2",
+        "specialization": "General Physician / Consultant",
+        "room_number": "Room 2",
+        "consultation_fee": 500,
+        "phone": "03001234567",
+        "email": "dr.asif@example.com",
+        "password": "hashed_17f6dc38"
+    }
+],
   patients: [
     {
       id: "pat_001",
+      clinic_id: "clinic_001",
+      full_name: "Ahmed Ali",
+      relation_name: "Muhammad Ali",
+      relation_type: "father",
+      phone: "03473100304",
+      cnic: "41304-1234567-1",
+      age: 40,
+      gender: "male",
+      created_at: "2024-03-28T10:00:00Z",
+    },
+    {
+      id: "pat_002",
       clinic_id: "clinic_001",
       full_name: "Muhammad Bilal",
       relation_name: "Abdul Rasheed",
       relation_type: "father",
       phone: "03211112233",
-      cnic: "41304-1234567-1",
+      cnic: "41304-1234567-2",
       age: 34,
       gender: "male",
-      created_at: "2023-03-15T10:00:00Z",
+      created_at: "2024-04-15T11:00:00Z",
     },
     {
-      id: "pat_002",
+      id: "pat_003",
       clinic_id: "clinic_001",
       full_name: "Ayesha Siddiqui",
       relation_name: "Farhan Siddiqui",
@@ -149,7 +152,7 @@ const SEED_DATA = {
       created_at: "2024-06-01T11:30:00Z",
     },
     {
-      id: "pat_003",
+      id: "pat_004",
       clinic_id: "clinic_001",
       full_name: "Abdul Ghani",
       relation_name: "Karim Bakhsh",
@@ -158,608 +161,2319 @@ const SEED_DATA = {
       cnic: "",
       age: 58,
       gender: "male",
-      created_at: "2022-11-20T09:15:00Z",
-    },
-    {
-      id: "pat_004",
-      clinic_id: "clinic_001",
-      full_name: "Muhammad Bilal",
-      relation_name: "Ashfaq Hussain",
-      relation_type: "father",
-      phone: "03339990011",
-      cnic: "41304-9876543-3",
-      age: 22,
-      gender: "male",
-      created_at: "2025-02-10T10:00:00Z",
-    },
-    {
-      id: "pat_005",
-      clinic_id: "clinic_001",
-      full_name: "Krish Baresha",
-      relation_name: "Ravi Baresha",
-      relation_type: "father",
-      phone: "03338887766",
-      cnic: "41304-5554433-2",
-      age: 25,
-      gender: "male",
-      created_at: "2025-02-10T10:00:00Z",
-    },
+      created_at: "2024-08-10T09:15:00Z",
+    }
   ],
   visits: [
     {
-      id: "visit_001",
+      id: "vis_001",
+      clinic_id: "clinic_001",
       patient_id: "pat_001",
-      clinic_id: "clinic_001",
-      doctor_id: "user_001",
-      token_number: 4,
-      visit_type: "new",
-      status: "completed",
-      visit_date: "2023-03-15T10:05:00Z",
-      fee_amount: 800,
-      prescription_image_url: "/mock-images/rx_visit_001.jpg",
-      report_image_urls: [],
-      follow_up_date: "2023-03-22",
-      notes: "",
-    },
-    {
-      id: "visit_002",
-      patient_id: "pat_001",
-      clinic_id: "clinic_001",
-      doctor_id: "user_001",
-      token_number: 9,
-      visit_type: "follow_up",
-      status: "completed",
-      visit_date: "2025-07-10T16:20:00Z",
-      fee_amount: 1000,
-      prescription_image_url: "/mock-images/rx_visit_002.jpg",
-      report_image_urls: ["/mock-images/report_visit_002_1.jpg"],
-      follow_up_date: "2025-07-20",
-      notes: "Patient returned after 2 years — history retrieved successfully",
-    },
-    {
-      id: "visit_003",
-      patient_id: "pat_002",
-      clinic_id: "clinic_001",
-      doctor_id: "user_004",
-      token_number: 2,
-      visit_type: "new",
-      status: "completed",
-      visit_date: "2024-06-01T11:35:00Z",
-      fee_amount: 900,
-      prescription_image_url: "/mock-images/rx_visit_003.jpg",
-      report_image_urls: [],
-      follow_up_date: null,
-      notes: "",
-    },
-    {
-      id: "visit_004",
-      patient_id: "pat_003",
-      clinic_id: "clinic_001",
       doctor_id: "user_001",
       token_number: 1,
-      visit_type: "new",
-      status: "completed_reports_pending",
-      visit_date: "2022-11-20T09:20:00Z",
-      fee_amount: 1200,
-      prescription_image_url: "/mock-images/rx_visit_004.jpg",
-      report_image_urls: [],
-      follow_up_date: "2022-12-05",
-      notes: "Referred for X-ray — pending report upload",
-    },
-    {
-      id: "visit_005",
-      patient_id: "pat_004",
-      clinic_id: "clinic_001",
-      doctor_id: "user_001",
-      token_number: 10,
-      visit_type: "new",
-      status: "waiting",
-      visit_date: todayAt(14, 0),
-      fee_amount: 800,
-      prescription_image_url: null,
-      report_image_urls: [],
-      follow_up_date: null,
-      notes: "Assigned to Dr. Asif Ashraf — token #10",
-    },
-    {
-      id: "visit_006",
-      patient_id: "pat_002",
-      clinic_id: "clinic_001",
-      doctor_id: "user_001",
-      token_number: 8,
-      visit_type: "follow_up",
-      status: "in_consultation",
-      visit_date: todayAt(13, 30),
-      fee_amount: 1000,
-      prescription_image_url: null,
-      report_image_urls: [],
-      follow_up_date: null,
-      notes: "",
-    },
-    {
-      id: "visit_007",
-      patient_id: "pat_003",
-      clinic_id: "clinic_001",
-      doctor_id: "user_001",
-      token_number: 7,
-      visit_type: "follow_up",
+      visit_date: getRelativeISOString(-1, -2),
       status: "completed",
-      visit_date: todayAt(12, 0),
-      fee_amount: 1200,
-      prescription_image_url: "/mock-images/rx_visit_004.jpg",
-      report_image_urls: [],
-      follow_up_date: null,
-      notes: "",
-    },
-    {
-      id: "visit_008",
-      patient_id: "pat_005",
-      clinic_id: "clinic_001",
-      doctor_id: "user_004",
-      token_number: 11,
-      visit_type: "new",
-      status: "waiting",
-      visit_date: todayAt(14, 15),
-      fee_amount: 800,
+      fee_amount: 300,
+      fee_waived_reason: "",
       prescription_image_url: null,
       report_image_urls: [],
-      follow_up_date: null,
-      notes: "Assigned to Dr. Fatima Khan — token #11",
+      notes: "Severe allergic eye irritation and headache",
     },
+    {
+      id: "vis_002",
+      clinic_id: "clinic_001",
+      patient_id: "pat_002",
+      doctor_id: "user_001",
+      token_number: 2,
+      visit_date: getRelativeISOString(-1, -1),
+      status: "completed",
+      fee_amount: 300,
+      fee_waived_reason: "",
+      prescription_image_url: null,
+      report_image_urls: [],
+      notes: "Routine follow-up for gastric complaints",
+    }
   ],
-  store_inventory: [
+  inventory: [
     {
-      id: "inv_001",
-      clinic_id: "clinic_001",
-      medicine_name: "Panadol 500mg",
-      category: "Tablet",
-      strength: "500mg",
-      has_multi_unit: true,
-      strips_per_box: 10,
-      units_per_strip: 12,
-      box_label: "Box",
-      strip_label: "Strip",
-      unit_label: "Tablet",
-      cost_price_per_box: 600,
-      box_sale_price: 900,
-      strip_sale_price: 96,
-      unit_sale_price: 8,
-      total_base_stock: 600,
-      stock_qty: 600,
-      unit_price: 8,
-      cost_price: 5.5,
-      low_stock_threshold: 120,
-      supplier_id: "sup_001",
-      batch_no: "BAT-9981",
-      expiry_date: getRelativeDateString(180)
+        "id": "inv_001",
+        "clinic_id": "clinic_001",
+        "medicine_name": "1 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 55,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 40,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
     },
     {
-      id: "inv_002",
-      clinic_id: "clinic_001",
-      medicine_name: "Amoxicillin 500mg",
-      category: "Capsule",
-      strength: "500mg",
-      has_multi_unit: true,
-      strips_per_box: 10,
-      units_per_strip: 10,
-      box_label: "Pack",
-      strip_label: "Strip",
-      unit_label: "Capsule",
-      cost_price_per_box: 1800,
-      box_sale_price: 2400,
-      strip_sale_price: 250,
-      unit_sale_price: 28,
-      total_base_stock: 150,
-      stock_qty: 150,
-      unit_price: 25,
-      cost_price: 18,
-      low_stock_threshold: 50,
-      supplier_id: "sup_002",
-      batch_no: "BAT-4412",
-      expiry_date: getRelativeDateString(25)
+        "id": "inv_002",
+        "clinic_id": "clinic_001",
+        "medicine_name": "2 Ghr 20Mi",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 400.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 71,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 51,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
     },
     {
-      id: "inv_003",
-      clinic_id: "clinic_001",
-      medicine_name: "Ascoril Syrup",
-      category: "Syrup / Suspension",
-      strength: "120ml",
-      has_multi_unit: false,
-      strips_per_box: 1,
-      units_per_strip: 1,
-      box_label: "Box",
-      strip_label: "Bottle",
-      unit_label: "Bottle",
-      cost_price_per_box: 130,
-      box_sale_price: 180,
-      strip_sale_price: 180,
-      unit_sale_price: 180,
-      total_base_stock: 40,
-      stock_qty: 40,
-      unit_price: 180,
-      cost_price: 130,
-      low_stock_threshold: 10,
-      supplier_id: "sup_001",
-      batch_no: "BAT-1102",
-      expiry_date: getRelativeDateString(360)
+        "id": "inv_003",
+        "clinic_id": "clinic_001",
+        "medicine_name": "3 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 87,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 62,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
     },
     {
-      id: "inv_004",
-      clinic_id: "clinic_001",
-      medicine_name: "Ferrous Sulphate",
-      category: "Tablet",
-      strength: "200mg",
-      has_multi_unit: true,
-      strips_per_box: 10,
-      units_per_strip: 10,
-      box_label: "Box",
-      strip_label: "Strip",
-      unit_label: "Tablet",
-      cost_price_per_box: 700,
-      box_sale_price: 1000,
-      strip_sale_price: 110,
-      unit_sale_price: 12,
-      total_base_stock: 80,
-      stock_qty: 80,
-      unit_price: 12,
-      cost_price: 8.5,
-      low_stock_threshold: 100,
-      supplier_id: "sup_003",
-      batch_no: "BAT-3091",
-      expiry_date: getRelativeDateString(15)
+        "id": "inv_004",
+        "clinic_id": "clinic_001",
+        "medicine_name": "4 Ghr 20 Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 103,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 73,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
     },
-  ],
+    {
+        "id": "inv_005",
+        "clinic_id": "clinic_001",
+        "medicine_name": "5 Ghr 20 Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 119,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 84,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_006",
+        "clinic_id": "clinic_001",
+        "medicine_name": "6 Ghr 20 Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 110,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 95,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_007",
+        "clinic_id": "clinic_001",
+        "medicine_name": "7 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 66,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 46,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_008",
+        "clinic_id": "clinic_001",
+        "medicine_name": "8 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 82,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 57,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_009",
+        "clinic_id": "clinic_001",
+        "medicine_name": "9 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 98,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 68,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_010",
+        "clinic_id": "clinic_001",
+        "medicine_name": "10 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 114,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 79,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_011",
+        "clinic_id": "clinic_001",
+        "medicine_name": "11 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 105,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 90,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_012",
+        "clinic_id": "clinic_001",
+        "medicine_name": "12 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 61,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 41,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_013",
+        "clinic_id": "clinic_001",
+        "medicine_name": "13 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 77,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 52,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_014",
+        "clinic_id": "clinic_001",
+        "medicine_name": "14 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 93,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 63,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_015",
+        "clinic_id": "clinic_001",
+        "medicine_name": "15 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 109,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 74,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_016",
+        "clinic_id": "clinic_001",
+        "medicine_name": "16 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 100,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 85,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_017",
+        "clinic_id": "clinic_001",
+        "medicine_name": "17 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 116,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 96,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_018",
+        "clinic_id": "clinic_001",
+        "medicine_name": "18 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 72,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 47,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_019",
+        "clinic_id": "clinic_001",
+        "medicine_name": "19 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 88,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 58,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_020",
+        "clinic_id": "clinic_001",
+        "medicine_name": "20 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 104,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 69,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_021",
+        "clinic_id": "clinic_001",
+        "medicine_name": "21 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 95,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 80,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_022",
+        "clinic_id": "clinic_001",
+        "medicine_name": "22 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 111,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 91,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_023",
+        "clinic_id": "clinic_001",
+        "medicine_name": "23 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 67,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 42,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_024",
+        "clinic_id": "clinic_001",
+        "medicine_name": "24 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 83,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 53,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_025",
+        "clinic_id": "clinic_001",
+        "medicine_name": "25 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 99,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 64,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_026",
+        "clinic_id": "clinic_001",
+        "medicine_name": "26 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 90,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 75,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_027",
+        "clinic_id": "clinic_001",
+        "medicine_name": "27 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 106,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 86,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_028",
+        "clinic_id": "clinic_001",
+        "medicine_name": "28 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 122,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 97,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_029",
+        "clinic_id": "clinic_001",
+        "medicine_name": "29 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 78,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 48,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_030",
+        "clinic_id": "clinic_001",
+        "medicine_name": "30 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 400.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 94,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 59,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_031",
+        "clinic_id": "clinic_001",
+        "medicine_name": "31 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 85,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 70,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_032",
+        "clinic_id": "clinic_001",
+        "medicine_name": "32 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 101,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 81,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_033",
+        "clinic_id": "clinic_001",
+        "medicine_name": "33 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 117,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 92,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_034",
+        "clinic_id": "clinic_001",
+        "medicine_name": "34 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 73,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 43,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_035",
+        "clinic_id": "clinic_001",
+        "medicine_name": "35 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 89,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 54,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_036",
+        "clinic_id": "clinic_001",
+        "medicine_name": "36 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 400.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 80,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 65,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_037",
+        "clinic_id": "clinic_001",
+        "medicine_name": "37 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 96,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 76,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_038",
+        "clinic_id": "clinic_001",
+        "medicine_name": "38 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 112,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 87,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_039",
+        "clinic_id": "clinic_001",
+        "medicine_name": "39 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 595.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 128,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 98,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_040",
+        "clinic_id": "clinic_001",
+        "medicine_name": "40 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 84,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 49,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_041",
+        "clinic_id": "clinic_001",
+        "medicine_name": "41 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 75,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 60,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_042",
+        "clinic_id": "clinic_001",
+        "medicine_name": "42 Ghr 20Ml",
+        "item_code": "GHR",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Homeopathic Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 504.0,
+        "box_sale_price": 595.0,
+        "strip_sale_price": 595.0,
+        "unit_sale_price": 595.0,
+        "total_base_stock": 91,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 71,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_043",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Rene Cure 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 150.0,
+        "strip_sale_price": 150.0,
+        "unit_sale_price": 150.0,
+        "total_base_stock": 107,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 82,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_044",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Nux D.S 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 180.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 123,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 93,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_045",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Cascara Senna 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 93.0,
+        "box_sale_price": 155.0,
+        "strip_sale_price": 155.0,
+        "unit_sale_price": 155.0,
+        "total_base_stock": 79,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 44,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_046",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Podophyllum 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 180.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 70,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 55,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_047",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Chesty 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 86,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 66,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_048",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Asoka Cordial 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 102,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 77,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_049",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Alfalfa Ginsing 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 150.0,
+        "strip_sale_price": 150.0,
+        "unit_sale_price": 150.0,
+        "total_base_stock": 118,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 88,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_050",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Nux Vomica 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 180.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 134,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 99,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_051",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Baptisia 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 65,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 50,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_052",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Baby Tonic 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 180.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 81,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 61,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_053",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Hepatoliver 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 150.0,
+        "strip_sale_price": 150.0,
+        "unit_sale_price": 150.0,
+        "total_base_stock": 97,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 72,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_054",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Bryonia 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 180.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 113,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 83,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_055",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Alfalfa Tonic 120Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 180.0,
+        "strip_sale_price": 180.0,
+        "unit_sale_price": 180.0,
+        "total_base_stock": 129,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 94,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_056",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Femolin 240Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 250.0,
+        "strip_sale_price": 250.0,
+        "unit_sale_price": 250.0,
+        "total_base_stock": 60,
+        "stock_qty": 15,
+        "store_stock": 15,
+        "warehouse_stock": 45,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_057",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Ferrum Guard 240Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 250.0,
+        "strip_sale_price": 250.0,
+        "unit_sale_price": 250.0,
+        "total_base_stock": 76,
+        "stock_qty": 20,
+        "store_stock": 20,
+        "warehouse_stock": 56,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_058",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Moringa 240Ml Syp",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 300.0,
+        "box_sale_price": 300.0,
+        "strip_sale_price": 300.0,
+        "unit_sale_price": 300.0,
+        "total_base_stock": 92,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 67,
+        "low_stock_threshold": 6,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_059",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Sepa Tab",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 200.0,
+        "box_sale_price": 250.0,
+        "strip_sale_price": 250.0,
+        "unit_sale_price": 250.0,
+        "total_base_stock": 108,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 78,
+        "low_stock_threshold": 5,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_060",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Doloex Plus Tab",
+        "item_code": "BM",
+        "generic_name": "Homeopathic Dilution / Mother Tincture",
+        "category": "Specialized Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Pack",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 150.0,
+        "box_sale_price": 200.0,
+        "strip_sale_price": 200.0,
+        "unit_sale_price": 200.0,
+        "total_base_stock": 124,
+        "stock_qty": 35,
+        "store_stock": 35,
+        "warehouse_stock": 89,
+        "low_stock_threshold": 5,
+        "expiry_date": "2027-12-31"
+    },
+    {
+        "id": "inv_101",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Euphrasia Eye 15Ml Drops",
+        "item_code": "EUP-15",
+        "generic_name": "Euphrasia Officinalis Eye Drops",
+        "category": "Eye Care Drops",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Box",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 140,
+        "box_sale_price": 230,
+        "strip_sale_price": 230,
+        "unit_sale_price": 230,
+        "total_base_stock": 90,
+        "stock_qty": 30,
+        "store_stock": 30,
+        "warehouse_stock": 60,
+        "low_stock_threshold": 10,
+        "expiry_date": "2027-06-30"
+    },
+    {
+        "id": "inv_102",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Bio-Plasgen 21 (Teething)",
+        "item_code": "BIO-21",
+        "generic_name": "Bio-Chemic Combination No. 21",
+        "category": "Bio-Chemic Tablets",
+        "has_multi_unit": false,
+        "strips_per_box": 1,
+        "units_per_strip": 1,
+        "box_label": "Bottle",
+        "strip_label": "Bottle",
+        "unit_label": "Bottle",
+        "cost_price_per_box": 210,
+        "box_sale_price": 320,
+        "strip_sale_price": 320,
+        "unit_sale_price": 320,
+        "total_base_stock": 70,
+        "stock_qty": 25,
+        "store_stock": 25,
+        "warehouse_stock": 45,
+        "low_stock_threshold": 8,
+        "expiry_date": "2028-01-31"
+    },
+    {
+        "id": "inv_103",
+        "clinic_id": "clinic_001",
+        "medicine_name": "Panadol 500mg Tablets",
+        "item_code": "PAN-500",
+        "generic_name": "Paracetamol 500mg",
+        "category": "Analgesic / Antipyretic",
+        "has_multi_unit": true,
+        "strips_per_box": 20,
+        "units_per_strip": 10,
+        "box_label": "Box",
+        "strip_label": "Strip",
+        "unit_label": "Tablet",
+        "cost_price_per_box": 550,
+        "box_sale_price": 680,
+        "strip_sale_price": 35,
+        "unit_sale_price": 3.5,
+        "total_base_stock": 2000,
+        "stock_qty": 600,
+        "store_stock": 600,
+        "warehouse_stock": 1400,
+        "low_stock_threshold": 100,
+        "expiry_date": "2027-09-30"
+    }
+],
+  parties: [
+    {
+        "id": "pty_001",
+        "name": "Muslim Homoeopathic Store",
+        "city": "Larkana",
+        "phone": "0300-9876543",
+        "address": "Bunder Road, Larkana",
+        "balance_due": 28400,
+        "credit_limit": 150000
+    },
+    {
+        "id": "pty_002",
+        "name": "Tawaqal Homoeopathic Store",
+        "city": "Tando Alayar",
+        "phone": "0312-3004865",
+        "address": "Main Bazar, Tando Allahyar",
+        "balance_due": 14200,
+        "credit_limit": 100000
+    },
+    {
+        "id": "pty_003",
+        "name": "Dr manzoor Ahmed Clinic",
+        "city": "Tando Jaam",
+        "phone": "0333-1122334",
+        "address": "Station Road, Tando Jam",
+        "balance_due": 8900,
+        "credit_limit": 50000
+    },
+    {
+        "id": "pty_004",
+        "name": "H/Dr. Irfan Clinic",
+        "city": "Tando Adam",
+        "phone": "0345-5566778",
+        "address": "Jauharabad, Tando Adam",
+        "balance_due": 12500,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_005",
+        "name": "Hassan Homeopathic Store",
+        "city": "Hyderabad",
+        "phone": "0321-7788990",
+        "address": "Lajpat Road, Hyderabad",
+        "balance_due": 35000,
+        "credit_limit": 120000
+    },
+    {
+        "id": "pty_006",
+        "name": "Sohail Homoeo & Harbal Store",
+        "city": "Sanghar",
+        "phone": "0334-4455667",
+        "address": "Main Bazar, Sanghar",
+        "balance_due": 19600,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_007",
+        "name": "Rafay Homeopathic Store",
+        "city": "Shahdadpur",
+        "phone": "0301-3322114",
+        "address": "Station Chowk, Shahdadpur",
+        "balance_due": 9800,
+        "credit_limit": 60000
+    },
+    {
+        "id": "pty_008",
+        "name": "M/S Labortaries",
+        "city": "Hyderabad",
+        "phone": "0322-9988776",
+        "address": "Latifabad, Hyderabad",
+        "balance_due": 129600,
+        "credit_limit": 500000
+    },
+    {
+        "id": "pty_009",
+        "name": "Abdul Wahab Pansar Store",
+        "city": "C/O Waheed Bhai",
+        "phone": "03101234567",
+        "address": "Bukhri Road Aubaro (0333-7147915)",
+        "balance_due": 12000,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_010",
+        "name": "Affan Bilal H/S (HYD)",
+        "city": "Hyderabad",
+        "phone": "03111234568",
+        "address": "LAJPAT ROAD",
+        "balance_due": 15100,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_011",
+        "name": "Affan Chand H/S",
+        "city": "Hyderabad",
+        "phone": "03121234569",
+        "address": "LAJPAT ROAD",
+        "balance_due": 18200,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_012",
+        "name": "Affan Dua H/S",
+        "city": "Hyderabad",
+        "phone": "03131234570",
+        "address": "LAJPAT ROAD",
+        "balance_due": 21300,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_013",
+        "name": "Affan Muslim H/S (HYD)",
+        "city": "Hyderabad",
+        "phone": "03141234571",
+        "address": "LAJPAT ROAD",
+        "balance_due": 24400,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_014",
+        "name": "Affan Noman H/S",
+        "city": "Hyderabad",
+        "phone": "03151234572",
+        "address": "Lajpat Road ",
+        "balance_due": 27500,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_015",
+        "name": "AFFAN QURESHI",
+        "city": "Hyderabad",
+        "phone": "03161234573",
+        "address": "HYDERABAD",
+        "balance_due": 30600,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_016",
+        "name": "Affan Shalimar H/S",
+        "city": "Hyderabad",
+        "phone": "03171234574",
+        "address": "LAJPAT RODE",
+        "balance_due": 33700,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_017",
+        "name": "Akram Pansar Tando Allah Yar",
+        "city": "Tando Alayar",
+        "phone": "03181234575",
+        "address": "Tando Alayar 03123004865",
+        "balance_due": 36800,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_018",
+        "name": "AL Rasheed Clinic (DR Mehrunissa)",
+        "city": "Tharushah",
+        "phone": "03191234576",
+        "address": "Tharushah",
+        "balance_due": 39900,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_019",
+        "name": "Al-Fareed H/S DR Hader Garwar",
+        "city": "Tando Alayar",
+        "phone": "03201234577",
+        "address": "(0300-3005606)",
+        "balance_due": 43000,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_020",
+        "name": "Al-Fareed H/S Shehdadpur",
+        "city": "SHADADPUR",
+        "phone": "03211234578",
+        "address": "Dr Fareed (0336-3552377)",
+        "balance_due": 46100,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_021",
+        "name": "Al-Haseeb Clanic (Hala)",
+        "city": "Hala",
+        "phone": "03221234579",
+        "address": "(0303-3509255)",
+        "balance_due": 14200,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_022",
+        "name": "Ali Danish Homoeopathic Store",
+        "city": "Local Market",
+        "phone": "03231234580",
+        "address": "LPR Market",
+        "balance_due": 17300,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_023",
+        "name": "Ali Homoeo Store (SANGER)",
+        "city": "SANGER",
+        "phone": "03241234581",
+        "address": "03332919730",
+        "balance_due": 20400,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_024",
+        "name": "Ali Khan M/S (TALHAR)",
+        "city": "Talhar",
+        "phone": "03251234582",
+        "address": "(0313-33637027)",
+        "balance_due": 23500,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_025",
+        "name": "Al-Khadija Homoeo Store (HYD)",
+        "city": "Local Market",
+        "phone": "03261234583",
+        "address": "Local Market",
+        "balance_due": 26600,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_026",
+        "name": "Al-Madina M/S (New Dambalo)",
+        "city": "Dambalo",
+        "phone": "03271234584",
+        "address": "New Dambalo (0303-3116698)",
+        "balance_due": 29700,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_027",
+        "name": "AL-Shaffa H/S (KHANOOT)",
+        "city": "Khanoot",
+        "phone": "03281234585",
+        "address": "khanoot (0348-1860097)",
+        "balance_due": 32800,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_028",
+        "name": "Al-Shaffa Pansar (Phulali)",
+        "city": "Hyderabad",
+        "phone": "03291234586",
+        "address": "Phulali HYD",
+        "balance_due": 35900,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_029",
+        "name": "Ameer M/S (TMK)",
+        "city": "TMK",
+        "phone": "03301234587",
+        "address": "(03",
+        "balance_due": 39000,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_030",
+        "name": "Ameer Madical Store (T.M.K)",
+        "city": "TMK",
+        "phone": "03311234588",
+        "address": "(TMK)",
+        "balance_due": 42100,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_031",
+        "name": "Areez pansar store (Tando Alayar)",
+        "city": "Tando Alayar",
+        "phone": "03321234589",
+        "address": "Tando Alayar",
+        "balance_due": 45200,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_032",
+        "name": "Aslam Belani (Tnado Bago)",
+        "city": "Tando Bhago",
+        "phone": "03331234590",
+        "address": "Tando bago",
+        "balance_due": 13300,
+        "credit_limit": 80000
+    },
+    {
+        "id": "pty_033",
+        "name": "Baba Homoeo Store",
+        "city": "Local Market",
+        "phone": "03341234591",
+        "address": "Local Market",
+        "balance_due": 16400,
+        "credit_limit": 80000
+    }
+],
   suppliers: [
-    { id: "sup_001", name: "Getz Pharma Distribution", contact_person: "Tariq Mahmood", phone: "0300-8881122", address: "Site Area, Hyderabad", balance_due: 45000 },
-    { id: "sup_002", name: "Searle Medical Agencies",   contact_person: "Zubair Ahmed",  phone: "0321-4445566", address: "Saddar, Hyderabad", balance_due: 18500 },
-    { id: "sup_003", name: "AGP Pharma Traders",        contact_person: "Rashid Ali",    phone: "0333-7776655", address: "Latifabad, Hyderabad", balance_due: 0 },
-  ],
+    {
+        "id": "sup_001",
+        "name": "BM Pvt LTD",
+        "contact_person": "Tariq Sahab",
+        "phone": "0300-1122334",
+        "city": "Karachi",
+        "current_balance": 85136
+    },
+    {
+        "id": "sup_002",
+        "name": "MEKTUM Pvt Ltd",
+        "contact_person": "Sales Desk",
+        "phone": "0321-4455667",
+        "city": "Lahore",
+        "current_balance": 42000
+    },
+    {
+        "id": "sup_003",
+        "name": "BLOSSOM Homoeo Pharma",
+        "contact_person": "Aslam",
+        "phone": "0333-9988776",
+        "city": "Rawalpindi",
+        "current_balance": 18500
+    },
+    {
+        "id": "sup_004",
+        "name": "Paul Brooks Homoeo Lab",
+        "contact_person": "Regional Rep",
+        "phone": "0345-2233445",
+        "city": "Karachi",
+        "current_balance": 31200
+    },
+    {
+        "id": "sup_005",
+        "name": "Local Purchase Market",
+        "contact_person": "Cash Counter",
+        "phone": "0311-0000000",
+        "city": "Hyderabad",
+        "current_balance": 0
+    }
+],
+  salesmen: [
+    {
+        "id": "sm_001",
+        "name": "Usama",
+        "phone": "0300-7654321",
+        "territory": "Tando Adam / Tando Jam / Hyderabad",
+        "is_active": true
+    },
+    {
+        "id": "sm_002",
+        "name": "Raza",
+        "phone": "0321-8765432",
+        "territory": "Larkana / Sukkur / Moro",
+        "is_active": true
+    },
+    {
+        "id": "sm_003",
+        "name": "Taj ud din",
+        "phone": "0333-5432109",
+        "territory": "Sanghar / Shahdadpur / Mirpur",
+        "is_active": true
+    }
+],
   purchases: [
     {
-      id: "pur_001",
-      supplier_id: "sup_001",
-      supplier_name: "Getz Pharma Distribution",
-      invoice_no: "INV-2026-881",
-      purchase_date: getRelativeISOString(-10),
-      total_amount: 50000,
-      paid_amount: 5000,
-      balance_due: 45000,
-      payment_status: "partial", // paid, unpaid, partial
-      items: [
-        { medicine_name: "Panadol 500mg", batch_no: "BAT-9981", expiry_date: getRelativeDateString(180), qty: 150, cost_price: 5.5, sale_price: 8, line_total: 825 },
-        { medicine_name: "Ascoril Syrup", batch_no: "BAT-1102", expiry_date: getRelativeDateString(360), qty: 50, cost_price: 130, sale_price: 180, line_total: 6500 }
-      ]
+        "id": "pur_001",
+        "invoice_no": "P-1380",
+        "supplier_id": "sup_001",
+        "supplier_name": "BM Pvt LTD",
+        "purchase_date": "2026-08-10T10:00:00.000Z",
+        "destination": "Main Warehouse (Godown)",
+        "destination_type": "warehouse",
+        "items": [
+            {
+                "inventory_id": "inv_001",
+                "medicine_name": "1 Ghr 20Ml",
+                "qty": 50,
+                "cost_price": 400,
+                "total_cost": 20000
+            },
+            {
+                "inventory_id": "inv_101",
+                "medicine_name": "Euphrasia Eye 15Ml Drops",
+                "qty": 100,
+                "cost_price": 140,
+                "total_cost": 14000
+            }
+        ],
+        "total_amount": 34000,
+        "paid_amount": 34000,
+        "payment_status": "Paid",
+        "notes": "Bulk Homeopathic Consignment"
     }
-  ],
-  patient_ledgers: [
+],
+  b2b_sales: [
     {
-      id: "pledge_001",
-      patient_id: "pat_001",
-      patient_name: "Muhammad Bilal",
-      total_credit: 1200,
-      total_paid: 400,
-      balance_due: 800,
-      transactions: [
-        { id: "tx_1", date: getRelativeISOString(-3), description: "Pharmacy POS Sale #sale_001 (Udhaar)", amount: 1200, type: "debit" },
-        { id: "tx_2", date: getRelativeISOString(-1), description: "Cash Payment Received", amount: 400, type: "credit" }
-      ]
+        "id": "b2b_001",
+        "invoice_no": "WHO-1001",
+        "buyer_id": "pty_001",
+        "buyer_name": "Muslim Homoeopathic Store",
+        "buyer_phone": "0300-9876543",
+        "city": "Larkana",
+        "salesman": "Raza",
+        "bilty_no": "BL-7842",
+        "transport": "Al-Madina Goods",
+        "items": [
+            {
+                "inventory_id": "inv_001",
+                "medicine_name": "1 Ghr 20Ml",
+                "qty": 15,
+                "unit_price": 595,
+                "line_total": 8925
+            },
+            {
+                "inventory_id": "inv_101",
+                "medicine_name": "Euphrasia Eye 15Ml Drops",
+                "qty": 20,
+                "unit_price": 230,
+                "line_total": 4600
+            }
+        ],
+        "total_amount": 13525,
+        "paid_amount": 5000,
+        "balance_due": 8525,
+        "payment_type": "credit",
+        "sale_date": "2026-08-16T14:30:00.000Z",
+        "user_name": "Raza"
     }
-  ],
-  store_sales: [
+],
+  stock_transfers: [
+    {
+        "id": "trf_001",
+        "transfer_no": "TRF-101",
+        "inventory_id": "inv_001",
+        "medicine_name": "1 Ghr 20Ml",
+        "qty": 10,
+        "from_loc": "Main Warehouse (Godown)",
+        "to_loc": "Medical Store Counter (POS)",
+        "transfer_date": "2026-08-16T09:00:00.000Z",
+        "notes": "Store Counter Replenishment",
+        "transferred_by": "Raza"
+    }
+],
+  sales: [
     {
       id: "sale_001",
       clinic_id: "clinic_001",
-      visit_id: "visit_002",
-      payment_type: "cash", // cash, card, credit, partial
-      amount_paid: 196,
-      balance_due: 0,
+      receipt_no: "POS-1001",
+      visit_id: null,
+      patient_name: "Walk-in Patient",
+      sale_date: getRelativeISOString(0, -2),
       items: [
-        { inventory_id: "inv_003", medicine_name: "Ascoril Syrup", unit_label: "bottle", quantity: 1, unit_price: 180, line_total: 180, batch_no: "BAT-1102" },
-        { inventory_id: "inv_001", medicine_name: "Panadol 500mg", unit_label: "strip",  quantity: 2, unit_price: 8,   line_total: 16, batch_no: "BAT-9981"  },
+        {
+          inventory_id: "inv_101",
+          medicine_name: "Euphrasia Eye 15Ml Drops",
+          unit_label: "Bottle",
+          quantity: 2,
+          unit_price: 230,
+          line_total: 460,
+          base_units: 2
+        }
       ],
-      subtotal_amount: 196,
+      subtotal_amount: 460,
       discount_amount: 0,
       tax_amount: 0,
-      total_amount: 196,
-      sale_date: getRelativeISOString(-5),
-    },
-    {
-      id: "sale_002",
-      clinic_id: "clinic_001",
-      visit_id: null, // Walk-in Customer
-      payment_type: "cash",
-      amount_paid: 40,
-      balance_due: 0,
-      items: [
-        { inventory_id: "inv_001", medicine_name: "Panadol 500mg", unit_label: "strip", quantity: 5, unit_price: 8, line_total: 40, batch_no: "BAT-9981" }
-      ],
-      subtotal_amount: 40,
-      discount_amount: 0,
-      tax_amount: 0,
-      total_amount: 40,
-      sale_date: getRelativeISOString(-2),
-    },
-    {
-      id: "sale_003",
-      clinic_id: "clinic_001",
-      visit_id: "visit_001",
-      payment_type: "cash",
-      amount_paid: 310,
-      balance_due: 0,
-      items: [
-        { inventory_id: "inv_003", medicine_name: "Ascoril Syrup", unit_label: "bottle", quantity: 2, unit_price: 180, line_total: 360, batch_no: "BAT-1102" }
-      ],
-      subtotal_amount: 360,
-      discount_amount: 50,
-      tax_amount: 0,
-      total_amount: 310,
-      sale_date: getRelativeISOString(-1),
-    },
+      total_amount: 460,
+      paid_amount: 460,
+      payment_type: "cash"
+    }
   ],
-  store_expenses: [
-    { id: "exp_001", date: getRelativeISOString(-1), category: "Tea & Refreshment", amount: 180, description: "Tea for pharmacy staff", recorded_by: "Kamran Iqbal" },
-    { id: "exp_002", date: getRelativeISOString(-3), category: "Electricity & Utilities", amount: 2500, description: "Monthly pharmacy AC & lighting bill", recorded_by: "Sana Malik" },
-    { id: "exp_003", date: getRelativeISOString(-5), category: "Delivery & Freight", amount: 350, description: "Rider delivery charge for urgent medicine stock", recorded_by: "Kamran Iqbal" }
-  ],
-  store_returns: [
+  patient_ledger: [
     {
-      id: "ret_001",
-      sale_id: "sale_002",
-      patient_name: "Muhammad Bilal",
-      return_date: getRelativeISOString(-1),
-      reason: "Doctor changed prescription formula",
-      refund_type: "cash",
-      refund_amount: 16,
-      items: [
-        { medicine_name: "Panadol 500mg", unit_label: "strip", quantity_returned: 2, base_units_returned: 24, refund_price: 16 }
+      id: "pledge_001",
+      patient_id: "pat_001",
+      patient_name: "Ahmed Ali",
+      total_credit: 2500,
+      total_paid: 1000,
+      balance_due: 1500,
+      transactions: [
+        { id: "tx_001", date: todayAt(9, 30), description: "Pharmacy Eye Drops Credit", amount: 1500, type: "debit" }
       ]
     }
+  ],
+  expenses: [
+    { id: "exp_001", category: "Shop Expense", amount: 250, description: "Evening Tea & Refreshment", date: todayAt(16, 0) },
+    { id: "exp_002", category: "Utilities", amount: 1200, description: "Clinic Cleaning Supplies", date: todayAt(11, 0) }
+  ],
+  returns: [],
+  shift_closings: [],
+  documents: [],
+  tenants: [
+    { id: "tenant_001", name: "Dr. Muhammad Kashif Khan Clinic", status: "active", plan: "enterprise" }
   ]
 };
 
-// Keys used in localStorage
+// ---------- Storage Keys ----------
 const KEYS = {
-  SEEDED:          "cf_seeded_v12",   // bumped to v12 for password hashing + API key removal security fixes
-  CLINIC:          "cf_clinic",
-  USERS:           "cf_users",
-  PATIENTS:        "cf_patients",
-  VISITS:          "cf_visits",
-  INVENTORY:       "cf_store_inventory",
-  SALES:           "cf_store_sales",
-  DOCUMENTS:       "cf_documents",
-  SERVICES:        "cf_clinic_services",
-  SUPPLIERS:       "cf_suppliers",
-  PURCHASES:       "cf_purchases",
-  PATIENT_LEDGER:  "cf_patient_ledgers",
-  EXPENSES:        "cf_store_expenses",
-  RETURNS:         "cf_store_returns",
-  STOCK_TRANSFERS: "cf_stock_transfers",
-  B2B_SALES:       "cf_b2b_sales",
-  SHIFT_CLOSINGS:  "cf_shift_closings",
-  TENANTS:         "cf_tenants_registry",
+  SEEDED:          "cf_seeded_v5_complete",
+  CLINIC:          "cf_clinic_v5",
+  SERVICES:        "cf_services_v5",
+  USERS:           "cf_users_v5",
+  PATIENTS:        "cf_patients_v5",
+  VISITS:          "cf_visits_v5",
+  INVENTORY:       "cf_inventory_v5",
+  PARTIES:         "cf_parties_v5",
+  SUPPLIERS:       "cf_suppliers_v5",
+  SALESMEN:        "cf_salesmen_v5",
+  PURCHASES:       "cf_purchases_v5",
+  B2B_SALES:       "cf_b2b_sales_v5",
+  SALES:           "cf_sales_v5",
+  PATIENT_LEDGER:  "cf_patient_ledger_v5",
+  EXPENSES:        "cf_expenses_v5",
+  RETURNS:         "cf_returns_v5",
+  STOCK_TRANSFERS: "cf_stock_transfers_v5",
+  SHIFT_CLOSINGS:  "cf_shift_closings_v5",
+  DOCUMENTS:       "cf_documents_v5",
+  TENANTS:         "cf_tenants_v5",
+  SESSION:         "cf_auth_session",
 };
 
-/** Atomic Sequential Invoice / Voucher Generator with distinct prefixes */
-export function generateSequentialInvoiceNo(prefix = "INV") {
-  const currentYear = new Date().getFullYear();
-  const counterKey = `cf_seq_${prefix}_${currentYear}`;
-  let count = Number(localStorage.getItem(counterKey) || 0) + 1;
-  localStorage.setItem(counterKey, String(count));
-  const serial = String(count).padStart(4, "0");
-  return `${prefix}-${currentYear}-${serial}`;
+// High-performance In-Memory Memoization Cache for Zero-Lag Operations
+const _COLLECTION_CACHE = new Map();
+const _ID_MAP_CACHE = new Map();
+
+function getCollection(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+
+    const cached = _COLLECTION_CACHE.get(key);
+    if (cached && cached.raw === raw) {
+      return cached.parsed;
+    }
+
+    const parsed = JSON.parse(raw);
+    _COLLECTION_CACHE.set(key, { raw, parsed });
+
+    if (Array.isArray(parsed)) {
+      const idMap = new Map();
+      for (let i = 0; i < parsed.length; i++) {
+        const item = parsed[i];
+        if (item && item.id) idMap.set(item.id, item);
+      }
+      _ID_MAP_CACHE.set(key, idMap);
+    }
+
+    return parsed;
+  } catch {
+    return [];
+  }
 }
 
-/** Force reset database to clean demo data */
-export function resetDatabaseToDemoData() {
-  Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
-  ["cf_seeded", "cf_seeded_v2", "cf_seeded_v3", "cf_seeded_v4", "cf_seeded_v5", "cf_seeded_v6", "cf_seeded_v7", "cf_seeded_v8"].forEach((k) => localStorage.removeItem(k));
-  
-  localStorage.setItem(KEYS.CLINIC,         JSON.stringify(SEED_DATA.clinic));
-  localStorage.setItem(KEYS.USERS,          JSON.stringify(SEED_DATA.users));
-  localStorage.setItem(KEYS.PATIENTS,       JSON.stringify(SEED_DATA.patients));
-  localStorage.setItem(KEYS.VISITS,         JSON.stringify(SEED_DATA.visits));
-  localStorage.setItem(KEYS.INVENTORY,      JSON.stringify(SEED_DATA.store_inventory));
-  localStorage.setItem(KEYS.SALES,          JSON.stringify(SEED_DATA.store_sales));
-  localStorage.setItem(KEYS.SERVICES,       JSON.stringify(SEED_DATA.clinic_services));
-  localStorage.setItem(KEYS.SUPPLIERS,      JSON.stringify(SEED_DATA.suppliers));
-  localStorage.setItem(KEYS.PURCHASES,      JSON.stringify(SEED_DATA.purchases));
-  localStorage.setItem(KEYS.PATIENT_LEDGER, JSON.stringify(SEED_DATA.patient_ledgers));
-  localStorage.setItem(KEYS.EXPENSES,       JSON.stringify(SEED_DATA.store_expenses));
-  localStorage.setItem(KEYS.RETURNS,        JSON.stringify(SEED_DATA.store_returns));
-  localStorage.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
-  localStorage.setItem(KEYS.B2B_SALES,       JSON.stringify([]));
+function getFromCollectionById(key, id) {
+  if (!id) return null;
+  getCollection(key); // Ensures cache and ID index are hot
+  const idMap = _ID_MAP_CACHE.get(key);
+  if (idMap && idMap.has(id)) {
+    return idMap.get(id);
+  }
+  return null;
+}
+
+function setCollection(key, data) {
+  try {
+    const raw = JSON.stringify(data);
+    localStorage.setItem(key, raw);
+    _COLLECTION_CACHE.set(key, { raw, parsed: data });
+
+    if (Array.isArray(data)) {
+      const idMap = new Map();
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        if (item && item.id) idMap.set(item.id, item);
+      }
+      _ID_MAP_CACHE.set(key, idMap);
+    }
+  } catch (e) {
+    console.error("Failed to save collection to localStorage:", key, e);
+  }
+}
+
+function generateId(prefix = "id") {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export function generateSequentialInvoiceNo(prefix = "INV") {
+  const counterKey = `cf_seq_${prefix}`;
+  let current = parseInt(localStorage.getItem(counterKey) || "1000", 10);
+  current += 1;
+  localStorage.setItem(counterKey, current.toString());
+  return `${prefix}-${current}`;
+}
+
+export function formatStockBreakdown(item) {
+  if (!item) return "0 In Stock";
+  const wStock = item.warehouse_stock ?? 0;
+  const sStock = item.store_stock ?? (item.stock_qty ?? 0);
+  return `Godown: ${wStock} ${item.box_label || 'Packs'} | Counter: ${sStock} ${item.unit_label || 'Units'}`;
+}
+
+export function formatStockShort(item) {
+  if (!item) return "0 Units";
+  const sStock = item.store_stock ?? (item.stock_qty ?? 0);
+  return `${sStock} ${item.unit_label || 'Units'}`;
+}
+
+// ---------- Initialize DB ----------
+export function initDB() {
+  if (localStorage.getItem(KEYS.SEEDED)) return;
+
+  localStorage.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
+  localStorage.setItem(KEYS.SERVICES, JSON.stringify(SEED_DATA.clinic_services));
+  localStorage.setItem(KEYS.USERS, JSON.stringify(SEED_DATA.users));
+  localStorage.setItem(KEYS.PATIENTS, JSON.stringify(SEED_DATA.patients));
+  localStorage.setItem(KEYS.VISITS, JSON.stringify(SEED_DATA.visits));
+  localStorage.setItem(KEYS.INVENTORY, JSON.stringify(SEED_DATA.inventory));
+  localStorage.setItem(KEYS.PARTIES, JSON.stringify(SEED_DATA.parties));
+  localStorage.setItem(KEYS.SUPPLIERS, JSON.stringify(SEED_DATA.suppliers));
+  localStorage.setItem(KEYS.SALESMEN, JSON.stringify(SEED_DATA.salesmen));
+  localStorage.setItem(KEYS.PURCHASES, JSON.stringify(SEED_DATA.purchases));
+  localStorage.setItem(KEYS.B2B_SALES, JSON.stringify(SEED_DATA.b2b_sales));
+  localStorage.setItem(KEYS.SALES, JSON.stringify(SEED_DATA.sales));
+  localStorage.setItem(KEYS.PATIENT_LEDGER, JSON.stringify(SEED_DATA.patient_ledger));
+  localStorage.setItem(KEYS.EXPENSES, JSON.stringify(SEED_DATA.expenses));
+  localStorage.setItem(KEYS.RETURNS, JSON.stringify(SEED_DATA.returns));
+  localStorage.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify(SEED_DATA.stock_transfers));
+  localStorage.setItem(KEYS.SHIFT_CLOSINGS, JSON.stringify(SEED_DATA.shift_closings));
+  localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify(SEED_DATA.documents));
+  localStorage.setItem(KEYS.TENANTS, JSON.stringify(SEED_DATA.tenants));
+
   localStorage.setItem(KEYS.SEEDED, "1");
 }
 
-/** Ensure the localStorage DB is initialized with seed data on first load. */
-export function initDB() {
-  if (!localStorage.getItem(KEYS.DOCUMENTS)) {
-    localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify([]));
-  }
-  if (!localStorage.getItem(KEYS.SERVICES)) {
-    localStorage.setItem(KEYS.SERVICES, JSON.stringify([]));
-  }
-  if (!localStorage.getItem(KEYS.STOCK_TRANSFERS)) {
-    localStorage.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
-  }
-  if (!localStorage.getItem(KEYS.B2B_SALES)) {
-    localStorage.setItem(KEYS.B2B_SALES, JSON.stringify([]));
-  }
-
-  // If seeded version 9 is already active, return
-  if (localStorage.getItem(KEYS.SEEDED) === "1") return;
-
-  // Otherwise, clear and re-seed clean mock data
-  resetDatabaseToDemoData();
+export function resetDatabaseToDemoData() {
+  Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
+  initDB();
 }
-
-// ---------- Generic helpers ----------
-function getCollection(key)      { return JSON.parse(localStorage.getItem(key) || "[]"); }
-function setCollection(key, arr) { localStorage.setItem(key, JSON.stringify(arr)); }
-function getRecord(key)          { return JSON.parse(localStorage.getItem(key) || "null"); }
-function setRecord(key, obj)     { localStorage.setItem(key, JSON.stringify(obj)); }
-function generateId(prefix)      { return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 
 // ---------- Clinic ----------
 export const dbClinic = {
-  get:    ()     => getRecord(KEYS.CLINIC),
-  update: (data) => {
-    setRecord(KEYS.CLINIC, { ...getRecord(KEYS.CLINIC), ...data });
-    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+  get: () => {
+    const raw = localStorage.getItem(KEYS.CLINIC);
+    return raw ? JSON.parse(raw) : SEED_DATA.clinic;
   },
-  updateClinicStatus: (clinic_status, public_notice, clinic_status_note = "") => {
-    const current = getRecord(KEYS.CLINIC) || {};
-    const updated = {
-      ...current,
-      clinic_status,
-      public_notice: public_notice !== undefined ? public_notice : current.public_notice,
-      clinic_status_note
-    };
-    setRecord(KEYS.CLINIC, updated);
-    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+  update: (data) => {
+    const current = dbClinic.get();
+    const updated = { ...current, ...data };
+    localStorage.setItem(KEYS.CLINIC, JSON.stringify(updated));
     return updated;
-  }
+  },
+  updateClinicStatus: (status, note) => {
+    return dbClinic.update({ clinic_status: status, clinic_status_note: note || "" });
+  },
 };
 
-// ---------- Multi-Clinic / Tenant Registry (Developer Master Plane) ----------
-export const dbTenants = {
+// ---------- Clinic Services ----------
+export const dbClinicServices = {
+  getAll: () => getCollection(KEYS.SERVICES),
+  add: (service) => {
+    const list = getCollection(KEYS.SERVICES);
+    const newS = { ...service, id: generateId("ser"), clinic_id: "clinic_001" };
+    setCollection(KEYS.SERVICES, [...list, newS]);
+    return newS;
+  },
+  update: (id, data) => {
+    const list = getCollection(KEYS.SERVICES);
+    const updated = list.map((s) => (s.id === id ? { ...s, ...data } : s));
+    setCollection(KEYS.SERVICES, updated);
+  },
+  delete: (id) => {
+    const list = getCollection(KEYS.SERVICES);
+    setCollection(KEYS.SERVICES, list.filter((s) => s.id !== id));
+  },
+};
+
+// ---------- Users / Staff ----------
+export const dbUsers = {
   getAll: () => {
-    const list = getCollection(KEYS.TENANTS);
+    let list = getCollection(KEYS.USERS);
     if (!list || list.length === 0) {
-      const defaultTenant = {
-        id: "clinic_001",
-        name: "Dr. Asif Ashraf's Clinic",
-        doctor_name: "Dr. Asif Ashraf",
-        specialization: "Consultant Homeopath & Family Physician",
+      list = SEED_DATA.users;
+      setCollection(KEYS.USERS, list);
+    }
+    // Auto-sync seed doctors if missing from active local storage session
+    const hasDoc2 = list.some((u) => u.id === "user_005" || (u.role === "doctor" && u.id !== "user_001"));
+    if (!hasDoc2) {
+      const doc2 = {
+        id: "user_005",
+        clinic_id: "clinic_001",
+        name: "Dr. Asif Ashraf",
+        role: "doctor",
+        is_owner: false,
+        can_view_financials: true,
+        availability_status: "available",
+        status_note: "In Room 2",
+        specialization: "General Physician / Consultant",
+        room_number: "Room 2",
+        consultation_fee: 500,
         phone: "03001234567",
-        city: "Hyderabad",
-        address: "Lajpat Road, Hyderabad",
-        fee: 800,
-        room: "Room 1",
-        license_key: "KB-PRO-2026-ASIF-001",
-        status: "active", // 'active' | 'renewal_due' | 'suspended'
-        plan: "Pro Tier (Rs. 5,000 / mo)",
-        monthly_fee: 5000,
-        created_at: "2024-01-15T00:00:00Z",
-        features: { opd: true, emr: true, pharmacy: true, warehouse: true, backups: true },
+        email: "dr.asif@example.com",
+        password: "hashed_17f6dc38"
       };
-      setCollection(KEYS.TENANTS, [defaultTenant]);
-      return [defaultTenant];
+      list = [...list, doc2];
+      setCollection(KEYS.USERS, list);
     }
     return list;
   },
-  getById: (id) => dbTenants.getAll().find((t) => t.id === id) || null,
-  add: (tenant) => {
-    const list = dbTenants.getAll();
-    const newTenant = {
-      ...tenant,
-      id: tenant.id || generateId("clinic"),
-      created_at: new Date().toISOString(),
-      status: tenant.status || "active",
-      license_key: tenant.license_key || `KB-PRO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      features: tenant.features || { opd: true, emr: true, pharmacy: true, warehouse: true, backups: true },
-    };
-    setCollection(KEYS.TENANTS, [...list, newTenant]);
-    return newTenant;
-  },
-  update: (id, data) => {
-    const list = dbTenants.getAll();
-    const updated = list.map((t) => (t.id === id ? { ...t, ...data } : t));
-    setCollection(KEYS.TENANTS, updated);
-  },
-  delete: (id) => {
-    const list = dbTenants.getAll();
-    setCollection(KEYS.TENANTS, list.filter((t) => t.id !== id));
-  },
-  switchToTenant: (tenantId) => {
-    const t = dbTenants.getById(tenantId);
-    if (!t) return false;
-    dbClinic.update({
-      id: t.id,
-      name: t.name,
-      address: t.address,
-      phone: t.phone,
-      default_consultation_fee: t.fee,
-    });
-    // Sync primary doctor in users
-    const users = dbUsers.getAll();
-    const doc = users.find((u) => u.role === "doctor");
-    if (doc) {
-      dbUsers.update(doc.id, {
-        name: t.doctor_name,
-        specialization: t.specialization,
-        room_number: t.room || "Room 1",
-      });
-    }
-    return true;
-  }
-};
-
-// ---------- Users ----------
-export const dbUsers = {
-  getAll:     ()        => getCollection(KEYS.USERS).map((u) => ({
-    ...u,
-    availability_status: u.availability_status || (u.role === "doctor" ? "available" : undefined)
-  })),
-  getById:    (id)      => {
-    const u = getCollection(KEYS.USERS).find((x) => x.id === id);
-    if (!u) return null;
-    return {
-      ...u,
-      availability_status: u.availability_status || (u.role === "doctor" ? "available" : undefined)
-    };
-  },
-  getByEmail: (email)   => getCollection(KEYS.USERS).find((u) => u.email === email) || null,
-  getByPhone: (phone)   => getCollection(KEYS.USERS).find((u) => u.phone === phone) || null,
+  getById: (id) => getFromCollectionById(KEYS.USERS, id),
+  getByEmail: (email) => dbUsers.getAll().find((u) => u.email?.toLowerCase() === email?.toLowerCase()) || null,
+  getDoctors: () => dbUsers.getAll().filter((u) => u.role === "doctor"),
   add: (user) => {
     const users = getCollection(KEYS.USERS);
-    const newUser = { ...user, id: generateId("user") };
+    const newUser = { ...user, id: generateId("user"), clinic_id: "clinic_001" };
     setCollection(KEYS.USERS, [...users, newUser]);
-    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newUser;
   },
   update: (id, data) => {
     const users = getCollection(KEYS.USERS);
     const updated = users.map((u) => (u.id === id ? { ...u, ...data } : u));
     setCollection(KEYS.USERS, updated);
-    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   },
-  updateDoctorStatus: (id, availability_status, status_note = "") => {
+  updateDoctorStatus: (doctorId, status, note, room) => {
     const users = getCollection(KEYS.USERS);
-    const updated = users.map((u) => (u.id === id ? { ...u, availability_status, status_note } : u));
+    const updated = users.map((u) =>
+      u.id === doctorId
+        ? { ...u, availability_status: status, status_note: note ?? u.status_note, room_number: room ?? u.room_number }
+        : u
+    );
     setCollection(KEYS.USERS, updated);
-    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
-    return updated.find((u) => u.id === id);
-  }
+  },
+  setPrincipalDoctor: (newPrincipalDoctorId) => {
+    const users = dbUsers.getAll();
+    const updated = users.map((u) => {
+      if (u.id === newPrincipalDoctorId) {
+        return { ...u, is_owner: true, can_view_financials: true, role: "doctor" };
+      } else if (u.is_owner) {
+        return { ...u, is_owner: false };
+      }
+      return u;
+    });
+    setCollection(KEYS.USERS, updated);
+    return updated;
+  },
 };
 
 // ---------- Patients ----------
 export const dbPatients = {
-  getAll:  ()   => getCollection(KEYS.PATIENTS),
-  getById: (id) => getCollection(KEYS.PATIENTS).find((p) => p.id === id) || null,
-
+  getAll: () => getCollection(KEYS.PATIENTS),
+  getById: (id) => getFromCollectionById(KEYS.PATIENTS, id),
   search: (query) => {
     if (!query || query.trim() === "") return getCollection(KEYS.PATIENTS);
     const q = query.trim().toLowerCase();
     return getCollection(KEYS.PATIENTS).filter((p) =>
-      (p.full_name    || "").toLowerCase().includes(q) ||
-      (p.relation_name|| "").toLowerCase().includes(q) ||
-      (p.phone        || "").includes(q)
+      (p.full_name || "").toLowerCase().includes(q) ||
+      (p.phone || "").includes(q) ||
+      (p.relation_name || "").toLowerCase().includes(q) ||
+      (p.cnic || "").includes(q)
     );
   },
-
   add: (patient) => {
     const patients = getCollection(KEYS.PATIENTS);
-    const newPatient = {
-      ...patient,
-      id: generateId("pat"),
-      clinic_id: "clinic_001",
-      created_at: new Date().toISOString(),
-    };
-    setCollection(KEYS.PATIENTS, [...patients, newPatient]);
-    return newPatient;
+    const newPat = { ...patient, id: generateId("pat"), clinic_id: "clinic_001", created_at: new Date().toISOString() };
+    setCollection(KEYS.PATIENTS, [newPat, ...patients]);
+    return newPat;
   },
-
   update: (id, data) => {
     const patients = getCollection(KEYS.PATIENTS);
     const updated = patients.map((p) => (p.id === id ? { ...p, ...data } : p));
@@ -767,46 +2481,88 @@ export const dbPatients = {
   },
 };
 
-// ---------- Visits ----------
+// ---------- Visits & Queue ----------
 export const dbVisits = {
-  getAll:  ()   => getCollection(KEYS.VISITS),
-  getById: (id) => getCollection(KEYS.VISITS).find((v) => v.id === id) || null,
-
-  getByPatient: (patientId) =>
-    getCollection(KEYS.VISITS)
-      .filter((v) => v.patient_id === patientId)
-      .sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date)),
-
-  /** Doctor's live queue: today's visits with status waiting or in_consultation, ordered by token_number.
-   *  Filters by doctorId if provided.
-   */
-  getTodayQueue: (doctorId) => {
+  getAll: () => {
+    let list = getCollection(KEYS.VISITS);
+    if (!list || list.length === 0) {
+      list = SEED_DATA.visits;
+      setCollection(KEYS.VISITS, list);
+    }
+    let changed = false;
+    list = list.map((v) => {
+      if ((v.id === "vis_001" || v.id === "vis_002") && v.status === "waiting") {
+        changed = true;
+        return { ...v, status: "completed" };
+      }
+      return v;
+    });
+    if (changed) {
+      setCollection(KEYS.VISITS, list);
+    }
+    return list;
+  },
+  delete: (id) => {
+    const visits = getCollection(KEYS.VISITS);
+    const updated = visits.filter((v) => v.id !== id);
+    setCollection(KEYS.VISITS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return updated;
+  },
+  update: (id, data) => {
+    const visits = getCollection(KEYS.VISITS);
+    const updated = visits.map((v) => (v.id === id ? { ...v, ...data } : v));
+    setCollection(KEYS.VISITS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return updated.find((v) => v.id === id);
+  },
+  getById: (id) => getFromCollectionById(KEYS.VISITS, id),
+  getByPatient: (patientId) => dbVisits.getAll().filter((v) => v.patient_id === patientId),
+  getToday: (doctorId = null) => {
+    const today = new Date().toISOString().split("T")[0];
+    return getCollection(KEYS.VISITS).filter((v) => {
+      const isToday = v.visit_date?.split("T")[0] === today;
+      if (!isToday) return false;
+      if (!doctorId) return true;
+      return v.doctor_id === doctorId || (!v.doctor_id && doctorId === "user_001");
+    });
+  },
+  getTodayAll: (doctorId = null) => {
     const today = new Date().toISOString().split("T")[0];
     return getCollection(KEYS.VISITS)
       .filter((v) => {
-        const vDate = v.visit_date.split("T")[0];
-        const isToday = vDate === today && (v.status === "waiting" || v.status === "in_consultation");
+        const isToday = v.visit_date?.split("T")[0] === today;
         if (!isToday) return false;
-        if (doctorId) return v.doctor_id === doctorId;
-        return true;
+        if (!doctorId) return true;
+        return v.doctor_id === doctorId || (!v.doctor_id && doctorId === "user_001");
       })
-      .sort((a, b) => a.token_number - b.token_number);
+      .sort((a, b) => (a.token_number || 0) - (b.token_number || 0));
   },
-
-  /** All of today's visits for the reception queue view. */
-  getTodayAll: () => {
+  getTodayQueue: (doctorId = null) => {
     const today = new Date().toISOString().split("T")[0];
     return getCollection(KEYS.VISITS)
-      .filter((v) => v.visit_date.split("T")[0] === today)
-      .sort((a, b) => a.token_number - b.token_number);
+      .filter((v) => {
+        const isToday = v.visit_date?.split("T")[0] === today;
+        const isNotCompleted = v.status !== "completed";
+        if (!isToday || !isNotCompleted) return false;
+        if (!doctorId) return true;
+        return v.doctor_id === doctorId || (!v.doctor_id && doctorId === "user_001");
+      })
+      .sort((a, b) => (a.token_number || 0) - (b.token_number || 0));
   },
-
-  /** Visits awaiting report uploads by reception */
+  getByDoctor: (doctorId) => {
+    const today = new Date().toISOString().split("T")[0];
+    return getCollection(KEYS.VISITS)
+      .filter((v) => {
+        const isToday = v.visit_date?.split("T")[0] === today;
+        if (!isToday) return false;
+        return v.doctor_id === doctorId || (!v.doctor_id && doctorId === "user_001");
+      })
+      .sort((a, b) => (a.token_number || 0) - (b.token_number || 0));
+  },
   getPendingReports: () => {
     return getCollection(KEYS.VISITS).filter((v) => v.status === "completed_reports_pending");
   },
-
-  /** Generate the next atomic token for today. */
   nextTokenNumber: () => {
     const today = new Date().toISOString().split("T")[0];
     const todayVisits = getCollection(KEYS.VISITS).filter(
@@ -815,7 +2571,6 @@ export const dbVisits = {
     const maxToken = todayVisits.reduce((max, v) => Math.max(max, v.token_number || 0), 0);
     return maxToken + 1;
   },
-
   add: (visit) => {
     const visits = getCollection(KEYS.VISITS);
     const token_number = dbVisits.nextTokenNumber();
@@ -833,7 +2588,6 @@ export const dbVisits = {
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newVisit;
   },
-
   updateStatus: (id, status) => {
     const visits = getCollection(KEYS.VISITS);
     const updated = visits.map((v) => (v.id === id ? { ...v, status } : v));
@@ -841,20 +2595,14 @@ export const dbVisits = {
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return updated.find((v) => v.id === id);
   },
-
-  /** Re-issue a new token for a late skipped patient at the END of the queue with Rs. 0 fee (Pre-paid link). */
   reissueLateToken: (visitId) => {
     const visits = getCollection(KEYS.VISITS);
     const originalVisit = visits.find((v) => v.id === visitId);
     if (!originalVisit) return null;
-
-    // 1. Mark original visit as 'skipped_reissued'
     const updatedVisits = visits.map((v) =>
       v.id === visitId ? { ...v, status: "skipped_reissued" } : v
     );
     setCollection(KEYS.VISITS, updatedVisits);
-
-    // 2. Issue a NEW fresh token for today at the end of the queue with fee_amount = 0 (Pre-paid)
     const token_number = dbVisits.nextTokenNumber();
     const newVisit = {
       id: "visit_" + Date.now(),
@@ -865,22 +2613,16 @@ export const dbVisits = {
       visit_type: originalVisit.visit_type || "new",
       status: "waiting",
       visit_date: new Date().toISOString(),
-      fee_amount: 0, // Zero fee because fee was already paid on originalVisit
+      fee_amount: 0,
       fee_waived_reason: `Re-issued from Skipped Token #${originalVisit.token_number} (Already Paid)`,
       original_visit_id: originalVisit.id,
       prescription_image_url: null,
       report_image_urls: [],
       notes: `Late Arrival — Re-issued from Token #${originalVisit.token_number}`,
     };
-
     setCollection(KEYS.VISITS, [...getCollection(KEYS.VISITS), newVisit]);
     return newVisit;
   },
-
-  /** Complete a visit — saves prescription photo + report photos.
-   *  If forcedStatus is provided, uses that explicitly ('completed' vs 'completed_reports_pending').
-   *  Otherwise, defaults to 'completed' if report_image_urls > 0, else 'completed_reports_pending'.
-   */
   complete: (id, { prescription_image_url, report_image_urls, notes, forcedStatus }) => {
     const visits = getCollection(KEYS.VISITS);
     const reports = report_image_urls || [];
@@ -893,8 +2635,6 @@ export const dbVisits = {
     setCollection(KEYS.VISITS, updated);
     return updated.find((v) => v.id === id);
   },
-
-  /** Attach missing report photos to a completed_reports_pending visit, marking it completed. */
   addReports: (id, newReportPhotos) => {
     const visits = getCollection(KEYS.VISITS);
     const updated = visits.map((v) => {
@@ -909,118 +2649,81 @@ export const dbVisits = {
     setCollection(KEYS.VISITS, updated);
     return updated.find((v) => v.id === id);
   },
-
-  /** Skip a visit — moves status to skipped (can be recalled). */
   skip: (id) => {
     const visits = getCollection(KEYS.VISITS);
-    // bump token to end of today's queue
-    const today = new Date().toISOString().split("T")[0];
-    const maxToken = visits
-      .filter((v) => v.visit_date.split("T")[0] === today)
-      .reduce((max, v) => Math.max(max, v.token_number || 0), 0);
-    const updated = visits.map((v) =>
-      v.id === id ? { ...v, status: "skipped", token_number: maxToken + 1 } : v
-    );
+    const updated = visits.map((v) => (v.id === id ? { ...v, status: "skipped" } : v));
     setCollection(KEYS.VISITS, updated);
     return updated.find((v) => v.id === id);
   },
 };
 
-// ---------- Multi-Unit Inventory Helpers ----------
 export function convertUnitsToBase(qty, unitType, item) {
-  const quantity = Number(qty) || 0;
-  if (!item || !item.has_multi_unit) return quantity;
-
-  const stripsPerBox = Number(item.strips_per_box) || 1;
-  const unitsPerStrip = Number(item.units_per_strip) || 1;
-
-  if (unitType === "box") {
-    return quantity * (stripsPerBox * unitsPerStrip);
-  } else if (unitType === "strip") {
-    return quantity * unitsPerStrip;
-  }
-  return quantity; // "unit" / tablet
-}
-
-export function formatStockBreakdown(item) {
-  if (!item) return "0 Units";
-  const baseStock = Math.max(0, Number(item.total_base_stock ?? item.stock_qty) || 0);
-
-  if (!item.has_multi_unit) {
-    const label = item.unit_label || "unit";
-    return `${baseStock} ${label}${baseStock === 1 ? "" : "s"}`;
-  }
-
+  if (!item || !item.has_multi_unit) return Number(qty) || 0;
   const stripsPerBox = Number(item.strips_per_box) || 1;
   const unitsPerStrip = Number(item.units_per_strip) || 1;
   const unitsPerBox = stripsPerBox * unitsPerStrip;
 
-  if (unitsPerBox <= 1) {
-    return `${baseStock} ${item.unit_label || "Tablet"}s`;
-  }
-
-  const boxes = Math.floor(baseStock / unitsPerBox);
-  const remAfterBoxes = baseStock % unitsPerBox;
-  const strips = Math.floor(remAfterBoxes / unitsPerStrip);
-  const looseUnits = remAfterBoxes % unitsPerStrip;
-
-  const parts = [];
-  if (boxes > 0) parts.push(`${boxes} ${item.box_label || "Box"}${boxes > 1 ? "es" : ""}`);
-  if (strips > 0) parts.push(`${strips} ${item.strip_label || "Strip"}${strips > 1 ? "s" : ""}`);
-  if (looseUnits > 0 || parts.length === 0) parts.push(`${looseUnits} ${item.unit_label || "Tablet"}${looseUnits > 1 ? "s" : ""}`);
-
-  return `${parts.join(", ")} (${baseStock} Total ${item.unit_label || "Tablet"}s)`;
+  if (unitType === "box") return (Number(qty) || 0) * unitsPerBox;
+  if (unitType === "strip") return (Number(qty) || 0) * unitsPerStrip;
+  return Number(qty) || 0;
 }
 
-export function formatStockShort(item) {
-  if (!item) return "0 Units";
-  const baseStock = Math.max(0, Number(item.total_base_stock ?? item.stock_qty) || 0);
-  if (!item.has_multi_unit) {
-    return `${baseStock} ${item.unit_label || "unit"}`;
-  }
-
-  const stripsPerBox = Number(item.strips_per_box) || 1;
-  const unitsPerStrip = Number(item.units_per_strip) || 1;
-  const unitsPerBox = stripsPerBox * unitsPerStrip;
-
-  const boxes = Math.floor(baseStock / unitsPerBox);
-  const remAfterBoxes = baseStock % unitsPerBox;
-  const strips = Math.floor(remAfterBoxes / unitsPerStrip);
-  const loose = remAfterBoxes % unitsPerStrip;
-
-  const parts = [];
-  if (boxes > 0) parts.push(`${boxes} Box`);
-  if (strips > 0) parts.push(`${strips} Strip`);
-  if (loose > 0 || parts.length === 0) parts.push(`${loose} ${item.unit_label || "Tab"}`);
-
-  return parts.join(", ");
-}
-
-// ---------- Store Inventory ----------
+// ---------- Inventory Engine ----------
 export const dbInventory = {
-  getAll:      ()   => getCollection(KEYS.INVENTORY),
-  getById:     (id) => getCollection(KEYS.INVENTORY).find((i) => i.id === id) || null,
-  getLowStock: ()   => getCollection(KEYS.INVENTORY).filter((i) => (i.total_base_stock ?? i.stock_qty) <= (i.low_stock_threshold || 20)),
+  getAll: () => {
+    const list = getCollection(KEYS.INVENTORY);
+    return list.map((i) => {
+      if (i.company_name) return i;
+      let comp = "BM Pvt LTD";
+      const name = (i.medicine_name || "").toLowerCase();
+      const code = (i.item_code || "").toLowerCase();
+      if (name.includes("paul") || name.includes("brooks") || code.includes("pb")) comp = "Paul Brooks Homoeo Lab";
+      else if (name.includes("mektum") || code.includes("mkt")) comp = "MEKTUM Pvt Ltd";
+      else if (name.includes("blossom") || code.includes("bls")) comp = "BLOSSOM Homoeo Pharma";
+      else if (name.includes("schwabe") || name.includes("reckeweg") || name.includes("german")) comp = "Schwabe / German";
+      else if (name.includes("panadol") || name.includes("amoxil") || name.includes("gsk") || name.includes("getz")) comp = "Local Pharma Market";
+      return { ...i, company_name: comp };
+    });
+  },
+  getById: (id) => {
+    const item = getFromCollectionById(KEYS.INVENTORY, id);
+    if (!item) return null;
+    if (item.company_name) return item;
+    return { ...item, company_name: "BM Pvt LTD" };
+  },
+  getLowStock: () => dbInventory.getAll().filter((i) => (i.total_base_stock ?? i.stock_qty) <= (i.low_stock_threshold || 6)),
+  getByCompany: (companyName) => {
+    if (!companyName || companyName === "all") return dbInventory.getAll();
+    return dbInventory.getAll().filter((i) => (i.company_name || "").toLowerCase() === companyName.toLowerCase());
+  },
 
-  search: (query) => {
-    if (!query || query.trim() === "") return getCollection(KEYS.INVENTORY);
+  search: (query, companyFilter = "all") => {
+    let list = dbInventory.getAll();
+    if (companyFilter && companyFilter !== "all") {
+      list = list.filter((i) => (i.company_name || "").toLowerCase() === companyFilter.toLowerCase());
+    }
+    if (!query || query.trim() === "") return list;
     const q = query.trim().toLowerCase();
-    return getCollection(KEYS.INVENTORY).filter((i) =>
-      (i.medicine_name || "").toLowerCase().includes(q)
+    return list.filter((i) =>
+      (i.medicine_name || "").toLowerCase().includes(q) ||
+      (i.item_code || "").toLowerCase().includes(q) ||
+      (i.category || "").toLowerCase().includes(q) ||
+      (i.company_name || "").toLowerCase().includes(q)
     );
   },
 
   add: (item) => {
     const inventory = getCollection(KEYS.INVENTORY);
-    const stripsPerBox = Number(item.strips_per_box) || 10;
-    const unitsPerStrip = Number(item.units_per_strip) || 12;
+    const stripsPerBox = Number(item.strips_per_box) || 1;
+    const unitsPerStrip = Number(item.units_per_strip) || 1;
 
     let baseStock = Number(item.total_base_stock);
     if (isNaN(baseStock) || baseStock === undefined) {
-      baseStock = item.has_multi_unit
-        ? (Number(item.stock_qty) || 0) * (stripsPerBox * unitsPerStrip)
-        : (Number(item.stock_qty) || 0);
+      baseStock = Number(item.stock_qty) || 0;
     }
+
+    const wStock = Number(item.warehouse_stock) || Math.floor(baseStock * 0.7);
+    const sStock = Number(item.store_stock) || (baseStock - wStock);
 
     const newItem = {
       ...item,
@@ -1029,20 +2732,27 @@ export const dbInventory = {
       has_multi_unit: Boolean(item.has_multi_unit),
       strips_per_box: stripsPerBox,
       units_per_strip: unitsPerStrip,
-      box_label: item.box_label || "Box",
-      strip_label: item.strip_label || "Strip",
-      unit_label: item.unit_label || "Tablet",
-      cost_price_per_box: Number(item.cost_price_per_box) || 0,
-      box_sale_price: Number(item.box_sale_price) || 0,
-      strip_sale_price: Number(item.strip_sale_price) || 0,
-      unit_sale_price: Number(item.unit_sale_price) || Number(item.unit_price) || 0,
+      box_label: item.box_label || "Pack",
+      strip_label: item.strip_label || "Bottle",
+      unit_label: item.unit_label || "Bottle",
+      cost_price_per_box: Number(item.cost_price_per_box) || Number(item.purchase_price) || 0,
+      box_sale_price: Number(item.box_sale_price) || Number(item.sale_price) || 0,
+      strip_sale_price: Number(item.strip_sale_price) || Number(item.sale_price) || 0,
+      unit_sale_price: Number(item.unit_sale_price) || Number(item.sale_price) || 0,
       total_base_stock: baseStock,
-      stock_qty: baseStock,
-      unit_price: Number(item.unit_sale_price) || Number(item.unit_price) || 0,
-      low_stock_threshold: Number(item.low_stock_threshold) || 20,
+      stock_qty: sStock,
+      store_stock: sStock,
+      warehouse_stock: wStock,
+      low_stock_threshold: Number(item.low_stock_threshold) || 6,
     };
     setCollection(KEYS.INVENTORY, [...inventory, newItem]);
     return newItem;
+  },
+
+  update: (id, data) => {
+    const inventory = getCollection(KEYS.INVENTORY);
+    const updated = inventory.map((i) => (i.id === id ? { ...i, ...data } : i));
+    setCollection(KEYS.INVENTORY, updated);
   },
 
   deductStock: (id, baseQty) => {
@@ -1063,254 +2773,238 @@ export const dbInventory = {
     setCollection(KEYS.INVENTORY, updated);
   },
 
-  addStock: (id, baseQty) => {
+  addStock: (id, baseQty, destination = "warehouse") => {
     const inventory = getCollection(KEYS.INVENTORY);
     const updated = inventory.map((i) => {
       if (i.id !== id) return i;
       const currentBase = i.total_base_stock ?? i.stock_qty ?? 0;
       const newBase = currentBase + baseQty;
-      const currentWarehouse = i.warehouse_stock ?? currentBase;
-      const newWarehouse = currentWarehouse + baseQty;
-      return {
-        ...i,
-        total_base_stock: newBase,
-        warehouse_stock: newWarehouse,
-        stock_qty: i.store_stock ?? newBase,
-      };
+      if (destination === "store") {
+        const newStore = (i.store_stock ?? 0) + baseQty;
+        return {
+          ...i,
+          total_base_stock: newBase,
+          store_stock: newStore,
+          stock_qty: newStore,
+        };
+      } else {
+        const newWarehouse = (i.warehouse_stock ?? 0) + baseQty;
+        return {
+          ...i,
+          total_base_stock: newBase,
+          warehouse_stock: newWarehouse,
+        };
+      }
     });
     setCollection(KEYS.INVENTORY, updated);
   },
 
-  update: (id, data) => {
-    const inventory = getCollection(KEYS.INVENTORY);
-    const updated = inventory.map((i) => (i.id === id ? { ...i, ...data } : i));
-    setCollection(KEYS.INVENTORY, updated);
+  transferWarehouseToStore: (id, qty, notes = "", transferred_by = "Store Staff") => {
+    const inv = dbInventory.getById(id);
+    if (!inv) return null;
+    const q = Number(qty) || 0;
+    const wStock = Math.max(0, (inv.warehouse_stock ?? 0) - q);
+    const sStock = (inv.store_stock ?? 0) + q;
+    dbInventory.update(id, {
+      warehouse_stock: wStock,
+      store_stock: sStock,
+      total_base_stock: wStock + sStock,
+      stock_qty: sStock,
+    });
+    dbStockTransfers.transfer({
+      inventory_id: inv.id,
+      medicine_name: inv.medicine_name,
+      qty: q,
+      from_loc: "Main Warehouse (Godown)",
+      to_loc: "Medical Store Counter (POS)",
+      notes: notes || "Internal Replenishment (Godown ➔ Store)",
+      transferred_by: transferred_by || "Store Staff"
+    });
   },
-};
 
-// ---------- Store Sales (cart-style with discounts and walk-in support) ----------
-export const dbSales = {
-  getAll: () => getCollection(KEYS.SALES),
+  transferStoreToWarehouse: (id, qty, notes = "", transferred_by = "Store Staff") => {
+    const inv = dbInventory.getById(id);
+    if (!inv) return null;
+    const q = Number(qty) || 0;
+    const sStock = Math.max(0, (inv.store_stock ?? 0) - q);
+    const wStock = (inv.warehouse_stock ?? 0) + q;
+    dbInventory.update(id, {
+      warehouse_stock: wStock,
+      store_stock: sStock,
+      total_base_stock: wStock + sStock,
+      stock_qty: sStock,
+    });
+    dbStockTransfers.transfer({
+      inventory_id: inv.id,
+      medicine_name: inv.medicine_name,
+      qty: q,
+      from_loc: "Medical Store Counter (POS)",
+      to_loc: "Main Warehouse (Godown)",
+      notes: notes || "Stock Return (Store ➔ Godown)",
+      transferred_by: transferred_by || "Store Staff"
+    });
+  },
 
-  /**
-   * Checkout a cart.
-   * sale = { visit_id (nullable), items: [{ inventory_id, medicine_name, unit_label, quantity, unit_price, line_total }], discount_amount, tax_amount }
-   * Deducts stock for each item and records one sale record for the whole cart.
-   */
-  checkout: (sale) => {
-    const sales = getCollection(KEYS.SALES);
-    const subtotal_amount = (sale.items || []).reduce((sum, item) => sum + item.line_total, 0);
-    const discount_amount = Number(sale.discount_amount) || 0;
-    const tax_amount = Number(sale.tax_amount) || 0;
-    const total_amount = Math.max(0, subtotal_amount - discount_amount + tax_amount);
+  getProductMovement: (inventoryId) => {
+    const inv = dbInventory.getById(inventoryId);
+    if (!inv) return null;
 
-    const newSale = {
-      ...sale,
-      id: generateId("sale"),
-      clinic_id: "clinic_001",
-      visit_id: sale.visit_id || null,
-      subtotal_amount,
-      discount_amount,
-      tax_amount,
-      total_amount,
-      sale_date: new Date().toISOString(),
+    const purchases = dbPurchases.getAll();
+    const sales = dbSales.getAll();
+    const b2b = dbB2BSales.getAll();
+    const transfers = dbStockTransfers.getAll();
+
+    const ledger = [];
+
+    // 1. Inward Purchases
+    purchases.forEach((p) => {
+      (p.items || []).forEach((item) => {
+        if (item.inventory_id === inv.id || (item.medicine_name && item.medicine_name.toLowerCase() === inv.medicine_name.toLowerCase())) {
+          ledger.push({
+            date: p.purchase_date || p.created_at || new Date().toISOString(),
+            type: "PURCHASE",
+            type_label: "Company / Local Purchase",
+            voucher_no: p.invoice_no || p.id,
+            party_name: p.supplier_name || "Supplier Consignment",
+            destination: p.destination || "Main Warehouse (Godown)",
+            qty_in: Number(item.qty_base_units || item.qty) || 0,
+            qty_out: 0,
+            unit_price: Number(item.cost_price || item.unit_price) || 0,
+            total_amount: Number(item.total_cost || item.line_total) || 0,
+            notes: p.notes || `GRN from ${p.supplier_name}`,
+          });
+        }
+      });
+    });
+
+    // 2. Outward Retail POS Sales
+    sales.forEach((s) => {
+      (s.items || []).forEach((item) => {
+        if (item.inventory_id === inv.id || (item.medicine_name && item.medicine_name.toLowerCase() === inv.medicine_name.toLowerCase())) {
+          ledger.push({
+            date: s.sale_date || s.created_at || new Date().toISOString(),
+            type: "RETAIL_SALE",
+            type_label: "Retail POS Counter Sale",
+            voucher_no: s.receipt_no || s.id,
+            party_name: s.patient_name || "Walk-in Patient",
+            destination: "Store Counter",
+            qty_in: 0,
+            qty_out: Number(item.base_units || item.quantity || item.qty) || 0,
+            unit_price: Number(item.unit_price) || 0,
+            total_amount: Number(item.line_total) || 0,
+            notes: "Dispensed at Retail Medical Store",
+          });
+        }
+      });
+    });
+
+    // 3. Outward Wholesale B2B Sales (Interior Sindh)
+    b2b.forEach((b) => {
+      (b.items || []).forEach((item) => {
+        if (item.inventory_id === inv.id || (item.medicine_name && item.medicine_name.toLowerCase() === inv.medicine_name.toLowerCase())) {
+          ledger.push({
+            date: b.sale_date || b.created_at || new Date().toISOString(),
+            type: "WHOLESALE_B2B",
+            type_label: "Wholesale B2B Supply",
+            voucher_no: b.invoice_no || b.id,
+            party_name: b.buyer_name || "Interior Sindh Party",
+            city: b.city || b.buyer_city || "",
+            salesman: b.salesman || "",
+            bilty_no: b.bilty_no || "",
+            transport: b.transport || "",
+            destination: `${b.buyer_name} (${b.city || 'Interior Sindh'})`,
+            qty_in: 0,
+            qty_out: Number(item.qty_base_units || item.qty || item.quantity) || 0,
+            unit_price: Number(item.unit_price) || 0,
+            total_amount: Number(item.line_total) || 0,
+            notes: `Bilty: ${b.bilty_no || 'Direct'}, Tr: ${b.transport || 'Local'}, Man: ${b.salesman || 'Staff'}`,
+          });
+        }
+      });
+    });
+
+    // 4. Internal Transfers
+    transfers.forEach((t) => {
+      if (t.inventory_id === inv.id || (t.medicine_name && t.medicine_name.toLowerCase() === inv.medicine_name.toLowerCase())) {
+        const isToStore = t.to_loc?.includes("Counter") || t.to_loc?.includes("POS") || t.to_loc?.includes("Store");
+        ledger.push({
+          date: t.transfer_date || t.created_at || new Date().toISOString(),
+          type: "INTERNAL_TRANSFER",
+          type_label: `Internal Shift (${t.from_loc} ➔ ${t.to_loc})`,
+          voucher_no: t.transfer_no || t.id,
+          party_name: `Internal Shift (${t.transferred_by || 'Staff'})`,
+          handler: t.transferred_by || "Staff",
+          destination: `${t.from_loc} ➔ ${t.to_loc}`,
+          qty_in: isToStore ? 0 : Number(t.qty) || 0,
+          qty_out: isToStore ? Number(t.qty) || 0 : 0,
+          unit_price: inv.unit_sale_price || 0,
+          total_amount: (Number(t.qty) || 0) * (inv.unit_sale_price || 0),
+          notes: t.notes || `Stock shifted by ${t.transferred_by || 'Staff'}`,
+        });
+      }
+    });
+
+    ledger.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return {
+      item: inv,
+      summary: {
+        warehouse_stock: inv.warehouse_stock ?? 0,
+        store_stock: inv.store_stock ?? (inv.stock_qty ?? 0),
+        total_base_stock: inv.total_base_stock ?? (inv.stock_qty ?? 0),
+        total_purchased: ledger.filter((l) => l.type === "PURCHASE").reduce((sum, l) => sum + l.qty_in, 0),
+        total_sold_retail: ledger.filter((l) => l.type === "RETAIL_SALE").reduce((sum, l) => sum + l.qty_out, 0),
+        total_sold_wholesale: ledger.filter((l) => l.type === "WHOLESALE_B2B").reduce((sum, l) => sum + l.qty_out, 0),
+      },
+      transactions: ledger,
     };
-    setCollection(KEYS.SALES, [...sales, newSale]);
-    // Deduct stock for each line item (converting to base units if needed)
-    (sale.items || []).forEach((item) => {
-      const invItem = dbInventory.getById(item.inventory_id);
-      const baseQty = item.base_units_deducted || convertUnitsToBase(item.quantity, item.selected_unit_type || "unit", invItem);
-      dbInventory.deductStock(item.inventory_id, baseQty);
-    });
-    return newSale;
   },
 };
 
-// ---------- Patient Documents (legacy — kept for any existing usage) ----------
-export const dbDocuments = {
-  getAll:       ()          => getCollection(KEYS.DOCUMENTS),
-  getByPatient: (patientId) => getCollection(KEYS.DOCUMENTS).filter((d) => d.patient_id === patientId),
-  add: (doc) => {
-    const docs = getCollection(KEYS.DOCUMENTS);
-    const newDoc = { ...doc, id: generateId("doc"), uploaded_at: new Date().toISOString() };
-    setCollection(KEYS.DOCUMENTS, [...docs, newDoc]);
-    return newDoc;
+// ---------- Interior Sindh Wholesale Parties ----------
+export const dbParties = {
+  getAll: () => getCollection(KEYS.PARTIES),
+  getById: (id) => getFromCollectionById(KEYS.PARTIES, id),
+  getByCity: (city) => getCollection(KEYS.PARTIES).filter((p) => (p.city || "").toLowerCase() === (city || "").toLowerCase()),
+  add: (party) => {
+    const list = getCollection(KEYS.PARTIES);
+    const newP = { ...party, id: generateId("pty"), balance_due: Number(party.balance_due) || 0 };
+    setCollection(KEYS.PARTIES, [newP, ...list]);
+    return newP;
   },
-  delete: (id) => {
-    const docs = getCollection(KEYS.DOCUMENTS);
-    setCollection(KEYS.DOCUMENTS, docs.filter((d) => d.id !== id));
-  },
-};
-
-// ---------- Clinic Services Catalog ----------
-export const dbClinicServices = {
-  getAll: () => getCollection(KEYS.SERVICES),
-  add: (service) => {
-    const services = getCollection(KEYS.SERVICES);
-    const newService = { ...service, id: generateId("ser") };
-    setCollection(KEYS.SERVICES, [...services, newService]);
-    return newService;
-  },
-  delete: (id) => {
-    const services = getCollection(KEYS.SERVICES);
-    setCollection(KEYS.SERVICES, services.filter((s) => s.id !== id));
+  updateBalance: (id, delta) => {
+    const list = getCollection(KEYS.PARTIES);
+    const updated = list.map((p) => (p.id === id ? { ...p, balance_due: Math.max(0, (p.balance_due || 0) + Number(delta)) } : p));
+    setCollection(KEYS.PARTIES, updated);
   },
 };
 
-// ---------- Pharma Suppliers ----------
+// ---------- Suppliers ----------
 export const dbSuppliers = {
   getAll: () => getCollection(KEYS.SUPPLIERS),
-  getById: (id) => getCollection(KEYS.SUPPLIERS).find((s) => s.id === id) || null,
+  getById: (id) => getFromCollectionById(KEYS.SUPPLIERS, id),
   add: (supplier) => {
-    const suppliers = getCollection(KEYS.SUPPLIERS);
-    const newSup = { ...supplier, id: generateId("sup"), balance_due: 0 };
-    setCollection(KEYS.SUPPLIERS, [...suppliers, newSup]);
-    return newSup;
+    const list = getCollection(KEYS.SUPPLIERS);
+    const newS = { ...supplier, id: generateId("sup") };
+    setCollection(KEYS.SUPPLIERS, [...list, newS]);
+    return newS;
   },
-  recordPayment: (supplierId, paymentAmount) => {
-    const suppliers = getCollection(KEYS.SUPPLIERS);
-    const sup = suppliers.find((s) => s.id === supplierId);
-    const amt = Number(paymentAmount) || 0;
-    const updated = suppliers.map((s) =>
-      s.id === supplierId
-        ? { ...s, balance_due: Math.max(0, (s.balance_due || 0) - amt) }
-        : s
-    );
+  recordPayment: (supplierId, amount) => {
+    const list = getCollection(KEYS.SUPPLIERS);
+    const updated = list.map((s) => (s.id === supplierId ? { ...s, current_balance: Math.max(0, (s.current_balance || 0) - Number(amount)) } : s));
     setCollection(KEYS.SUPPLIERS, updated);
-
-    // Auto-record Supplier Khata Payment in Clinic Daily Expenses
-    if (amt > 0) {
-      dbExpenses.add({
-        category: "Supplier Khata Payment",
-        amount: amt,
-        expense_date: new Date().toISOString(),
-        notes: `Cash Payment to Distributor (${sup?.name || "Pharma Supplier"})`
-      });
-    }
   },
 };
 
-// ---------- Company Purchases (Stock Receiving & Bills) ----------
-export const dbPurchases = {
-  getAll: () => getCollection(KEYS.PURCHASES),
-  add: (purchase) => {
-    const purchases = getCollection(KEYS.PURCHASES);
-    const suppliers = getCollection(KEYS.SUPPLIERS);
-
-    const total_amount = Number(purchase.total_amount) || 0;
-    const paid_amount = Number(purchase.paid_amount) || 0;
-    const balance_due = Math.max(0, total_amount - paid_amount);
-    const payment_status = balance_due === 0 ? "paid" : paid_amount > 0 ? "partial" : "unpaid";
-
-    const newPurchase = {
-      ...purchase,
-      id: generateId("pur"),
-      total_amount,
-      paid_amount,
-      balance_due,
-      payment_status,
-      purchase_date: new Date().toISOString(),
-    };
-
-    setCollection(KEYS.PURCHASES, [...purchases, newPurchase]);
-
-    // Auto-record Supplier Payment in Clinic Daily Expenses if paid upfront cash
-    if (paid_amount > 0) {
-      dbExpenses.add({
-        category: "Stock Purchase Cash Payment",
-        amount: paid_amount,
-        expense_date: new Date().toISOString(),
-        notes: `Bill #${newPurchase.invoice_no || newPurchase.id} (${newPurchase.supplier_name || "Supplier"})`
-      });
-    }
-
-    // Update Supplier Balance
-    if (balance_due > 0 && purchase.supplier_id) {
-      const updatedSuppliers = suppliers.map((s) =>
-        s.id === purchase.supplier_id
-          ? { ...s, balance_due: (s.balance_due || 0) + balance_due }
-          : s
-      );
-      setCollection(KEYS.SUPPLIERS, updatedSuppliers);
-    }
-
-    // Add or update items in inventory
-    (purchase.items || []).forEach((item) => {
-      const invList = dbInventory.getAll();
-      const existing = invList.find((i) => i.medicine_name.toLowerCase() === item.medicine_name.toLowerCase());
-      
-      const receivedUnitType = item.received_unit_type || (item.has_multi_unit ? "box" : "unit");
-      const baseQtyAdded = convertUnitsToBase(Number(item.qty), receivedUnitType, existing || item);
-
-      if (existing) {
-        dbInventory.addStock(existing.id, baseQtyAdded);
-        dbInventory.update(existing.id, {
-          cost_price_per_box: Number(item.cost_price) || existing.cost_price_per_box,
-          box_sale_price: Number(item.sale_price) || existing.box_sale_price,
-          unit_sale_price: Number(item.unit_sale_price) || existing.unit_sale_price,
-          strip_sale_price: Number(item.strip_sale_price) || existing.strip_sale_price,
-          batch_no: item.batch_no || existing.batch_no,
-          expiry_date: item.expiry_date || existing.expiry_date,
-        });
-      } else {
-        const stripsPerBox = Number(item.strips_per_box) || 10;
-        const unitsPerStrip = Number(item.units_per_strip) || 12;
-        dbInventory.add({
-          medicine_name: item.medicine_name,
-          category: item.category || "Tablet",
-          strength: item.strength || "",
-          has_multi_unit: Boolean(item.has_multi_unit ?? true),
-          strips_per_box: stripsPerBox,
-          units_per_strip: unitsPerStrip,
-          box_label: item.box_label || "Box",
-          strip_label: item.strip_label || "Strip",
-          unit_label: item.unit_label || "Tablet",
-          cost_price_per_box: Number(item.cost_price) || 0,
-          box_sale_price: Number(item.sale_price) || 0,
-          strip_sale_price: Number(item.strip_sale_price) || 0,
-          unit_sale_price: Number(item.unit_sale_price) || 0,
-          total_base_stock: baseQtyAdded,
-          stock_qty: baseQtyAdded,
-          low_stock_threshold: 20,
-          supplier_id: purchase.supplier_id,
-          batch_no: item.batch_no,
-          expiry_date: item.expiry_date,
-        });
-      }
-    });
-
-    return newPurchase;
-  },
-
-  deleteInvoice: (id) => {
-    const purchases = getCollection(KEYS.PURCHASES);
-    const target = purchases.find((p) => p.id === id || p.invoice_no === id);
-    if (!target) return;
-
-    // 1. Revert Supplier Balance Due
-    if (target.supplier_id && target.balance_due > 0) {
-      const suppliers = getCollection(KEYS.SUPPLIERS);
-      const updatedSuppliers = suppliers.map((s) =>
-        s.id === target.supplier_id
-          ? { ...s, balance_due: Math.max(0, (s.balance_due || 0) - target.balance_due) }
-          : s
-      );
-      setCollection(KEYS.SUPPLIERS, updatedSuppliers);
-    }
-
-    // 2. Revert/Deduct Added Inventory Stock
-    (target.items || []).forEach((item) => {
-      const invList = dbInventory.getAll();
-      const existing = invList.find((i) => i.medicine_name.toLowerCase() === item.medicine_name.toLowerCase());
-      if (existing) {
-        const receivedUnitType = item.received_unit_type || (item.has_multi_unit ? "box" : "unit");
-        const baseQty = convertUnitsToBase(Number(item.qty), receivedUnitType, existing);
-        dbInventory.deductStock(existing.id, baseQty);
-      }
-    });
-
-    // 3. Remove purchase record
-    setCollection(KEYS.PURCHASES, purchases.filter((p) => p.id !== target.id));
+// ---------- Salesmen ----------
+export const dbSalesmen = {
+  getAll: () => getCollection(KEYS.SALESMEN),
+  getById: (id) => getFromCollectionById(KEYS.SALESMEN, id),
+  add: (sm) => {
+    const list = getCollection(KEYS.SALESMEN);
+    const newSm = { ...sm, id: generateId("sm") };
+    setCollection(KEYS.SALESMEN, [...list, newSm]);
+    return newSm;
   },
 };
 
@@ -1378,145 +3072,120 @@ export const dbPatientLedger = {
   },
 };
 
-// ---------- Pharmacy Daily Expenses (Kharchay) ----------
-export const dbExpenses = {
-  getAll: () => getCollection(KEYS.EXPENSES),
-  add: (expense) => {
-    const list = getCollection(KEYS.EXPENSES);
-    const newExp = {
-      ...expense,
-      id: generateId("exp"),
-      amount: Number(expense.amount) || 0,
-      date: expense.date || new Date().toISOString()
-    };
-    setCollection(KEYS.EXPENSES, [newExp, ...list]);
-    return newExp;
+// ---------- Documents ----------
+export const dbDocuments = {
+  getAll: () => getCollection(KEYS.DOCUMENTS),
+  getByPatient: (patientId) => getCollection(KEYS.DOCUMENTS).filter((d) => d.patient_id === patientId),
+  add: (doc) => {
+    const list = getCollection(KEYS.DOCUMENTS);
+    const newDoc = { ...doc, id: generateId("doc"), created_at: new Date().toISOString() };
+    setCollection(KEYS.DOCUMENTS, [newDoc, ...list]);
+    return newDoc;
   },
   delete: (id) => {
-    const list = getCollection(KEYS.EXPENSES);
-    setCollection(KEYS.EXPENSES, list.filter((e) => e.id !== id));
-  }
-};
-
-// ---------- Sales Returns & Exchanges ----------
-export const dbReturns = {
-  getAll: () => getCollection(KEYS.RETURNS),
-  processReturn: ({ sale_id, return_items, reason, refund_type }) => {
-    const sales = getCollection(KEYS.SALES);
-    const targetSale = sales.find((s) => s.id === sale_id);
-    if (!targetSale) throw new Error("Sale receipt not found.");
-
-    // Proportional discount factor: if receipt had a discount, scale line refunds proportionally
-    const saleSubtotal = Number(targetSale.subtotal_amount) || Number(targetSale.total_amount) || 1;
-    const saleNetTotal = Number(targetSale.total_amount) || saleSubtotal;
-    const discountRatio = saleSubtotal > 0 ? (saleNetTotal / saleSubtotal) : 1;
-
-    let totalRefundAmount = 0;
-    const processedReturnItems = [];
-
-    (return_items || []).forEach((rItem) => {
-      const invItem = dbInventory.getById(rItem.inventory_id);
-      const qtyReturned = Number(rItem.quantity_returned) || 0;
-      if (qtyReturned <= 0) return;
-
-      const baseUnitsReturned = rItem.base_units_returned || convertUnitsToBase(qtyReturned, rItem.selected_unit_type || "unit", invItem);
-      
-      // Restock inventory automatically
-      if (invItem) {
-        dbInventory.addStock(invItem.id, baseUnitsReturned);
-      }
-
-      const grossPrice = (Number(rItem.unit_price) || 0) * qtyReturned;
-      const itemLineRefund = Number((grossPrice * discountRatio).toFixed(2));
-      totalRefundAmount += itemLineRefund;
-
-      processedReturnItems.push({
-        inventory_id: rItem.inventory_id,
-        medicine_name: rItem.medicine_name,
-        selected_unit_type: rItem.selected_unit_type,
-        unit_label: rItem.unit_label,
-        quantity_returned: qtyReturned,
-        base_units_returned: baseUnitsReturned,
-        refund_price: itemLineRefund
-      });
-    });
-
-    totalRefundAmount = Number(totalRefundAmount.toFixed(2));
-
-    const returns = getCollection(KEYS.RETURNS);
-    const newReturn = {
-      id: generateId("ret"),
-      sale_id,
-      patient_name: targetSale.patient_name || "Walk-in Customer",
-      return_date: new Date().toISOString(),
-      reason: reason || "Customer request",
-      refund_type: refund_type || "cash",
-      refund_amount: totalRefundAmount,
-      items: processedReturnItems
-    };
-
-    setCollection(KEYS.RETURNS, [newReturn, ...returns]);
-
-    // Auto-record cash refund in daily expenses
-    if (refund_type === "cash" && totalRefundAmount > 0) {
-      dbExpenses.add({
-        category: "Sales Return Refund",
-        amount: totalRefundAmount,
-        expense_date: new Date().toISOString(),
-        notes: `Cash Refund for Sale Receipt #${targetSale.id}`
-      });
-    }
-
-    // If refund_type is credit and targetSale had balance_due / linkedPatient
-    if (refund_type === "credit" && targetSale.patient_name) {
-      const patients = getCollection(KEYS.PATIENTS);
-      const patient = patients.find((p) => p.full_name.toLowerCase() === targetSale.patient_name.toLowerCase());
-      if (patient) {
-        dbPatientLedger.receivePayment(patient.id, totalRefundAmount);
-      }
-    }
-
-    return newReturn;
-  }
-};
-
-// ---------- Internal Stock Transfers (Warehouse -> Store) ----------
-export const dbStockTransfers = {
-  getAll: () => getCollection(KEYS.STOCK_TRANSFERS),
-  transfer: (data) => {
-    // data = { inventory_id, medicine_name, qty, from_loc, to_loc, notes, transferred_by }
-    const transfers = getCollection(KEYS.STOCK_TRANSFERS);
-    const transferNo = generateSequentialInvoiceNo("TRF");
-    const newTransfer = {
-      ...data,
-      id: generateId("trf"),
-      transfer_no: transferNo,
-      transfer_date: new Date().toISOString(),
-    };
-    setCollection(KEYS.STOCK_TRANSFERS, [newTransfer, ...transfers]);
-
-    // Move inventory stock from warehouse to store
-    const inv = dbInventory.getById(data.inventory_id);
-    if (inv) {
-      const qty = Number(data.qty) || 0;
-      const wStock = Math.max(0, (inv.warehouse_stock ?? inv.total_base_stock ?? inv.stock_qty ?? 0) - qty);
-      const sStock = Math.max(0, (inv.store_stock ?? 0) + qty);
-      dbInventory.update(inv.id, {
-        warehouse_stock: wStock,
-        store_stock: sStock,
-        total_base_stock: wStock + sStock,
-        stock_qty: sStock, // store stock active for retail POS
-      });
-    }
-    return newTransfer;
+    const list = getCollection(KEYS.DOCUMENTS);
+    setCollection(KEYS.DOCUMENTS, list.filter((d) => d.id !== id));
   },
 };
 
-// ---------- Wholesale B2B Sales (Warehouse -> Other Clinics / Chemists) ----------
+// ---------- Tenants ----------
+export const dbTenants = {
+  getAll: () => getCollection(KEYS.TENANTS),
+  getById: (id) => getCollection(KEYS.TENANTS).find((t) => t.id === id) || null,
+  add: (tenant) => {
+    const list = getCollection(KEYS.TENANTS);
+    const newT = { ...tenant, id: generateId("tenant") };
+    setCollection(KEYS.TENANTS, [...list, newT]);
+    return newT;
+  },
+  update: (id, data) => {
+    const list = getCollection(KEYS.TENANTS);
+    const updated = list.map((t) => (t.id === id ? { ...t, ...data } : t));
+    setCollection(KEYS.TENANTS, updated);
+  },
+  delete: (id) => {
+    const list = getCollection(KEYS.TENANTS);
+    setCollection(KEYS.TENANTS, list.filter((t) => t.id !== id));
+  },
+  switchToTenant: (id) => {
+    console.log("Switched to tenant", id);
+  },
+};
+
+// ---------- Store Sales (Retail POS) ----------
+export const dbSales = {
+  getAll: () => getCollection(KEYS.SALES),
+  checkout: (sale) => {
+    const sales = getCollection(KEYS.SALES);
+    const invoiceNo = generateSequentialInvoiceNo("POS");
+    const subtotal = Number(sale.subtotal_amount) || Number(sale.total_amount) || 0;
+    const discount = Number(sale.discount_amount) || 0;
+    const total = Math.max(0, subtotal - discount);
+    const paid = Number(sale.paid_amount) !== undefined ? Number(sale.paid_amount) : total;
+
+    const newSale = {
+      ...sale,
+      id: generateId("sale"),
+      receipt_no: invoiceNo,
+      sale_date: new Date().toISOString(),
+      subtotal_amount: subtotal,
+      discount_amount: discount,
+      total_amount: total,
+      paid_amount: paid,
+      balance_due: Math.max(0, total - paid),
+    };
+
+    (sale.items || []).forEach((item) => {
+      const inv = dbInventory.getById(item.inventory_id);
+      if (inv) {
+        const baseUnits = item.base_units || item.quantity || item.qty || 1;
+        dbInventory.deductStock(inv.id, baseUnits);
+      }
+    });
+
+    setCollection(KEYS.SALES, [newSale, ...sales]);
+    return newSale;
+  },
+};
+
+// ---------- Purchases (GRN Inward) ----------
+export const dbPurchases = {
+  getAll: () => getCollection(KEYS.PURCHASES),
+  add: (purchase) => {
+    const purchases = getCollection(KEYS.PURCHASES);
+    const invoiceNo = generateSequentialInvoiceNo("PUR");
+    const newPurchase = {
+      ...purchase,
+      id: generateId("pur"),
+      invoice_no: invoiceNo,
+      created_at: new Date().toISOString(),
+    };
+
+    const dest = purchase.destination_type === "store" ? "store" : "warehouse";
+    (purchase.items || []).forEach((item) => {
+      const inv = dbInventory.getById(item.inventory_id);
+      if (inv) {
+        const baseUnits = Number(item.qty_base_units || item.qty || 1);
+        dbInventory.addStock(inv.id, baseUnits, dest);
+      }
+    });
+
+    setCollection(KEYS.PURCHASES, [newPurchase, ...purchases]);
+    return newPurchase;
+  },
+  deletePurchase: (purchaseId) => {
+    const purchases = getCollection(KEYS.PURCHASES);
+    setCollection(KEYS.PURCHASES, purchases.filter((p) => p.id !== purchaseId));
+  },
+  deleteInvoice: (purchaseId) => {
+    dbPurchases.deletePurchase(purchaseId);
+  },
+};
+
+// ---------- Wholesale B2B Sales (Interior Sindh Supply) ----------
 export const dbB2BSales = {
   getAll: () => getCollection(KEYS.B2B_SALES),
   checkout: (saleData) => {
-    // saleData = { buyer_name, buyer_phone, buyer_address, items: [...], total_amount, paid_amount, balance_due, payment_type: "cash"|"credit" }
     const sales = getCollection(KEYS.B2B_SALES);
     const invoiceNo = generateSequentialInvoiceNo("WHO");
     const paidAmount = Number(saleData.paid_amount) || 0;
@@ -1533,96 +3202,83 @@ export const dbB2BSales = {
       sale_date: new Date().toISOString(),
     };
 
-    setCollection(KEYS.B2B_SALES, [newB2BSale, ...sales]);
-
-    // Deduct stock from Warehouse Stock
     (saleData.items || []).forEach((item) => {
       const inv = dbInventory.getById(item.inventory_id);
       if (inv) {
         const qty = Number(item.qty_base_units || item.quantity || item.qty) || 0;
-        const wStock = Math.max(0, (inv.warehouse_stock ?? inv.total_base_stock ?? inv.stock_qty ?? 0) - qty);
-        const sStock = inv.store_stock ?? 0;
+        const wStock = Math.max(0, (inv.warehouse_stock ?? 0) - qty);
         dbInventory.update(inv.id, {
           warehouse_stock: wStock,
-          total_base_stock: wStock + sStock,
+          total_base_stock: wStock + (inv.store_stock ?? 0),
         });
       }
     });
 
-    // If Credit, update Buyer Khata Ledger
     if (balanceDue > 0 && saleData.buyer_id) {
-      dbPatientLedger.addCredit(saleData.buyer_id, saleData.buyer_name, balanceDue, `Wholesale Invoice #${invoiceNo}`);
+      dbParties.updateBalance(saleData.buyer_id, balanceDue);
     }
 
+    setCollection(KEYS.B2B_SALES, [newB2BSale, ...sales]);
     return newB2BSale;
   },
 };
 
-/** Export entire clinic database to a standalone JSON object for backup (Includes 100% Data, Photos & Sequences) */
-export function exportFullDatabase() {
-  const backup = {
-    version: "3.6.0",
-    export_date: new Date().toISOString(),
-    clinic_name: dbClinic.get()?.name || "ClinicFlow",
-    data: {},
-    all_cf_keys: {}
-  };
+// ---------- Internal Stock Transfers ----------
+export const dbStockTransfers = {
+  getAll: () => getCollection(KEYS.STOCK_TRANSFERS),
+  transfer: (data) => {
+    const transfers = getCollection(KEYS.STOCK_TRANSFERS);
+    const transferNo = generateSequentialInvoiceNo("TRF");
+    const newTransfer = {
+      ...data,
+      id: generateId("trf"),
+      transfer_no: transferNo,
+      transfer_date: new Date().toISOString(),
+    };
+    setCollection(KEYS.STOCK_TRANSFERS, [newTransfer, ...transfers]);
+    return newTransfer;
+  },
+};
 
-  // Export ALL localStorage keys starting with "cf_" (includes all collections, photos, sequence counters & settings)
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith("cf_")) {
-      try {
-        const raw = localStorage.getItem(key);
-        backup.all_cf_keys[key] = raw ? JSON.parse(raw) : null;
-      } catch {
-        backup.all_cf_keys[key] = localStorage.getItem(key);
-      }
-    }
-  }
+// ---------- Expenses ----------
+export const dbExpenses = {
+  getAll: () => getCollection(KEYS.EXPENSES),
+  add: (expense) => {
+    const list = getCollection(KEYS.EXPENSES);
+    const newExp = {
+      ...expense,
+      id: generateId("exp"),
+      amount: Number(expense.amount) || 0,
+      date: expense.date || new Date().toISOString(),
+    };
+    setCollection(KEYS.EXPENSES, [newExp, ...list]);
+    return newExp;
+  },
+  delete: (id) => {
+    const list = getCollection(KEYS.EXPENSES);
+    setCollection(KEYS.EXPENSES, list.filter((e) => e.id !== id));
+  },
+};
 
-  // Populate explicit data object for backward compatibility
-  Object.entries(KEYS).forEach(([_, storageKey]) => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      backup.data[storageKey] = raw ? JSON.parse(raw) : null;
-    } catch {
-      backup.data[storageKey] = null;
-    }
-  });
+// ---------- Returns & Exchanges ----------
+export const dbReturns = {
+  getAll: () => getCollection(KEYS.RETURNS),
+  processReturn: ({ sale_id, return_items, reason, refund_type }) => {
+    const returns = getCollection(KEYS.RETURNS);
+    const newRet = {
+      id: generateId("ret"),
+      sale_id,
+      reason,
+      refund_type,
+      items: return_items,
+      return_date: new Date().toISOString(),
+    };
+    setCollection(KEYS.RETURNS, [newRet, ...returns]);
+    return newRet;
+  },
+};
 
-  return backup;
-}
-
-/** Restore/Import clinic database from a JSON backup file without data loss or corruption */
-export function importFullDatabase(backupObj) {
-  if (!backupObj || typeof backupObj !== "object" || (!backupObj.data && !backupObj.all_cf_keys)) {
-    throw new Error("Invalid backup file format. Must contain valid data object.");
-  }
-
-  // Restore only "cf_" prefixed keys (security: reject any non-cf_ keys to prevent injection)
-  if (backupObj.all_cf_keys) {
-    Object.entries(backupObj.all_cf_keys).forEach(([storageKey, value]) => {
-      if (value !== null && value !== undefined && typeof storageKey === "string" && storageKey.startsWith("cf_")) {
-        localStorage.setItem(storageKey, typeof value === "object" ? JSON.stringify(value) : value);
-      }
-    });
-  }
-
-  // Fallback for older legacy backups
-  if (backupObj.data) {
-    Object.entries(backupObj.data).forEach(([storageKey, value]) => {
-      if (value !== null && value !== undefined) {
-        localStorage.setItem(storageKey, typeof value === "object" ? JSON.stringify(value) : value);
-      }
-    });
-  }
-
-  localStorage.setItem(KEYS.SEEDED, "1");
-  return true;
-}
-
-/** EOD Shift Closing & Cash Drawer Summary Storage */
+// ---------- Shift Closings ----------
 export const dbShiftClosings = {
   getAll: () => getCollection(KEYS.SHIFT_CLOSINGS) || [],
   getByDate: (dateStr) => {
@@ -1632,25 +3288,9 @@ export const dbShiftClosings = {
   add: (closingData) => {
     const closings = getCollection(KEYS.SHIFT_CLOSINGS) || [];
     const newRecord = {
+      ...closingData,
       id: generateId("shift"),
-      date: closingData.date || new Date().toISOString().split("T")[0],
       closed_at: new Date().toISOString(),
-      closed_by: closingData.closed_by || "Cashier",
-      shift_name: closingData.shift_name || "Day-End",
-      total_tokens: Number(closingData.total_tokens || 0),
-      opd_fees: Number(closingData.opd_fees || 0),
-      pharmacy_sales: Number(closingData.pharmacy_sales || 0),
-      wholesale_sales: Number(closingData.wholesale_sales || 0),
-      total_inflow: Number(closingData.total_inflow || 0),
-      expenses: Number(closingData.expenses || 0),
-      supplier_payments: Number(closingData.supplier_payments || 0),
-      returns_refunds: Number(closingData.returns_refunds || 0),
-      total_outflow: Number(closingData.total_outflow || 0),
-      expected_cash: Number(closingData.expected_cash || 0),
-      physical_cash: Number(closingData.physical_cash || 0),
-      cash_variance: Number(closingData.cash_variance || 0),
-      denominations: closingData.denominations || {},
-      notes: closingData.notes || "",
     };
     setCollection(KEYS.SHIFT_CLOSINGS, [newRecord, ...closings]);
     return newRecord;
@@ -1661,4 +3301,26 @@ export const dbShiftClosings = {
   }
 };
 
+export function exportFullDatabase() {
+  const backup = {
+    version: "5.0.0",
+    export_date: new Date().toISOString(),
+    clinic_name: dbClinic.get()?.name || "Dr. Muhammad Kashif Khan Clinic",
+    data: {},
+  };
+  Object.entries(KEYS).forEach(([_, storageKey]) => {
+    backup.data[storageKey] = getCollection(storageKey);
+  });
+  return backup;
+}
 
+export function importFullDatabase(backupObj) {
+  if (!backupObj || typeof backupObj !== "object" || !backupObj.data) {
+    throw new Error("Invalid backup file.");
+  }
+  Object.entries(backupObj.data).forEach(([key, val]) => {
+    localStorage.setItem(key, JSON.stringify(val));
+  });
+  localStorage.setItem(KEYS.SEEDED, "1");
+  return true;
+}

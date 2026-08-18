@@ -4,6 +4,14 @@
 
 ---
 
+## Rule 0 — Context-First Programming (MANDATORY BEFORE CODING)
+
+**Before writing or modifying ANY code**, an AI MUST:
+1. Review existing PRD, TRD, Sitemap, and Architecture documents.
+2. If adding a new feature, database field, route, or business formula, **UPDATE the context files first** (in `ClinicFlow/context/` or `desktop_software_engine/`).
+3. Log the change in `09_Progress_Log.md`.
+4. Only then write code. This ensures 0% guess coding and keeps all documentation 100% in sync with reality.
+
 ## Rule 1 — Never invent field/variable/route names
 
 Only use names that already exist in `01_PRD.md`, `03_TRD_Architecture.md`, `04_Screens_and_Sitemap.md`, and `07_Mock_Data.json`. If a name is needed that isn't defined in these documents, **stop and ask** instead of inventing one. Do not silently rename existing fields "for clarity" or "best practice" — consistency matters more than personal style preference.
@@ -62,13 +70,21 @@ Never generate code that stores passwords in plain text, exposes `.env`/secret v
 
 This is healthcare-adjacent software. Never invent medical terminology, dosage conventions, or clinical logic. Use exactly what's in the mock data or what the doctor/user explicitly provides. If a clinical assumption seems necessary (e.g. "should low-stock threshold apply differently to controlled medicines?"), flag it — don't decide it silently.
 
+## Rule 13 — Three Database Startup Modes (Fresh Setup, Migration, or Sandbox)
+
+The system must flexibly support 3 database initialization pathways:
+1. **Fresh Clean Setup:** Database starts with empty operational records (zero dummy visits/patients), ready for a new clinic or fresh start.
+2. **Legacy Migration (Optional):** Ingests real historical data from MS Access only when requested.
+3. **Sandbox / Demo Mode:** Loads realistic mock data strictly for staff training and feature testing with an explicit "DEMO DATA" indicator.
+
 ---
 
 ## Quick Self-Check Before Submitting Any Code (AI should run through this mentally)
 
-- [ ] Did I use only names/fields that already exist in the docs or mock data?
-- [ ] Did I stay inside the scope of the current task only?
-- [ ] Did I follow the standard API response shape?
-- [ ] Did I avoid faking any not-yet-built feature as if it works?
-- [ ] Did I update the Progress Log with what I did and any assumptions made?
-- [ ] If I was unsure about anything, did I flag it instead of silently deciding?
+- [ ] Did I update the relevant context documents BEFORE writing code? (Rule 0)
+- [ ] Did I use only names/fields that already exist in the docs or mock data? (Rule 1)
+- [ ] Did I stay inside the scope of the current task only? (Rule 3)
+- [ ] Did I follow the standard API response shape? (Rule 5)
+- [ ] Did I avoid faking any not-yet-built feature as if it works? (Rule 9)
+- [ ] Did I update the Progress Log with what I did and any assumptions made? (Rule 7)
+- [ ] If I was unsure about anything, did I flag it instead of silently deciding? (Rule 2)

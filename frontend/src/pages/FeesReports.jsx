@@ -29,6 +29,17 @@ export default function FeesReports() {
   const [closingNotes, setClosingNotes] = useState("");
   const [savedClosings, setSavedClosings] = useState([]);
 
+  // CashBook Journal Modal & Form
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [allExpensesList, setAllExpensesList] = useState([]);
+  const [voucherForm, setVoucherForm] = useState({
+    type: "cash_out", // "cash_out" or "cash_in"
+    category: "Shop / Clinic Expense",
+    amount: "",
+    description: "",
+    date: new Date().toISOString().split("T")[0],
+  });
+
   const canViewAllFinancials = user?.is_owner || user?.can_view_financials || user?.role === "receptionist" || user?.role === "cashier" || user?.role === "pharmacist";
   const targetDoctorId = canViewAllFinancials ? null : user?.id;
 
@@ -36,7 +47,40 @@ export default function FeesReports() {
     const r = getFeesSummary(range, targetDoctorId);
     if (r.success) setSummary(r.data);
     setSavedClosings(dbShiftClosings.getAll());
+    setAllExpensesList(dbExpenses.getAll());
   }, [range, targetDoctorId]);
+
+  function handleSaveVoucher(e) {
+    e.preventDefault();
+    if (!voucherForm.amount || isNaN(Number(voucherForm.amount))) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+    dbExpenses.add({
+      category: voucherForm.category,
+      amount: Number(voucherForm.amount),
+      description: voucherForm.description || voucherForm.category,
+      expense_date: voucherForm.date || new Date().toISOString().split("T")[0],
+      type: voucherForm.type,
+      user_name: user?.name || "Staff Desk",
+    });
+    setAllExpensesList(dbExpenses.getAll());
+    setShowVoucherModal(false);
+    setVoucherForm({
+      type: "cash_out",
+      category: "Shop / Clinic Expense",
+      amount: "",
+      description: "",
+      date: closingDate,
+    });
+  }
+
+  function handleDeleteExpense(id) {
+    if (confirm("Delete this CashBook voucher entry?")) {
+      dbExpenses.delete(id);
+      setAllExpensesList(dbExpenses.getAll());
+    }
+  }
 
   // Compute Day-End Financials for selected date
   const targetDateStr = new Date(closingDate).toDateString();
@@ -171,7 +215,7 @@ export default function FeesReports() {
 
       {/* Tabs */}
       {canViewAllFinancials && (
-        <div className="flex border-b border-gray-200 gap-2">
+        <div className="flex border-b border-gray-200 gap-2 flex-wrap">
           <button
             onClick={() => setActiveTab("zreport")}
             className={`pb-3 px-4 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 ${
@@ -179,7 +223,16 @@ export default function FeesReports() {
             }`}
           >
             <span className="material-symbols-outlined text-base">receipt_long</span>
-            Daily Day-End Cash Closing &amp; Denominations
+            Daily Cash Closing &amp; Denominations
+          </button>
+          <button
+            onClick={() => setActiveTab("cashbook")}
+            className={`pb-3 px-4 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 ${
+              activeTab === "cashbook" ? "border-teal-600 text-teal-800" : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">menu_book</span>
+            📖 CashBook &amp; Expense Journal (Roznamcha)
           </button>
           <button
             onClick={() => setActiveTab("opd_analytics")}
@@ -452,7 +505,242 @@ export default function FeesReports() {
         </div>
       )}
 
-      {/* TAB 2: OPD Consultation Fee Trends */}
+      {/* TAB 2: 📖 CashBook & Financial Journal (Roznamcha) */}
+      {activeTab === "cashbook" && canViewAllFinancials && (
+        <div className="space-y-6">
+          {/* Top Bar with Add Voucher Button */}
+          <div className="bg-white p-5 rounded-3xl border border-teal-100 shadow-sm flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600">menu_book</span>
+                CashBook &amp; Expense Journal (Roznamcha)
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Record daily doctor personal withdrawals, utilities, shop expenses, staff payments, and miscellaneous cash vouchers.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowVoucherModal(true)}
+              className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 shadow-md shadow-teal-600/20 transition-all"
+            >
+              <span className="material-symbols-outlined text-base">add</span>
+              + New Cash Voucher (In/Out)
+            </button>
+          </div>
+
+          {/* Live Cash Flow Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Today&apos;s Total Inflow</div>
+              <div className="text-xl font-black text-emerald-950 mt-1">Rs. {totalInflow.toLocaleString()}</div>
+              <div className="text-[10px] text-emerald-700 mt-0.5">Tokens + Pharmacy POS + Wholesale</div>
+            </div>
+
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-rose-800">Today&apos;s Total Outflow</div>
+              <div className="text-xl font-black text-rose-950 mt-1">Rs. {totalOutflow.toLocaleString()}</div>
+              <div className="text-[10px] text-rose-700 mt-0.5">Expenses + Supplier Payments + Refunds</div>
+            </div>
+
+            <div className="bg-teal-900 text-white border border-teal-800 rounded-2xl p-4">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-teal-200">Current Net Balance</div>
+              <div className="text-xl font-black text-amber-300 mt-1">Rs. {netCashInHand.toLocaleString()}</div>
+              <div className="text-[10px] text-teal-300 mt-0.5">Net Cash Drawer Balance in Hand</div>
+            </div>
+          </div>
+
+          {/* Vouchers Table */}
+          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <span className="font-bold text-gray-900 text-sm">Recent CashBook Journal Entries</span>
+              <span className="text-xs text-gray-400 font-mono">{allExpensesList.length} vouchers recorded</span>
+            </div>
+
+            {allExpensesList.length === 0 ? (
+              <div className="py-12 text-center text-xs text-gray-400">
+                No expense vouchers recorded yet. Click &quot;+ New Cash Voucher&quot; to log an entry.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Account / Category</th>
+                      <th className="px-4 py-3">Description &amp; Narration</th>
+                      <th className="px-4 py-3">Type</th>
+                      <th className="px-4 py-3 text-right">Amount (PKR)</th>
+                      <th className="px-4 py-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                    {allExpensesList.map((exp) => (
+                      <tr key={exp.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-500 font-mono whitespace-nowrap">
+                          {exp.expense_date || exp.date || "Today"}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-gray-900">
+                          {exp.category || "General Expense"}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {exp.description || "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              exp.type === "cash_in"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                : "bg-rose-100 text-rose-800 border border-rose-200"
+                            }`}
+                          >
+                            {exp.type === "cash_in" ? "Cash IN (+)" : "Cash OUT (-)"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-gray-900">
+                          Rs. {Number(exp.amount || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleDeleteExpense(exp.id)}
+                            className="text-gray-400 hover:text-rose-600 p-1"
+                            title="Delete entry"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: New Cash Voucher Entry */}
+      {showVoucherModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-teal-100 space-y-4">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 className="font-bold text-gray-900 text-base flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-teal-600">receipt_long</span>
+                Record Cash Voucher (Roznamcha Entry)
+              </h3>
+              <button onClick={() => setShowVoucherModal(false)} className="text-gray-400 hover:text-gray-600">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveVoucher} className="space-y-4 text-xs">
+              {/* Type Switcher */}
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Voucher Type:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVoucherForm((f) => ({ ...f, type: "cash_out" }))}
+                    className={`py-2 rounded-xl font-bold border transition-all ${
+                      voucherForm.type === "cash_out"
+                        ? "bg-rose-50 border-rose-300 text-rose-800 shadow-sm"
+                        : "border-gray-200 text-gray-600"
+                    }`}
+                  >
+                    🔻 Cash Outflow (Expense / Drawing)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVoucherForm((f) => ({ ...f, type: "cash_in" }))}
+                    className={`py-2 rounded-xl font-bold border transition-all ${
+                      voucherForm.type === "cash_in"
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
+                        : "border-gray-200 text-gray-600"
+                    }`}
+                  >
+                    🔺 Cash Inflow (Recovery / Other)
+                  </button>
+                </div>
+              </div>
+
+              {/* Category / Account Name */}
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Account / Category:</label>
+                <select
+                  value={voucherForm.category}
+                  onChange={(e) => setVoucherForm((f) => ({ ...f, category: e.target.value }))}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-teal-600"
+                >
+                  <option value="Doctor Drawing (Personal)">Doctor Drawing (Dr. Kashif Personal)</option>
+                  <option value="Shop / Clinic Expense">Shop &amp; Clinic Daily Expense (Tea/Refreshment)</option>
+                  <option value="Staff Salaries & Wages">Staff Salaries &amp; Daily Wages</option>
+                  <option value="Electricity / Utility Bills">Electricity &amp; Utility Bills</option>
+                  <option value="Clinic & Shop Rent">Clinic &amp; Shop Rent</option>
+                  <option value="Supplier Cash Payment">Supplier Cash Payment</option>
+                  <option value="Repair & Maintenance">Repair &amp; Maintenance</option>
+                  <option value="Transport / Cargo Charges">Transport / Cargo Charges</option>
+                  <option value="Other Inward Cash">Other Inward Income</option>
+                </select>
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Amount (Rs) *:</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={voucherForm.amount}
+                  onChange={(e) => setVoucherForm((f) => ({ ...f, amount: e.target.value }))}
+                  placeholder="e.g. 500"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-black focus:outline-none focus:border-teal-600"
+                />
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Voucher Date:</label>
+                <input
+                  type="date"
+                  value={voucherForm.date}
+                  onChange={(e) => setVoucherForm((f) => ({ ...f, date: e.target.value }))}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-teal-600"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Narration / Details (Optional):</label>
+                <input
+                  type="text"
+                  value={voucherForm.description}
+                  onChange={(e) => setVoucherForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="e.g. Evening tea for guests & staff"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-teal-600"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-300 font-bold text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-teal-600 text-white font-bold hover:bg-teal-700 shadow-md"
+                >
+                  Save Voucher
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: OPD Consultation Fee Trends */}
       {(activeTab === "opd_analytics" || !canViewAllFinancials) && (
         <div className="space-y-5">
           {/* Range Toggle */}

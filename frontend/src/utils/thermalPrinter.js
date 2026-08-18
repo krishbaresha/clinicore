@@ -15,10 +15,62 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+/**
+ * Universal Thermal Print Dispatcher
+ * Uses hidden iframe (immune to popup blockers) and falls back to window.open.
+ */
+export function executeThermalPrint(receiptHtml, title = "Print") {
+  try {
+    let iframe = document.getElementById("thermal-print-iframe");
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "thermal-print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      iframe.setAttribute("aria-hidden", "true");
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(receiptHtml);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (err) {
+        console.warn("Iframe print blocked, falling back to window.open:", err);
+        const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
+        if (win) {
+          win.document.open();
+          win.document.write(receiptHtml);
+          win.document.close();
+          setTimeout(() => { win.print(); }, 250);
+        }
+      }
+    }, 250);
+  } catch (outerErr) {
+    console.warn("Direct window fallback:", outerErr);
+    const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
+    if (win) {
+      win.document.open();
+      win.document.write(receiptHtml);
+      win.document.close();
+      setTimeout(() => { win.print(); }, 250);
+    }
+  }
+}
+
 export function printThermalReceipt(sale, clinicData = null) {
   if (!sale) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Asif Ashraf's Clinic");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store");
   const subtotal = Number(sale.subtotal_amount) || Number(sale.total_amount) || 0;
   const discount = Number(sale.discount_amount) || 0;
   const netTotal = Number(sale.total_amount) || subtotal;
@@ -31,16 +83,16 @@ export function printThermalReceipt(sale, clinicData = null) {
     hour: "2-digit", minute: "2-digit", hour12: true
   });
 
-  const cashierName = escapeHtml(sale.cashier_name || sale.user_name || "Cashier Desk");
-  const customerName = escapeHtml(sale.patient_name || (sale.visit_id ? "Linked Patient" : "Walk-In-Customer"));
-  const invoiceId = escapeHtml(sale.id || `SL_${Math.floor(1000 + Math.random() * 9000)}`);
+  const cashierName = escapeHtml(sale.cashier_name || sale.user_name || "Store Staff");
+  const customerName = escapeHtml(sale.patient_name || (sale.visit_id ? "Linked OPD Patient" : "Walk-In-Customer"));
+  const invoiceId = escapeHtml(sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
 
   const itemsHtml = (sale.items || []).map((item) => `
-    <div style="margin-bottom: 6px;">
-      <div style="font-weight: 700; font-size: 13px; color: #111;">${escapeHtml(item.medicine_name)}</div>
-      <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #444; margin-top: 1px;">
-        <span>${Number(item.quantity || 1).toFixed(2)} ${escapeHtml(item.unit_label || "Pc")} X ${Number(item.unit_price || 0).toFixed(2)}</span>
-        <span style="font-weight: 800; color: #000;">Rs. ${Number(item.line_total || 0).toFixed(2)}</span>
+    <div style="margin-bottom: 5px;">
+      <div style="font-weight: 700; font-size: 12px; color: #111827;">${escapeHtml(item.medicine_name)}</div>
+      <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 500; color: #4b5563; margin-top: 1px;">
+        <span>${item.quantity || 1} ${escapeHtml(item.unit_label || "Unit")} × Rs. ${Number(item.unit_price || 0).toFixed(2)}</span>
+        <span style="font-weight: 800; color: #111827;">Rs. ${Number(item.line_total || 0).toFixed(2)}</span>
       </div>
     </div>
   `).join("");
@@ -64,76 +116,39 @@ export function printThermalReceipt(sale, clinicData = null) {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             width: 76mm;
             margin: 0 auto;
-            padding: 12px 6px;
-            color: #222;
+            padding: 10px 6px;
+            color: #1f2937;
             background: #fff;
             font-size: 12px;
             line-height: 1.35;
           }
           .logo-badge {
-            width: 46px;
-            height: 46px;
-            background: linear-gradient(135deg, #0d9488, #0f766e);
+            width: 40px;
+            height: 40px;
+            background: #0f766e;
             color: #fff;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 900;
-            font-size: 22px;
-            margin: 0 auto 6px auto;
-            box-shadow: 0 4px 10px rgba(13, 148, 136, 0.25);
+            font-size: 18px;
+            margin: 0 auto 4px auto;
           }
           .clinic-header {
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
           }
           .dotted-line {
-            border-top: 1.5px dotted #999;
-            margin: 8px 0;
-          }
-          .meta-text {
-            font-size: 12px;
-            font-weight: 600;
-            color: #222;
-            line-height: 1.45;
-          }
-          .summary-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 3px;
-          }
-          .grand-total-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 15px;
-            font-weight: 900;
-            color: #000;
-            margin-top: 4px;
-          }
-          .payment-table {
-            width: 100%;
-            border-collapse: collapse;
+            border-top: 1px dotted #9ca3af;
             margin: 6px 0;
           }
-          .payment-table th {
-            background: #f3f4f6;
+          .meta-text {
             font-size: 11px;
-            font-weight: 700;
-            color: #374151;
-            padding: 4px 6px;
-            text-align: left;
+            font-weight: 600;
+            color: #1f2937;
+            line-height: 1.5;
           }
-          .payment-table td {
-            font-size: 11px;
-            font-weight: 700;
-            color: #111827;
-            padding: 4px 6px;
-          }
-          
           @media print {
             body { width: 76mm; padding: 4px; }
             .no-print { display: none !important; }
@@ -144,80 +159,73 @@ export function printThermalReceipt(sale, clinicData = null) {
         <!-- Top Clinic Branding & Logo -->
         <div class="clinic-header">
           <div class="logo-badge">${clinicName.charAt(0)}</div>
-          <div style="font-size: 16px; font-weight: 900; color: #0f766e; letter-spacing: -0.3px;">${clinicName}</div>
-          <div style="font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">Medical Store Tax Invoice</div>
+          <div style="font-size: 14px; font-weight: 900; color: #0f766e; letter-spacing: -0.2px; line-height: 1.25;">${clinicName}</div>
+          <div style="font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">Retail Medical Store Invoice</div>
         </div>
 
         <div class="dotted-line"></div>
 
         <!-- Relevant Meta Header Details -->
         <div class="meta-text">
-          <div><strong style="color: #4b5563;">Date &amp; Time :</strong> ${dateTimeStr}</div>
-          <div><strong style="color: #4b5563;">Cashier :</strong> ${cashierName}</div>
-          <div><strong style="color: #4b5563;">Customer :</strong> ${customerName}</div>
-          <div><strong style="color: #4b5563;">Invoice # :</strong> ${invoiceId}</div>
+          <div><span style="color: #6b7280; font-weight: 500;">Date &amp; Time :</span> ${dateTimeStr}</div>
+          <div><span style="color: #6b7280; font-weight: 500;">Cashier :</span> ${cashierName}</div>
+          <div><span style="color: #6b7280; font-weight: 500;">Customer :</span> ${customerName}</div>
+          <div><span style="color: #6b7280; font-weight: 500;">Invoice # :</span> ${invoiceId}</div>
         </div>
 
         <div class="dotted-line"></div>
 
         <!-- Purchased Items List -->
-        <div style="margin: 6px 0;">${itemsHtml}</div>
+        <div style="margin: 4px 0;">${itemsHtml}</div>
 
         <div class="dotted-line"></div>
 
         <!-- Summary Totals -->
-        <div style="margin: 6px 0;">
-          <div class="summary-row">
+        <div style="font-size: 12px; color: #374151; font-weight: 600; line-height: 1.5;">
+          <div style="display: flex; justify-content: space-between;">
             <span>Subtotal</span>
-            <span>Rs. ${subtotal.toFixed(2)}</span>
+            <span>Rs. ${Number(subtotal).toFixed(2)}</span>
           </div>
           ${discount > 0 ? `
-          <div class="summary-row" style="color: #0d9488;">
+          <div style="display: flex; justify-content: space-between; color: #0f766e; font-weight: 700;">
             <span>Discount</span>
-            <span>- Rs. ${discount.toFixed(2)}</span>
+            <span>- Rs. ${Number(discount).toFixed(2)}</span>
           </div>
           ` : ""}
-          <div class="grand-total-row">
+          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #111827; padding-top: 2px;">
             <span>Grand Total</span>
-            <span>Rs. ${netTotal.toFixed(2)}</span>
+            <span>Rs. ${Number(netTotal).toFixed(2)}</span>
           </div>
+          ${sale.payment_type === "cash" ? `
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #4b5563; margin-top: 2px;">
+            <span>Cash Paid</span>
+            <span>Rs. ${Number(cashTendered).toFixed(2)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #0f766e;">
+            <span>Change Return</span>
+            <span>Rs. ${Number(changeDue).toFixed(2)}</span>
+          </div>
+          ` : `
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #b45309; margin-top: 3px;">
+            <span>Payment Type</span>
+            <span>Credit / Udhaar (Added to Patient Ledger)</span>
+          </div>
+          `}
         </div>
 
         <div class="dotted-line"></div>
 
-        <!-- Payment Header Table -->
-        <table class="payment-table">
-          <thead>
-            <tr>
-              <th style="width: 35%;">Paid By:</th>
-              <th style="width: 35%; text-align: center;">Amount:</th>
-              <th style="width: 30%; text-align: right;">Change Return:</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="text-transform: capitalize; font-weight: 800;">${escapeHtml(sale.payment_type || "Cash")}</td>
-              <td style="text-align: center;">${cashTendered.toFixed(2)}</td>
-              <td style="text-align: right;">${changeDue.toFixed(2)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="dotted-line"></div>
-
         <!-- Centered Thank You Notice -->
-        <div style="text-align: center; margin: 10px 0 8px 0;">
-          <div style="font-size: 12px; font-weight: 800; color: #111;">
-            Thank You For Shopping With Us .<br>Please Come Again
-          </div>
+        <div style="text-align: center; margin: 8px 0 6px 0; font-size: 11px; font-weight: 700; color: #111827; line-height: 1.4;">
+          Thank You For Shopping With Us.<br>Please Visit Again
         </div>
 
         <div class="dotted-line"></div>
 
         <!-- Developer Branding & Contact Footer -->
-        <div style="text-align: center; margin-top: 8px; font-size: 11px; font-weight: 800; color: #374151; line-height: 1.4;">
+        <div style="text-align: center; margin-top: 6px; font-size: 10px; font-weight: 700; color: #6b7280; line-height: 1.4;">
           <div>Software Powered by: K.B Software</div>
-          <div style="color: #0d9488; font-family: monospace; font-size: 12px; font-weight: 900; margin-top: 2px;">
+          <div style="color: #0f766e; font-family: monospace; font-size: 11px; font-weight: 900; margin-top: 1px;">
             Phone: 03142291356
           </div>
         </div>
@@ -234,14 +242,7 @@ export function printThermalReceipt(sale, clinicData = null) {
     </html>
   `;
 
-  const printWindow = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-  if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(receiptHtml);
-    printWindow.document.close();
-  } else {
-    alert("Pop-up blocker prevented opening receipt window. Please allow popups for this site.");
-  }
+  executeThermalPrint(receiptHtml, `Receipt_${invoiceId}`);
 }
 
 /** Print 80mm Daily Day-End Cash Closure (Z-Report / Roznamcha Hisab-Kitab) */
@@ -407,14 +408,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
     </html>
   `;
 
-  const printWindow = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-  if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(receiptHtml);
-    printWindow.document.close();
-  } else {
-    alert("Pop-up blocker prevented opening closing receipt window. Please allow popups for this site.");
-  }
+  executeThermalPrint(receiptHtml, `Closing_${dateTimeStr}`);
 }
 
 /** Print Company / Supplier Stock Purchase Thermal Invoice */
@@ -623,24 +617,19 @@ export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicDa
     </html>
   `;
 
-  const printWindow = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-  if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(receiptHtml);
-    printWindow.document.close();
-  } else {
-    alert("Pop-up blocker prevented opening purchase invoice window. Please allow popups for this site.");
-  }
+  executeThermalPrint(receiptHtml, `Purchase_${invoiceId}`);
 }
 
-/** Print OPD Consultation Token Thermal Receipt */
+//** Print OPD Consultation Token Thermal Receipt - Clean, Minimal & Ink-Saving */
 export function printOPDTokenReceipt(receipt, clinicData = null) {
   if (!receipt) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Asif Ashraf's Clinic");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan's Clinic");
   const tokenNo = escapeHtml(String(receipt.token || receipt.token_number || "01").padStart(2, "0"));
   const patientName = escapeHtml(receipt.patient?.full_name || receipt.patient_name || "Patient");
-  const fee = Number(receipt.fee != null ? receipt.fee : (receipt.visit?.fee_amount || 800));
+  const relLabel = { father: "S/O", husband: "W/O", wife: "H/O", mother: "D/O" }[receipt.patient?.relation_type] || "S/O";
+  const relationName = receipt.patient?.relation_name ? `${relLabel} ${escapeHtml(receipt.patient.relation_name)}` : "";
+  const fee = Number(receipt.fee != null ? receipt.fee : (receipt.visit?.fee_amount || 0));
 
   const rawDate = receipt.registeredAt ? new Date(receipt.registeredAt) : new Date();
   const dateTimeStr = rawDate.toLocaleString("en-PK", {
@@ -648,16 +637,11 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
     hour: "2-digit", minute: "2-digit", hour12: true
   });
 
-  const doctorName = escapeHtml(receipt.doctor?.name || receipt.visit?.doctor_name || "Dr. Asif Ashraf");
-  const doctorSpecialization = escapeHtml(receipt.doctor?.specialization || receipt.visit?.doctor_specialization || "General Physician");
-  const doctorRoom = escapeHtml(receipt.doctor?.room_number || receipt.visit?.room_number || "Room 1");
-  const receptionistName = escapeHtml(receipt.receptionist_name || "Reception Desk");
+  const doctorName = escapeHtml(receipt.doctor?.name || receipt.visit?.doctor_name || "Doctor");
   const clinicAddress = escapeHtml(clinicData?.address || "Lajpat Road, Hyderabad");
-  const clinicPhone = escapeHtml(clinicData?.phone || "03001234567");
+  const clinicPhone = escapeHtml(clinicData?.phone || "03473100304");
   const phone = escapeHtml(receipt.patient?.phone || receipt.phone || "—");
   const age = escapeHtml(formatPatientAge(receipt.patient));
-  const dateStr = escapeHtml(dateTimeStr);
-  const visitType = escapeHtml(receipt.visit_type === "follow_up" || receipt.visit?.visit_type === "follow_up" ? "Follow-up" : "New Visit");
 
   const receiptHtml = `
     <!DOCTYPE html>
@@ -672,14 +656,12 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
           }
           * {
             box-sizing: border-box;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           }
           body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             width: 76mm;
             margin: 0 auto;
-            padding: 10px 6px;
+            padding: 8px 6px;
             color: #000;
             background: #fff;
             font-size: 12px;
@@ -687,34 +669,27 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
           }
           .text-center { text-align: center; }
           .divider-single {
-            border-top: 1px solid #000;
-            margin: 6px 0;
+            border-top: 1px dashed #000;
+            margin: 5px 0;
           }
           .divider-double {
-            border-top: 2.5px double #000;
-            margin: 6px 0;
+            border-top: 2px double #000;
+            margin: 5px 0;
           }
           .token-box {
-            border: 2.5px solid #000;
-            border-radius: 12px;
-            padding: 8px 4px;
+            border: 2px solid #000;
+            border-radius: 8px;
+            padding: 6px 4px;
             margin: 6px 0;
             text-align: center;
             background: #fff;
           }
           .token-num {
-            font-size: 44px;
+            font-size: 40px;
             font-weight: 900;
             color: #000;
             line-height: 1;
             margin-top: 2px;
-          }
-          .doctor-box {
-            border: 2px solid #000;
-            padding: 6px 8px;
-            border-radius: 6px;
-            margin: 6px 0;
-            background: #fff;
           }
           .info-row {
             display: flex;
@@ -723,114 +698,201 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
             margin-top: 2px;
           }
           @media print {
-            body { width: 76mm; padding: 4px; }
+            body { width: 76mm; padding: 2px; }
           }
         </style>
       </head>
       <body>
         <div class="text-center">
-          <div style="font-size: 17px; font-weight: 900;">${clinicName}</div>
-          <div style="font-size: 10px; color: #222; font-weight: bold;">${clinicAddress} · Ph: ${clinicPhone}</div>
-          <div style="font-size: 13px; font-weight: 900; margin-top: 4px; letter-spacing: 1px; text-decoration: underline;">OPD CONSULTATION TOKEN</div>
-          <div style="font-size: 10px; color: #444; margin-top: 2px;">${dateTimeStr}</div>
+          <div style="font-size: 16px; font-weight: 900;">${clinicName}</div>
+          <div style="font-size: 10px; color: #333; font-weight: bold;">${clinicAddress} · Ph: ${clinicPhone}</div>
+          <div style="font-size: 12px; font-weight: 900; margin-top: 3px; letter-spacing: 0.5px;">OPD CONSULTATION TOKEN</div>
+          <div style="font-size: 10px; color: #555; margin-top: 2px;">${dateTimeStr}</div>
         </div>
 
         <div class="divider-double"></div>
 
         <!-- Big Token Box -->
         <div class="token-box">
-          <div style="font-size: 10px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;">PATIENT TOKEN NUMBER</div>
+          <div style="font-size: 10px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;">PATIENT TOKEN NUMBER</div>
           <div class="token-num">${tokenNo}</div>
         </div>
 
-        <!-- Attending Doctor Box -->
-        <div class="doctor-box">
-          <div style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: #333; letter-spacing: 1px;">Attending Doctor:</div>
-          <div style="font-size: 15px; font-weight: 900; color: #000; margin-top: 1px;">${doctorName}</div>
-          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: #222; margin-top: 3px;">
-            <span>${doctorSpecialization}</span>
-            <span style="font-weight: 900; background: #000; color: #fff; padding: 1px 6px; border-radius: 4px;">Chamber: ${doctorRoom}</span>
-          </div>
-        </div>
-
-        <!-- Patient Info -->
-        <div style="font-size: 13px; font-weight: bold; margin-top: 4px;">
-          <div><span style="font-weight: 900;">Patient:</span> ${patientName}</div>
+        <!-- Doctor & Patient Info -->
+        <div style="font-size: 12px; font-weight: bold; margin-top: 4px;">
           <div class="info-row">
-            <span>Phone: ${phone}</span>
-            <span>Age: ${age}</span>
+            <span style="color: #444;">Doctor:</span>
+            <span style="font-weight: 900;">${doctorName}</span>
           </div>
           <div class="info-row">
-            <span>Type: ${visitType}</span>
-            <span>Date: ${dateStr.split(',')[0]}</span>
+            <span style="color: #444;">Patient:</span>
+            <span>${patientName}</span>
           </div>
+          ${relationName ? `
+          <div class="info-row">
+            <span style="color: #444;">Relation:</span>
+            <span>${relationName}</span>
+          </div>` : ''}
+          <div class="info-row">
+            <span style="color: #444;">Age:</span>
+            <span>${age} (${receipt.patient?.gender || "Male"})</span>
+          </div>
+          ${phone !== "—" ? `
+          <div class="info-row">
+            <span style="color: #444;">Phone:</span>
+            <span>${phone}</span>
+          </div>` : ''}
         </div>
 
         <div class="divider-single"></div>
 
-        <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; padding: 4px 0;">
+        <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; padding: 2px 0;">
           <span>Consultation Fee:</span>
           <span>Rs. ${Number(fee).toLocaleString()}</span>
         </div>
 
         <div class="divider-double"></div>
 
-        <div class="text-center" style="font-size: 11px; margin-top: 6px; font-weight: bold;">
-          <div>Please wait in waiting area for your token call.</div>
-          <div style="margin-top: 4px; padding: 4px; background: #f0fdfa; border: 1px dashed #0d9488; border-radius: 4px; font-size: 11px; color: #0f766e;">
-            <strong>Live Token Tracker:</strong> Open <code>/clinic</code> on your phone to track your turn!
-          </div>
-          <div style="font-size: 10px; font-weight: 900; margin-top: 6px; color: #333;">Software Powered by: K.B Software</div>
-          <div style="font-size: 10px; font-weight: 900; color: #0d9488;">Phone: 03142291356</div>
+        <div class="text-center" style="font-size: 10px; margin-top: 5px; font-weight: bold;">
+          <div>Please wait for your turn. Thank you!</div>
+          <div style="font-size: 9px; margin-top: 2px; color: #444;">شکریہ — جزاک اللہ خیرا</div>
         </div>
       </body>
     </html>
   `;
 
-  try {
-    let iframe = document.getElementById("thermal-print-iframe");
-    if (!iframe) {
-      iframe = document.createElement("iframe");
-      iframe.id = "thermal-print-iframe";
-      iframe.style.position = "fixed";
-      iframe.style.right = "0";
-      iframe.style.bottom = "0";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "0";
-      document.body.appendChild(iframe);
-    }
-
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(receiptHtml);
-    doc.close();
-
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      } catch {
-        // Fallback to window.open if iframe is blocked
-        const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-        if (win) {
-          win.document.open();
-          win.document.write(receiptHtml);
-          win.document.close();
-          setTimeout(() => { win.print(); }, 250);
-        }
-      }
-    }, 250);
-  } catch (err) {
-    const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-    if (win) {
-      win.document.open();
-      win.document.write(receiptHtml);
-      win.document.close();
-      setTimeout(() => { win.print(); }, 250);
-    } else {
-      window.print();
-    }
-  }
+  executeThermalPrint(receiptHtml, `Token_${tokenNo}`);
 }
+
+/** Print Product Stock Movement & Traceability Card (80mm / Low-Ink Minimalist) */
+export function printProductStockCard(item, transactions = [], summary = {}, clinicData = null) {
+  if (!item) return;
+
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan Clinic");
+  const clinicAddress = escapeHtml(clinicData?.address || "Lajpat Road, Hyderabad");
+  const clinicPhone = escapeHtml(clinicData?.phone || "0300-1234567");
+  const rawDate = new Date();
+  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: true
+  });
+
+  const rowsHtml = (transactions || []).map((tx) => {
+    let typeLabel = "TX";
+    if (tx.type === "PURCHASE") typeLabel = "Inward Buy";
+    else if (tx.type === "WHOLESALE_B2B") typeLabel = "Wholesale";
+    else if (tx.type === "RETAIL_SALE") typeLabel = "Retail POS";
+    else if (tx.type === "INTERNAL_TRANSFER") typeLabel = "Shift";
+
+    return `
+      <tr style="border-bottom: 1px dotted #888;">
+        <td style="padding: 3px 2px; font-size: 10px;">${escapeHtml(tx.date ? tx.date.split('T')[0] : '—')}</td>
+        <td style="padding: 3px 2px; font-size: 10px; font-weight: bold;">${escapeHtml(typeLabel)}</td>
+        <td style="padding: 3px 2px; font-size: 10px;">${escapeHtml(tx.party_name || tx.destination || '—')}</td>
+        <td style="padding: 3px 2px; font-size: 10px; text-align: center; font-weight: bold;">${tx.qty_in > 0 ? '+' + tx.qty_in : (tx.qty_out > 0 ? '-' + tx.qty_out : '0')}</td>
+        <td style="padding: 3px 2px; font-size: 10px; text-align: right; font-weight: bold;">Rs. ${Number(tx.total_amount || 0).toLocaleString()}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const receiptHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>StockCard_${escapeHtml(item.medicine_name)}</title>
+        <style>
+          @page { size: 80mm auto; margin: 0; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            width: 76mm;
+            margin: 0 auto;
+            padding: 8px 4px;
+            color: #000;
+            background: #fff;
+            font-size: 11px;
+            line-height: 1.3;
+          }
+          .text-center { text-align: center; }
+          .divider-single { border-top: 1px solid #000; margin: 5px 0; }
+          .divider-double { border-top: 2.5px double #000; margin: 5px 0; }
+          .divider-dashed { border-top: 1px dashed #000; margin: 5px 0; }
+          .summary-box {
+            border: 1.5px solid #000;
+            padding: 4px;
+            margin: 5px 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 6px;
+            font-size: 10px;
+          }
+          table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+          th { text-align: left; font-size: 10px; border-bottom: 1.5px solid #000; padding: 2px; }
+        </style>
+      </head>
+      <body>
+        <div class="text-center">
+          <div style="font-size: 15px; font-weight: 900;">${clinicName}</div>
+          <div style="font-size: 10px; color: #222;">${clinicAddress} · Ph: ${clinicPhone}</div>
+          <div style="font-size: 12px; font-weight: 900; margin-top: 3px; letter-spacing: 0.5px; text-decoration: underline;">PRODUCT STOCK AUDIT CARD</div>
+          <div style="font-size: 10px; color: #444;">${dateTimeStr}</div>
+        </div>
+
+        <div class="divider-double"></div>
+
+        <div style="font-size: 14px; font-weight: 900;">${escapeHtml(item.medicine_name)}</div>
+        <div style="font-size: 10px; color: #333; margin-top: 1px;">
+          Code: <strong>${escapeHtml(item.item_code || 'GEN')}</strong> | Category: <strong>${escapeHtml(item.category || 'Homeopathic')}</strong>
+        </div>
+
+        <div class="summary-box">
+          <div>Godown Stock: <strong>${summary.warehouse_stock || 0}</strong></div>
+          <div>Store POS: <strong>${summary.store_stock || 0}</strong></div>
+          <div>Total Inward: <strong>+${summary.total_purchased || 0}</strong></div>
+          <div>Wholesale Sold: <strong>-${summary.total_sold_wholesale || 0}</strong></div>
+          <div>Retail Sold: <strong>-${summary.total_sold_retail || 0}</strong></div>
+          <div>Total Base: <strong>${summary.total_base_stock || 0}</strong></div>
+        </div>
+
+        <div class="divider-dashed"></div>
+
+        <div style="font-size: 10px; font-weight: 900; text-transform: uppercase;">Stock Movements History:</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Source / Dest</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="5" style="text-align:center; padding: 6px;">No transactions recorded</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="divider-single"></div>
+
+        <div class="text-center" style="font-size: 9px; margin-top: 4px; color: #333; font-weight: bold;">
+          Software Powered by: K.B Software · 03142291356
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }, 250);
+          };
+        </script>
+      </body>
+    </html>
+  `;
+
+  executeThermalPrint(receiptHtml, `StockCard_${escapeHtml(item.medicine_name)}`);
+}
+
+
 

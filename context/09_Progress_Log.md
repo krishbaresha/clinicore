@@ -341,26 +341,89 @@ Before backend coding begins: update `03_TRD_Architecture.md`'s tech stack secti
 
 ---
 
-### Session: [Not yet started]
+### Session: 18/19-Aug-2026 — Antigravity (Comprehensive Full-Stack Demo & Enterprise Hardening)
 
 **Task worked on:**
-Initial planning phase completed — PRD, MVP scope, TRD, Sitemap, Stitch prompts, mock data, and rules document all created. No code has been written yet.
+Comprehensive feature builds, multi-doctor synchronization, universal thermal printing overhaul, image compression pipeline, Godown warehouse management, B2B wholesale supply, and complete frontend audit.
 
 **What was built/changed:**
-- `01_PRD.md` through `08_AI_Rules_and_Constraints.md` created as project foundation.
+1. **Multi-Doctor Isolated Queue & Auto Fee Population:**
+   - Multi-doctor seed configured in `db.js` (`H/Dr. Muhammad Kashif Khan` @ Rs.300 and `Dr. Asif Ashraf` @ Rs.500).
+   - In `PatientRegistration.jsx`, doctor selection automatically auto-fills doctor's specific consultation fee.
+   - Doctor queues (`DoctorQueue.jsx`) filter tokens strictly by `doctor_id`.
+   - 1-click demo terminal switcher in `LoginScreen.jsx` updated with both doctors.
 
-**Decisions made / assumptions taken:**
-- Product name chosen as "ClinicFlow" (placeholder — can be renamed by Krish before development starts).
-- Tech stack recommendation: React + Node/FastAPI + PostgreSQL (not yet finalized/confirmed — Antigravity's default stack may differ, should be confirmed in first real coding session and logged here).
-- Offline-first was deferred to Phase 3 — flagged as a possible re-prioritization to MVP given Pakistan's clinic internet reliability (open question, see below).
+2. **Universal Thermal Printing Engine (`executeThermalPrint` in `thermalPrinter.js`):**
+   - Eliminated browser popup blocker failures by implementing an invisible iframe-based print stream.
+   - Clean, high-contrast, low-ink 80mm layouts for:
+     - OPD Consultation Token Slips
+     - Retail Pharmacy POS Receipts
+     - Inward Supplier Purchase Invoices (GRN)
+     - Wholesale B2B Supply Invoices
+     - Internal Stock Transfer Vouchers
+     - Daily Cashier Day-End Z-Report (Roznamcha)
+     - Product Stock Movement & Traceability Cards
 
-**Known issues / incomplete:**
-- No code exists yet — this is the planning/documentation stage only.
+3. **Instant In-Profile Token Issuance & Deferred Closing Time Uploads (`PatientProfile.jsx`):**
+   - Replaced redirection with an instant `+ New Visit & Token` modal inside patient profile.
+   - Integrated `PhotoLightbox` with 0.5x–3.5x optical zoom, 90° rotation, pan/drag, print/download.
+   - Added closing time gallery photo attachment for past visits.
 
-**Blocked on / needs human input:**
-- Confirm final product name.
-- Confirm whether offline-first should move from Phase 3 into MVP.
-- Confirm exact tech stack once Antigravity/Stitch tooling constraints are known (e.g. does Antigravity have a preferred/default stack that should override the TRD recommendation?).
+4. **Multi-Location Inventory & Wholesale Godown Management (`WarehouseManagement.jsx`):**
+   - Godown Master Stock with multi-unit packaging (`Box ➔ Strip ➔ Unit/Tablet/Bottle`).
+   - Internal Stock Replenishment (Godown ⇄ Store POS Counter).
+   - B2B Wholesale Supply for Interior Sindh parties with Bilty #, Transport, and Salesman tracking.
+   - Wholesale Party Ledgers with custom Party Codes (`1044`, `PTY-108`) and balance recovery.
 
-**Next recommended step:**
-Run the `06_AI_Review_Brief.md` past another AI for critique, incorporate any critical gap fixes into the docs, then begin Stitch screen generation using `05_Stitch_UI_Prompts.md`.
+5. **Supplier Purchases (`SupplierPurchases.jsx`):**
+   - Full inward Goods Received Notes (GRN) with supplier ledger, batch tracking, and thermal invoice printing.
+
+6. **Client-Side Image Optimization Pipeline (`imageCompressor.js`):**
+   - Client-side HTML5 canvas compression (max 1280px, quality 0.75) reducing 8MB-12MB phone camera photos to ~120KB before saving to DB/storage.
+
+7. **Build Status:**
+   - Verified with `npm run build` — 0 errors, production bundle compiled.
+
+8. **Context-First Rule & 3-Mode Database Initialization:**
+   - Established **Rule 0 (Context-First Programming)** across all WebApp and Desktop rules: Any AI assistant must update context specifications before writing code to prevent guesswork.
+   - Formalized 3 flexible database startup modes: (A) Fresh Clean Production Start, (B) Optional MS Access Migration, and (C) Testing/Sandbox Demo Mode.
+   - Built standalone `desktop_software_engine/` suite containing 8 comprehensive engineering specifications for Desktop SQLite + Electron + Hardware Drivers.
+
+9. **Principal Doctor Ownership Transfer & Delegation:**
+   - Implemented `dbUsers.setPrincipalDoctor(targetUserId)` allowing the current Principal Owner Doctor to designate another doctor as the Principal Owner.
+   - Added UI confirmation dialog and instant session/RBAC permission refresh in `/settings`.
+
+10. **Visit-Linked Pharmacy Receipts in Patient Profile:**
+   - Added automatic correlation between OPD visits and Medical Store POS sales by `visit_id` and `patient_id`.
+   - Displayed dispensed medicines breakdown, total bill, and interactive 80mm thermal receipt viewer & reprint directly on each timeline visit card in `/patients/:id`.
+
+11. **Doctor Queue Strict Isolation:**
+   - Updated `dbVisits.getTodayQueue(doctorId)` and `dbVisits.getTodayAll(doctorId)` to filter strictly by assigned doctor.
+   - Updated `Dashboard.jsx` stats so each doctor sees exclusively their own patients in room, waiting, and their own OPD consultation collection.
+
+12. **Thermal Print & On-Screen Receipt 100% Alignment:**
+   - Fixed `printThermalReceipt` in `thermalPrinter.js` to print sequential `receipt_no` (e.g. `POS-1003`) instead of internal DB ID (`sale_...`).
+   - Aligned typography, item unit format (`1 Bottle × Rs. 595.00`), subtitle (`Retail Medical Store Invoice`), payment type display (Credit / Udhaar vs Cash Paid & Change Return), and footer branding to match on-screen receipt modal identically.
+
+13. **Patient Profile File & Report Upload Engine:**
+   - Implemented missing `dbVisits.update(id, data)` method in `db.js`.
+   - Updated `PatientProfile.jsx` upload handlers (`handleRxUpload` and `handleReportsUpload`) with image compressor integration, real-time cache refresh, and URI scheme resolution for uploaded reports and prescription photos.
+
+14. **Security Hardening, Vulnerability Patching & Time/Space Optimization ($O(1)$ In-Memory Memo Cache & Code-Splitting):**
+   - **Performance / Time Complexity:** Added smart `_COLLECTION_CACHE` and `_ID_INDEX_MAP` to `db.js`. Reduced repeated disk JSON parsing in loops from $O(N \times M)$ to $O(1)$ in-memory lookups.
+   - **Space Complexity:** Eliminated redundant JSON garbage collection allocations across render intervals.
+   - **Security Hardening:** Sanitized all thermal printer template outputs with `escapeHtml()` to eliminate XSS vectors. Sanitized numeric inputs across POS, discounts, and ledger transactions.
+   - **Bundle Code-Splitting:** Implemented `React.lazy()` and `Suspense` chunking across all 20+ routes in `App.jsx`, eliminating monolithic bundle warnings and speeding up first meaningful paint.
+
+15. **Wholesale Party Code Auto-Fill & Company / Brand Medicine Filtering:**
+   - **Party Code Auto-Fill Engine:** Implemented instant search and selection by Party Code (e.g. `001`, `PTY-108`, `Muslim`, etc.) in `WarehouseManagement.jsx`. Automatically auto-fills Party Name, City, Phone, Address, Salesman, and displays real-time Udhaar / Credit Balance badge.
+   - **Company-Specific Medicine Filtering:** Integrated Company / Manufacturer filtering across B2B Wholesale Invoicing and Supplier Purchases. Isolates medicines by manufacturing company (e.g. `BM Pvt LTD`, `Paul Brooks`, `Schwabe`, `MEKTUM`, `BLOSSOM`) with brand tags in dropdown options, preventing cross-company medicine selection errors when different companies produce items with similar names.
+
+16. **B2B Wholesale Cheque / Bank Payment & Overall Bill-Level Discounts:**
+   - **Cheque / Bank Payment Option:** Added `Cheque / Bank Transfer` payment mode with Cheque #, Bank Name, Clearance Date, and Amount fields.
+   - **Overall Invoice Discounts:** Added overall percentage (%) discount and overall flat (Rs) discount on the entire B2B bill subtotal, with live invoice gross, discount breakdown, and net payable calculations.
+
+**Next Recommended Steps:**
+- Present demo to Doctor for final workflow feedback.
+- When ready for live production, follow `README_PRODUCTION_BUILD_SOP.md` and `README_CLOUD_MIGRATION_ARCHITECTURE.md` to wire React SPA to PHP/MySQL backend on Hostinger / cloud storage, or use `desktop_software_engine/` to compile the native `.exe`.
+

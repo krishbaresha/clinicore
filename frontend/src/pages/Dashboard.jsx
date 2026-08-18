@@ -38,8 +38,9 @@ export default function Dashboard() {
   const todayVisits = allVisits.filter((v) => new Date(v.visit_date).toDateString() === today);
   const feesToday = todayVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
 
-  // User-specific visits & fees (e.g. Dr. Fatima, Dr. Asif)
-  const myTodayVisits = todayVisits.filter((v) => v.doctor_id === user?.userId || v.doctor_id === user?.id || (!v.doctor_id && user?.role === "doctor"));
+  // User-specific visits & fees (e.g. Dr. Kashif, Dr. Asif)
+  const activeDocId = user?.userId || user?.id;
+  const myTodayVisits = todayVisits.filter((v) => v.doctor_id === activeDocId || (!v.doctor_id && activeDocId === "user_001"));
   const myFeesToday = myTodayVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
 
   const allSales = dbSales.getAll();
@@ -336,14 +337,14 @@ export default function Dashboard() {
             <div className="bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
               <div className="text-xs text-teal-700 font-bold uppercase mb-1">My Patients Today</div>
               <div className="text-3xl font-black text-teal-900">
-                {todayVisits.filter((v) => !v.doctor_id || v.doctor_id === user?.id).length}
+                {myTodayVisits.length}
               </div>
               <div className="text-xs text-gray-500 mt-1">Waiting &amp; Completed in my chamber</div>
             </div>
             <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
               <div className="text-xs text-emerald-700 font-bold uppercase mb-1">My Consultation Fees Today</div>
               <div className="text-3xl font-black text-emerald-900">
-                Rs. {todayVisits.filter((v) => !v.doctor_id || v.doctor_id === user?.id).reduce((s, v) => s + (v.fee_amount || 0), 0).toLocaleString()}
+                Rs. {myFeesToday.toLocaleString()}
               </div>
               <div className="text-xs text-gray-500 mt-1">Direct OPD Consultation collection</div>
             </div>

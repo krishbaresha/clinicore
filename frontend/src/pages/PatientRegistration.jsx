@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { dbPatients, dbVisits, dbUsers, dbClinic, dbClinicServices } from "../api/db.js";
 import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
 import { formatPatientAge } from "../utils/formatters.js";
@@ -8,11 +8,17 @@ const RELATION_TYPES = ["father", "husband", "wife", "mother", "brother", "siste
 
 function RelationTypeBadge({ type }) {
   const labels = { father: "S/O", husband: "W/O", wife: "H/O", mother: "D/O", brother: "Br/O", sister: "Sr/O", son: "Son of", daughter: "D/O" };
-  return <span className="text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">{labels[type] || type}</span>;
+  const colors = { father: "bg-blue-50 text-blue-700", husband: "bg-purple-50 text-purple-700", wife: "bg-pink-50 text-pink-700", mother: "bg-emerald-50 text-emerald-700" };
+  return (
+    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${colors[type] || "bg-gray-100 text-gray-700"}`}>
+      {labels[type] || type}
+    </span>
+  );
 }
 
 export default function PatientRegistration() {
   const navigate = useNavigate();
+  const location = useLocation();
   const searchRef = useRef(null);
 
   // Clinic, doctors & services
@@ -25,6 +31,18 @@ export default function PatientRegistration() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null); // null = not searched yet
   const [selected, setSelected] = useState(null);
+  const [selectedResultIndex, setSelectedResultIndex] = useState(0);
+
+  const patientResultsListRef = useRef(null);
+
+  useEffect(() => {
+    if (patientResultsListRef.current) {
+      const activeEl = patientResultsListRef.current.querySelector(`[data-index="${selectedResultIndex}"]`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }
+  }, [selectedResultIndex]);
 
   // Quick-add form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -34,12 +52,16 @@ export default function PatientRegistration() {
   });
 
   // Visit form (after patient is selected or added)
-  const [visitType, setVisitType] = useState("new");
   const [feeAmount, setFeeAmount] = useState("");
   const [showReceipt, setShowReceipt] = useState(false);
   const [receipt, setReceipt] = useState(null);
 
-  const feeDefault = 800;
+  function getDoctorFee(docId, clinicObj = clinic, docsList = doctors) {
+    const doc = docsList.find((d) => d.id === docId) || docsList[0];
+    const defaultClinicFee = Number(clinicObj?.default_consultation_fee) || 300;
+    if (!doc) return defaultClinicFee;
+    return Number(doc.consultation_fee) || defaultClinicFee;
+  }
 
   useEffect(() => {
     if (searchRef.current) searchRef.current.focus();
@@ -47,56 +69,133 @@ export default function PatientRegistration() {
     setClinic(c);
     const docs = dbUsers.getAll().filter((u) => u.role === "doctor");
     setDoctors(docs);
-    if (docs.length > 0) setSelectedDoctorId(docs[0].id);
+    if (docs.length > 0) {
+      const defaultDocId = docs[0].id;
+      setSelectedDoctorId(defaultDocId);
+      const autoFee = getDoctorFee(defaultDocId, c, docs);
+      setFeeAmount(String(autoFee));
+    }
     setServices(dbClinicServices.getAll());
-  }, []);
+
+    if (location.state?.patientId) {
+      const p = dbPatients.getById(location.state.patientId);
+      if (p) {
+        setSelected(p);
+      }
+    }
+  }, [location.state]);
+
+  function handleDoctorChange(docId) {
+    setSelectedDoctorId(docId);
+    const fee = getDoctorFee(docId);
+    setFeeAmount(String(fee));
+  }
+
+  function openNewPatientForm(customName = query) {
+    const cleanName = toTitleCase((customName || "").trim());
+    setForm({
+      full_name: cleanName,
+      relation_type: "father",
+      relation_name: "",
+      phone: "",
+      age: "",
+      gender: "male",
+    });
+    setShowAddForm(true);
+    setSelected(null);
+    setShowReceipt(false);
+  }
 
   function handleSearch(e) {
-    e.preventDefault();
-    if (!query.trim()) { setResults([]); return; }
+    if (e) e.preventDefault();
+    if (!query.trim()) {
+      setResults([]);
+      setShowAddForm(false);
+      return;
+    }
     const found = dbPatients.search(query.trim());
     setResults(found);
     setSelected(null);
-    setShowAddForm(false);
+    setSelectedResultIndex(0);
     setShowReceipt(false);
+    
+    // If no patient found, automatically open Add Form with name pre-populated in Title Case
+    if (found.length === 0) {
+      openNewPatientForm(query.trim());
+    } else {
+      setShowAddForm(false);
+    }
+  }
+
+  function handleSearchKeyDown(e) {
+    if (results && results.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedResultIndex((prev) => Math.min(results.length - 1, prev + 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedResultIndex((prev) => Math.max(0, prev - 1));
+      } else if (e.key === "Enter" && !e.ctrlKey) {
+        if (results[selectedResultIndex]) {
+          e.preventDefault();
+          selectPatient(results[selectedResultIndex]);
+        }
+      }
+    }
   }
 
   function selectPatient(patient) {
     setSelected(patient);
     setShowAddForm(false);
     setShowReceipt(false);
-    const priorVisits = dbVisits.getByPatient(patient.id);
-    setVisitType(priorVisits.length > 0 ? "follow_up" : "new");
-    setFeeAmount(priorVisits.length > 0 ? "1000" : String(feeDefault));
+    const fee = getDoctorFee(selectedDoctorId);
+    setFeeAmount(String(fee));
   }
 
+function toTitleCase(str) {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : ""))
+    .join(" ");
+}
+
   function handleFormChange(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    let finalVal = value;
+    if (field === "full_name" || field === "relation_name") {
+      // Capitalize first letters automatically
+      finalVal = value.replace(/(^|\s)\S/g, (l) => l.toUpperCase());
+    }
+    setForm((prev) => ({ ...prev, [field]: finalVal }));
   }
 
   function addAndSelectPatient(e) {
     e.preventDefault();
-    if (!form.full_name.trim() || !form.phone.trim()) return;
+    if (!form.full_name.trim()) return;
+    const cleanName = toTitleCase(form.full_name.trim());
+    const cleanRelName = form.relation_name ? toTitleCase(form.relation_name.trim()) : "";
     const newPatient = dbPatients.add({
-      full_name:     form.full_name.trim(),
-      relation_name: form.relation_name.trim(),
-      relation_type: form.relation_type,
-      phone:         form.phone.trim(),
+      full_name:     cleanName,
+      relation_name: cleanRelName,
+      relation_type: form.relation_type || "father",
+      phone:         (form.phone || "").trim(),
       age:           form.age !== "" && !isNaN(Number(form.age)) ? Number(form.age) : null,
-      gender:        form.gender,
+      gender:        form.gender || "male",
     });
     setSelected(newPatient);
     setShowAddForm(false);
     setResults(null);
     setQuery("");
-    setVisitType("new");
-    setFeeAmount(String(feeDefault));
+    const fee = getDoctorFee(selectedDoctorId);
+    setFeeAmount(String(fee));
   }
 
   function registerVisit(e) {
     e.preventDefault();
     if (!selected) return;
-
+    const finalFee = feeAmount !== "" && !isNaN(Number(feeAmount)) ? Number(feeAmount) : getDoctorFee(selectedDoctorId);
+    
     // Duplicate Token Safeguard Check
     const todayQueue = dbVisits.getTodayAll();
     const existingActive = todayQueue.find(
@@ -109,30 +208,42 @@ export default function PatientRegistration() {
       if (!confirmDup) return;
     }
 
-    const assignedDoctor = doctors.find((d) => d.id === selectedDoctorId) || doctors[0];
+    const assignedDoctor = doctors.find((d) => d.id === selectedDoctorId) || doctors[0] || { id: "user_001", name: "Doctor" };
     const newVisit = dbVisits.add({
       patient_id: selected.id,
-      doctor_id: selectedDoctorId || assignedDoctor?.id,
-      visit_type: visitType,
-      fee_amount: Number(feeAmount) || feeDefault,
+      doctor_id: selectedDoctorId || assignedDoctor.id,
+      visit_type: "consultation",
+      fee_amount: finalFee,
     });
+
+    const currentClinic = clinic || dbClinic.get();
     const receiptData = {
       token: newVisit.token_number,
+      token_number: newVisit.token_number,
       patient: selected,
       doctor: assignedDoctor,
       visit: newVisit,
-      fee: Number(feeAmount) || feeDefault,
+      fee: finalFee,
+      fee_amount: finalFee,
       registeredAt: new Date(),
     };
+
     setReceipt(receiptData);
     setShowReceipt(true);
     setSelected(null);
     setResults(null);
     setQuery("");
+
+    // Auto-trigger 80mm thermal print immediately on token generation
+    try {
+      printOPDTokenReceipt(receiptData, currentClinic);
+    } catch (printErr) {
+      console.warn("Auto-print deferred:", printErr);
+    }
   }
 
   function printReceipt() {
-    window.print();
+    printOPDTokenReceipt(receipt, clinic || dbClinic.get());
   }
 
   function newRegistration() {
@@ -143,8 +254,8 @@ export default function PatientRegistration() {
     setSelected(null);
     setShowAddForm(false);
     setForm({ full_name: "", relation_type: "father", relation_name: "", phone: "", age: "", gender: "male" });
-    setVisitType("new");
-    setFeeAmount("");
+    const autoFee = getDoctorFee(selectedDoctorId);
+    setFeeAmount(String(autoFee));
     setTimeout(() => searchRef.current?.focus(), 100);
   }
 
@@ -230,16 +341,15 @@ export default function PatientRegistration() {
               </div>
             </div>
 
-            {/* ── Attending Doctor Chamber Box ── */}
-            <div className="mx-4 mt-3 p-3 bg-teal-50/90 border border-teal-200/90 rounded-2xl flex items-center justify-between shadow-xs">
+            {/* ── Doctor & Fee Row ── */}
+            <div className="mx-4 mt-3 p-3 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-between">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700">Attending Doctor</div>
-                <div className="font-black text-teal-950 text-sm">{receipt.doctor?.name || "Dr. Asif Ashraf"}</div>
-                <div className="text-[11px] font-semibold text-teal-700">{receipt.doctor?.specialization || "General Physician"}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Doctor</div>
+                <div className="font-black text-gray-900 text-sm">{receipt.doctor?.name || "Doctor"}</div>
               </div>
-              <div className="bg-teal-700 text-white px-2.5 py-1 rounded-xl text-xs font-black shadow-xs flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">meeting_room</span>
-                Chamber {receipt.doctor?.room_number || "Room 1"}
+              <div className="text-right">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Fee Paid</div>
+                <div className="font-black text-teal-800 text-sm">Rs. {receipt.fee.toLocaleString()}</div>
               </div>
             </div>
 
@@ -247,43 +357,34 @@ export default function PatientRegistration() {
             <div className="p-4 space-y-2.5 text-sm">
               {/* Name */}
               <div>
-                <div className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Patient</div>
+                <div className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Patient Name</div>
                 <div className="font-bold text-gray-900 text-base leading-tight">{receipt.patient.full_name}</div>
-                <div className="text-gray-500">
-                  {relLabel} {receipt.patient.relation_name}
-                </div>
+                {receipt.patient.relation_name && (
+                  <div className="text-gray-500 text-xs mt-0.5">
+                    {relLabel} {receipt.patient.relation_name}
+                  </div>
+                )}
               </div>
 
               {/* Phone + Age row */}
-              <div className="flex justify-between">
+              <div className="flex justify-between border-t border-dashed border-gray-200 pt-2 text-xs">
                 <div>
-                  <div className="text-[10px] text-gray-400 uppercase">Phone</div>
-                  <div className="font-medium text-gray-800">{receipt.patient.phone || "—"}</div>
+                  <span className="text-gray-400">Phone: </span>
+                  <span className="font-bold text-gray-800">{receipt.patient.phone || "—"}</span>
                 </div>
                 <div>
-                  <div className="text-[10px] text-gray-400 uppercase">Age</div>
-                  <div className="font-medium text-gray-800">{formatPatientAge(receipt.patient)}</div>
+                  <span className="text-gray-400">Age: </span>
+                  <span className="font-bold text-gray-800">{formatPatientAge(receipt.patient)}</span>
                 </div>
                 <div>
-                  <div className="text-[10px] text-gray-400 uppercase">Type</div>
-                  <div className={`font-semibold ${receipt.visit.visit_type === "follow_up" ? "text-blue-700" : "text-teal-700"}`}>
-                    {receipt.visit.visit_type === "follow_up" ? "Follow-up" : "New"}
-                  </div>
+                  <span className="text-gray-400">Gender: </span>
+                  <span className="font-bold text-gray-800 capitalize">{receipt.patient.gender || "Male"}</span>
                 </div>
-              </div>
-
-              {/* Dashed divider */}
-              <div className="border-t border-dashed border-gray-300 my-1" />
-
-              {/* Fee */}
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 font-medium">Consultation Fee</span>
-                <span className="text-xl font-black text-teal-700">Rs. {receipt.fee.toLocaleString()}</span>
               </div>
 
               {/* Footer */}
               <div className="border-t border-dashed border-gray-200 pt-2 text-center">
-                <div className="text-[11px] text-gray-500 font-medium">
+                <div className="text-[11px] text-gray-600 font-medium">
                   Please wait — your token will be called
                 </div>
                 <div className="text-[10px] text-gray-400 mt-0.5">
@@ -346,8 +447,9 @@ export default function PatientRegistration() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. Bilal, Abdul Rasheed, 03211112233"
-            className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-gray-50"
+            onKeyDown={handleSearchKeyDown}
+            placeholder="e.g. Bilal, Abdul Rasheed, 03211112233 [↑ / ↓ to select, Enter to choose]"
+            className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-gray-50 font-medium"
           />
           <button
             type="submit"
@@ -363,53 +465,71 @@ export default function PatientRegistration() {
           <div className="mt-4">
             {results.length === 0 ? (
               <div className="text-center py-6">
-                <div className="text-gray-400 text-sm mb-3">No patient found for &quot;{query}&quot;</div>
+                <div className="text-gray-400 text-sm mb-3">No existing patient found for &quot;{query}&quot;</div>
                 <button
-                  onClick={() => { setShowAddForm(true); setForm((f) => ({ ...f, full_name: query })); }}
-                  className="inline-flex items-center gap-2 bg-teal-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-teal-700 transition-colors text-sm"
+                  type="button"
+                  onClick={() => openNewPatientForm(query)}
+                  className="inline-flex items-center gap-2 bg-teal-600 text-white px-5 py-2.5 rounded-2xl font-bold hover:bg-teal-700 transition-colors text-sm shadow-md"
                 >
                   <span className="material-symbols-outlined text-xl">person_add</span>
-                  Register New Patient
+                  Register &quot;{toTitleCase(query)}&quot; as New Patient
                 </button>
               </div>
             ) : (
               <>
-                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  {results.length} patient{results.length !== 1 ? "s" : ""} found — select to register visit
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span>{results.length} patient{results.length !== 1 ? "s" : ""} found</span>
+                  <span className="text-[11px] text-teal-700 font-bold">Use ↑ / ↓ arrow keys, press Enter</span>
                 </div>
-                <div className="space-y-2">
-                  {results.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => selectPatient(p)}
-                      className={`w-full text-left rounded-xl border p-4 transition-all ${
-                        selected?.id === p.id
-                          ? "border-teal-500 bg-teal-50 shadow-md shadow-teal-100"
-                          : "border-gray-100 hover:border-teal-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="font-bold text-gray-900">{p.full_name}</div>
-                          <div className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
-                            <RelationTypeBadge type={p.relation_type} />
-                            <span>{p.relation_name}</span>
+                <div ref={patientResultsListRef} className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                  {results.map((p, idx) => {
+                    const isHighlighted = idx === selectedResultIndex;
+                    const isSelected = selected?.id === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        data-index={idx}
+                        onClick={() => {
+                          setSelectedResultIndex(idx);
+                          selectPatient(p);
+                        }}
+                        className={`w-full text-left rounded-xl border p-4 transition-all ${
+                          isHighlighted || isSelected
+                            ? "border-teal-500 bg-teal-50 shadow-md shadow-teal-100 ring-2 ring-teal-500"
+                            : "border-gray-100 hover:border-teal-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-bold text-gray-900 flex items-center gap-2">
+                              {p.full_name}
+                              {isHighlighted && (
+                                <span className="text-[10px] bg-teal-600 text-white font-bold px-1.5 py-0.2 rounded font-mono">
+                                  ↵ Enter
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
+                              <RelationTypeBadge type={p.relation_type} />
+                              <span>{p.relation_name}</span>
+                            </div>
+                            <div className="text-sm text-gray-400 mt-1">{p.phone} · {formatPatientAge(p)} · {p.gender}</div>
                           </div>
-                          <div className="text-sm text-gray-400 mt-1">{p.phone} · {formatPatientAge(p)} · {p.gender}</div>
+                          {(isSelected || isHighlighted) && (
+                            <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          )}
                         </div>
-                        {selected?.id === p.id && (
-                          <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
-                  onClick={() => setShowAddForm(true)}
-                  className="mt-3 w-full flex items-center justify-center gap-2 border border-dashed border-teal-300 text-teal-700 py-2.5 rounded-xl text-sm font-medium hover:bg-teal-50 transition-colors"
+                  type="button"
+                  onClick={() => openNewPatientForm(query)}
+                  className="mt-3 w-full flex items-center justify-center gap-2 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 py-3 rounded-2xl text-xs font-bold transition-all shadow-sm"
                 >
-                  <span className="material-symbols-outlined text-lg">person_add</span>
-                  Not the right person? Register New Patient
+                  <span className="material-symbols-outlined text-base text-teal-600">person_add</span>
+                  Not the same person? Register <strong>&quot;{toTitleCase(query)}&quot;</strong> as a Brand New Patient
                 </button>
               </>
             )}
@@ -439,12 +559,12 @@ export default function PatientRegistration() {
                 />
               </div>
               <div>
-                <label htmlFor="reg_relation_type" className="block text-xs font-semibold text-gray-600 mb-1">Relation Type *</label>
+                <label htmlFor="reg_relation_type" className="block text-xs font-semibold text-gray-600 mb-1">Relation Type</label>
                 <select
                   id="reg_relation_type"
                   name="relation_type"
                   autoComplete="off"
-                  required value={form.relation_type}
+                  value={form.relation_type}
                   onChange={(e) => handleFormChange("relation_type", e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
                 >
@@ -454,24 +574,25 @@ export default function PatientRegistration() {
                 </select>
               </div>
               <div>
-                <label htmlFor="reg_relation_name" className="block text-xs font-semibold text-gray-600 mb-1">Relation Name *</label>
+                <label htmlFor="reg_relation_name" className="block text-xs font-semibold text-gray-600 mb-1">Relation Name (Optional)</label>
                 <input
                   id="reg_relation_name"
                   name="relation_name"
                   autoComplete="off"
-                  required value={form.relation_name}
+                  value={form.relation_name}
                   onChange={(e) => handleFormChange("relation_name", e.target.value)}
-                  placeholder="Abdul Rasheed"
+                  placeholder="Father / Husband Name"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
                 />
               </div>
               <div>
-                <label htmlFor="reg_phone" className="block text-xs font-semibold text-gray-600 mb-1">Phone *</label>
+                <label htmlFor="reg_phone" className="block text-xs font-semibold text-gray-600 mb-1">Phone Number (Optional)</label>
                 <input
                   id="reg_phone"
                   name="phone"
                   autoComplete="tel"
-                  required type="tel" value={form.phone}
+                  type="tel"
+                  value={form.phone}
                   onChange={(e) => handleFormChange("phone", e.target.value)}
                   placeholder="03001234567"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
@@ -485,17 +606,17 @@ export default function PatientRegistration() {
                   autoComplete="off"
                   type="number" min="0" max="120" value={form.age}
                   onChange={(e) => handleFormChange("age", e.target.value)}
-                  placeholder="e.g. 35 (or leave blank if unknown)"
+                  placeholder="e.g. 35"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
                 />
               </div>
               <div>
-                <label htmlFor="reg_gender" className="block text-xs font-semibold text-gray-600 mb-1">Gender *</label>
+                <label htmlFor="reg_gender" className="block text-xs font-semibold text-gray-600 mb-1">Gender</label>
                 <select
                   id="reg_gender"
                   name="gender"
                   autoComplete="sex"
-                  required value={form.gender}
+                  value={form.gender}
                   onChange={(e) => handleFormChange("gender", e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50"
                 >
@@ -559,53 +680,41 @@ export default function PatientRegistration() {
           </div>
 
           <form onSubmit={registerVisit} className="space-y-4">
-            {/* Select Doctor Dropdown */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Assign Doctor <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="select-doctor-dropdown"
-                required
-                value={selectedDoctorId}
-                onChange={(e) => setSelectedDoctorId(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50 font-medium text-gray-900"
-              >
-                {doctors.map((doc) => (
-                  <option key={doc.id} value={doc.id}>
-                    {doc.name} — {doc.specialization || "General Physician"} ({doc.room_number || "Room 1"})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Visit Type</label>
-                <div className="flex gap-2">
-                  {["new", "follow_up"].map((vt) => (
-                    <button
-                      key={vt}
-                      type="button"
-                      onClick={() => setVisitType(vt)}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                        visitType === vt
-                          ? "bg-teal-600 text-white border-teal-600 shadow-md shadow-teal-200"
-                          : "border-gray-200 text-gray-600 hover:border-teal-300"
-                      }`}
-                    >
-                      {vt === "new" ? "New" : "Follow-up"}
-                    </button>
-                  ))}
-                </div>
+            {/* Select Doctor & Fee Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Assign Doctor <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="select-doctor-dropdown"
+                  required
+                  value={selectedDoctorId}
+                  onChange={(e) => handleDoctorChange(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50 font-medium text-gray-900"
+                >
+                  {doctors.map((doc) => {
+                    const docFee = getDoctorFee(doc.id);
+                    return (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.name} (Fee: Rs. {docFee})
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Consultation / Service Fee (Rs.)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Doctor Consultation Fee (Rs.) <span className="text-teal-600 font-bold">*</span>
+                </label>
                 <input
-                  type="number" min="0" value={feeAmount}
+                  type="number"
+                  min="0"
+                  value={feeAmount}
                   onChange={(e) => setFeeAmount(e.target.value)}
-                  placeholder={String(feeDefault)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50 font-medium"
+                  placeholder="300"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50 font-bold text-teal-800"
                 />
               </div>
             </div>

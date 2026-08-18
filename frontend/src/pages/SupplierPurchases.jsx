@@ -95,7 +95,11 @@ export default function SupplierPurchases() {
     return purchaseItems.reduce((sum, item) => {
       const q = Number(item.qty) || 0;
       const c = Number(item.cost_price) || 0;
-      return sum + q * c;
+      const gross = q * c;
+      const dPct = Number(item.disc_pct) || 0;
+      const dFlat = Number(item.disc_flat) || 0;
+      const disc = (gross * (dPct / 100)) + dFlat;
+      return sum + Math.max(0, gross - disc);
     }, 0);
   };
 
@@ -523,36 +527,49 @@ export default function SupplierPurchases() {
               </button>
             </div>
 
-            {purchaseItems.map((item, index) => (
-              <div key={index} className="grid grid-cols-12 gap-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-200 items-center">
-                <div className="col-span-12 md:col-span-4 space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase">Medicine Item *</label>
-                    {inventoryList.length > 0 && (
-                      <span className="text-[10px] font-semibold text-teal-700">Auto-fill from Inventory</span>
-                    )}
+            {purchaseItems.map((item, index) => {
+              const activeSupplier = suppliers.find((s) => s.id === selectedSupplierId);
+              const filteredInventory = (selectedSupplierId && activeSupplier)
+                ? inventoryList.filter((inv) => 
+                    (inv.company_name || "").toLowerCase().includes(activeSupplier.name.toLowerCase()) || 
+                    activeSupplier.name.toLowerCase().includes((inv.company_name || "").toLowerCase()) ||
+                    activeSupplier.name.toLowerCase().includes("local")
+                  )
+                : inventoryList;
+              const displayList = filteredInventory.length > 0 ? filteredInventory : inventoryList;
+
+              return (
+                <div key={index} className="grid grid-cols-12 gap-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-200 items-center">
+                  <div className="col-span-12 md:col-span-4 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Medicine Item *</label>
+                      {displayList.length > 0 && (
+                        <span className="text-[10px] font-semibold text-teal-700">
+                          {activeSupplier ? `Showing ${displayList.length} items for ${activeSupplier.name}` : "Auto-fill from Inventory"}
+                        </span>
+                      )}
+                    </div>
+                    <select
+                      value={item.inventory_id || ""}
+                      onChange={(e) => handleSelectExistingMedicine(index, e.target.value)}
+                      className="w-full border border-teal-200 bg-teal-50/40 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-900 focus:ring-1 focus:ring-teal-500 mb-1"
+                    >
+                      <option value="">+ Custom / New Medicine Entry</option>
+                      {displayList.map((inv) => (
+                        <option key={inv.id} value={inv.id}>
+                          [{inv.company_name || "BM Pvt LTD"}] {inv.medicine_name} ({inv.strength || inv.category}) — {inv.stock_qty} left
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Medicine Name (e.g. Panadol 500mg)"
+                      value={item.medicine_name}
+                      onChange={(e) => handleItemChange(index, "medicine_name", e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white"
+                      required
+                    />
                   </div>
-                  <select
-                    value={item.inventory_id || ""}
-                    onChange={(e) => handleSelectExistingMedicine(index, e.target.value)}
-                    className="w-full border border-teal-200 bg-teal-50/40 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-900 focus:ring-1 focus:ring-teal-500 mb-1"
-                  >
-                    <option value="">+ Custom / New Medicine Entry</option>
-                    {inventoryList.map((inv) => (
-                      <option key={inv.id} value={inv.id}>
-                        {inv.medicine_name} ({inv.strength || inv.category}) — {inv.stock_qty} left
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Medicine Name (e.g. Panadol 500mg)"
-                    value={item.medicine_name}
-                    onChange={(e) => handleItemChange(index, "medicine_name", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white"
-                    required
-                  />
-                </div>
 
                 <div className="col-span-6 md:col-span-2">
                   <label className="block text-[10px] font-bold text-gray-500 uppercase">Category / Form</label>
@@ -609,6 +626,31 @@ export default function SupplierPurchases() {
                 </div>
 
                 <div className="col-span-3 md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase">Disc %</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="0%"
+                    value={item.disc_pct || ""}
+                    onChange={(e) => handleItemChange(index, "disc_pct", e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-center bg-white font-mono"
+                  />
+                </div>
+
+                <div className="col-span-3 md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase">Disc Rs</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={item.disc_flat || ""}
+                    onChange={(e) => handleItemChange(index, "disc_flat", e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-center bg-white font-mono"
+                  />
+                </div>
+
+                <div className="col-span-3 md:col-span-1">
                   <label className="block text-[10px] font-bold text-gray-500 uppercase">MRP / Sale</label>
                   <input
                     type="number"
@@ -629,7 +671,8 @@ export default function SupplierPurchases() {
                   </button>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
 
           <div className="border-t border-gray-200 pt-4 flex flex-col md:flex-row justify-between items-center gap-4">

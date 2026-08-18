@@ -24,6 +24,8 @@ export default function ClinicSettings() {
   const [showStaffForm, setShowStaffForm] = useState(false);
   const [staffForm, setStaffForm] = useState({ name: "", email: "", role: "receptionist", phone: "", password: "password" });
   const [staffError, setStaffError] = useState("");
+  const [transferModal, setTransferModal] = useState(null);
+  const [transferSuccessMsg, setTransferSuccessMsg] = useState("");
 
   useEffect(() => {
     const c = dbClinic.get();
@@ -536,25 +538,38 @@ export default function ClinicSettings() {
                       <p className="font-body-md text-body-md font-semibold text-on-surface truncate">{s.name}</p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-sm w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30">
+                  <div className="flex items-center justify-between sm:justify-end gap-sm w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30 flex-wrap">
                     {s.is_owner ? (
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
                         ⭐ Principal Owner
                       </span>
                     ) : (
-                      <label className="flex items-center gap-1.5 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-medium hover:bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={!!s.can_view_financials}
-                          onChange={() => {
-                            const updatedVal = !s.can_view_financials;
-                            dbUsers.update(s.id, { can_view_financials: updatedVal });
-                            setStaff(dbUsers.getAll());
-                          }}
-                          className="rounded text-teal-600 focus:ring-teal-500"
-                        />
-                        <span>📊 Financial Reports Access</span>
-                      </label>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {user?.is_owner && s.role === "doctor" && (
+                          <button
+                            type="button"
+                            onClick={() => setTransferModal(s)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all shadow-xs"
+                            title="Designate this Doctor as Principal Owner"
+                          >
+                            <span className="material-symbols-outlined text-[16px] text-amber-600">workspace_premium</span>
+                            Make Principal Doctor
+                          </button>
+                        )}
+                        <label className="flex items-center gap-1.5 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-medium hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={!!s.can_view_financials}
+                            onChange={() => {
+                              const updatedVal = !s.can_view_financials;
+                              dbUsers.update(s.id, { can_view_financials: updatedVal });
+                              setStaff(dbUsers.getAll());
+                            }}
+                            className="rounded text-teal-600 focus:ring-teal-500"
+                          />
+                          <span>📊 Financial Reports Access</span>
+                        </label>
+                      </div>
                     )}
                     <span className={`px-sm py-1 rounded-full font-label-md text-label-md uppercase shrink-0 ${roleBadge(s.role)}`}>
                       {s.role}
@@ -603,6 +618,68 @@ export default function ClinicSettings() {
             </ul>
           )}
         </section>
+      )}
+
+      {/* Principal Doctor Transfer Confirmation Modal */}
+      {transferModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white p-6 rounded-3xl max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-700">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700 text-2xl font-bold">
+                <span className="material-symbols-outlined text-3xl">workspace_premium</span>
+              </div>
+              <div>
+                <h3 className="font-black text-gray-900 text-lg">Transfer Principal Doctor</h3>
+                <p className="text-xs text-gray-500 font-medium">Clinic Ownership &amp; Admin Privileges</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50/80 border border-amber-200/80 p-4 rounded-2xl text-xs text-amber-950 space-y-2">
+              <p>
+                Are you sure you want to designate <strong>{transferModal.name}</strong> as the <strong>Principal Doctor / Clinic Owner</strong>?
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-amber-900 font-medium text-[11px]">
+                <li>They will receive full administrative control over clinic settings &amp; branding.</li>
+                <li>They will have full access to financial reports &amp; staff permissions.</li>
+                <li>You will remain an active Doctor / Consultant in the clinic.</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setTransferModal(null)}
+                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  dbUsers.setPrincipalDoctor(transferModal.id);
+                  setStaff(dbUsers.getAll());
+                  const targetName = transferModal.name;
+                  setTransferModal(null);
+                  setTransferSuccessMsg(`Principal Doctor ownership successfully transferred to ${targetName}!`);
+                  if (refreshUser) refreshUser();
+                  setTimeout(() => setTransferSuccessMsg(""), 5000);
+                }}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-teal-950 py-2.5 rounded-xl font-black text-xs shadow-md shadow-amber-500/25 transition-all flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-base">check</span>
+                Confirm Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {transferSuccessMsg && (
+        <div className="fixed bottom-6 right-6 bg-teal-900 text-white px-5 py-3 rounded-2xl shadow-xl border border-teal-700 text-xs font-bold flex items-center gap-2 z-50 animate-bounce">
+          <span className="material-symbols-outlined text-amber-400 text-base">workspace_premium</span>
+          {transferSuccessMsg}
+        </div>
       )}
 
       {/* Services & Procedures Catalog Manager (Live CRUD) */}

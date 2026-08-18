@@ -450,7 +450,15 @@ export default function ReceptionQueue() {
                 <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
-                      onClick={() => printOPDTokenReceipt({ token: visit.token_number, patient, visit, fee: visit.fee_amount }, dbClinic.get())}
+                      onClick={() => printOPDTokenReceipt({
+                        token: visit.token_number,
+                        token_number: visit.token_number,
+                        patient,
+                        visit,
+                        fee: visit.fee_amount,
+                        fee_amount: visit.fee_amount,
+                        doctor: doctors.find((d) => d.id === visit.doctor_id)
+                      }, dbClinic.get())}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200"
                     >
                       <span className="material-symbols-outlined text-base">print</span>

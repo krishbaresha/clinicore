@@ -26,7 +26,10 @@ export default function DoctorQueue() {
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [customNote, setCustomNote] = useState("");
 
-  const doctorId = user?.userId || user?.id;
+  const [selectedDoctorId, setSelectedDoctorId] = useState(user?.userId || user?.id || "user_001");
+  const doctors = dbUsers.getAll().filter((u) => u.role === "doctor");
+  const isDoctorUser = user?.role === "doctor";
+  const doctorId = isDoctorUser ? (user?.userId || user?.id || "user_001") : selectedDoctorId;
 
   const loadQueue = useCallback(() => {
     // Pass doctorId to get ONLY visits assigned to this doctor
@@ -102,13 +105,31 @@ export default function DoctorQueue() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>queue</span>
-            {user?.name ? `${user.name}'s OPD Chamber` : "Doctor's Live Queue"}
+            {docProfile?.name ? `${docProfile.name}'s OPD Chamber` : "Doctor's Live Queue"}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {now.toLocaleString("en-PK", { weekday: "long", hour: "2-digit", minute: "2-digit" })} • {docProfile?.room_number || "OPD Chamber"}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {!isDoctorUser && doctors.length > 1 && (
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+              {doctors.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setSelectedDoctorId(d.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    doctorId === d.id
+                      ? "bg-teal-600 text-white shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {d.name}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             onClick={loadQueue}
             className="flex items-center gap-1.5 text-xs text-teal-800 bg-white border border-teal-200 px-3.5 py-2 rounded-xl hover:bg-teal-50 transition-colors font-bold shadow-sm"
@@ -313,6 +334,19 @@ export default function DoctorQueue() {
                         >
                           <span className="material-symbols-outlined text-sm">skip_next</span>
                           Skip
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Remove Token #${visit.token_number} (${patient?.full_name || "Patient"}) from active queue?`)) {
+                              dbVisits.delete(visit.id);
+                              loadQueue();
+                            }
+                          }}
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-gray-200 text-rose-600 hover:bg-rose-50 px-2 py-1.5 rounded-xl text-xs font-medium transition-colors"
+                          title="Remove from Queue"
+                        >
+                          <span className="material-symbols-outlined text-sm">close</span>
+                          Remove
                         </button>
                       </>
                     )}
