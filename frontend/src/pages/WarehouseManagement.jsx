@@ -1143,6 +1143,21 @@ export default function WarehouseManagement() {
                         className="w-full px-2.5 py-1.5 rounded-xl border border-teal-300 bg-teal-50 font-mono font-bold"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">
+                        Cheque Clearance Status:
+                      </label>
+                      <select
+                        value={b2bChequeStatus}
+                        onChange={(e) => setB2bChequeStatus(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 font-bold text-teal-800 bg-white"
+                      >
+                        <option value="cleared">Cleared / In Hand</option>
+                        <option value="pending">Pending Clearing</option>
+                        <option value="post_dated">Post Dated Cheque (PDC)</option>
+                      </select>
+                    </div>
                   </div>
                 )}
 

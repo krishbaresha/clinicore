@@ -14,7 +14,7 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
   const movementData = useMemo(() => {
     if (!item?.id) return null;
     return dbInventory.getProductMovement(item.id);
-  }, [item, transferMode]);
+  }, [item]);
 
   if (!isOpen || !item) return null;
 

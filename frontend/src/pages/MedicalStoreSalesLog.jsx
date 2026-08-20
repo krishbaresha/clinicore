@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSales, getInventory, getExpenses, getReturns, addPharmacyExpense, deletePharmacyExpense, processSaleReturn, resetDemoData } from "../api/store.js";
+import { getSales, getExpenses, getReturns, addPharmacyExpense, deletePharmacyExpense, processSaleReturn, resetDemoData } from "../api/store.js";
 import { dbClinic } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
-import { formatCurrency, formatDate } from "../utils/formatters.js";
+import { formatDate } from "../utils/formatters.js";
 
 export default function MedicalStoreSalesLog() {
   const navigate = useNavigate();
@@ -12,7 +12,6 @@ export default function MedicalStoreSalesLog() {
   const [sales, setSales] = useState([]);
   const [returns, setReturns] = useState([]);
   const [expenses, setExpenses] = useState([]);
-  const [inventory, setInventory] = useState([]);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,7 +35,6 @@ export default function MedicalStoreSalesLog() {
   const [countedCashInput, setCountedCashInput] = useState("");
 
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   function loadAllData() {
     const sr = getSales();
@@ -47,9 +45,6 @@ export default function MedicalStoreSalesLog() {
 
     const er = getExpenses();
     if (er.success) setExpenses([...er.data].sort((a, b) => new Date(b.date) - new Date(a.date)));
-
-    const ir = getInventory();
-    if (ir.success) setInventory(ir.data);
   }
 
   useEffect(loadAllData, []);

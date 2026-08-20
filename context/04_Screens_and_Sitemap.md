@@ -35,12 +35,13 @@
 /fees                          → Fees & Financial Reports (Day-End Z-Report & Denominations)
 /store/pos                     → Medical Store POS (Cart, Walk-in / Linked Rx, Discounts, Udhaar)
 /store                         → Medical Store Inventory (Multi-Unit Stock & Re-order Alerts)
-/store/sales-log               → Store Sales Log, Receipts & Returns/Exchanges
-/warehouse                     → Godown Warehouse Management (Stock, B2B Supply, Transfers, Party Ledgers)
-/purchases                     → Supplier Purchases & Inward Goods (GRN, Invoices, Ledger)
-/public/queue                  → Public Waiting Area TV Token Display
-/clinic                        → Patient Mobile Live Turn Tracker
+/store/sales (or /store/sales-log) → Store Sales Log, Receipts & Returns/Exchanges
+/store/warehouse (or /warehouse)   → Godown Warehouse Management (Stock, B2B Supply, Transfers, Party Ledgers)
+/store/purchases (or /purchases)   → Supplier Purchases & Inward Goods (GRN, Invoices, Ledger)
+/public/queue (or /live)       → Public Waiting Area TV Token Display
+/clinic (or /dr-asif)          → Patient Mobile Live Turn Tracker
 /settings                      → Clinic Settings, Staff Accounts, Backup/Restore
+/developer (or /super-admin)   → Developer Multi-Tenant Master Admin Panel
 ```
 
 ### Module Breakdown:

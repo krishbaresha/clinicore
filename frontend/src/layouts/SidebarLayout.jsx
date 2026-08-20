@@ -64,39 +64,6 @@ const NAV_DEFAULT = [
   { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
 
-// Mobile bottom nav per role
-const MOBILE_NAV_BY_ROLE = {
-  doctor: [
-    { label: "Home", icon: "dashboard", path: "/dashboard" },
-    { label: "Queue", icon: "queue", path: "/doctor/queue" },
-    { label: "Patients", icon: "group", path: "/patients" },
-    { label: "Fees", icon: "payments", path: "/fees" },
-  ],
-  receptionist: [
-    { label: "Home", icon: "dashboard", path: "/dashboard" },
-    { label: "Register", icon: "how_to_reg", path: "/reception/register" },
-    { label: "Queue", icon: "event_note", path: "/reception/queue" },
-    { label: "Reports", icon: "pending_actions", path: "/reception/pending-reports" },
-  ],
-  pharmacist: [
-    { label: "POS", icon: "point_of_sale", path: "/store/pos" },
-    { label: "Sales", icon: "receipt_long", path: "/store/sales" },
-    { label: "Stock", icon: "inventory_2", path: "/store" },
-    { label: "Purchases", icon: "local_shipping", path: "/store/purchases" },
-  ],
-  cashier: [
-    { label: "POS", icon: "point_of_sale", path: "/store/pos" },
-    { label: "Sales", icon: "receipt_long", path: "/store/sales" },
-    { label: "Stock", icon: "inventory_2", path: "/store" },
-  ],
-  warehouse: [
-    { label: "Godown", icon: "warehouse", path: "/store/warehouse" },
-    { label: "Purchases", icon: "add_business", path: "/store/purchases" },
-    { label: "Stock", icon: "inventory_2", path: "/store" },
-    { label: "CashBook", icon: "payments", path: "/fees" },
-  ],
-};
-
 function NavItems({ items, onItemClick }) {
   return (
     <ul className="space-y-1">

@@ -5,7 +5,7 @@
 
 import { formatPatientAge } from "./formatters.js";
 
-function escapeHtml(str) {
+export function escapeHtml(str) {
   if (!str) return "";
   return String(str)
     .replace(/&/g, "&amp;")
@@ -32,6 +32,7 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
       iframe.style.height = "0";
       iframe.style.border = "0";
       iframe.setAttribute("aria-hidden", "true");
+      iframe.title = title || "Print Thermal Receipt";
       document.body.appendChild(iframe);
     }
 
@@ -87,15 +88,19 @@ export function printThermalReceipt(sale, clinicData = null) {
   const customerName = escapeHtml(sale.patient_name || (sale.visit_id ? "Linked OPD Patient" : "Walk-In-Customer"));
   const invoiceId = escapeHtml(sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
 
-  const itemsHtml = (sale.items || []).map((item) => `
+  const itemsHtml = (sale.items || []).map((item) => {
+    const discPct = Number(item.disc_pct || item.discount_pct || 0);
+    const discBadge = discPct > 0 ? ` <span style="font-weight: 700; color: #b91c1c; font-size: 10px;">(-${discPct}%)</span>` : "";
+    return `
     <div style="margin-bottom: 5px;">
-      <div style="font-weight: 700; font-size: 12px; color: #111827;">${escapeHtml(item.medicine_name)}</div>
+      <div style="font-weight: 700; font-size: 12px; color: #111827;">${escapeHtml(item.medicine_name)}${discBadge}</div>
       <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 500; color: #4b5563; margin-top: 1px;">
         <span>${item.quantity || 1} ${escapeHtml(item.unit_label || "Unit")} × Rs. ${Number(item.unit_price || 0).toFixed(2)}</span>
         <span style="font-weight: 800; color: #111827;">Rs. ${Number(item.line_total || 0).toFixed(2)}</span>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 
   const receiptHtml = `
     <!DOCTYPE html>
@@ -249,7 +254,7 @@ export function printThermalReceipt(sale, clinicData = null) {
 export function printDayEndClosingReceipt(closing, clinicData = null) {
   if (!closing) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Asif Ashraf's Clinic");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store");
   const rawDate = closing.date ? new Date(closing.date) : new Date();
   const dateTimeStr = rawDate.toLocaleString("en-PK", {
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -415,7 +420,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
 export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicData = null) {
   if (!purchase) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Asif Ashraf's Clinic");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store");
   const supplierName = escapeHtml(supplier?.company_name || purchase.supplier_name || "Company Distributor");
   const totalAmount = Number(purchase.total_amount) || 0;
   const paidAmount = Number(purchase.paid_amount) || 0;

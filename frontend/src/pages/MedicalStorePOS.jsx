@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, formatStockShort } from "../api/db.js";
+import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import PhotoLightbox from "../components/PhotoLightbox.jsx";
 
@@ -67,7 +67,14 @@ function ReceiptModal({ sale, onClose }) {
           <div className="space-y-2">
             {sale.items.map((item, i) => (
               <div key={i} className="text-xs space-y-0.5">
-                <div className="font-bold text-gray-900">{item.medicine_name}</div>
+                <div className="font-bold text-gray-900 flex items-center justify-between">
+                  <span>{item.medicine_name}</span>
+                  {Number(item.disc_pct || item.discount_pct || 0) > 0 && (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      {item.disc_pct || item.discount_pct}% OFF
+                    </span>
+                  )}
+                </div>
                 <div className="flex justify-between items-center text-gray-600 font-medium">
                   <span>{item.quantity || 1} {item.unit_label || "Unit"} × Rs. {Number(item.unit_price || 0).toFixed(2)}</span>
                   <span className="font-extrabold text-gray-900">Rs. {Number(item.line_total || 0).toFixed(2)}</span>
@@ -221,22 +228,31 @@ export default function MedicalStorePOS() {
     }
   }
 
-  // Direct 1-Click Add To Cart (Quantity based)
-  function addToCart(item, qty = 1) {
+  // Helper to calculate line total with item percentage discount
+  function calculateLineTotal(unitPrice, qty, discPct = 0) {
+    const gross = (Number(unitPrice) || 0) * (Number(qty) || 0);
+    const discAmount = gross * ((Number(discPct) || 0) / 100);
+    return parseFloat(Math.max(0, gross - discAmount).toFixed(2));
+  }
+
+  // Direct Add To Cart (Quantity and percentage discount based)
+  function addToCart(item, qty = 1, discPct = 0) {
     const unitPrice = Number(item.unit_sale_price || item.sale_price || item.box_sale_price || item.unit_price) || 0;
     const unitLabel = item.unit_label || "Unit";
+    const initialDiscPct = Math.max(0, Math.min(100, parseFloat(discPct) || 0));
 
     setCart((prev) => {
       const existing = prev.find((c) => c.inventory_id === item.id);
       if (existing) {
         const newQty = existing.quantity + qty;
+        const currentDisc = existing.disc_pct || 0;
         return prev.map((c) =>
           c.inventory_id === item.id
             ? {
                 ...c,
                 quantity: newQty,
                 base_units_deducted: newQty,
-                line_total: parseFloat((unitPrice * newQty).toFixed(2)),
+                line_total: calculateLineTotal(unitPrice, newQty, currentDisc),
               }
             : c
         );
@@ -250,7 +266,8 @@ export default function MedicalStorePOS() {
           quantity: qty,
           base_units_deducted: qty,
           unit_price: unitPrice,
-          line_total: parseFloat((unitPrice * qty).toFixed(2)),
+          disc_pct: initialDiscPct,
+          line_total: calculateLineTotal(unitPrice, qty, initialDiscPct),
           batch_no: item.batch_no || item.item_code || "",
           expiry_date: item.expiry_date || null,
         },
@@ -268,7 +285,7 @@ export default function MedicalStorePOS() {
             ...c,
             quantity: newQty,
             base_units_deducted: newQty,
-            line_total: parseFloat((c.unit_price * newQty).toFixed(2)),
+            line_total: calculateLineTotal(c.unit_price, newQty, c.disc_pct || 0),
           };
         })
         .filter((c) => c.quantity > 0)
@@ -284,7 +301,21 @@ export default function MedicalStorePOS() {
           ...c,
           quantity: q,
           base_units_deducted: q,
-          line_total: parseFloat((c.unit_price * q).toFixed(2)),
+          line_total: calculateLineTotal(c.unit_price, q, c.disc_pct || 0),
+        };
+      })
+    );
+  }
+
+  function setItemDiscount(inventoryId, discPct) {
+    const pct = Math.max(0, Math.min(100, parseFloat(discPct) || 0));
+    setCart((prev) =>
+      prev.map((c) => {
+        if (c.inventory_id !== inventoryId) return c;
+        return {
+          ...c,
+          disc_pct: pct,
+          line_total: calculateLineTotal(c.unit_price, c.quantity, pct),
         };
       })
     );
@@ -294,6 +325,11 @@ export default function MedicalStorePOS() {
     setCart((prev) => prev.filter((c) => c.inventory_id !== inventoryId));
   }
 
+  const grossItemsSubtotal = cart.reduce((sum, c) => sum + (c.unit_price * c.quantity), 0);
+  const totalItemDiscounts = cart.reduce(
+    (sum, c) => sum + (c.unit_price * c.quantity * ((c.disc_pct || 0) / 100)),
+    0
+  );
   const subtotal = cart.reduce((sum, c) => sum + c.line_total, 0);
   const discountVal = Math.min(subtotal, Math.max(0, Number(discountInput) || 0));
   const finalTotal = Math.max(0, subtotal - discountVal);
@@ -619,53 +655,88 @@ export default function MedicalStorePOS() {
                 <p className="text-xs">Cart is empty. Click &quot;Add&quot; on any medicine.</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
                 {cart.map((item) => (
                   <div
                     key={item.inventory_id}
-                    className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between gap-3"
+                    className="p-3 bg-gray-50 rounded-2xl border border-gray-200/80 flex flex-col gap-2.5 shadow-2xs hover:border-teal-300 transition-all"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-xs text-gray-900 truncate">
-                        {item.medicine_name}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-xs text-gray-900 truncate">
+                          {item.medicine_name}
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium mt-0.5">
+                          <span>Rs. {item.unit_price} / {item.unit_label || "unit"}</span>
+                          {(item.disc_pct || 0) > 0 && (
+                            <span className="text-[10px] font-black bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded border border-amber-300">
+                              {item.disc_pct}% OFF
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-gray-500 font-medium mt-0.5">
-                        Rs. {item.unit_price} / unit
+
+                      {/* Line Total */}
+                      <div className="text-right shrink-0">
+                        <div className="text-xs font-black text-teal-950 font-mono">
+                          Rs. {item.line_total}
+                        </div>
+                        {(item.disc_pct || 0) > 0 && (
+                          <div className="text-[10px] text-gray-400 line-through">
+                            Rs. {(item.unit_price * item.quantity).toFixed(2)}
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Quantity Input Box & Controls */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => updateQty(item.inventory_id, -1)}
-                        className="w-7 h-7 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg text-gray-700 font-black text-sm flex items-center justify-center transition-colors"
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => setExactQty(item.inventory_id, e.target.value)}
-                        className="w-12 bg-white border border-gray-300 rounded-lg py-1 text-center text-xs font-black text-gray-900 focus:outline-none focus:border-teal-600"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => updateQty(item.inventory_id, 1)}
-                        className="w-7 h-7 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg text-gray-700 font-black text-sm flex items-center justify-center transition-colors"
-                      >
-                        +
-                      </button>
-                    </div>
+                    {/* Bottom Controls Row: Qty + Disc% + Remove */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-200/50">
+                      {/* Quantity Input Box & Controls */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => updateQty(item.inventory_id, -1)}
+                          className="w-6 h-6 bg-white border border-gray-300 hover:bg-gray-100 rounded-md text-gray-700 font-black text-xs flex items-center justify-center transition-colors shadow-2xs"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => setExactQty(item.inventory_id, e.target.value)}
+                          className="w-10 bg-white border border-gray-300 rounded-md py-0.5 text-center text-xs font-black text-gray-900 focus:outline-none focus:border-teal-600"
+                          title="Quantity"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateQty(item.inventory_id, 1)}
+                          className="w-6 h-6 bg-white border border-gray-300 hover:bg-gray-100 rounded-md text-gray-700 font-black text-xs flex items-center justify-center transition-colors shadow-2xs"
+                        >
+                          +
+                        </button>
+                      </div>
 
-                    {/* Line Total */}
-                    <div className="text-right w-16 shrink-0">
-                      <div className="text-xs font-black text-teal-950">Rs. {item.line_total}</div>
+                      {/* Percentage Discount Field */}
+                      <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                        <label className="text-[10px] text-amber-900 font-bold uppercase tracking-tight">Disc%:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.disc_pct === 0 ? "" : (item.disc_pct || "")}
+                          placeholder="0%"
+                          onChange={(e) => setItemDiscount(item.inventory_id, e.target.value)}
+                          className="w-10 text-center text-xs font-black text-amber-950 focus:outline-none bg-transparent"
+                          title="Medicine Discount Percentage (%)"
+                        />
+                      </div>
+
+                      {/* Remove Button */}
                       <button
                         type="button"
                         onClick={() => removeFromCart(item.inventory_id)}
-                        className="text-[10px] text-rose-600 hover:underline mt-0.5"
+                        className="text-[11px] text-rose-600 hover:text-rose-800 hover:underline font-bold"
                       >
                         Remove
                       </button>
@@ -677,15 +748,27 @@ export default function MedicalStorePOS() {
 
             {/* Calculations & Payment Options */}
             {cart.length > 0 && (
-              <div className="border-t border-gray-100 pt-3 space-y-3 text-xs">
+              <div className="border-t border-gray-100 pt-3 space-y-2.5 text-xs">
                 <div className="flex justify-between items-center text-gray-600">
-                  <span>Subtotal:</span>
-                  <span className="font-bold text-gray-900 text-sm">Rs. {subtotal.toLocaleString()}</span>
+                  <span>Gross Items Total:</span>
+                  <span className="font-bold text-gray-900">Rs. {grossItemsSubtotal.toLocaleString()}</span>
                 </div>
 
-                {/* Discount */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-gray-600 font-medium">Discount (Rs):</span>
+                {totalItemDiscounts > 0 && (
+                  <div className="flex justify-between items-center text-amber-700 font-bold">
+                    <span>Medicine Line Discounts:</span>
+                    <span>- Rs. {totalItemDiscounts.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center text-gray-600">
+                  <span>Items Subtotal:</span>
+                  <span className="font-bold text-gray-900">Rs. {subtotal.toLocaleString()}</span>
+                </div>
+
+                {/* Additional Overall Bill Discount */}
+                <div className="flex items-center justify-between gap-2 bg-amber-50/70 p-2 rounded-xl border border-amber-200">
+                  <span className="text-amber-900 font-bold">Additional Bill Discount (Rs):</span>
                   <input
                     type="number"
                     min="0"
@@ -693,14 +776,17 @@ export default function MedicalStorePOS() {
                     value={discountInput}
                     onChange={(e) => setDiscountInput(e.target.value)}
                     placeholder="0"
-                    className="w-24 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-right text-xs font-bold focus:outline-none focus:border-teal-600"
+                    className="w-24 bg-white border border-amber-300 rounded-lg px-2 py-1 text-right text-xs font-black text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs"
                   />
                 </div>
 
                 {/* Grand Total */}
-                <div className="flex justify-between items-center bg-teal-50 p-3 rounded-xl border border-teal-200">
-                  <span className="font-bold text-teal-950 text-sm">Net Payable:</span>
-                  <span className="font-black text-teal-950 text-lg">Rs. {finalTotal.toLocaleString()}</span>
+                <div className="flex justify-between items-center bg-teal-50 p-3.5 rounded-2xl border border-teal-200">
+                  <div>
+                    <span className="font-bold text-teal-950 text-sm block">Net Payable:</span>
+                    <span className="text-[10px] text-teal-700 font-medium">Final total to collect</span>
+                  </div>
+                  <span className="font-black text-teal-950 text-xl font-mono">Rs. {finalTotal.toLocaleString()}</span>
                 </div>
 
                 {/* Payment Method Switch */}

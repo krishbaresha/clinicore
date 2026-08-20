@@ -110,8 +110,11 @@ function AppRoutes() {
         {/* ─── Medical Store ─────────────────────────────────────── */}
         <Route path="/store/pos"       element={<AuthenticatedLayout><MedicalStorePOS /></AuthenticatedLayout>} />
         <Route path="/store/purchases" element={<AuthenticatedLayout><SupplierPurchases /></AuthenticatedLayout>} />
+        <Route path="/purchases"       element={<Navigate to="/store/purchases" replace />} />
         <Route path="/store/sales"     element={<AuthenticatedLayout><MedicalStoreSalesLog /></AuthenticatedLayout>} />
+        <Route path="/store/sales-log" element={<Navigate to="/store/sales" replace />} />
         <Route path="/store/warehouse" element={<AuthenticatedLayout><WarehouseManagement /></AuthenticatedLayout>} />
+        <Route path="/warehouse"       element={<Navigate to="/store/warehouse" replace />} />
         <Route path="/store"           element={<AuthenticatedLayout><MedicalStoreInventory /></AuthenticatedLayout>} />
 
         {/* ─── Shared / General ──────────────────────────────────── */}
@@ -120,6 +123,7 @@ function AppRoutes() {
         <Route path="/patients/new" element={<AuthenticatedLayout><AddNewPatient /></AuthenticatedLayout>} />
         <Route path="/patients/:id" element={<AuthenticatedLayout><PatientProfile /></AuthenticatedLayout>} />
         <Route path="/fees"        element={<AuthenticatedLayout><FeesReports /></AuthenticatedLayout>} />
+        <Route path="/public/queue" element={<Navigate to="/live" replace />} />
         <Route path="/settings"    element={<OwnerLayout><ClinicSettings /></OwnerLayout>} />
 
         {/* Default redirect */}

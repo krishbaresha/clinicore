@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { dbSuppliers, dbPurchases, dbInventory, dbClinic, generateSequentialInvoiceNo } from "../api/db.js";
+import { dbSuppliers, dbPurchases, dbInventory, dbClinic } from "../api/db.js";
 import { printSupplierPurchaseReceipt } from "../utils/thermalPrinter.js";
 
 export default function SupplierPurchases() {
@@ -15,7 +15,6 @@ export default function SupplierPurchases() {
   // New Purchase Form
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [companyBillNoInput, setCompanyBillNoInput] = useState("");
-  const [systemVoucherId, setSystemVoucherId] = useState(generateSequentialInvoiceNo("PUR"));
   const [paidAmountInput, setPaidAmountInput] = useState("");
   const [purchaseItems, setPurchaseItems] = useState([
     { inventory_id: "", medicine_name: "", category: "Tablet", strength: "500 mg", received_unit_type: "box", unit_label: "pack", batch_no: "", expiry_date: "", qty: 1, cost_price: "", sale_price: "" }
@@ -117,25 +116,36 @@ export default function SupplierPurchases() {
     const newPur = dbPurchases.add({
       supplier_id: selectedSupplierId,
       supplier_name: supplier?.name || "Distributor",
-      invoice_no: systemVoucherId,
       company_bill_no: companyBillNoInput || "N/A",
       total_amount,
       paid_amount,
-      items: validItems.map((i) => ({
-        medicine_name: i.medicine_name,
-        category: i.category || "Tablet",
-        strength: i.strength || "",
-        received_unit_type: i.received_unit_type || "box",
-        unit_label: i.unit_label || "pack",
-        strips_per_box: Number(i.strips_per_box) || 10,
-        units_per_strip: Number(i.units_per_strip) || 10,
-        batch_no: i.batch_no || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
-        expiry_date: i.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split("T")[0],
-        qty: Number(i.qty) || 1,
-        cost_price: Number(i.cost_price) || 0,
-        sale_price: Number(i.sale_price) || 0,
-        line_total: (Number(i.qty) || 1) * (Number(i.cost_price) || 0)
-      }))
+      items: validItems.map((i) => {
+        const q = Number(i.qty) || 1;
+        const c = Number(i.cost_price) || 0;
+        const gross = q * c;
+        const dPct = Number(i.disc_pct) || 0;
+        const dFlat = Number(i.disc_flat) || 0;
+        const disc = (gross * (dPct / 100)) + dFlat;
+        const lineTotal = Math.max(0, gross - disc);
+        return {
+          inventory_id: i.inventory_id || null,
+          medicine_name: i.medicine_name,
+          category: i.category || "Tablet",
+          strength: i.strength || "",
+          received_unit_type: i.received_unit_type || "box",
+          unit_label: i.unit_label || "pack",
+          strips_per_box: Number(i.strips_per_box) || 10,
+          units_per_strip: Number(i.units_per_strip) || 10,
+          batch_no: i.batch_no || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
+          expiry_date: i.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split("T")[0],
+          qty: q,
+          cost_price: c,
+          sale_price: Number(i.sale_price) || 0,
+          disc_pct: dPct,
+          disc_flat: dFlat,
+          line_total: lineTotal
+        };
+      })
     });
 
     alert(`✅ Stock Entry Voucher #${newPur.invoice_no} saved successfully! Inventory & Supplier Ledger updated.`);
@@ -144,7 +154,6 @@ export default function SupplierPurchases() {
     printSupplierPurchaseReceipt(newPur, supplier, dbClinic.get());
 
     // Reset Form
-    setSystemVoucherId(generateSequentialInvoiceNo("PUR"));
     setCompanyBillNoInput("");
     setPaidAmountInput("");
     setPurchaseItems([{ inventory_id: "", medicine_name: "", category: "Tablet", strength: "", received_unit_type: "box", unit_label: "pack", batch_no: "", expiry_date: "", qty: 1, cost_price: "", sale_price: "" }]);
@@ -496,9 +505,9 @@ export default function SupplierPurchases() {
               <label className="block text-xs font-bold text-gray-600 mb-1">System Sequential Voucher #</label>
               <input
                 type="text"
-                value={systemVoucherId}
+                value="Auto-Generated on Save (e.g. PUR-1001)"
                 readOnly
-                className="w-full border border-teal-200 bg-teal-50/50 rounded-xl px-3 py-2 text-xs font-black text-teal-900"
+                className="w-full border border-teal-200 bg-teal-50/50 rounded-xl px-3 py-2 text-xs font-bold text-teal-800"
               />
             </div>
 

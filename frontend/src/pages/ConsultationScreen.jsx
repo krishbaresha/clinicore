@@ -161,23 +161,32 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
 
       {/* Capture buttons */}
       {(multiple || photos.length === 0) && (
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={openCamera}
-            className="flex-1 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-teal-300 rounded-2xl p-5 text-teal-700 hover:bg-teal-50 hover:border-teal-400 transition-all"
-          >
-            <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>photo_camera</span>
-            <span className="text-sm font-semibold">Take Photo</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex-1 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl p-5 text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-all"
-          >
-            <span className="material-symbols-outlined text-3xl">upload</span>
-            <span className="text-sm font-medium">Upload Photo</span>
-          </button>
+        <div className="flex flex-col gap-2">
+          {isCompressing && (
+            <div className="flex items-center justify-center gap-2 p-2 bg-teal-50 text-teal-800 rounded-xl text-xs font-bold animate-pulse">
+              <span className="material-symbols-outlined text-base animate-spin">sync</span>
+              Compressing HD photo to ~120KB canvas...
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={openCamera}
+              className="flex-1 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-teal-300 rounded-2xl p-5 text-teal-700 hover:bg-teal-50 hover:border-teal-400 transition-all"
+            >
+              <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>photo_camera</span>
+              <span className="text-sm font-semibold">Take Photo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isCompressing}
+              className="flex-1 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl p-5 text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-3xl">upload</span>
+              <span className="text-sm font-medium">Upload Photo</span>
+            </button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"

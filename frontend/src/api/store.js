@@ -1,4 +1,4 @@
-import { dbInventory, dbSales, dbVisits, dbPatients, dbExpenses, dbReturns, resetDatabaseToDemoData } from "./db.js";
+import { dbInventory, dbSales, dbVisits, dbExpenses, dbReturns, resetDatabaseToDemoData } from "./db.js";
 
 export function resetDemoData()   { resetDatabaseToDemoData(); return { success: true, data: true, error: null }; }
 export function getInventory()    { return { success: true, data: dbInventory.getAll(),       error: null }; }
@@ -8,7 +8,7 @@ export function getExpenses()     { return { success: true, data: dbExpenses.get
 export function getReturns()      { return { success: true, data: dbReturns.getAll(),         error: null }; }
 
 export function addPharmacyExpense(formData) {
-  const { category, amount } = formData;
+  const { amount } = formData || {};
   if (!amount || Number(amount) <= 0) return { success: false, data: null, error: { code: "VALIDATION", message: "Valid amount is required." } };
   const exp = dbExpenses.add(formData);
   return { success: true, data: exp, error: null };
@@ -77,6 +77,7 @@ export function recordSale(formData) {
       selected_unit_type,
       unit_label: unitLabel,
       quantity: qty,
+      base_units: baseUnitsNeeded,
       base_units_deducted: baseUnitsNeeded,
       unit_price: unitPrice,
       line_total: parseFloat((unitPrice * qty).toFixed(2)),

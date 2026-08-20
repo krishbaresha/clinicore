@@ -16,12 +16,6 @@ export function hashPassword(plain) {
   return "hashed_" + hash.toString(16).padStart(8, "0");
 }
 
-function getRelativeDateString(daysOffset) {
-  const d = new Date();
-  d.setDate(d.getDate() + daysOffset);
-  return d.toISOString().split("T")[0];
-}
-
 function todayAt(hour, minute = 0) {
   const d = new Date();
   d.setHours(hour, minute, 0, 0);
@@ -2200,7 +2194,8 @@ const SEED_DATA = {
   shift_closings: [],
   documents: [],
   tenants: [
-    { id: "tenant_001", name: "Dr. Muhammad Kashif Khan Clinic", status: "active", plan: "enterprise" }
+    { id: "tenant_001", name: "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store", address: "Lajpat Road, Hyderabad", phone: "03473100304", fee: 300, status: "active", plan: "enterprise" },
+    { id: "tenant_002", name: "Al-Shifa Healthcare & Homeo Pharmacy", address: "Saddar, Hyderabad", phone: "03001234567", fee: 500, status: "active", plan: "pro" }
   ]
 };
 
@@ -2344,6 +2339,8 @@ export function initDB() {
 
 export function resetDatabaseToDemoData() {
   Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
+  _COLLECTION_CACHE.clear();
+  _ID_MAP_CACHE.clear();
   initDB();
 }
 
@@ -2478,6 +2475,7 @@ export const dbPatients = {
     const patients = getCollection(KEYS.PATIENTS);
     const updated = patients.map((p) => (p.id === id ? { ...p, ...data } : p));
     setCollection(KEYS.PATIENTS, updated);
+    return updated.find((p) => p.id === id) || null;
   },
 };
 
@@ -2582,12 +2580,16 @@ export const dbVisits = {
       status: "waiting",
       visit_date: new Date().toISOString(),
       prescription_image_url: null,
-      report_image_urls: [],
+      notes: visit.notes || "",
+      doctor_id: visit.doctor_id || "user_001",
+      fee_status: visit.fee_status || (visit.fee_amount > 0 ? "paid" : "unpaid"),
     };
-    setCollection(KEYS.VISITS, [...visits, newVisit]);
+    setCollection(KEYS.VISITS, [newVisit, ...visits]);
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newVisit;
   },
+  create: (visit) => dbVisits.add(visit),
+  getQueue: (doctorId) => dbVisits.getTodayQueue(doctorId),
   updateStatus: (id, status) => {
     const visits = getCollection(KEYS.VISITS);
     const updated = visits.map((v) => (v.id === id ? { ...v, status } : v));
@@ -2623,13 +2625,14 @@ export const dbVisits = {
     setCollection(KEYS.VISITS, [...getCollection(KEYS.VISITS), newVisit]);
     return newVisit;
   },
-  complete: (id, { prescription_image_url, report_image_urls, notes, forcedStatus }) => {
+  complete: (id, payload = {}, optForcedStatus = null) => {
     const visits = getCollection(KEYS.VISITS);
-    const reports = report_image_urls || [];
-    const status = forcedStatus || (reports.length > 0 ? "completed" : "completed_reports_pending");
+    const data = typeof payload === "string" ? { forcedStatus: payload } : (payload || {});
+    const reports = data.report_image_urls || [];
+    const status = optForcedStatus || data.forcedStatus || (reports.length > 0 ? "completed" : (typeof payload === "string" ? payload : "completed_reports_pending"));
     const updated = visits.map((v) =>
       v.id === id
-        ? { ...v, status, prescription_image_url, report_image_urls: reports, notes: notes || v.notes }
+        ? { ...v, status, prescription_image_url: data.prescription_image_url || v.prescription_image_url, report_image_urls: reports, notes: data.notes || v.notes }
         : v
     );
     setCollection(KEYS.VISITS, updated);
@@ -2985,13 +2988,20 @@ export const dbSuppliers = {
   getById: (id) => getFromCollectionById(KEYS.SUPPLIERS, id),
   add: (supplier) => {
     const list = getCollection(KEYS.SUPPLIERS);
-    const newS = { ...supplier, id: generateId("sup") };
+    const newS = { ...supplier, id: generateId("sup"), current_balance: Number(supplier.current_balance) || 0 };
     setCollection(KEYS.SUPPLIERS, [...list, newS]);
     return newS;
   },
+  updateBalance: (supplierId, delta) => {
+    const list = getCollection(KEYS.SUPPLIERS);
+    const updated = list.map((s) =>
+      s.id === supplierId ? { ...s, current_balance: Math.max(0, (Number(s.current_balance) || 0) + Number(delta)) } : s
+    );
+    setCollection(KEYS.SUPPLIERS, updated);
+  },
   recordPayment: (supplierId, amount) => {
     const list = getCollection(KEYS.SUPPLIERS);
-    const updated = list.map((s) => (s.id === supplierId ? { ...s, current_balance: Math.max(0, (s.current_balance || 0) - Number(amount)) } : s));
+    const updated = list.map((s) => (s.id === supplierId ? { ...s, current_balance: Math.max(0, (Number(s.current_balance) || 0) - Number(amount)) } : s));
     setCollection(KEYS.SUPPLIERS, updated);
   },
 };
@@ -3108,7 +3118,15 @@ export const dbTenants = {
     setCollection(KEYS.TENANTS, list.filter((t) => t.id !== id));
   },
   switchToTenant: (id) => {
-    console.log("Switched to tenant", id);
+    const target = dbTenants.getById(id);
+    if (!target) return false;
+    dbClinic.update({
+      name: target.name || "ClinicFlow Clinic",
+      address: target.address || "Main City Clinic",
+      phone: target.phone || "03001234567",
+      default_consultation_fee: Number(target.fee) || 500,
+    });
+    return true;
   },
 };
 
@@ -3121,13 +3139,15 @@ export const dbSales = {
     const subtotal = Number(sale.subtotal_amount) || Number(sale.total_amount) || 0;
     const discount = Number(sale.discount_amount) || 0;
     const total = Math.max(0, subtotal - discount);
-    const paid = Number(sale.paid_amount) !== undefined ? Number(sale.paid_amount) : total;
+    const paid = sale.paid_amount !== undefined && sale.paid_amount !== null && !isNaN(Number(sale.paid_amount))
+      ? Number(sale.paid_amount)
+      : total;
 
     const newSale = {
       ...sale,
       id: generateId("sale"),
       receipt_no: invoiceNo,
-      sale_date: new Date().toISOString(),
+      sale_date: sale.sale_date || new Date().toISOString(),
       subtotal_amount: subtotal,
       discount_amount: discount,
       total_amount: total,
@@ -3138,7 +3158,7 @@ export const dbSales = {
     (sale.items || []).forEach((item) => {
       const inv = dbInventory.getById(item.inventory_id);
       if (inv) {
-        const baseUnits = item.base_units || item.quantity || item.qty || 1;
+        const baseUnits = Number(item.base_units || item.base_units_deducted || item.qty_base_units || item.quantity || item.qty || 1);
         dbInventory.deductStock(inv.id, baseUnits);
       }
     });
@@ -3153,11 +3173,19 @@ export const dbPurchases = {
   getAll: () => getCollection(KEYS.PURCHASES),
   add: (purchase) => {
     const purchases = getCollection(KEYS.PURCHASES);
-    const invoiceNo = generateSequentialInvoiceNo("PUR");
+    const invoiceNo = purchase.invoice_no || generateSequentialInvoiceNo("PUR");
+    const totalAmount = Number(purchase.total_amount) || 0;
+    const paidAmount = Number(purchase.paid_amount) || 0;
+    const balanceDue = Math.max(0, totalAmount - paidAmount);
+
     const newPurchase = {
       ...purchase,
       id: generateId("pur"),
       invoice_no: invoiceNo,
+      total_amount: totalAmount,
+      paid_amount: paidAmount,
+      balance_due: balanceDue,
+      purchase_date: purchase.purchase_date || new Date().toISOString(),
       created_at: new Date().toISOString(),
     };
 
@@ -3165,10 +3193,14 @@ export const dbPurchases = {
     (purchase.items || []).forEach((item) => {
       const inv = dbInventory.getById(item.inventory_id);
       if (inv) {
-        const baseUnits = Number(item.qty_base_units || item.qty || 1);
+        const baseUnits = Number(item.base_units || item.base_units_deducted || item.qty_base_units || item.qty || item.quantity || 1);
         dbInventory.addStock(inv.id, baseUnits, dest);
       }
     });
+
+    if (balanceDue > 0 && purchase.supplier_id) {
+      dbSuppliers.updateBalance(purchase.supplier_id, balanceDue);
+    }
 
     setCollection(KEYS.PURCHASES, [newPurchase, ...purchases]);
     return newPurchase;
@@ -3245,11 +3277,13 @@ export const dbExpenses = {
   getAll: () => getCollection(KEYS.EXPENSES),
   add: (expense) => {
     const list = getCollection(KEYS.EXPENSES);
+    const expDate = expense.date || expense.expense_date || new Date().toISOString();
     const newExp = {
       ...expense,
       id: generateId("exp"),
       amount: Number(expense.amount) || 0,
-      date: expense.date || new Date().toISOString(),
+      date: expDate,
+      expense_date: expDate,
     };
     setCollection(KEYS.EXPENSES, [newExp, ...list]);
     return newExp;
@@ -3265,12 +3299,28 @@ export const dbReturns = {
   getAll: () => getCollection(KEYS.RETURNS),
   processReturn: ({ sale_id, return_items, reason, refund_type }) => {
     const returns = getCollection(KEYS.RETURNS);
+    const items = return_items || [];
+    const refundAmount = items.reduce((sum, it) => {
+      const qty = Number(it.quantity_returned || it.qty || it.quantity) || 0;
+      const price = Number(it.unit_price) || 0;
+      return sum + (qty * price);
+    }, 0);
+
+    // Restock returned items back to store counter stock
+    items.forEach((it) => {
+      if (it.inventory_id) {
+        const baseUnits = Number(it.base_units || it.base_units_deducted || it.quantity_returned || it.qty || 1);
+        dbInventory.addStock(it.inventory_id, baseUnits, "store");
+      }
+    });
+
     const newRet = {
       id: generateId("ret"),
       sale_id,
       reason,
-      refund_type,
-      items: return_items,
+      refund_type: refund_type || "cash",
+      items,
+      refund_amount: refundAmount,
       return_date: new Date().toISOString(),
     };
     setCollection(KEYS.RETURNS, [newRet, ...returns]);
@@ -3318,6 +3368,8 @@ export function importFullDatabase(backupObj) {
   if (!backupObj || typeof backupObj !== "object" || !backupObj.data) {
     throw new Error("Invalid backup file.");
   }
+  _COLLECTION_CACHE.clear();
+  _ID_MAP_CACHE.clear();
   Object.entries(backupObj.data).forEach(([key, val]) => {
     localStorage.setItem(key, JSON.stringify(val));
   });

@@ -33,14 +33,28 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Personalization, Multi-Doctor Support, Ownership Guards & Screen Wiring Completed
-- **Last worked on:** Removed all hardcoded "Dr. Ahmed" references, added Assign Doctor dropdown to Patient Registration, filtered Doctor's Live Queue by doctor_id, enforced Ownership Guard on /doctor/consultation/:visitId, formatted 80mm thermal receipt CSS, and verified all 14 sitemap routes.
-- **Currently blocked on:** None — all 4 session tasks completed and verified.
-- **Overall completion estimate:** 100% frontend demo build complete and verified. Next step: PHP/MySQL Hostinger backend implementation per TRD §4.
+- **Phase:** Full App Bug Audit, Automated Testing & Defect Resolution Complete
+- **Last worked on:** Comprehensive full-stack bug audit across database engine, POS, Godown warehouse, doctor queue, financial accounting, and thermal printer engine. Fixed multi-unit stock deduction bug, NaN paid amount bug, returns restocking & refund calculation, invoice sequence skipping, cache invalidation, and added automated 12-suite test runner (`test_full_suite.mjs`).
+- **Currently blocked on:** None — all tests passing 100%.
+- **Overall completion estimate:** 100% frontend and mock engine production ready.
 
 ---
 
 ## Session Log (most recent entry at top)
+
+### Session: 20-Aug-2026 (Full Bug Audit, Test Suite & POS Line Item Percentage Discounts) — Antigravity
+
+**Task worked on:**
+1. Deep code audit across all 24 page components, API models, database engines, thermal printer, and utility formatters.
+2. Fixed multi-unit packaging base units deduction mismatch (`recordSale` ➔ `dbSales.checkout`).
+3. Fixed `paid_amount` & `balance_due` NaN constant binary evaluation bug in `dbSales.checkout`.
+4. Fixed sale returns inventory restocking and computed `refund_amount` for Day-End cash reconciliation.
+5. Fixed `SupplierPurchases.jsx` invoice counter skipping and added `dbSuppliers.updateBalance(id, delta)`.
+6. Fixed cache invalidation on `resetDatabaseToDemoData` and `importFullDatabase`.
+7. Created full automated test suite `scripts/test_full_suite.mjs` verifying all 12 core application workflows (48/48 tests passing).
+8. Added per-medicine line item **Percentage Discount (`Disc%`)** field in POS counter (`MedicalStorePOS.jsx`), live subtotal/gross recalculations, receipt voucher breakdown, and 80mm ESC/POS thermal print formatting.
+
+---
 
 ### Session: 15-Aug-2026 (Mobile Sticky Footer Fix & Consultation 2-Button Flow) — Antigravity
 

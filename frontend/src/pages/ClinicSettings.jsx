@@ -1059,6 +1059,7 @@ export default function ClinicSettings() {
                           window.location.reload();
                         }
                       } catch (err) {
+                        console.error("Backup restore error:", err);
                         alert("❌ Error restoring backup: Invalid JSON file format.");
                       }
                     };

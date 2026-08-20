@@ -397,7 +397,7 @@ function toTitleCase(str) {
           {/* ── Action Buttons (hidden on print) ── */}
           <div className="mt-4 flex gap-3 print:hidden">
             <button
-              onClick={() => printOPDTokenReceipt(receipt, clinic)}
+              onClick={printReceipt}
               className="flex-1 flex items-center justify-center gap-2 bg-teal-50 border border-teal-300 text-teal-800 font-bold py-3 px-4 rounded-2xl hover:bg-teal-100 transition-colors shadow-sm"
             >
               <span className="material-symbols-outlined text-xl">print</span>

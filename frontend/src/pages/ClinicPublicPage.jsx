@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { dbClinic, dbUsers, dbVisits } from "../api/db.js";
 
 export default function ClinicPublicPage() {

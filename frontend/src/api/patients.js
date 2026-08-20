@@ -8,6 +8,11 @@ export function getPatient(id)        {
   if (!p) return { success: false, data: null, error: { code: "NOT_FOUND", message: "Patient not found." } };
   return { success: true, data: p, error: null };
 }
+export function updatePatient(id, data) {
+  const updated = dbPatients.update(id, data);
+  if (!updated) return { success: false, data: null, error: { code: "NOT_FOUND", message: "Patient not found." } };
+  return { success: true, data: updated, error: null };
+}
 
 export function createPatient(formData) {
   const { full_name, relation_name, relation_type, phone, age, gender, cnic } = formData;
