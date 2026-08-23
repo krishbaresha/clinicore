@@ -35,8 +35,8 @@ export function getCustomReceiptConfig() {
 function getLogoHeaderHtml(docTypeLabel = "") {
   const cfg = getCustomReceiptConfig();
   const logoSrc = (cfg.show_logo && cfg.logo_base64) ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
-  if (!cfg.show_logo) return docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;text-align:center;">${docTypeLabel}</div>` : "";
-  return `<div style="text-align:center;margin:0 0 4px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:145px;width:100%;height:auto;display:block;margin:0 auto;" />${docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;">${docTypeLabel}</div>` : ""}</div>`;
+  if (!cfg.show_logo) return docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px;text-align:center;">${docTypeLabel}</div>` : "";
+  return `<div style="text-align:center;margin:0 0 2px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:145px;max-height:85px;width:auto;height:auto;display:block;margin:0 auto;object-fit:contain;" />${docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-top:1px;">${docTypeLabel}</div>` : ""}</div>`;
 }
 
 

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { autoCropLogoImage } from "../utils/imageCompressor.js";
 import { Link } from "react-router-dom";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
 import { formatPKR, formatDate } from "../utils/formatters.js";
@@ -166,15 +167,35 @@ export default function ReceiptStudio() {
     );
   };
 
-  // Handle Logo Upload
-  const handleLogoUpload = (e) => {
+  // Automatically auto-crop initial default logo on mount if needed
+  useEffect(() => {
+    if (clinicConfig.logo_base64 && clinicConfig.logo_base64.length > 5000) {
+      autoCropLogoImage(clinicConfig.logo_base64, 400, 140)
+        .then((cropped) => {
+          if (cropped && cropped !== clinicConfig.logo_base64) {
+            setClinicConfig((prev) => ({ ...prev, logo_base64: cropped }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  // Handle Logo Upload with Automatic Margin Cropping
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      setClinicConfig((prev) => ({ ...prev, logo_base64: uploadEvent.target.result }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Auto-crop all empty margins & whitespace
+      const croppedBase64 = await autoCropLogoImage(file, 420, 150);
+      setClinicConfig((prev) => ({ ...prev, logo_base64: croppedBase64 }));
+    } catch (err) {
+      console.warn("Logo crop fallback:", err);
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        setClinicConfig((prev) => ({ ...prev, logo_base64: uploadEvent.target.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSaveConfig = () => {
@@ -660,12 +681,19 @@ export default function ReceiptStudio() {
                   switch (block.id) {
                     case "header_logo":
                       return clinicConfig.logo_base64 ? (
-                        <div key={block.id} className="text-center mb-2">
+                        <div key={block.id} className="text-center my-0.5 py-0 leading-none">
                           <img
                             src={clinicConfig.logo_base64}
                             alt="Logo"
-                            style={{ maxWidth: `${clinicConfig.logo_size || 135}px` }}
-                            className="h-auto mx-auto block object-contain"
+                            style={{
+                              maxWidth: `${clinicConfig.logo_size || 140}px`,
+                              maxHeight: "85px",
+                              width: "auto",
+                              height: "auto",
+                              display: "block",
+                              margin: "0 auto",
+                              objectFit: "contain",
+                            }}
                           />
                         </div>
                       ) : null;
