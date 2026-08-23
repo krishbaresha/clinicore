@@ -17,6 +17,7 @@ const UNIFIED_DESK_NAV = [
   { label: "Register Patient", icon: "how_to_reg", path: "/reception/register" },
   { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
   { label: "Counter POS", icon: "point_of_sale", path: "/store/pos" },
+  { label: "Receipt Studio", icon: "palette", path: "/receipt-studio" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
   { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
@@ -197,12 +198,13 @@ export default function SidebarLayout({ children }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Build nav items — ensure Admin / Owner gets full settings & receipt studio access
+  // Build nav items — ensure Admin / Owner gets full settings, and Pharmacist/POS/Admin get receipt studio access
   const isAdminOrOwner = user?.is_owner || user?.role === "admin" || user?.role === "owner" || user?.userId === "user_admin";
   const rawNavItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
-  const navItems = isAdminOrOwner 
-    ? rawNavItems 
-    : rawNavItems.filter((item) => item.path !== "/settings" && item.path !== "/receipt-studio");
+  const navItems = rawNavItems.filter((item) => {
+    if (item.path === "/settings" && !isAdminOrOwner) return false;
+    return true;
+  });
 
   function handleLogout() {
     logout();

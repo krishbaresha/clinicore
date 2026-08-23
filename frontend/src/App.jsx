@@ -161,6 +161,7 @@ function AppRoutes() {
         <Route path="/doctor/consultation/:visitId"   element={<AuthenticatedLayout><ConsultationScreen /></AuthenticatedLayout>} />
 
         {/* ─── Medical Store ─────────────────────────────────────── */}
+        <Route path="/pos"             element={<Navigate to="/store/pos" replace />} />
         <Route path="/store/pos"       element={<AuthenticatedLayout><MedicalStorePOS /></AuthenticatedLayout>} />
         <Route path="/store/purchases" element={<AuthenticatedLayout><SupplierPurchases /></AuthenticatedLayout>} />
         <Route path="/purchases"       element={<Navigate to="/store/purchases" replace />} />
