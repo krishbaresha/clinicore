@@ -23,7 +23,7 @@
 ## 2. Full Sitemap (Current WebApp Routes)
 
 ```text
-/login                        → Staff Login (Secure Credentials & Protected Access)
+/login                        → Staff Login (Clerk Cloud Auth + Local SHA-256 Protected Access)
 /dashboard                    → Executive Clinic & Pharmacy Dashboard
 /reception/register           → Patient Registration & OPD Token Generation
 /reception/queue               → Today's Live Reception Queue & Token Manager
@@ -38,10 +38,11 @@
 /store/sales (or /store/sales-log) → Store Sales Log, Receipts & Returns/Exchanges
 /store/warehouse (or /warehouse)   → Godown Warehouse Management (Stock, Transfers, B2B, Ledger)
 /purchases                     → Supplier Purchases & Inward Goods (GRN, Invoices, Ledger)
+/receipt-studio               → [SECURED: Owner / Super Admin Only] Thermal Receipt Studio & 80mm Customizer
 /public/queue, /live, /display → [DISABLED by user preference] Public Waiting TV Token Display
 /clinic, /dr-asif              → [DISABLED by user preference] Patient Mobile Live Turn Tracker
 /settings                      → Clinic Settings, Staff Accounts, Doctor Roster, Backup/Restore
-/developer (or /super-admin)   → Developer Multi-Tenant Master Admin Panel
+/admin (or /developer)        → Developer & Super Admin Command Center (Strict Master Passcode Protected)
 ```
 
 ### Module Breakdown:

@@ -38,6 +38,38 @@ be specific so a human or next AI can correct it if wrong]
 - **Currently blocked on:** Awaiting user decision to proceed with deployment / backend setup.
 - **Overall completion estimate:** 100% frontend production ready.
 
+### Session: 2026-08-23 (Part 24) — High-Security Route Lockdown, Reliability ErrorBoundary & Clerk Auth Lifecycle
+ 
+**Task worked on:**
+1. **High-Security Route Guard on Receipt Studio (`/receipt-studio`):**
+   - Wrapped `/receipt-studio` inside `AdminProtectedLayout` and created `AdminOrOwnerRoute` guard in `App.jsx`.
+   - Enforces dual authentication: requires either an active `is_owner: true` / `admin` user session OR verified `cf_dev_auth` Super Admin passcode session. Unauthorized public URL visits are immediately bounced to `/login`.
+   - Removed Receipt Studio link from standard receptionist, cashier, and warehouse operator navigation menus in `SidebarLayout.jsx`.
+2. **Elimination of Intermittent Blank Screens on Mobile & Desktop:**
+   - Diagnosed React Hook Rules violation in `LoginScreen.jsx` and created safe `useSafeClerkSignIn()` wrapper to prevent unhandled context throws.
+   - Built resilient `ErrorBoundary.jsx` with automatic dynamic import chunk reload retry engine (`cf_chunk_retry`).
+3. **Clerk Full-Stack Cloud Verification & Sign-Out Synchronization:**
+   - Synchronized `window.Clerk.signOut()` in `AuthContext.jsx` on logout to clean cloud session tokens across multi-device endpoints.
+4. **Automated Verification:**
+   - All 125/125 unit & integration tests passing across all 20 test suites. Production deployed on `https://clinicore.me`.
+
+---
+
+### Session: 2026-08-23 (Part 23) — Master Thermal Receipt Studio, Mobile UX Overhaul & Strict Admin Security
+ 
+**Task worked on:**
+1. **Master 80mm ESC/POS Thermal Receipt Studio (`ReceiptStudio.jsx`):**
+   - Real-time drag/drop & toggle customizer for 7 thermal receipt templates (Prescription, OPD Token, POS Sale, B2B Invoice, Purchase GRN, Cash Voucher, Day-End Z-Report).
+   - Centralized dynamic header sync (`cf_receipt_custom_config`) in `thermalPrinter.js` for automatic branding across all POS, GRN, and OPD printers.
+   - Permanent developer watermark lockdown (`0314-2291356 | www.krishbaresa.tech`).
+2. **Developer Admin Panel Mobile Overhaul:**
+   - Replaced overlapping modal with responsive slide-out drawer (`w-[280px]`, `top-0`, `z-50`) and fixed backdrop blur clipping.
+   - Added `min-w-0 overflow-x-hidden` and local horizontal table wrappers to eliminate window scrollbar bleed.
+3. **Strict Security Hardening:**
+   - Permanently eliminated default backdoor passcodes and 1-tap test unlock buttons; enforced strict master passcode matching.
+
+---
+
 ### Session: 2026-08-23 (Part 22) — Automated Patient Data Retention Lifecycle & Counter Bulk Wipeout Engine
  
 **Task worked on:**
