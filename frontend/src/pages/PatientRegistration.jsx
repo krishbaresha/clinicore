@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { dbPatients, dbVisits, dbUsers, dbClinic, dbClinicServices } from "../api/db.js";
+import { dbPatients, dbVisits, dbUsers, dbClinic, dbClinicServices, dbPatientLedger } from "../api/db.js";
 import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
 import { formatPatientAge } from "../utils/formatters.js";
 
@@ -55,6 +55,12 @@ export default function PatientRegistration() {
   const [feeAmount, setFeeAmount] = useState("");
   const [showReceipt, setShowReceipt] = useState(false);
   const [receipt, setReceipt] = useState(null);
+
+  // Patient Dues state
+  const [duesInfo, setDuesInfo] = useState(null); // { balance_due, transactions }
+  const [showCollectDues, setShowCollectDues] = useState(false);
+  const [duesCollectAmount, setDuesCollectAmount] = useState("");
+  const [duesCollectNote, setDuesCollectNote] = useState("Cash Payment Received at Reception");
 
   function getDoctorFee(docId, clinicObj = clinic, docsList = doctors) {
     const doc = docsList.find((d) => d.id === docId) || docsList[0];
@@ -148,6 +154,11 @@ export default function PatientRegistration() {
     setSelected(patient);
     setShowAddForm(false);
     setShowReceipt(false);
+    // Load patient dues on select
+    const ledger = dbPatientLedger.getByPatient(patient.id);
+    setDuesInfo(ledger && (ledger.balance_due || 0) > 0 ? ledger : null);
+    setShowCollectDues(false);
+    setDuesCollectAmount("");
     const fee = getDoctorFee(selectedDoctorId);
     setFeeAmount(String(fee));
   }
@@ -515,9 +526,21 @@ function toTitleCase(str) {
                             </div>
                             <div className="text-sm text-gray-400 mt-1">{p.phone} · {formatPatientAge(p)} · {p.gender}</div>
                           </div>
-                          {(isSelected || isHighlighted) && (
-                            <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                          )}
+                          <div className="flex flex-col items-end gap-1">
+                            {(isSelected || isHighlighted) && (
+                              <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            )}
+                            {/* Live Dues Badge */}
+                            {(() => {
+                              const bal = dbPatientLedger.getBalance(p.id);
+                              return bal > 0 ? (
+                                <span className="text-[10px] font-black bg-red-100 text-red-700 border border-red-300 px-2 py-0.5 rounded-full flex items-center gap-0.5 animate-pulse">
+                                  <span className="material-symbols-outlined text-[11px]">warning</span>
+                                  Udhaar: Rs. {bal.toLocaleString()}
+                                </span>
+                              ) : null;
+                            })()}
+                          </div>
                         </div>
                       </button>
                     );
@@ -648,6 +671,85 @@ function toTitleCase(str) {
       {/* Visit Registration Form */}
       {selected && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          {/* Dues Alert Banner + Collect Dues Modal */}
+          {duesInfo && (
+            <div className="mb-3">
+              <div className="flex items-center justify-between gap-3 p-3.5 bg-red-50 border-2 border-red-300 rounded-2xl shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-red-600 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                  <div>
+                    <div className="text-sm font-black text-red-800">⚠️ Outstanding Udhaar — Rs. {duesInfo.balance_due.toLocaleString()}</div>
+                    <div className="text-[11px] text-red-600 font-medium">Total Credit: Rs. {duesInfo.total_credit?.toLocaleString()} · Paid: Rs. {(duesInfo.total_paid || 0).toLocaleString()}</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCollectDues((v) => !v)}
+                  className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1 transition-colors shadow-md"
+                >
+                  <span className="material-symbols-outlined text-sm">payments</span>
+                  Collect / Settle
+                </button>
+              </div>
+              {showCollectDues && (
+                <div className="mt-2 p-4 bg-white border border-red-200 rounded-2xl shadow-sm space-y-3">
+                  <div className="text-sm font-bold text-gray-800">💰 Collect Udhaar Payment</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Amount Received (Rs.)</label>
+                      <input
+                        type="number" min="1" max={duesInfo.balance_due}
+                        value={duesCollectAmount}
+                        onChange={(e) => setDuesCollectAmount(e.target.value)}
+                        placeholder={`Max: Rs. ${duesInfo.balance_due}`}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 font-bold text-red-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Payment Note</label>
+                      <input
+                        type="text"
+                        value={duesCollectNote}
+                        onChange={(e) => setDuesCollectNote(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const amt = Number(duesCollectAmount);
+                        if (!amt || amt <= 0) { alert("Please enter a valid amount."); return; }
+                        const session = JSON.parse(localStorage.getItem("cf_auth_session") || "{}");
+                        dbPatientLedger.receivePayment(selected.id, amt, duesCollectNote || "Cash Payment at Reception", session?.name || "Reception");
+                        const updatedLedger = dbPatientLedger.getByPatient(selected.id);
+                        if (updatedLedger && updatedLedger.balance_due > 0) {
+                          setDuesInfo(updatedLedger);
+                        } else {
+                          setDuesInfo(null);
+                        }
+                        setShowCollectDues(false);
+                        setDuesCollectAmount("");
+                        alert(`✅ Payment of Rs. ${amt.toLocaleString()} received from ${selected.full_name}. Balance: Rs. ${Math.max(0, duesInfo.balance_due - amt).toLocaleString()}`);
+                      }}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+                    >
+                      ✓ Confirm & Collect
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCollectDues(false)}
+                      className="border border-gray-200 text-gray-600 py-2.5 px-4 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-start gap-3 mb-4 p-3.5 bg-teal-50/80 rounded-2xl border border-teal-100/90 shadow-sm">
             <div className="w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-sm">
               {selected.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}

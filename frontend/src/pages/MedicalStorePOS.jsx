@@ -1,7 +1,20 @@
-import { useState, useEffect, useRef } from "react";
-import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger } from "../api/db.js";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, dbSuppliers } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import PhotoLightbox from "../components/PhotoLightbox.jsx";
+
+// Company brand color config for badges
+const COMPANY_COLORS = {};
+
+function CompanyBadge({ companyName, small = false }) {
+  if (!companyName) return null;
+  const cfg = COMPANY_COLORS[companyName] || { bg: "bg-teal-50", text: "text-teal-800", border: "border-teal-200", short: companyName.slice(0, 4).toUpperCase() };
+  return (
+    <span className={`inline-flex items-center font-bold border rounded-full px-1.5 py-0.5 ${cfg.bg} ${cfg.text} ${cfg.border} ${small ? "text-[9px]" : "text-[10px]"}`}>
+      {small ? cfg.short : companyName}
+    </span>
+  );
+}
 
 function ReceiptModal({ sale, onClose }) {
   if (!sale) return null;
@@ -37,11 +50,14 @@ function ReceiptModal({ sale, onClose }) {
           </button>
 
           {/* Top Clinic Branding & Logo */}
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-600 to-teal-800 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-md shadow-teal-200">
-              {(clinic?.name || "Dr. Kashif Khan").charAt(0)}
-            </div>
-            <div className="text-base font-black text-teal-800 mt-1">
+          <div className="text-center flex flex-col items-center">
+            <img
+              src="/clinic-logo.png"
+              alt="Clinic Logo"
+              className="h-10 w-auto object-contain mx-auto drop-shadow-xs mb-1"
+              onError={(e) => { e.target.style.display = "none"; }}
+            />
+            <div className="text-base font-black text-teal-900">
               {clinic?.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store"}
             </div>
             <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">
@@ -169,6 +185,20 @@ export default function MedicalStorePOS() {
 
   const searchInputRef = useRef(null);
   const inventoryListRef = useRef(null);
+  const cartContainerRef = useRef(null);
+
+
+  // Dual-Mode Medicine Search
+  const [searchMode, setSearchMode] = useState("global"); // "company" | "global"
+  const [posCompanyCode, setPosCompanyCode] = useState("ALL");
+  const [posCompanyFilter, setPosCompanyFilter] = useState(""); // resolved full company name or ""
+
+  const activeCompanyList = useMemo(() => {
+    const fromSuppliers = (dbSuppliers.getAll() || []).map((s) => s.name).filter(Boolean);
+    const fromInventory = (dbInventory.getAll() || []).map((i) => i.company_name).filter(Boolean);
+    const set = Array.from(new Set([...fromSuppliers, ...fromInventory]));
+    return set.map((name) => ({ code: name.slice(0, 4).toUpperCase(), name }));
+  }, [inventoryResults]);
 
   useEffect(() => {
     if (inventoryListRef.current) {
@@ -186,6 +216,13 @@ export default function MedicalStorePOS() {
       if (e.key === "F2") {
         e.preventDefault();
         if (searchInputRef.current) searchInputRef.current.focus();
+      } else if (e.key === "F3") {
+        e.preventDefault();
+        setSearchMode((prev) => {
+          const next = prev === "global" ? "company" : "global";
+          if (next === "global") { setPosCompanyCode("ALL"); setPosCompanyFilter(""); }
+          return next;
+        });
       } else if (e.key === "F4") {
         e.preventDefault();
         setCustomerMode((prev) => (prev === "walkin" ? "link" : "walkin"));
@@ -209,7 +246,9 @@ export default function MedicalStorePOS() {
   function searchInventory(q) {
     setInventoryQuery(q);
     setSelectedInventoryIndex(0);
-    setInventoryResults(dbInventory.search(q));
+    // In Company mode, filter strictly by active company; in Global mode search all
+    const companyArg = searchMode === "company" && posCompanyFilter ? posCompanyFilter : "all";
+    setInventoryResults(dbInventory.search(q, companyArg));
   }
 
   function handleSearchInputKeyDown(e) {
@@ -273,7 +312,13 @@ export default function MedicalStorePOS() {
         },
       ];
     });
+    setTimeout(() => {
+      if (cartContainerRef.current) {
+        cartContainerRef.current.scrollTop = cartContainerRef.current.scrollHeight;
+      }
+    }, 40);
   }
+
 
   function updateQty(inventoryId, delta) {
     setCart((prev) =>
@@ -537,6 +582,65 @@ export default function MedicalStorePOS() {
         {/* Left Column: Product Search & Inventory Table */}
         <div className="lg:col-span-7 space-y-4">
           <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+            {/* ── Dual-Mode Search Toggle ── */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => { setSearchMode("company"); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    searchMode === "company" ? "bg-teal-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  🏢 Company Mode
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSearchMode("global"); setPosCompanyCode("ALL"); setPosCompanyFilter(""); setInventoryResults(dbInventory.getAll()); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    searchMode === "global" ? "bg-teal-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  🌐 Global Search
+                </button>
+              </div>
+              <span className="text-[10px] text-gray-400 font-medium">F3 to toggle</span>
+            </div>
+
+            {/* ── Company Selector (only in Company Mode) ── */}
+            {searchMode === "company" && (
+              <div className="flex gap-2 mb-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Company Code / Name</label>
+                  <select
+                    value={posCompanyCode}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      setPosCompanyCode(code);
+                      const resolved = code === "ALL" ? "" : code;
+                      setPosCompanyFilter(resolved);
+                      setInventoryQuery("");
+                      const results = resolved ? dbInventory.getByCompany(resolved) : dbInventory.getAll();
+                      setInventoryResults(results);
+                      setSelectedInventoryIndex(0);
+                      setTimeout(() => searchInputRef.current?.focus(), 50);
+                    }}
+                    className="w-full border border-teal-300 rounded-xl px-3 py-2 text-xs font-bold bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="ALL">🌐 All Companies (Global)</option>
+                    {activeCompanyList.map((c) => (
+                      <option key={c.name} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {posCompanyFilter && (
+                  <div className="flex items-end pb-0.5">
+                    <CompanyBadge companyName={posCompanyFilter} />
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Search Input */}
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -548,7 +652,9 @@ export default function MedicalStorePOS() {
                 value={inventoryQuery}
                 onChange={(e) => searchInventory(e.target.value)}
                 onKeyDown={handleSearchInputKeyDown}
-                placeholder="Search medicine by name or code (F2)... [↑ / ↓ to navigate, Enter to add]"
+                placeholder={searchMode === "company" && posCompanyFilter
+                  ? `Search within ${posCompanyFilter}... (↑↓ to navigate, Enter to add)`
+                  : "Search medicine by name or code (F2)... [↑ / ↓ to navigate, Enter to add]"}
                 className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-teal-600 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none transition-all"
               />
             </div>
@@ -584,6 +690,10 @@ export default function MedicalStorePOS() {
                         <div className="flex-1 min-w-0 pr-3">
                           <div className="font-bold text-sm text-gray-900 truncate flex items-center gap-2">
                             {item.medicine_name}
+                            {/* Global mode: show company brand badge */}
+                            {searchMode === "global" && item.company_name && (
+                              <CompanyBadge companyName={item.company_name} small />
+                            )}
                             {isHighlighted && (
                               <span className="text-[10px] bg-teal-600 text-white font-bold px-1.5 py-0.2 rounded font-mono">
                                 ↵ Enter
@@ -655,8 +765,9 @@ export default function MedicalStorePOS() {
                 <p className="text-xs">Cart is empty. Click &quot;Add&quot; on any medicine.</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+              <div ref={cartContainerRef} className="space-y-3 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
                 {cart.map((item) => (
+
                   <div
                     key={item.inventory_id}
                     className="p-3 bg-gray-50 rounded-2xl border border-gray-200/80 flex flex-col gap-2.5 shadow-2xs hover:border-teal-300 transition-all"

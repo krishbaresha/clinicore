@@ -9,14 +9,31 @@ export function AuthProvider({ children }) {
   const [clinic, setClinic] = useState(null);   // clinic record
   const [loading, setLoading] = useState(true);
 
-  // Restore session on mount — getSession now validates against DB record
+  // Restore session on mount — getSession validates against DB record
   useEffect(() => {
     const session = getSession();
     if (session) {
       setUser(session);
       setClinic(dbClinic.get());
+    } else {
+      setUser(null);
     }
     setLoading(false);
+
+    // Cross-tab and live storage watcher for auth session invalidation
+    const handleStorageChange = (e) => {
+      if (e.key === "cf_users_v5" || e.key === "cf_session" || e.key === "cf_auth_session") {
+        const active = getSession();
+        setUser(active);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("clinicflow_status_update", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("clinicflow_status_update", handleStorageChange);
+    };
   }, []);
 
   function login(identifier, password) {

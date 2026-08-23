@@ -70,12 +70,24 @@ Never generate code that stores passwords in plain text, exposes `.env`/secret v
 
 This is healthcare-adjacent software. Never invent medical terminology, dosage conventions, or clinical logic. Use exactly what's in the mock data or what the doctor/user explicitly provides. If a clinical assumption seems necessary (e.g. "should low-stock threshold apply differently to controlled medicines?"), flag it — don't decide it silently.
 
-## Rule 13 — Three Database Startup Modes (Fresh Setup, Migration, or Sandbox)
+## Rule 14 — Zero-Guess Schema & Multi-Unit Preservation During Inventory Expansion
 
-The system must flexibly support 3 database initialization pathways:
-1. **Fresh Clean Setup:** Database starts with empty operational records (zero dummy visits/patients), ready for a new clinic or fresh start.
-2. **Legacy Migration (Optional):** Ingests real historical data from MS Access only when requested.
-3. **Sandbox / Demo Mode:** Loads realistic mock data strictly for staff training and feature testing with an explicit "DEMO DATA" indicator.
+Whenever adding fast-entry methods, bulk importers, or migration helpers:
+1. **Canonical Field Strictness:** All imported or quickly added medicines must conform to the authoritative schema defined in `02_Database_Schema_and_Data_Dictionary.md` (`medicine_name`, `company_name`, `item_code`, `unit_sale_price`, `cost_price_per_box`, `total_base_stock`, `store_stock`, `warehouse_stock`, `low_stock_threshold`, `category`).
+2. **Backward-Compatibility:** Existing multi-unit ratios (`has_multi_unit`, `strips_per_box`, `units_per_strip`), POS search deduplication, and FIFO checkout logic must not be altered, broken, or bypassed.
+3. **Non-Destructive Merge:** Batch import engines must detect existing IDs/codes and merge or append cleanly without wiping operational sales logs, patient ledgers, or supplier balance records.
+
+## Rule 15 — Anti-Regression & Zero-Unsolicited-Deletion Standard (STRICT)
+
+1. **Feature Preservation Guarantee:** Never remove, overwrite, strip, or simplify any working feature, interaction gesture (pull-to-refresh, modal portal, ESC close, keyboard shortcut), state management hook, or business arithmetic unless the user explicitly commands it.
+2. **Explicit User Warning Requirement:** If fulfilling a user request directly conflicts with or modifies an existing feature, the AI MUST explicitly warn the user, explain the exact implications, and request confirmation before proceeding.
+3. **Surgical Modifications Only:** Modifications must be targeted and surgical. Never wipe whole files or components to implement a partial change.
+
+## Rule 16 — Systematic Phased Development & Impact Audits
+
+1. **Pre-Implementation Research:** Analyze the exact root cause of any bug or request before writing code.
+2. **Side-Effect Audit:** Check adjacent pages, layouts, and data caches to ensure changes in one component do not degrade performance or styling in another.
+3. **Granular Security Protections:** Ensure sensitive administration tabs (licensing, remote kill-switches, API credentials, raw backups) support sub-tab authentication locks and hiding to allow safe delegation to staff.
 
 ---
 
@@ -87,4 +99,8 @@ The system must flexibly support 3 database initialization pathways:
 - [ ] Did I follow the standard API response shape? (Rule 5)
 - [ ] Did I avoid faking any not-yet-built feature as if it works? (Rule 9)
 - [ ] Did I update the Progress Log with what I did and any assumptions made? (Rule 7)
+- [ ] Did I ensure NO existing working features or gestures were accidentally removed? (Rule 15)
 - [ ] If I was unsure about anything, did I flag it instead of silently deciding? (Rule 2)
+- [ ] Did I respect the single-instance deployment model — no multi-tenant features? (Rule 13)
+
+

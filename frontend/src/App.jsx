@@ -4,6 +4,7 @@ import { initDB } from "./api/db.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import SidebarLayout from "./layouts/SidebarLayout.jsx";
+import LicenseGuard from "./components/LicenseGuard.jsx";
 
 // Lazy-loaded routes for ultra-fast bundle loading & low memory footprint
 const LoginScreen           = lazy(() => import("./pages/LoginScreen.jsx"));
@@ -56,8 +57,9 @@ function ProtectedRoute({ children }) {
 function OwnerRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user)         return <Navigate to="/login" replace />;
-  if (!user.is_owner) return <Navigate to="/dashboard" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  const isAdminOrOwner = user.is_owner || user.role === "admin" || user.role === "owner" || user.userId === "user_admin";
+  if (!isAdminOrOwner) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -67,7 +69,9 @@ function OwnerRoute({ children }) {
 function AuthenticatedLayout({ children }) {
   return (
     <ProtectedRoute>
-      <SidebarLayout>{children}</SidebarLayout>
+      <LicenseGuard>
+        <SidebarLayout>{children}</SidebarLayout>
+      </LicenseGuard>
     </ProtectedRoute>
   );
 }
@@ -78,7 +82,9 @@ function AuthenticatedLayout({ children }) {
 function OwnerLayout({ children }) {
   return (
     <OwnerRoute>
-      <SidebarLayout>{children}</SidebarLayout>
+      <LicenseGuard>
+        <SidebarLayout>{children}</SidebarLayout>
+      </LicenseGuard>
     </OwnerRoute>
   );
 }
@@ -87,16 +93,24 @@ function AppRoutes() {
   return (
     <Suspense fallback={<PageLoadingFallback />}>
       <Routes>
-        {/* Public & Super-Admin Pages (No Login Required) */}
+        {/* Public & Admin Pages (No Login Required) */}
         <Route path="/"            element={<LandingPage />} />
         <Route path="/landing"     element={<LandingPage />} />
-        <Route path="/clinic"      element={<ClinicPublicPage />} />
-        <Route path="/dr-asif"     element={<ClinicPublicPage />} />
+        <Route path="/admin"       element={<DeveloperAdminPanel />} />
         <Route path="/super-admin" element={<DeveloperAdminPanel />} />
         <Route path="/developer"   element={<DeveloperAdminPanel />} />
         <Route path="/login"       element={<LoginScreen />} />
-        <Route path="/live"        element={<PublicLiveQueue />} />
-        <Route path="/display"     element={<PublicLiveQueue />} />
+
+        {/* ─── Disabled Pages (Can be re-enabled in future if needed) ─── */}
+        {/* <Route path="/clinic"      element={<ClinicPublicPage />} /> */}
+        {/* <Route path="/dr-asif"     element={<ClinicPublicPage />} /> */}
+        {/* <Route path="/live"        element={<PublicLiveQueue />} /> */}
+        {/* <Route path="/display"     element={<PublicLiveQueue />} /> */}
+        <Route path="/clinic"      element={<Navigate to="/login" replace />} />
+        <Route path="/dr-asif"     element={<Navigate to="/login" replace />} />
+        <Route path="/live"        element={<Navigate to="/dashboard" replace />} />
+        <Route path="/display"     element={<Navigate to="/dashboard" replace />} />
+        <Route path="/public/queue" element={<Navigate to="/dashboard" replace />} />
 
         {/* ─── Reception / Counter Flow ─────────────────────────── */}
         <Route path="/reception/register"        element={<AuthenticatedLayout><PatientRegistration /></AuthenticatedLayout>} />
@@ -123,7 +137,6 @@ function AppRoutes() {
         <Route path="/patients/new" element={<AuthenticatedLayout><AddNewPatient /></AuthenticatedLayout>} />
         <Route path="/patients/:id" element={<AuthenticatedLayout><PatientProfile /></AuthenticatedLayout>} />
         <Route path="/fees"        element={<AuthenticatedLayout><FeesReports /></AuthenticatedLayout>} />
-        <Route path="/public/queue" element={<Navigate to="/live" replace />} />
         <Route path="/settings"    element={<OwnerLayout><ClinicSettings /></OwnerLayout>} />
 
         {/* Default redirect */}
@@ -145,3 +158,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+

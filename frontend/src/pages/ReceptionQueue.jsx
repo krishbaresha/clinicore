@@ -108,14 +108,15 @@ export default function ReceptionQueue() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button
+          {/* Waiting Room TV Screen Button - Disabled by user preference */}
+          {/* <button
             onClick={() => window.open("/live", "_blank")}
             title="Launch Public Live Token Display in new tab for Waiting Room LED TV"
             className="flex items-center gap-1.5 text-xs text-teal-900 bg-teal-100 hover:bg-teal-200 border border-teal-300 px-3.5 py-2 rounded-xl transition-colors font-bold shadow-sm"
           >
             <span className="material-symbols-outlined text-base">tv</span>
             Waiting Room TV Screen
-          </button>
+          </button> */}
           <button
             onClick={load}
             className="flex items-center gap-1.5 text-xs text-teal-700 bg-white border border-teal-200 px-3.5 py-2 rounded-xl hover:bg-teal-50 transition-colors font-medium shadow-sm"

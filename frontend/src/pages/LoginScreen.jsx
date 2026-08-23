@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
+import { dbUsers, dbClinic } from "../api/db.js";
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -10,6 +11,13 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [usersList, setUsersList] = useState([]);
+  const [clinicData, setClinicData] = useState(null);
+
+  useEffect(() => {
+    setUsersList(dbUsers.getAll() || []);
+    setClinicData(dbClinic.get() || {});
+  }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -52,20 +60,27 @@ export default function LoginScreen() {
         <div className="bg-white/90 backdrop-blur-xl border border-teal-100/90 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-teal-900/5 flex flex-col items-center">
           
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-teal-700/25">
-              <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                medical_services
-              </span>
+          <div className="flex flex-col items-center gap-2 mb-6 text-center">
+            <div className="p-2 rounded-2xl bg-white/80 border border-teal-50 shadow-xs flex items-center justify-center">
+              <img
+                src="/clinic-logo.png"
+                alt="Clinic Logo"
+                className="h-24 sm:h-28 w-auto max-w-[260px] object-contain drop-shadow-md transition-transform hover:scale-105"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-2xl font-black tracking-tight text-teal-950">ClinicFlow</span>
+              <div className="flex items-center justify-center gap-1.5 mt-1">
+                <span className="text-2xl font-black tracking-tight text-teal-950">CliniCore</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                  Staff
+                  Staff Portal
                 </span>
               </div>
-              <p className="text-[11px] font-semibold text-gray-500">Dr. Muhammad Kashif Khan Clinic</p>
+              <p className="text-xs font-semibold text-gray-500 truncate max-w-[280px] mt-0.5">
+                {clinicData?.name || "Medical Clinic & Pharmacy"}
+              </p>
             </div>
           </div>
 
@@ -93,7 +108,7 @@ export default function LoginScreen() {
                   name="identifier"
                   type="text"
                   autoComplete="username"
-                  placeholder="doctor@example.com / 0300..."
+                  placeholder="Enter your email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-sm text-gray-900 focus:outline-none transition-all"
@@ -136,90 +151,13 @@ export default function LoginScreen() {
                 id="login-btn"
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-extrabold py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-teal-700/25 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-extrabold py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-teal-700/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? "Authenticating..." : "Login to Terminal"}
                 {!loading && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
               </button>
             </div>
           </form>
-
-          {/* Quick Demo 1-Click Role Login Pills */}
-          <div className="w-full mt-6 pt-5 border-t border-gray-100">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center mb-3">
-              ⚡ 1-Click Demo Terminals:
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("dr.kashif@example.com", "password")}
-                className="p-2.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 text-left transition-colors"
-              >
-                <div className="text-xs font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm text-teal-600">stethoscope</span>
-                  Doctor 1
-                </div>
-                <div className="text-[10px] text-gray-600 font-medium">Dr. Kashif (Rs.300)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("dr.asif@example.com", "password")}
-                className="p-2.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 text-left transition-colors"
-              >
-                <div className="text-xs font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm text-teal-600">stethoscope</span>
-                  Doctor 2
-                </div>
-                <div className="text-[10px] text-gray-600 font-medium">Dr. Asif (Rs.500)</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("reception@example.com", "password")}
-                className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-left transition-colors"
-              >
-                <div className="text-xs font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm text-blue-600">how_to_reg</span>
-                  Receptionist
-                </div>
-                <div className="text-[10px] text-gray-600 font-medium">Tokens &amp; Queue</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("pharmacist@example.com", "password")}
-                className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-left transition-colors"
-              >
-                <div className="text-xs font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm text-emerald-600">point_of_sale</span>
-                  Pharmacist
-                </div>
-                <div className="text-[10px] text-gray-600 font-medium">Retail Store POS</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("warehouse@example.com", "password")}
-                className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-left transition-colors sm:col-span-2"
-              >
-                <div className="text-xs font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm text-purple-600">warehouse</span>
-                  Godown / Warehouse
-                </div>
-                <div className="text-[10px] text-gray-600 font-medium">Wholesale &amp; Stock Transfer</div>
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Return Link */}
-          <div className="mt-5 pt-4 border-t border-gray-100 w-full flex items-center justify-center text-xs text-gray-500 font-medium">
-            <Link to="/clinic" className="hover:text-teal-700 transition-colors flex items-center gap-1.5 font-semibold text-teal-800 bg-teal-50 px-3.5 py-1.5 rounded-xl border border-teal-100">
-              <span className="material-symbols-outlined text-base text-teal-600">medical_services</span>
-              Open Doctor Clinic Public Site (/clinic)
-            </Link>
-          </div>
-
         </div>
       </main>
     </div>

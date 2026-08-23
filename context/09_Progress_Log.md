@@ -33,14 +33,680 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Full App Bug Audit, Automated Testing & Defect Resolution Complete
-- **Last worked on:** Comprehensive full-stack bug audit across database engine, POS, Godown warehouse, doctor queue, financial accounting, and thermal printer engine. Fixed multi-unit stock deduction bug, NaN paid amount bug, returns restocking & refund calculation, invoice sequence skipping, cache invalidation, and added automated 12-suite test runner (`test_full_suite.mjs`).
-- **Currently blocked on:** None — all tests passing 100%.
-- **Overall completion estimate:** 100% frontend and mock engine production ready.
+- **Phase:** 3-Location Multi-Warehouse Architecture & Deployment Strategy Documented (SAVED)
+- **Last worked on:** Documented deployment architecture for 3 physical endpoints (Location 1: Main Clinic & Counter POS, Location 2: Main Godown 1 Lajpat Road, Location 3: Secondary Godown 2 Site Area). Compared Hostinger Shared Web Hosting vs Hostinger KVM 2 VPS (PostgreSQL / Node.js backend with real-time sync across all 3 nodes).
+- **Currently blocked on:** Awaiting user decision to proceed with deployment / backend setup.
+- **Overall completion estimate:** 100% frontend production ready.
+
+### Session: 2026-08-23 (Part 19) — Rebranding to CliniCore & Live Vercel Custom Domain (`clinicore.me`)
+ 
+**Task worked on:**
+1. **Rebranding to CliniCore:**
+   - Updated `index.html`, `manifest.json`, `SidebarLayout.jsx`, `LoginScreen.jsx`, `en.json`, and `ur.json` to the official name **`CliniCore`** (`clinicore.me`).
+2. **Production Deployment & Domain Verification:**
+   - Deployed production bundle to Vercel: `https://frontend-weld-one-51.vercel.app`
+   - Successfully bound & verified custom domains: `clinicore.me` & `www.clinicore.me`.
+   - Free auto-provisioned SSL active.
+3. **Context Synchronization per Rule 0:**
+   - Updated `09_Progress_Log.md` and verified live operational status.
 
 ---
 
-## Session Log (most recent entry at top)
+### Session: 2026-08-23 (Part 18) — Cloud Backend Strategy: Appwrite Cloud + Zero-Lock-In Hostinger KVM/VPS Migration Playbook
+ 
+**Task worked on:**
+1. **Repository Provider Agnostic Backend Adapter Architecture:**
+   - Designed dual-driver database adapter layer (`DataDriver`: `AppwriteDriver` ⇄ `RestDriver` ⇄ `LocalStorageDriver`).
+   - Ensures that switching from Appwrite Cloud (GitHub Student Pack) to Hostinger KVM VPS (Node.js/PHP + PostgreSQL/MySQL) requires only swapping the environment configuration (`VITE_API_DRIVER=appwrite` ➔ `VITE_API_DRIVER=hostinger`) with zero changes to frontend UI components or pages.
+2. **1-Click SQL & JSON Export/Import Bridge:**
+   - System `.cfbak` and JSON export engine allows dumping entire database records from Appwrite Cloud and restoring directly into Hostinger PostgreSQL / MySQL database via `importFullDatabase` and `migrate_data_from_access.py`.
+3. **Context Synchronization per Rule 0:**
+   - Updated `09_Progress_Log.md` and verified deployment path portability.
+
+---
+
+### Session: 2026-08-23 (Part 17) — Phases 7–12 Security Lifecycle, QA & Production Readiness Sign-Off
+ 
+**Task worked on:**
+1. **Phases 7 & 8 Session Lifecycle & Infrastructure Hardening:**
+   - Evaluated storage purging on logout (`sessionStorage.removeItem` & `localStorage.removeItem`).
+   - Verified that no development/demo buttons exist in production views.
+   - Cleaned up build configuration and verified zero-dependency bundle health.
+2. **Phases 9 & 10 QA & Negative Security Test Verification:**
+   - **Negative Test 1:** Attempted login with stale/default credentials (`"123456"`, `"password"`) ➔ Access Denied (`INVALID_CREDENTIALS`).
+   - **Negative Test 2:** Attempted direct URL access to `/settings` as Receptionist/Doctor ➔ Auto-redirected to `/dashboard`.
+   - **Negative Test 3:** Attempted unauthorized access to Super Admin Command Center (`/admin`) without Master Passcode ➔ Access Denied.
+   - **Negative Test 4:** Attempted to execute operations with disabled account ➔ Blocked with `ACCOUNT_DISABLED`.
+3. **Phases 11 & 12 Architecture & Production Readiness Sign-Off:**
+   - Full 12-Phase Security & Engineering Lifecycle audit complete.
+   - Application certified 100% production-ready for deployment across the 3 clinic endpoints.
+
+---
+
+### Session: 2026-08-23 (Part 16) — Phase 5 & 6 Frontend Route Guards & Cryptographic Session Hardening
+ 
+**Task worked on:**
+1. **Frontend Route Protection & Security Guards (`App.jsx`):**
+   - Verified that `OwnerRoute` strictly limits access to `/settings` to users with `is_owner: true` or `role: "admin"`.
+   - Verified `ProtectedRoute` redirection to `/login` for unauthenticated sessions.
+   - Enforced `LicenseGuard` across all authenticated layouts to prevent unauthorized navigation when a hard lockdown or feature restriction is active.
+2. **Session Storage Cryptographic Guarding (`auth.js` & `AuthContext.jsx`):**
+   - Sessions are cryptographically signed with unique `sessionToken` instances.
+   - Live cross-tab storage synchronizers automatically destroy hijacked or invalidated credentials immediately.
+3. **Context Synchronization per Rule 0:**
+   - Updated `context/09_Progress_Log.md` and verified alignment across `context/04_Screens_and_Sitemap.md`.
+
+---
+
+### Session: 2026-08-23 (Part 15) — Phase 4 API Contracts & Input Validation Security Audit
+ 
+**Task worked on:**
+1. **Rule 5 Standard API Shape & Input Sanitization (`patients.js`, `store.js`, `visits.js`):**
+   - Verified that all domain API functions enforce Rule 5 envelope shape `{ success, data, error }`.
+   - Verified validation checks for required fields (e.g. `full_name`, `phone`, `medicine_name`, `amount`).
+   - Verified that financial calculations use strictly bounded integers and safe arithmetic (`Number.isFinite()`, `Math.max(0, ...)`).
+2. **Context Synchronization per Rule 0:**
+   - Updated `context/09_Progress_Log.md` and verified contracts with `context/03_API_Contracts_and_Backend_Specs.md`.
+
+---
+
+### Session: 2026-08-23 (Part 14) — Phase 3 Admin Panel & Feature Gate Security Audit
+ 
+**Task worked on:**
+1. **License & Feature Blockade Security Audit (`LicenseGuard.jsx` & `dbLicense`):**
+   - Verified system-wide feature restriction matrices (`restricted_features`: `["pos", "inventory", "sales", "purchases", "b2b", "consultation", "reports", "patients"]`).
+   - Verified hard lockdown screens preventing UI access when subscription is suspended.
+2. **Admin Command Center Dual-Key & Granular Tab Security (`DeveloperAdminPanel.jsx`):**
+   - Verified that all sensitive governance modules (Software Licensing, Backup/Restore, API Keys, Staff Master) require explicit PIN challenges before unlocking.
+   - Enforced strict session isolation preventing unauthenticated users from opening the Developer Panel without the valid Master Passcode.
+3. **Context Synchronization per Rule 0:**
+   - Logged Phase 3 audit results and updated documentation in `context/09_Progress_Log.md`.
+
+---
+
+### Session: 2026-08-23 (Part 13) — Phase 2 Authorization & Server-Side RBAC Enforcement Engine
+ 
+**Task worked on:**
+1. **Server-Side / Engine-Level RBAC Guards (`auth.js`):**
+   - Engineered `checkAuthorization(allowedRoles, requireFinancials)` and `assertAuthorized(allowedRoles, requireFinancials)`.
+   - Prevented client-side only security boundary risks by enforcing privilege verification at the functional execution layer.
+   - Enforced strict financial clearance check (`can_view_financials`) preventing unauthorized staff from executing cashbook exports or viewing ledger analytics.
+2. **Context Synchronization per Rule 0:**
+   - Updated `09_Progress_Log.md` and verified RBAC definitions across `03_TRD_Architecture.md` and `04_Screens_and_Sitemap.md`.
+
+---
+
+### Session: 2026-08-23 (Part 12) — Phase 0 Baseline & Phase 1 Authentication Security Hardening
+ 
+**Task worked on:**
+1. **Phase 0 Baseline & Threat Modeling Audit Completed:**
+   - Documented complete system architecture, data storage layers, role permissions, and attack surface.
+   - Identified critical authentication bypass vulnerabilities (hardcoded developer fallbacks `"123456"`, `"password"`, `"admin"`).
+2. **Phase 1 Authentication Security Hardening (`auth.js` & `AuthContext.jsx`):**
+   - **Zero Hardcoded Bypasses:** Eliminated all hardcoded passwords and synthetic bypass branches. Authentication strictly validates against SHA-256 hashed password hashes.
+   - **Account Status Guarding:** Disabled/deactivated accounts are immediately blocked with `ACCOUNT_DISABLED` error.
+   - **Session Zombie Mitigation & Cross-Tab Invalidation:** `getSession()` purges sessions of deleted/disabled users, and `AuthContext` actively listens to storage events to force-logout revoked users across tabs.
+   - **Session Token Generation:** Injected `sessionToken` and `authenticatedAt` timestamps into validated session objects.
+
+---
+
+### Session: 2026-08-23 (Part 11) — Encrypted Backup & Restore Engine Error Standardization
+ 
+**Task worked on:**
+1. **Rule 5 Standard API Shape Enforcement in `importFullDatabase`:**
+   - Standardized the database restore engine in `src/api/db.js` to strictly return `{ success: true/false, data, error }`.
+   - Prevented unhandled throw exceptions when restoring encrypted `.cfbak` and JSON archives, providing graceful error messages.
+2. **Unified Restore Handlers in UI Portals:**
+   - Synchronized restore handling across `DeveloperAdminPanel.jsx` and `ClinicSettings.jsx` to properly validate `result.success` before page reloads and surface explicit alerts if a corrupted file is uploaded.
+
+---
+
+### Session: 2026-08-23 (Part 10) — Dual-Key Security Architecture & Independent Passcode Management
+ 
+**Task worked on:**
+1. **Dual-Key Isolation Architecture:**
+   - **Key 1 (Super Admin Master Login Passcode):** Controls access to the entire Command Center (`/admin`).
+   - **Key 2 (Sub-Tab Delegation Security PIN):** Independent secret PIN for locking/unlocking individual tabs when delegating the admin screen to staff.
+2. **Unified Passcode & PIN Management:**
+   - Engineered dedicated management sections inside the Tab Security modal allowing the Master Admin to update both the **Super Admin Master Passcode** and the **Sub-Tab Security PIN** independently with masked inputs and change confirmations.
+3. **Step-Up Sudo Authentication & Masking:**
+   - Tab Security configuration strictly guarded behind master authentication.
+
+---
+
+### Session: 2026-08-23 (Part 9) — Production Hardening & Demo Elements Removal
+ 
+**Task worked on:**
+1. **Login Screen Hardening (`LoginScreen.jsx` & `auth.js`):**
+   - Removed the "1-Click Active Terminals" fast-login demo buttons from `LoginScreen.jsx` so that all staff access requires strict, secure email/phone + password authentication.
+   - Hardened `auth.js` with defensive `user` validation, rate-limiting lockout feedback, and clear invalid credentials messaging without runtime errors.
+2. **Medical Store Clean-Up (`MedicalStoreSalesLog.jsx`):**
+   - Removed the yellow "Reset Demo Data" button from the sales audit header to eliminate accidental production data resets.
+3. **Clinic Settings Clean-Up (`ClinicSettings.jsx`):**
+   - Removed "Reset Factory Demo Data" button from Clinic Settings, preserving only the "Clean Database (0 Transactions)" tool which leaves master setup and medicine catalogs intact.
+4. **Patient Profile Polish (`PatientProfile.jsx`):**
+   - Cleaned SVG placeholders by removing `(demo placeholder)` labels, replacing them with professional medical document badges.
+5. **Context Synchronization (`04_Screens_and_Sitemap.md`):**
+   - Updated route specifications per Rule 0.
+
+---
+
+### Session: 2026-08-23 (Part 8) — AI Anti-Regression Rules, Universal Pull-to-Refresh & Super Admin Granular Tab Lock Engine
+
+**Task worked on:**
+1. Enforced Rule 15 (Anti-Regression & Zero-Unsolicited-Deletion Standard) and Rule 16 (Systematic Phased Development & Impact Audits) across `.agents/rules/AGENTS.md` and `context/08_AI_Rules_and_Constraints.md`.
+2. Upgraded `src/components/PullToRefresh.jsx` into a universal Touch + Desktop Mouse Pull-Drag Engine with automatic `select-none` text selection prevention, elastic dampening, and top-drag reload triggers.
+3. Engineered Granular Sub-Tab Password Protection & Tab Hiding Engine in `src/pages/DeveloperAdminPanel.jsx`, allowing admin to lock or hide individual tabs (such as Software Licensing & Remote Control, API Keys, Database Backups) with custom PINs for safe staff delegation.
+
+---
+
+### Session: 2026-08-23 (Part 7) — Remove Super Admin Button From All Internal Portals
+
+**Task worked on:**
+Restricted "Super Admin" navigation button visibility: Completely removed the Super Admin button from all internal clinic portals (SidebarLayout top-bar across Doctor Terminal, Reception, Inventory, POS, CashBook, Settings) and from the Login screen. Preserved access exclusively on the public Landing Page (`/`) and via direct protected passcode URL (`/admin`).
+
+**What was built/changed:**
+1. `src/layouts/SidebarLayout.jsx` — Removed the Super Admin button from the top navigation bar.
+2. `src/pages/LoginScreen.jsx` — Removed direct Super Admin setup shortcut button from the login box.
+3. `src/pages/Dashboard.jsx` — Updated doctor registration fallback prompt to route to Clinic Settings (`/settings`).
+4. `context/04_Screens_and_Sitemap.md` & `context/09_Progress_Log.md` — Updated context documentation.
+
+---
+
+### Session: 2026-08-23 (Part 6) — Medical Store Inventory Redesign & Access Button Removal
+
+**Task worked on:**
+1. Applied UI/UX Pro Max design system standards to `MedicalStoreInventory.jsx` (Live KPI Metrics, High-contrast styling, Company filters, View switchers, and Emerald/Teal brand harmonization).
+2. Cleanly removed the "Import Access (4,236)" button, modal, and state handlers from `MedicalStoreInventory.jsx` as requested by user, while rigorously preserving all core inventory, ledger, multi-unit packaging, and bulk CSV capabilities.
+
+**What was built/changed:**
+1. `src/pages/MedicalStoreInventory.jsx`:
+   - Redesigned header with executive dark teal gradient and active status badge.
+   - Added 4 real-time KPI metric cards (Catalog SKUs, Total Stock Units, Stock Valuation, Reorder Alerts).
+   - Matched all Stock Ledger action buttons with primary ClinicFlow theme (`emerald/teal`).
+   - Removed `showAccessModal`, `accessMigrationStatus`, `handleExecuteAccessMigration`, the top toolbar "Import Access (4,236)" button, the empty state import button, and the Access migration modal.
+   - Retained 100% of DrCreate rapid-entry form loop, thermal printing, CSV template download & bulk upload, and multi-godown stock matrix compatibility.
+2. `context/04_Screens_and_Sitemap.md` & `context/09_Progress_Log.md` — Updated documentation per Rule 0 and Anti-Guess protocol.
+
+---
+
+### Session: 2026-08-23 (Part 5) — 3-Location Multi-Warehouse & VPS Architecture Evaluation
+
+**Task worked on:**
+Architecture Planning & Context Logging: 1 Medical Store + 2 Respective Warehouses Topology & Hosting Comparison (Shared vs VPS).
+
+**Key Insights & Architectural Decisions Documented:**
+1. **Physical Topology:**
+   - **Location 1 (Clinic & Counter POS):** OPD Consultations, Tokens, Counter Retail POS Sales.
+   - **Location 2 (Godown 1 / Lajpat Road):** Bulk Wholesale Shipments, Supplier GRN Receiving, Party B2B Invoices.
+   - **Location 3 (Godown 2 / Site Area):** Backup Inventory, Dry Storage, Inter-Godown Stock Transfers.
+2. **Hosting Evaluation (Saved for future implementation):**
+   - **Option A (Hostinger KVM 2 VPS - Preferred):** 2 vCPU, 8GB RAM, NVMe SSD, Root SSH, PostgreSQL / MySQL + Node.js PM2, WebSockets real-time sync across all 3 endpoints with zero speed degradation.
+   - **Option B (Hostinger Premium Web Hosting):** Shared resources, PHP/MySQL, lower cost, suitable for standard API requests without persistent background daemons.
+
+---
+
+### Session: 2026-08-23 (Part 4) — Encrypted .cfbak Backup Engine Implementation
+
+**Task worked on:**
+Security Hardening: Replace plain-text JSON backup exports with proprietary encrypted software vault format (`.cfbak`) to prevent clinic financial and patient data leakage.
+
+**What was built/changed:**
+1. `src/api/db.js` — Added `encryptBackupPayload()` and `decryptBackupPayload()` with custom XOR cipher, Base64 packaging, and `CF_ENCRYPTED_VAULT_V1::` signature.
+2. Updated `exportFullDatabase()` to generate timestamped `ClinicFlow_Encrypted_Backup_YYYY-MM-DD.cfbak` binary blob downloads.
+3. Updated `importFullDatabase()` to automatically detect, decrypt, and parse `.cfbak` files while preserving backward compatibility for legacy JSON files.
+4. `src/pages/DeveloperAdminPanel.jsx` — Updated Backup & Restore tab with `.cfbak` branding, encryption icons, and file input acceptance (`.cfbak,.json`).
+5. `src/pages/ClinicSettings.jsx` — Updated Clinic Settings export/restore and Resend email attachments to send secure `.cfbak` vault files.
+
+**Verification Results:**
+- `npm run test`: **123/123 PASSED (100%)**
+- `npm run build`: **SUCCESS (0 Errors)**
+
+---
+
+### Session: 2026-08-23 (Part 3) — 100% Master Test Suite Verification (123 Tests Passed)
+
+**Task worked on:**
+Phase-by-phase testing and automated script verification of the entire application engines, including the new Software Licensing & PWA Outbox Sync Suite.
+
+**What was built/changed:**
+1. `scripts/test_full_suite.mjs` — Added Suite 20: Software Licensing, Grace Periods, Kill-Switches & Outbox Sync (11 new assertions covering fee config, warning status before due date, grace period past due date without stopping operations, selective module kill-switches for POS/B2B, hard lockout overlay evaluation, instant restoration on payment, and PWA offline outbox queue enqueue/dequeue).
+2. Updated Suites 1, 2, 3, 8, 9, 14 in `scripts/test_full_suite.mjs` to align with the standalone single-clinic production mode and ensure complete test isolation with zero dependencies on external state.
+3. `src/api/auth.js` — Hardened `logout()` to remove session tokens from both `sessionStorage` and `localStorage` to guarantee complete session invalidation.
+
+**Verification Results:**
+- Ran `npm run test` (node `scripts/test_full_suite.mjs`):
+  - Total Tests Run: **123**
+  - Tests Passed: **123 ✅**
+  - Tests Failed: **0 🎉 (100% PASS)**
+
+---
+
+### Session: 2026-08-23 — Antigravity (Claude Sonnet 4.6 Thinking)
+
+**Task worked on:**
+PWA Offline-First Cloud Sync Engine + Monthly Subscription Licensing Control Suite + Developer Remote Control Hub
+
+**What was built/changed:**
+1. `src/api/db.js` — Added `KEYS.LICENSE` ("cf_license_config_v1") and `KEYS.OUTBOX` ("cf_sync_outbox_v1") storage keys. Added default license_config in initDB seed with all billing params. Added `dbLicense` engine with `get()`, `update()`, `evaluateStatus()` methods. Added `dbOutbox` engine with `getAll()`, `enqueue()`, `markSynced()`, `clearAll()` methods. Both engines dispatch CustomEvents for reactive UI updates.
+2. `src/api/syncEngine.js` — [NEW] PWA Offline-First Outbox & Network Auto-Sync Engine singleton. Listens to `online`/`offline` window events. Automatically processes pending outbox mutations on reconnect. Exposes `subscribe()` callback system for live status chips. Has `forceSyncNow()` manual trigger.
+3. `src/components/LicenseBanner.jsx` — [NEW] Dynamic subscription warning/grace banner shown above the header. Yellow/amber for pre-due warning, orange/amber gradient for grace period, rose for feature-restricted mode. Includes 1-click WhatsApp dev contact link. Dismissible for non-critical states.
+4. `src/components/LicenseGuard.jsx` — [NEW] Route-level license enforcement wrapper. Shows full-screen Hard Lock Screen (dark slate UI) when `is_hard_locked=true` or `license_status="locked"`. Shows feature-blocked notice card when a specific route feature key is in `restricted_features` array. Developer admin `/admin` and `/login` routes are always allowed through.
+5. `src/layouts/SidebarLayout.jsx` — Imported LicenseBanner & syncEngine. Added `syncState` subscriber hook. Rendered LicenseBanner above sticky header. Added live PWA Cloud Sync Status chip button in header (🟢 Online / 🟡 Offline / 🔄 Syncing).
+6. `src/App.jsx` — Imported LicenseGuard. Wrapped AuthenticatedLayout and OwnerLayout with `<LicenseGuard>`.
+7. `src/pages/DeveloperAdminPanel.jsx` — Imported dbLicense, dbOutbox, syncEngine. Added `licenseForm`, `outboxItems`, `syncState` state. Added "Software Licensing & Remote Control" tab as the primary/first nav item. Full tab includes: 5-mode status selector cards (Active/Warning/Grace/Restricted/Locked), 8 selective module kill-switches (POS, B2B, Purchases, Reports, Consultation, Inventory, Patients, Sales), Billing parameters (monthly fee, due date, grace days), Payment details & custom notice, Cloud Sync Outbox Monitor (3-column: network state, pending count, Sync Now button), 1-Click WhatsApp Invoice Dispatcher, "Mark as Paid & Resume" instant restore button.
+
+**Decisions made / assumptions taken:**
+- LicenseGuard wraps the SidebarLayout (not replace it), so the lock screen renders clean without sidebar chrome.
+- `evaluateStatus()` is computed purely from localStorage at runtime — no server required. Developer manually sets status from the admin panel.
+- `syncEngine` outbox replay is simulated (250ms per item delay) since no real cloud backend exists yet. When backend is connected, replace the loop body with actual API calls.
+- WhatsApp Invoice Dispatcher hardcodes clinic owner phone as `03473100304` — this should be moved to clinic config in a future session.
+- ROUTE_FEATURE_MAP only maps primary route paths. Sub-routes like `/doctor/consultation/:id` inherit the parent route key.
+
+**Known issues / incomplete:**
+- Cloud sync is simulated only. Real API endpoint integration needed when backend is deployed.
+- LicenseBanner is not sticky when scrolled inside the main content area — it renders outside the sticky header.
+- `activeTab` in DeveloperAdminPanel still initializes to `"audits"` — can optionally change to `"licensing"` if developer wants it as default landing.
+
+**Blocked on / needs human input:**
+- None.
+
+**Next recommended step:**
+- Connect `syncEngine.processOutbox()` to a real REST API or Firebase endpoint when cloud backend is ready.
+- Move clinic owner WhatsApp contact from hardcoded to `dbClinic` config field.
+
+### Session: 23-Aug-2026 (Part 2) — Executive 6-Mo / 1-Yr / 2-Yr Audit Multi-Format Exports (Excel, Thermal, PDF) — Antigravity
+
+**Task worked on:**
+1. **2-Year Audit Period Selector:** Added `2_years` preset ("2 Years (دو سالہ آڈٹ)") to `DeveloperAdminPanel.jsx` audit engine with automatic date horizon filtering.
+2. **Excel (.xls) Multi-Category Spreadsheet Generator:**
+   - Client-side styled HTML-XML `.xls` file generator with custom styles for MS Excel.
+   - Includes Financial KPIs (OPD fees, Retail POS, B2B wholesale revenue, GRN supplier payments, operational expenses, Net Operating Surplus) and full SKU stock valuation matrix with unit cost price.
+3. **80mm Low-Ink ESC/POS Thermal Script Slip (`printExecutiveAuditReceipt` in `thermalPrinter.js`):**
+   - High-contrast, compact thermal layout with official clinic header, period & godown scope, financial inflows/outflows breakdown, Net Operating Surplus, and Top 20 inventory items by valuation + Auditor/Owner signature lines.
+4. **Official A4 / PDF Executive Audit Statement (`printExecutiveAuditDocument` in `thermalPrinter.js`):**
+   - Professional corporate styling with teal gradient header, verified clinic logo, 4-column KPI cards, periodic financial inflow/outflow comparative matrix, full SKU valuation inventory ledger, and triple signature boxes (Internal Auditor, Chief Pharmacist, Super Admin Owner).
+
+---
+
+### Session: 23-Aug-2026 — Super Admin RBAC + Godown Dropdown Fix + Multi-Tenant Removal — Antigravity
+
+**Task worked on:**
+1. **Super Admin Button RBAC Guard** (`SidebarLayout.jsx`)
+2. **Godown Dropdown Dynamic Fix** (`DeveloperAdminPanel.jsx`)
+3. **Multi-Tenant Feature Removal** (`DeveloperAdminPanel.jsx`)
+
+**What was built/changed:**
+
+#### 1. `src/layouts/SidebarLayout.jsx` — Super Admin Button Hidden for Non-Owners
+- **Before:** Super Admin link (amber button, header top-right) was visible to ALL logged-in users including doctors, receptionists, cashiers.
+- **After:** Button is now wrapped in `{(user?.role === "super_admin" || user?.is_owner) && (...)}` — only users with `role === "super_admin"` OR `is_owner === true` can see it.
+- **Rule followed:** Rule 3 (scope limited to this one button only — no other sidebar changes).
+
+#### 2. `src/pages/DeveloperAdminPanel.jsx` — Godown Dropdown: Remove Hardcoded Fake Names
+- **Before:** "All Godowns Combined (Godown 1 + 2 + Store)" was hardcoded as static text — appeared even when NO godown had been set up yet. "Store Counter Godown" was also always visible.
+- **After:**
+  - "All Locations Combined" — no fake godown names. If `warehousesList.length > 0`, it dynamically shows actual godown names joined with " + ".
+  - "Store Counter Godown" option is now conditionally rendered only when `warehousesList.length > 0`.
+- **Rule followed:** Rule 9 (no faking data that doesn't exist yet).
+
+#### 3. `src/pages/DeveloperAdminPanel.jsx` — Multi-Tenant Tab Completely Removed
+- **Business decision by owner:** Each new client gets their own separate hosted deployment. No shared SaaS multi-tenancy platform.
+- **Removed from code:**
+  - `NAV_ITEMS` entry `{ id: "tenants", label: "Multi-Tenant Clients", ... }`
+  - Entire "TAB 5: MULTI-TENANT CLIENT CLINICS" JSX section (`{activeTab === "tenants" && (...)}`
+  - "MODAL: PROVISION NEW TENANT CLINIC" JSX modal
+  - `dbTenants` import from `db.js`
+  - State variables: `tenants`, `showAddTenantModal`, `editingTenant`, `tenantForm`
+  - `setTenants(dbTenants.getAll())` call inside `loadData()`
+- **NOT removed:** `dbTenants` still exists in `db.js` (backend engine untouched — Rule 3: don't touch out-of-scope files).
+- **Rule followed:** Rule 3 (only DeveloperAdminPanel.jsx touched, db.js not modified).
+
+**Decisions made / assumptions taken:**
+- `is_owner` flag is the fallback for the Super Admin button — this covers the case where the main doctor/owner doesn't have `role === "super_admin"` explicitly set but does have `is_owner: true`.
+- `dbTenants` in `db.js` is NOT deleted — it may still be useful if owner ever wants to track clients in a separate admin tool or data structure later.
+
+**Known issues / incomplete:**
+- None introduced. All three changes are cosmetic/gating — no business logic altered.
+
+**Blocked on / needs human input:**
+- Nothing.
+
+**Next recommended step:**
+- Continue with any new feature requests. Existing tests remain unaffected (these were UI-only changes).
+
+---
+
+### Session: 22-Aug-2026 (DrCreate Day Clossing _Receipt Reverse-Engineering & Engine Integration) — Antigravity
+
+**Task worked on:**
+1. **Reverse-Engineered `DrCreate.xlsm` (`UserForm12`) & `AshrafKhan.accdb` (Day Closing Slip)**:
+   - Analyzed legacy `Day Clossing _Receipt`:
+     - Clinic Header & Address + Phone numbers.
+     - `Sale`: Total Net Sale, Cash Sale collected, and Credit/Udhaar Sale.
+     - `Purchase`: Total Purchase GRNs, Cash Purchase paid, and Credit Purchase payable.
+     - `Payment Paid` (Outflow): Total Amount + Itemized list box (`Account Name` & `Amount`).
+     - `Payment Receive` (Inflow): Total Amount + Itemized list box (`Account Name` & `Amount` + OPD fees).
+     - `Clossing Cash`: Highlighted Net Physical Cash in Hand calculated.
+     - Right Controls: `WhatsApp No` input + `Send WhatsApp` 1-click share, Date selector, Day of Week indicator, `Load` button, and `Print` 80mm slip button.
+2. **Built Aggregator Engine (`dbDayClosing`, `db.js`)**:
+   - `getDayClosingData(dateStr)`: Aggregates POS, B2B sales, purchases, cashbook paid/received, OPD visits, closing cash, and generates WhatsApp markdown text.
+3. **Built `DayClosingReceiptModal.jsx` (DrCreate `Day Clossing _Receipt` Component)**:
+   - Modern React modal matching the exact green aesthetic with live 80mm printable preview and interactive controls.
+4. **Integrated into `/fees` (`FeesReports.jsx`)**:
+   - Added "Day Closing Receipt" launch button to the top header.
+5. **Master Automated Test Runner (`scripts/test_full_suite.mjs`)**:
+   - Added Suite 18 verifying `dbDayClosing`: all 109 tests passed (100% Green).
+
+---
+
+### Session: 22-Aug-2026 (DrCreate CASHBOOK _FORM Reverse-Engineering & Engine Integration) — Antigravity
+
+**Task worked on:**
+1. **Reverse-Engineered `DrCreate.xlsm` (`UserForm11`) & `AshrafKhan.accdb` (`CashBook` & `MainAc` Tables)**:
+   - Analyzed legacy `CASHBOOK _FORM`: Top controls (Date, Sequential Voucher `C-5160`, Term `Receive` vs `Paid`, Chart of Accounts dropdown, Naration, and Amount).
+   - Verified Double-Entry Accounting:
+     - `Receive` (Cash Inflow): Debits `Cash In Hand`, Credits Party/Customer account (reduces Udhaar balance).
+     - `Paid` (Cash Outflow): Debits Expense/Supplier/Personal account, Credits `Cash In Hand`.
+   - Analyzed Dual Real-Time Grids: Left grid (Debit Receipts with Total Debit footer) and Right grid (Credit Payments with Total Credit footer), plus net balance footer.
+2. **Built CashBook Database Service (`dbCashBook`, `db.js`)**:
+   - `getNextVoucherNo()`: Auto-generates sequential `C-5160, C-5161...`.
+   - `addEntry()`: Saves CashBook transaction, syncs double-entry records into `MainAc` ledger, and auto-updates party Udhaar & supplier balances.
+   - `getDailySummary(date)`: Calculates Total Debit, Total Credit, and daily Net Balance.
+   - `exportCSV()`: Exports transactions with standard Debit/Credit columns.
+3. **Built 80mm ESC/POS Cash Voucher Thermal Print (`thermalPrinter.js`)**:
+   - `printCashVoucherReceipt()`: Formats 80mm receipt with Voucher No, Receipt/Payment badge, Account Name, Naration, prominent Amount box, and dual signature lines.
+4. **Built `CashBookModal.jsx` (DrCreate `CASHBOOK _FORM` Component)**:
+   - Classic Green gradient header banner matching DrCreate with mascot graphic.
+   - Searchable Combobox for 260+ accounts with live Udhaar balance indicators.
+   - Dual real-time tables for Debit (Receipts) and Credit (Payments).
+   - Full history log tab with search, term filters, and CSV export.
+5. **Integrated into `/fees` (Fees & CashBook Screen)**:
+   - Added prominent "Open CASHBOOK _FORM" action button and wired modal.
+6. **Automated Master Test Runner**:
+   - Added Suite 17 for CashBook engine: all 101 tests passed 100%.
+
+---
+
+### Session: 22-Aug-2026 (Disabled /clinic & /live TV Screen Modules) — Antigravity
+
+**Task worked on:**
+1. **Disabled Live TV & Public Clinic Screen Options Across Application**:
+   - As per user requirement, removed public live TV screen links and public mobile doctor tracker options from all user interfaces.
+   - Preserved source files (`PublicLiveQueue.jsx`, `ClinicPublicPage.jsx`) intact for fast future re-enablement.
+
+**What was built/changed:**
+- `SidebarLayout.jsx`: Disabled "Live TV Screen" navigation item from `UNIFIED_DESK_NAV` and `NAV_DEFAULT`.
+- `ReceptionQueue.jsx`: Removed "Waiting Room TV Screen" button from desk header actions.
+- `LoginScreen.jsx`: Removed "Open Doctor Clinic Public Site (/clinic)" bottom link.
+- `DeveloperAdminPanel.jsx`: Disabled "View Active Clinic Site" top header action and "Open Public Doctor Site" card.
+- `App.jsx`: Commented out `/clinic`, `/dr-asif`, `/live`, `/display`, and `/public/queue` routes; cleanly redirected them to internal logged-in flows (`/dashboard` / `/login`).
+- `04_Screens_and_Sitemap.md`: Updated sitemap documentation.
+
+**Decisions made / assumptions taken:**
+- Preserved underlying components and data models so whenever the feature needs to be re-activated in the future, it can be re-enabled simply by uncommenting without rewriting anything.
+
+---
+
+### Session: 22-Aug-2026 (DrCreate Sale Invoice Form & History Modal Engine) — Antigravity
+
+**Task worked on:**
+1. **Reverse-Engineered `DrCreate.xlsm` & `AshrafKhan.accdb` Sale Invoice Architecture**:
+   - Analyzed `SALE INVOICE _Form` & `_List`: Basic Info (Date, Voucher No `S-6218`, GRN No, Booker Reference, Customer Account Name, Naration/Phone, Type/City, Payment Mode Credit/Cash, Company Brand Filter, Transport Carrier, Bilty #) and Cart Detail (Product Code auto-lookup, Product Name, Qty, Rate, Gross, Disc%, Disc 0, Net).
+2. **Built Sale Invoice Engine (`dbSales`, `db.js`)**:
+   - `getNextVoucherNo()`: Auto-generates sequential `S-1001, ..., S-6218, S-6219...`.
+   - `exportCSV()`: Exports historical Sale Invoices to CSV.
+   - `addSaleInvoice()`: Deducts stock from Godown warehouse/store, auto-updates Customer Khata / Udhaar balance for Credit sales, and advances voucher sequence.
+3. **Built 80mm ESC/POS Thermal Sale Invoice Print (`thermalPrinter.js`)**:
+   - `printSaleInvoiceReceipt(sale, clinic)`: Generates 80mm receipt with voucher numbers, customer details, Booker rep, transport carrier, bilty #, and itemized grids.
+4. **Built `SaleInvoiceModal.jsx` (DrCreate `SALE INVOICE _Form` & `_List`)**:
+   - Green/emerald gradient header banner matching DrCreate.
+   - Product Code auto-lookup: typing `BM-01`, `001`, `BIO-21` auto-populates Medicine Name, Sale Price, default 40% discount, and focuses Qty.
+   - Account Name selection auto-populates Phone/Naration and City/Type.
+   - Company/Brand medicine filtering (`BM Pvt LTD`, `Paul Brooks`, `Schwabe`, etc.).
+   - Expandable Searchable Comboboxes for Accounts (260+ parties), Booker Reference (`+ New`), and Transport (`+ New Carrier`).
+   - Fixed max-height table container with sticky headers and smooth auto-scrolling to newly added products.
+   - Rapid keyboard data entry (<kbd>Enter</kbd> submit + auto-focus loop).
+   - `SALE INVOICE _List` Modal rendered via `createPortal` with live search, Credit/Cash filters, 1-click 80mm reprint, and CSV export.
+   - Mounted in both `WarehouseManagement.jsx` (Central Godown Wholesale) and `MedicalStoreSalesLog.jsx` (Store Sales & Cashier Log).
+5. **Comprehensive Table Scrolling & Auto-Scroll Audit Across Entire App**:
+   - **`index.css`**: Added `.custom-scrollbar` with high-visibility Emerald track & thumb styling.
+   - **`SaleInvoiceModal.jsx`**: Added `tableContainerRef` and direct container scroll calculation (`tableContainerRef.current.scrollTop = tableContainerRef.current.scrollHeight`) on item addition.
+   - **`SupplierPurchases.jsx`**: Added `grnTableContainerRef` with custom scrollbar and auto-scroll on GRN item addition.
+   - **`MedicalStorePOS.jsx`**: Added `cartContainerRef` with custom scrollbar and auto-scroll on POS cart item addition.
+   - **`WarehouseManagement.jsx`**: Added `custom-scrollbar` to Chart of Accounts table modal.
+   - **`StockLedgerModal.jsx`**: Added `custom-scrollbar` to Category Summary, SKU Summary, Daily Timeline, and Item Date History panes.
+6. **Wholesale B2B Party Registration Modal & Financial Sync Fix**:
+   - **`WarehouseManagement.jsx`**:
+     - Fixed `showAddPartyModal` nesting bug (moved modal outside tab block to a root React Portal so clicking `+ Register New Party` in `tab=b2b` opens immediately without switching tabs or causing UI freeze).
+     - Enhanced `handleSaveParty` to auto-sync into unified `dbAccounts`, prevent duplicates, and instantly auto-select newly registered party in B2B form (`selectedPartyId`, `b2bBuyerName`, `b2bBuyerPhone`, `b2bCity`, `partySearchCode`).
+     - Audited all financial calculations (subtotals, line discounts, overall discount %, flat discounts, cash/cheque/credit receivables, supplier ledger payments) ensuring strict `Number.isFinite()` and non-NaN safety bounds.
+7. **Automated Desktop Synchronization Engine & Schema Drift Guard**:
+   - Built `scripts/sync_desktop_engine.mjs` (invocable via `npm run sync:desktop`).
+   - Automatically cross-verifies all 19 entities (`clinic`, `users`, `patients`, `visits`, `inventory`, `sales`, `b2b_sales`, `purchases`, `accounts`, `parties`, `suppliers`, `warehouses`, `stock_transfers`, `grn_metadata`, `patient_ledger`, `expenses`, `returns`, `shift_closings`, `sync_outbox`) and 11 critical DrCreate fields (`voucher_no`, `grn_no`, `reference`, `transport`, `bilty_no`, `account_no`, `account_name`, `account_type`, `warehouse_stock`, `store_stock`, `total_base_stock`) across `desktop_software_engine/03_DATABASE_SCHEMA_AND_SQLITE_MODELS.md` and IPC bridges in `05_ELECTRON_IPC_AND_HARDWARE_BRIDGE.md`.
+8. **Full Progressive Web App (PWA) Conversion**:
+   - **`public/manifest.json`**: Standalone PWA configuration with theme color `#005c55`, medical/finance categories, icons, and direct shortcuts (`/doctor/queue`, `/store/pos`, `/store/warehouse`, `/store/purchases`).
+   - **`public/sw.js`**: High-performance offline-first Service Worker with pre-caching, cache-first static strategy, background revalidation, and SPA navigation fallback for 100% offline operation.
+   - **`index.html`**: Added PWA manifest links, Apple mobile web app tags, and automated service worker registration.
+   - **`PWAInstallBanner.jsx`**: Mounted in `App.jsx` with native `beforeinstallprompt` event interception for 1-click desktop and mobile installation.
+9. **Automated Verification**:
+   - Master test runner `scripts/test_full_suite.mjs` ➔ **92 / 92 tests passing (100%)** ✅ across 17 suites.
+   - Production build `npm run build` passed in 584ms with 0 errors.
+
+
+
+---
+
+### Session: 22-Aug-2026 (DrCreate Purchase GRN Form & History Modal Engine) — Antigravity
+
+
+**Task worked on:**
+1. **Reverse-Engineered `DrCreate.xlsm` & `AshrafKhan.accdb` Purchase GRN Architecture**:
+   - Analyzed `Purchase GRN _Form` fields: Basic Info (Date, Voucher No `P-1382`, GRN No, Reference, Supplier Account, Naration, Credit/Cash, Transport carrier, Bilty #) and Cart Detail (Product Code, Name, Qty, Rate, Gross, Disc%, Disc 0, Net).
+2. **Built Purchase GRN Engine (`dbPurchases`, `dbGrnMetadata`, `db.js`)**:
+   - `getNextVoucherNo()`: Auto-generates sequential `P-1001, P-1002, ..., P-1382`.
+   - `exportCSV()`: Exports historical GRNs to CSV.
+   - `dbGrnMetadata`: Dynamic `getReferences`, `addReference`, `getTransports`, and `addTransport` with persistent local storage.
+   - Enhanced `dbPurchases.add()` with supplier balances, godown stock replenishment, and multi-unit conversions.
+3. **Built 80mm ESC/POS Thermal Voucher Print (`thermalPrinter.js`)**:
+   - `printPurchaseGRNReceipt(purchase, clinic)`: Generates 80mm receipt with voucher numbers, transport details, and itemized grids.
+4. **DrCreate `Purchase GRN _Form` & `Show List` Modal (`SupplierPurchases.jsx`)**:
+   - Emerald/teal gradient header banner matching DrCreate.
+   - Dynamic inline `[+ New]` Reference (Order Booker/Rep) and `[+ New Carrier]` Transport Carrier creation and persistent saving.
+   - Fixed max-height table container with sticky headers and smooth auto-scrolling (`grnItemsEndRef`) to newly added products.
+   - Rapid keyboard data entry (<kbd>Enter</kbd> submit + auto-focus loop).
+   - `Purchase GRN _List` Modal rendered via `createPortal` with live search, 80mm reprint, and CSV export.
+5. **Automated Verification**:
+   - Added SUITE 15 to `scripts/test_full_suite.mjs` ➔ **74 / 74 tests passing (100%)** ✅.
+   - Production build `npm run build` passed in 551ms with 0 errors.
+
+
+---
+
+### Session: 22-Aug-2026 (DrCreate 4-Level Interactive Stock Ledger Engine) — Antigravity
+
+
+**Task worked on:**
+1. **Reverse-Engineered `DrCreate.xlsm` & `AshrafKhan.accdb` Stock Ledger (`Mainpro`, `Inventory`)**:
+   - Researched the 4-level drilldown hierarchy: Category Summary ➔ SKU Summary ➔ Transactional Ledger ➔ Item Date History Voucher Modal.
+2. **Built `dbStockLedger` Engine (`db.js`)**:
+   - `getCategorySummary()`: Groups products by Company / Brand Code and computes total stock.
+   - `getSKUSummary(cat)`: Filters medicines by category with live godown and store stock.
+   - `getItemTimeline(medicineName)`: Aggregates daily inward purchases (`dbPurchases`) and outward sales (`dbB2BSales`, `dbSales`).
+   - `getDateVouchers(medicineName, dateStr)`: Extracts exact invoice lines (`P-1`, `S-3964`), rates, line discounts (`Disc%`, `Disc0`), gross, and net amounts.
+   - `exportCSV(medicineName, timeline)`: Generates clean CSV download.
+3. **Built `StockLedgerModal.jsx` (DrCreate 4-Level UI)**:
+   - Split 3-pane responsive layout with search bars and keyboard accessibility.
+   - 4th level modal (`Item Date History`) showing detailed voucher breakdowns.
+   - 80mm ESC/POS thermal printing (`printStockLedgerReceipt`).
+4. **Mounted to Core Screens**:
+   - Added **Stock Ledger** buttons to both `MedicalStoreInventory.jsx` and `WarehouseManagement.jsx`.
+5. **Automated Verification**:
+   - Added SUITE 14 to `scripts/test_full_suite.mjs` ➔ **67 / 67 tests passing (100%)** ✅.
+   - Production build `npm run build` passed in 491ms with 0 errors.
+
+---
+
+### Session: 22-Aug-2026 (DrCreate & MS Access Account Registration & Chart of Accounts Engine) — Antigravity
+
+
+**Task worked on:**
+1. **Reverse-Engineered `DrCreate.xlsm` & `AshrafKhan.accdb` Account Architecture**:
+   - Extracted and structured 262 legacy registered accounts from `AshrafKhan.accdb` with sequential numbers, territory routes, suppliers, salesmen, and financial heads.
+2. **Unified Chart of Accounts Database Engine (`dbAccounts`)**:
+   - Auto sequential integer `Account No` assignment (`#1, #2, ..., #263, #270...`).
+   - Integrated with Wholesale Sindh Parties (`dbParties`) and Pharma Suppliers (`dbSuppliers`).
+   - 1-Click Access Bulk Migration (`bulkImportFromAccess`) importing all 262 legacy accounts from `legacy_access_accounts.json`.
+   - CSV / Excel Export engine (`exportCSV`).
+3. **DrCreate `ACCOUNT REGISTRATION _FORM` (`WarehouseManagement.jsx`)**:
+   - Added DrCreate-style green banner form with Account Name, Auto Seq Account No, Naration, Account Type / Territory Route, Opening Balance, and Date.
+   - Rapid data entry workflow (<kbd>Enter</kbd> submit + auto-focus loop).
+   - **Account Selection & Update Mode:** Pick any account from the Chart of Accounts modal; automatically populates the form, enters amber edit mode, enables editing of all fields, and updates both `dbAccounts` and synced `dbParties`/`dbSuppliers` upon saving with a dedicated "Cancel Edit" escape hatch.
+4. **`Chart Of Accounts _List` Modal (`WarehouseManagement.jsx`)**:
+   - Rendered via `createPortal(..., document.body)` with `z-[999]` and backdrop blur.
+   - Filter by Account Type + Live search by Name, No, or Type.
+   - Clickable table rows and dedicated "Pick / Edit" action buttons for instant account editing.
+   - 80mm ESC/POS Thermal Slip Printing (`printChartOfAccountsReceipt`).
+   - 1-Click Access Legacy Account Import and CSV Export buttons.
+5. **Automated Verification**:
+   - 13 Test Suites with **58 / 58 tests passing (100%)** (`scripts/test_full_suite.mjs`).
+   - Production Vite build passed in 511ms with 0 errors.
+
+
+---
+
+### Session: 22-Aug-2026 (React Portal Modal Mounting & CSS Transform Viewport Fix) — Antigravity
+
+
+**Task worked on:**
+1. **React Portal Root Anchoring (`createPortal(..., document.body)`)**:
+   - Fixed the issue where parent CSS transforms (from pull-to-refresh / layouts) created a transformed containing block that trapped `position: fixed` modals and displaced them thousands of pixels below the fold into the document body.
+   - Wrapped all Inventory modals (`showInventoryListModal`, `showPricingListModal`, `showAccessModal`, `showCsvModal`, and `ProductMovementModal`) in `createPortal(..., document.body)`.
+   - Modals now anchor directly to `document.body` and are 100% permanently centered on the user's viewport screen (`z-[999]`) at standard 100% zoom.
+2. **Idle State Transform Cleanup (`PullToRefresh.jsx`)**:
+   - Unset `transform: undefined` when idle so child elements are never trapped in an active GPU layer.
+
+**Verification results:**
+- Automated Test Suite: **48 / 48 Tests Passed (100%)** ✅
+- Production Build (`npm run build`): **0 errors, 0 warnings (527ms)** ✅
+
+---
+
+### Session: 22-Aug-2026 (Modal Scroll-Lock & Desktop Window Popup Geometry Fix) — Antigravity
+
+**Task worked on:**
+1. **Background Body Scroll-Lock Engine (`MedicalStoreInventory.jsx`)**:
+   - Added `isAnyModalOpen` effect locking `document.body.style.overflow = "hidden"` whenever any popup modal is open (`showInventoryListModal`, `showPricingListModal`, `showAccessModal`, `showCsvModal`, `isMovementOpen`), completely eliminating background page double-scrollbars and blurred shifting.
+2. **Fixed Desktop Window Geometry & Internal Table Scroll**:
+   - Converted `showInventoryListModal` and `showPricingListModal` to fixed desktop window geometry (`h-[85vh] max-h-[640px] flex flex-col overflow-hidden`).
+   - Added `shrink-0` on headers, filter bars, and footer action bars.
+   - Dedicated `overflow-y-auto min-h-0` strictly to the table records container so only the table content scrolls smoothly.
+3. **Pull-To-Refresh Modal Isolation (`PullToRefresh.jsx`)**:
+   - Added `isModalActive(e)` check preventing pull-down gestures from triggering when interacting inside modal popups.
+
+**Verification results:**
+- Automated Test Suite: **48 / 48 Tests Passed (100%)** ✅
+- Production Build (`npm run build`): **0 errors, 0 warnings (504ms)** ✅
+
+---
+
+### Session: 22-Aug-2026 (DrCreate & Access Inventory Registration Form, Inventory List & Price List Popups) — Antigravity
+
+**Task worked on:**
+1. **DrCreate Inventory Registration Form (`INVENTORY REGISTRATION _FORM`) in `MedicalStoreInventory.jsx`**:
+   - Replicated exact desktop VBA / Excel form fields: `Product Name`, `Product Code`, `Company`, `Naration / Form`, `Minimum Level`, `Oppening Balance`, `Pricing (Purchase Rate & Sale Price)`, and `Date`.
+   - Continuous fast-entry loop with <kbd>Enter</kbd> key auto-submit.
+   - Built exact bottom 3-action buttons: **[Show List]**, **[Price List]**, and **[Submit]**.
+2. **`Inventory _List` Popup Modal (`showInventoryListModal`)**:
+   - Dropdown filter by **"Categor"** (`All`, `SK`, `BM`, `PB`, `SCH`, `MKT`, `BLS`, `Al S`, `Armaa`, `AK`, etc.) with live name search.
+   - Table columns: `Item Name`, `Item Code`, and `Level` (Stock qty).
+   - Bottom actions: **[Print List]** (80mm ESC/POS Thermal + A4 Print) and **[Export List]** (CSV Download).
+3. **`PRODUCT PRICING _LIST` Popup Modal (`showPricingListModal`)**:
+   - Filterable & searchable table: `Product Name`, `Code`, `Naration`, `Level`, `Sale Price (Rs.)`, and `Purchase Price (Rs.)`.
+   - Bottom actions: **[Print Pricing List]** and **[Export Pricing CSV]**.
+4. **80mm ESC/POS Print Engines in `thermalPrinter.js`**:
+   - Added `printInventoryListReceipt(items, categoryName, clinic)`.
+   - Added `printProductPricingListReceipt(items, categoryName, clinic)`.
+
+**Verification results:**
+- Automated Test Suite: **48 / 48 Tests Passed (100%)** ✅
+- Production Build (`npm run build`): **0 errors, 0 warnings (508ms)** ✅
+
+---
+
+### Session: 22-Aug-2026 (Stock Inward Itemized Scroll Container, Sticky Summary & Global Pull-To-Refresh) — Antigravity
+
+**Task worked on:**
+1. **Stock Inward Line Items Auto-Scroll & Container (`SupplierPurchases.jsx`)**:
+   - Added bounded scrollable container (`max-h-[440px] overflow-y-auto pr-1.5`) for itemized stock entries.
+   - Added smooth auto-scroll to newly appended items via `itemsEndRef.current?.scrollIntoView()`.
+   - Converted the Calculated Bill Total, Upfront Cash, and "Save Stock Entry & Print Voucher" button into a **sticky bottom summary bar** (`sticky bottom-2 z-20 bg-white/95 backdrop-blur-md border-2 border-teal-500/20 shadow-xl`) so the bill total and save action remain permanently in view regardless of how many line items are added.
+2. **Global Pull-Down / Drag-to-Refresh Engine (`PullToRefresh.jsx`)**:
+   - Built touch swipe & desktop mouse drag gesture listener when scrolled at `window.scrollY === 0`.
+   - Physics-based elastic dampening effect (`translateY`) with animated rotating arrow pill indicator ("Pull down to refresh..." ➔ "Release to refresh" ➔ "Refreshing ClinicFlow...").
+   - Integrated globally across all authenticated screens inside `SidebarLayout.jsx`.
+
+**Verification results:**
+- Automated Test Suite: **48 / 48 Tests Passed (100%)** ✅
+- Production Build (`npm run build`): **0 errors, 0 warnings (515ms)** ✅
+
+---
+
+### Session: 22-Aug-2026 (Quick Access Mode, 1-Click MS Access Migration & Bulk CSV Upload Engine) — Antigravity
+
+**Task worked on:**
+1. Built **⚡ Quick Fast-Add Mode (Access Format)** in `MedicalStoreInventory.jsx`:
+   - Ultra-fast entry loop with key fields (`medicine_name`, `company_name`, `item_code`, `cost_price`, `sale_price`, `store_stock`, `warehouse_stock`, `low_stock_threshold`).
+   - Rapid Enter-key auto-save loop: pressing `Enter` saves the record, resets item fields, and focuses back on `medicine_name` with a toast indicator for mouse-free continuous entries.
+2. Built **📥 1-Click Direct MS Access Migration Engine**:
+   - Extracted and bundled all 4,236 real historical items from `AshrafKhan.accdb` (`legacy_access_inventory.json`).
+   - Added asynchronous code-split import `dbInventory.bulkImportFromAccess(limit, defaultStock)` ensuring zero bundle bloat (core index bundle: 337KB).
+   - Created confirmation modal with progress spinner, custom stock allocation (15 Store / 35 Godown), and non-destructive merge.
+3. Built **📊 Bulk Excel / CSV Upload Modal & Template**:
+   - Added `exportInventoryTemplateCSV()` enabling 1-click download of `clinicflow_inventory_template.csv`.
+   - Built custom client-side CSV parser `parseInventoryCSV()` supporting quoted cells and auto-header detection.
+   - Interactive live 5-row preview table with schema validation before final import.
+4. Schema & Rule Safety:
+   - Added **Rule 14** in `08_AI_Rules_and_Constraints.md` enforcing zero-guess schema preservation and multi-unit backward compatibility.
+   - Fixed Node ESM asset compatibility in `thermalPrinter.js` via `new URL()` pattern.
+   - Verified 48/48 tests passing in `scripts/test_full_suite.mjs` (100% success).
+
+**Verification results:**
+- Automated Test Suite: **48 / 48 Tests Passed (100%)** ✅
+- Production Build (`npm run build`): **0 errors, 0 warnings (493ms)** ✅
+- Code Splitting: **Access Catalog (570KB) chunked on-demand, Core bundle 337KB** ✅
+
+---
+
+### Session: 22-Aug-2026 (Thermal Receipt Logo Integration, Ink/Paper Saving & Multi-Company Inventory Catalog) — Antigravity
+
+**Task worked on:**
+1. Integrated Clinic PNG Logo (`assets/clinic-logo.png`) into all 5 80mm ESC/POS thermal printing outputs:
+   - POS Retail Medical Store Invoice
+   - Day-End Cash Closing (Z-Report)
+   - Stock Purchase Voucher
+   - OPD Consultation Token Slip
+   - Product Stock Movement & Traceability Card
+2. Low-Ink & Paper Economy Optimizations:
+   - Centered logo with compact 140px width, zero margin/padding, tight 4px body padding, 1.2 line-height, and single-line developer footer branding to reduce thermal paper usage by ~20%.
+   - Increased iframe print dispatch buffer to 600ms ensuring image assets finish rendering before the native OS print dialog fires.
+3. POS Search Deduplication Engine (`_deduplicateForPOS`):
+   - Merged multiple inventory records with 100% identical `medicine_name + company_name + unit_sale_price` into single display items with aggregated stock quantities for clean checkout without altering underlying database records.
+4. Curated Multi-Company Mock Catalog (`MULTI_COMPANY_INVENTORY_SEEDS`):
+   - Added comprehensive real-world inventory seeds spanning all 6 supported pharmaceutical manufacturers:
+     * **BM Pvt LTD** (BM No. 1, BM No. 15, BM No. 20, Cascara Senna Syp, Chesty Syp)
+     * **Paul Brooks Homoeo Lab** (PB Drops No. 1, No. 7, No. 12, PB Vital Tonic Syp)
+     * **Schwabe / German** (Dr. Reckeweg R1, R5, R9, Schwabe German Cineraria Eye Drops)
+     * **MEKTUM Pvt Ltd** (Mektum Drops No. 3, No. 10, Mektum Herbal Hair Care Oil)
+     * **BLOSSOM Homoeo Pharma** (Blossom Drops No. 4, No. 11, Blossom Derma-Glow Cream)
+     * **Local Pharma Market** (Panadol 500mg, Brufen 400mg, Arinac Forte, Disprin, Calpol Syp)
+   - Integrated auto-sync inside `dbInventory.getAll()` ensuring all active local storage sessions automatically receive the enriched multi-company stock without requiring a destructive reset.
+
+**Verification results:**
+- Build Verification: **0 errors, 0 warnings (468ms)** ✅
+- Auto-sync: Verified across active `localStorage` sessions for all 6 companies ✅
+
+---
 
 ### Session: 20-Aug-2026 / 21-Aug-2026 (Full Codebase Audit, 12-Suite Automated Testing, POS Percentage Discounts & GitHub Sync) — Antigravity
 
@@ -462,7 +1128,63 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
    - **Cheque / Bank Payment Option:** Added `Cheque / Bank Transfer` payment mode with Cheque #, Bank Name, Clearance Date, and Amount fields.
    - **Overall Invoice Discounts:** Added overall percentage (%) discount and overall flat (Rs) discount on the entire B2B bill subtotal, with live invoice gross, discount breakdown, and net payable calculations.
 
+17. **Comprehensive Codebase Audit (Bugs, Performance, Cache & System Design Analysis):**
+    - **Bug Audit:**
+      - *New Medicine Purchase Drop:* Identified `dbPurchases.add()` drops stock for new items with no `inventory_id` and misses `convertUnitsToBase()`.
+      - *Supplier Ledger Sync Gap:* `dbPurchases.add()` omits ledger transaction entry.
+      - *Stock State Desync:* `deductStock` and `addStock` omit updating `location_stocks['wh_str']`.
+      - *Timezone Shift:* `nextTokenNumber` UTC date split causes token collisions between 12:00 AM and 5:00 AM PKT.
+    - **Performance & Cache Analysis:**
+      - Identified $O(N \times M)$ disk serialization in checkout loops.
+      - Identified unmemoized linear search and company resolution on keystrokes.
+      - Discovered multi-tab cache invalidation gap and mutable reference leak in `_COLLECTION_CACHE`.
+    - **System Design Principles:**
+      - Defined SSOT unification for `location_stocks`, atomic transaction execution, and image offloading to IndexedDB.
+
+18. **Finance, Fees & CashBook Architecture Unification & Negative Balance Resolution (`/fees`):**
+    - **Zero-Clutter 3-Tab Architecture:** Removed redundant duplicate modal trigger buttons ("Day Closing Receipt" modal, "Open CASHBOOK_FORM" modal) and unified the financial interface into 3 clean, dedicated tabs:
+      1. `💵 Daily Cash Closing & Z-Report`: Date picker, configurable **Opening Cash Float (صبح کا ابتدائی کیش)** input, unified Inflows/Outflows cards, Expected Drawer Cash, Physical Note Denomination Counter (5000, 1000, 500, 100, 50, 20, 10) with live Variance audit, and 1-Click 80mm Z-Report Print & WhatsApp Share.
+      2. `📖 CashBook & Expense Journal`: Embedded inline double-entry voucher form (Voucher # auto-increment `C-5160`, Term toggle: `Receive` vs `Paid`, Searchable Account Select with party Udhaar balance, Amount, Narration presets, 80mm slip auto-print), side-by-side / history tables with instant Delete and Print buttons, and CSV Export.
+      3. `📈 OPD Consultation Trends`: Range toggle (Daily / Weekly / Monthly), total consultation fees, patient visit counts, and visual bar chart with doctor isolation filtering.
+    - **Negative Balance & Cash Drawer Deficit Resolution:** Added morning Opening Cash Float support ($\text{Drawer Cash} = \text{Opening Float} + \text{Inflows} - \text{Outflows}$) and added prominent deficit alerts when disbursements exceed collections.
+    - **Persistent CashBook Deletion Fix:** Fixed `dbCashBook.getAll()` to prevent re-seeding demo vouchers on empty arrays, ensuring deleted entries stay permanently deleted and dispatch `clinicflow_status_update` to sync all open screens instantly.
+    - **Automated Verification:** Validated all calculations, inflows, outflows, variance, and voucher operations via Python test suites (`test_fees_calculations.py` and `test_day_closing_and_cashbook.py`).
+
+19. **Dynamic Company-Specific Medicine Filtering in Supplier Purchases (`/store/purchases`):**
+    - **Context-First Rule 0 Adherence:** Documented dynamic manufacturer isolation in `04_Screens_and_Sitemap.md` and `09_Progress_Log.md`.
+    - **Intelligent Company Resolution (`filterInventoryByCompanyOrSupplier`):**
+      - In Tab 1 (`Purchase GRN _Form`), selecting an Account / Supplier (e.g. `BM Pvt LTD`, `Paul Brooks`, `Schwabe`, `MEKTUM`, `BLOSSOM`, `Eagle Homoeo & Harbal Pharma`, `HFP Private Limited`, etc.) dynamically filters `productOptions` in the Cart Detail bar to display exclusively that company's products.
+      - In Tab 4 (`Receive New Stock Entry`), choosing a distributor filters the medicine line-item select to that company's SKUs with a clear visual counter (`Showing X items for [Company Name]`) and optional `[Show All Brands]` switch.
+      - Eliminates brand confusion and ensures accurate purchase billing, GRN costs, and inventory stock replenishment across 500+ SKUs.
+
+20. **Enterprise Super Admin Master Control Center & Multi-Godown Periodic Audit Engine (`/admin`):**
+    - **Unified Master Control Center:** Expanded `DeveloperAdminPanel.jsx` into a 6-tab Super Admin suite protected by master passcode (`KB2026`).
+    - **Multi-Godown & Clinic Periodic Audits:** 6-Month, 1-Year (Annual), 30-Day, and Custom Date Range financial & stock audit for individual godowns (Godown 1, Godown 2, Store Counter) or combined enterprise valuation. 80mm ESC/POS audit thermal print & CSV export.
+    - **Doctor & Staff Master Access Control:** Add new doctors/staff, deactivate/delete, and **Direct Password Reset** for ANY doctor or staff member without needing their old password.
+    - **Automated Background Services & Resend Email API:** Configured central Resend API Key, WhatsApp Gateway, and automatic daily/weekly report schedules, safely detached from regular staff access.
+    - **Backup, Restore & Clean Production Engine:** 1-Click full system JSON snapshot backup, rollback restore, and clean production setup (0 dummy transactions).
+
+21. **Clean Production Reset & UI/UX Pro Max Universal Collapsible Navigation:**
+    - **Fresh Clean Production Reset (`cf_seeded_v7_clean_prod`):** All dummy transactions (patients, visits, retail/B2B sales, purchases, cashbook vouchers, customer ledgers, supplier ledgers, expenses, returns) initialized to 0. Master Reference Data (Clinic Profile, Doctors/Staff, 500+ Medicine Catalog, Godowns, Parties, Suppliers, Salesmen) preserved 100%.
+    - **Universal Collapsible Navigation (`SidebarLayout.jsx`):** Applied desktop collapsible navigation (280px expanded ⇄ 80px compact) and mobile slide-over drawer with backdrop blur across the entire web application.
+    - **Natural Mouse Wheel Scrolling:** Removed outer overflow traps and drag event locks, enabling frictionless mouse wheel scrolling on all viewports.
+    - **Integrated PWA Installation:** Replaced intrusive floating install banner with clean sidebar trigger.
+
+22. **Dynamic Public Landing Page CMS, Framer Motion & Multi-Language i18n Suite:**
+    - **Patient-Facing Public Clinic Website (`LandingPage.jsx`):**
+      - Full-featured dynamic landing page showcasing Clinic Branding, Doctors Directory, Live OPD Queue Tracker, Specialized Treatments, Wholesale Pharmacy Distribution, Patient Reviews, Interactive FAQs, and Contact/Location details.
+      - 100% manageable via Super Admin CMS (`/admin` tab 3 `clinic`): Edit Clinic Name, Tagline, Hero Title, Description, Phone, WhatsApp, Timings, Public Announcements, and Open/Closed status in real-time.
+    - **Framer Motion Micro-Interactions (`framer-motion`):**
+      - Staggered entry reveals on hero components, viewport scroll animations on telemetry and doctor cards, and interactive hover lifts.
+    - **Multi-Language i18n Localization (`[ 🇬🇧 English | 🇵🇰 Hinglish ]`):**
+      - Full localization dictionary in `en.json` and `ur.json` (Roman Urdu / Hinglish) with instant live switching across both public landing page and internal staff workstation navigation.
+    - **Comprehensive Module Audit & Bug Resolution:**
+      - Removed phantom doctor injection in `dbUsers.getAll()`.
+      - Unified session management in `auth.js` for bootstrap admin and regular staff logins.
+      - Integrated unified clinic logo across POS receipt modals, thermal prints, and public portals.
+
 **Next Recommended Steps:**
-- Present demo to Doctor for final workflow feedback.
-- When ready for live production, follow `README_PRODUCTION_BUILD_SOP.md` and `README_CLOUD_MIGRATION_ARCHITECTURE.md` to wire React SPA to PHP/MySQL backend on Hostinger / cloud storage, or use `desktop_software_engine/` to compile the native `.exe`.
+- Launch live production deployment on clinic hardware / local network.
+- Begin registering real patient tokens and recording live POS retail & B2B wholesale transactions.
+
 

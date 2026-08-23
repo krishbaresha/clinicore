@@ -1,11 +1,16 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients } from "../api/db.js";
 import { formatCurrency, formatTodayLong, getGreeting } from "../utils/formatters.js";
+import { useTranslation } from "react-i18next";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
 
 function StatCard({ label, value, icon, subline, iconBg, labelColor, valueColor, children }) {
   return (
-    <div className="glass-card p-md flex flex-col gap-4 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+    <div className="glass-card p-md flex flex-col gap-4 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 h-full">
       <div className="absolute -right-4 -top-4 w-24 h-24 bg-secondary-container/30 rounded-full blur-xl group-hover:bg-secondary-container/50 transition-colors" />
       <div className="flex justify-between items-start z-10">
         <div>
@@ -29,8 +34,16 @@ function StatCard({ label, value, icon, subline, iconBg, labelColor, valueColor,
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
-  const canViewFinancials = user?.is_owner || user?.can_view_financials || user?.role === "receptionist" || user?.role === "cashier" || user?.role === "pharmacist";
+  // Doctor ke liye strict data isolation: sirf apna OPD data dikhe
+  const isDoctor = user?.role === "doctor";
+  const canViewFinancials =
+    !isDoctor &&
+    (user?.is_owner || user?.can_view_financials ||
+      user?.role === "receptionist" ||
+      user?.role === "cashier" ||
+      user?.role === "pharmacist");
 
   // Compute live stats from the mock DB
   const allVisits = dbVisits.getAll();
@@ -122,11 +135,119 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Stats Bento Grid */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-label="Key metrics">
+      {/* Stats Bento Grid (Desktop Grid / Mobile Swiper Slider) */}
+      <div className="block md:hidden">
+        <Swiper
+          modules={[Pagination]}
+          pagination={{ clickable: true, dynamicBullets: true }}
+          spaceBetween={12}
+          slidesPerView={1.15}
+          className="pb-8"
+        >
+          <SwiperSlide className="h-auto">
+            <StatCard
+              label={canViewFinancials ? t("dashboard.todayPatients") : "My Patients Today"}
+              value={canViewFinancials ? todayVisits.length : myTodayVisits.length}
+              icon="group"
+              iconBg="bg-secondary-container/50"
+              subline={
+                <>
+                  <span className="material-symbols-outlined text-sm">calendar_today</span>
+                  {canViewFinancials
+                    ? `${todayVisits.length} total OPD visit${todayVisits.length === 1 ? "" : "s"}`
+                    : `${myTodayVisits.length} visit${myTodayVisits.length === 1 ? "" : "s"} in my chamber`}
+                </>
+              }
+            />
+          </SwiperSlide>
+
+          <SwiperSlide className="h-auto">
+            <StatCard
+              label={canViewFinancials ? t("dashboard.feesCollected") : "My Fees Today"}
+              value={formatCurrency(canViewFinancials ? feesToday : myFeesToday)}
+              icon="payments"
+              iconBg="bg-primary-container/10"
+            />
+          </SwiperSlide>
+
+          <SwiperSlide className="h-auto">
+            {user?.role === "doctor" ? (
+              <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden h-full border border-teal-200/60 bg-teal-50/40">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-label-md text-label-md text-teal-800 mb-1 uppercase tracking-wider font-bold">
+                      Waiting Queue
+                    </p>
+                    <h3 className="text-3xl font-black text-teal-950">
+                      {myWaitingVisits.length} <span className="text-sm font-semibold text-gray-500">Patients</span>
+                    </h3>
+                  </div>
+                  <div className="w-11 h-11 rounded-2xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
+                    <span className="material-symbols-outlined text-2xl">hourglass_top</span>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-teal-100 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-teal-800">
+                    {myWaitingVisits.length > 0 ? `Next: #${myWaitingVisits[0].token_number}` : "Clear"}
+                  </span>
+                  <button onClick={() => navigate("/doctor/queue")} className="text-xs font-extrabold text-teal-700 underline">
+                    Call →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden h-full">
+                <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">{t("dashboard.newVsRepeat")}</p>
+                <div>
+                  <div className="flex items-end gap-2 mb-1">
+                    <span className="text-2xl font-black text-primary">{newRatio}%</span>
+                    <span className="text-xs text-outline pb-0.5">New</span>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
+                    <span className="text-xs text-outline pb-0.5">Repeat</span>
+                  </div>
+                </div>
+                <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
+                  <div className="bg-primary" style={{ width: `${newRatio}%` }} />
+                  <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
+                </div>
+              </div>
+            )}
+          </SwiperSlide>
+
+          {/* Low Stock Slide — sirf staff/owner ke liye */}
+          {!isDoctor && (
+          <SwiperSlide className="h-auto">
+            <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden h-full border border-error-container/50 bg-error-container/10">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">{t("dashboard.lowStockAlerts")}</p>
+                  <h3 className="text-3xl font-black text-error">{lowStockItems.length}</h3>
+                </div>
+                <div className="w-11 h-11 rounded-2xl bg-error-container flex items-center justify-center text-error">
+                  <span className="material-symbols-outlined text-2xl">warning</span>
+                </div>
+              </div>
+              <p className="text-xs text-outline">{lowStockItems.length === 0 ? t("dashboard.allStockOk") : `${lowStockItems.length} items low`}</p>
+            </div>
+          </SwiperSlide>
+          )}
+        </Swiper>
+      </div>
+
+      {/* Desktop Grid — doctor ke liye sirf 3 card: My Patients, My Fees, My Queue */}
+      <section
+        className={
+          isDoctor
+            ? "hidden md:grid md:grid-cols-3 gap-4"
+            : "hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4"
+        }
+        aria-label="Key metrics"
+      >
         {/* Patients Today */}
         <StatCard
-          label={canViewFinancials ? "Clinic Patients Today" : "My Patients Today"}
+          label={canViewFinancials ? t("dashboard.todayPatients") : "My Patients Today"}
           value={canViewFinancials ? todayVisits.length : myTodayVisits.length}
           icon="group"
           iconBg="bg-secondary-container/50"
@@ -142,14 +263,14 @@ export default function Dashboard() {
 
         {/* Fees Collected Today */}
         <StatCard
-          label={canViewFinancials ? "Total Fees Collected" : "My Fees Today"}
+          label={canViewFinancials ? t("dashboard.feesCollected") : "My Fees Today"}
           value={formatCurrency(canViewFinancials ? feesToday : myFeesToday)}
           icon="payments"
           iconBg="bg-primary-container/10"
         />
 
-        {/* Doctor-tailored 3rd Card: Waiting Queue or New vs Repeat */}
-        {user?.role === "doctor" ? (
+        {/* 3rd Card */}
+        {isDoctor ? (
           <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-teal-200/60 bg-teal-50/40">
             <div className="flex justify-between items-start">
               <div>
@@ -164,7 +285,6 @@ export default function Dashboard() {
                 <span className="material-symbols-outlined text-2xl">hourglass_top</span>
               </div>
             </div>
-
             <div className="pt-2 border-t border-teal-100 flex items-center justify-between">
               <span className="text-xs font-semibold text-teal-800">
                 {myInRoomVisit
@@ -182,67 +302,49 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
-            <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">New vs Repeat</p>
-            <div>
-              <div className="flex items-end gap-2 mb-1">
-                <span className="text-2xl font-black text-primary">{newRatio}%</span>
-                <span className="text-xs text-outline pb-0.5">New</span>
-              </div>
-              <div className="flex items-end gap-2">
-                <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
-                <span className="text-xs text-outline pb-0.5">Repeat</span>
-              </div>
-            </div>
-            <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
-              <div className="bg-primary" style={{ width: `${newRatio}%` }} />
-              <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
-            </div>
-          </div>
-        )}
-
-        {/* 4th Card: New vs Repeat (for Doctor) OR Low Stock (for Staff) */}
-        {user?.role === "doctor" ? (
-          <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
-            <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">New vs Repeat</p>
-            <div>
-              <div className="flex items-end gap-2 mb-1">
-                <span className="text-2xl font-black text-primary">{newRatio}%</span>
-                <span className="text-xs text-outline pb-0.5">New Patients</span>
-              </div>
-              <div className="flex items-end gap-2">
-                <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
-                <span className="text-xs text-outline pb-0.5">Repeat</span>
-              </div>
-            </div>
-            <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
-              <div className="bg-primary" style={{ width: `${newRatio}%` }} />
-              <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
-            </div>
-          </div>
-        ) : (
-          <div className="glass-card p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-error-container/50 bg-error-container/10">
-            <div className="flex justify-between items-start">
+          <>
+            <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+              <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">{t("dashboard.newVsRepeat")}</p>
               <div>
-                <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">Low Stock Alerts</p>
-                <h3 className="text-3xl font-black text-error">{lowStockItems.length}</h3>
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-error-container flex items-center justify-center text-error">
-                <span className="material-symbols-outlined text-2xl">warning</span>
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {lowStockItems.slice(0, 2).map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-xs">
-                  <span className="text-on-surface truncate max-w-[120px]">{item.medicine_name}</span>
-                  <span className="text-error font-semibold">{item.stock_qty} left</span>
+                <div className="flex items-end gap-2 mb-1">
+                  <span className="text-2xl font-black text-primary">{newRatio}%</span>
+                  <span className="text-xs text-outline pb-0.5">New</span>
                 </div>
-              ))}
-              {lowStockItems.length === 0 && (
-                <p className="text-xs text-outline">All stock levels OK</p>
-              )}
+                <div className="flex items-end gap-2">
+                  <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
+                  <span className="text-xs text-outline pb-0.5">Repeat</span>
+                </div>
+              </div>
+              <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
+                <div className="bg-primary" style={{ width: `${newRatio}%` }} />
+                <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
+              </div>
             </div>
-          </div>
+
+            {/* 4th Card: Low Stock — sirf staff/owner dekhega */}
+            <div className="glass-card p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-error-container/50 bg-error-container/10">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">{t("dashboard.lowStockAlerts")}</p>
+                  <h3 className="text-3xl font-black text-error">{lowStockItems.length}</h3>
+                </div>
+                <div className="w-11 h-11 rounded-2xl bg-error-container flex items-center justify-center text-error">
+                  <span className="material-symbols-outlined text-2xl">warning</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                {lowStockItems.slice(0, 2).map((item) => (
+                  <div key={item.id} className="flex items-center justify-between text-xs">
+                    <span className="text-on-surface truncate max-w-[120px]">{item.medicine_name}</span>
+                    <span className="text-error font-semibold">{item.stock_qty} left</span>
+                  </div>
+                ))}
+                {lowStockItems.length === 0 && (
+                  <p className="text-xs text-outline">{t("dashboard.allStockOk")}</p>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </section>
 
@@ -298,70 +400,115 @@ export default function Dashboard() {
               <span className="material-symbols-outlined text-base text-amber-400">stethoscope</span>
               Today&apos;s Doctor-by-Doctor OPD Revenue Breakdown
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {doctorBreakdown.map((doc) => (
-                <div key={doc.id} className="bg-white/10 p-3.5 rounded-2xl border border-white/10 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                      <span className="material-symbols-outlined text-xs text-teal-300">person</span>
-                      <span>{doc.name}</span>
-                      {doc.is_owner && <span className="text-[9px] bg-amber-400 text-teal-950 font-black px-1.5 py-0.2 rounded shrink-0">OWNER</span>}
+            {doctorBreakdown.length === 0 ? (
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <p className="text-xs text-teal-200">No doctors registered yet.</p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/settings")}
+                  className="mt-2 text-xs font-black text-amber-300 hover:text-amber-200 underline cursor-pointer inline-flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">add_circle</span>
+                  Manage Doctors in Clinic Settings (/settings)
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {doctorBreakdown.map((doc) => (
+                  <div key={doc.id} className="bg-white/10 p-3.5 rounded-2xl border border-white/10 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                        <span className="material-symbols-outlined text-xs text-teal-300">person</span>
+                        <span>{doc.name}</span>
+                        {doc.is_owner && <span className="text-[9px] bg-amber-400 text-teal-950 font-black px-1.5 py-0.2 rounded shrink-0">OWNER</span>}
+                      </div>
+                      <div className="text-[11px] text-teal-200 truncate">{doc.specialization || "General Physician"}</div>
+                      <div className="text-[10px] text-teal-300/80 mt-0.5">{doc.today_patient_count} Patients Today</div>
                     </div>
-                    <div className="text-[11px] text-teal-200 truncate">{doc.specialization || "General Physician"}</div>
-                    <div className="text-[10px] text-teal-300/80 mt-0.5">{doc.today_patient_count} Patients Today</div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-black text-amber-300">Rs. {doc.today_fees.toLocaleString()}</div>
+                      <div className="text-[9px] text-teal-200 uppercase">OPD Collection</div>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-black text-amber-300">Rs. {doc.today_fees.toLocaleString()}</div>
-                    <div className="text-[9px] text-teal-200 uppercase">OPD Collection</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       ) : (
+        /* Doctor Personal OPD Portal — Sirf apni info */
         <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-600">stethoscope</span>
-              <h3 className="font-bold text-gray-900 text-base">My OPD Consultation Portal</h3>
+              <span className="material-symbols-outlined text-teal-600 text-2xl">stethoscope</span>
+              <div>
+                <h3 className="font-bold text-gray-900 text-base">My OPD Consultation Portal</h3>
+                <p className="text-xs text-gray-400">Sirf apna data — real-time</p>
+              </div>
             </div>
             <button
               onClick={() => navigate("/doctor/queue")}
-              className="text-xs font-bold bg-teal-50 text-teal-700 hover:bg-teal-100 px-3 py-1.5 rounded-xl border border-teal-200 transition-colors"
+              className="text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 px-4 py-2 rounded-xl border border-teal-700 transition-colors flex items-center gap-1.5"
             >
-              Open My OPD Queue →
+              <span className="material-symbols-outlined text-sm">queue</span>
+              Open My Queue
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
-              <div className="text-xs text-teal-700 font-bold uppercase mb-1">My Patients Today</div>
-              <div className="text-3xl font-black text-teal-900">
-                {myTodayVisits.length}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">Waiting &amp; Completed in my chamber</div>
+
+          {/* Main Stats Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-center">
+              <div className="text-xs text-teal-700 font-bold uppercase mb-1">Aaj ke Patients</div>
+              <div className="text-3xl font-black text-teal-900">{myTodayVisits.length}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">Mere chamber me</div>
             </div>
-            <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
-              <div className="text-xs text-emerald-700 font-bold uppercase mb-1">My Consultation Fees Today</div>
-              <div className="text-3xl font-black text-emerald-900">
-                Rs. {myFeesToday.toLocaleString()}
+            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center">
+              <div className="text-xs text-emerald-700 font-bold uppercase mb-1">Aaj ki Fees</div>
+              <div className="text-3xl font-black text-emerald-900">Rs. {myFeesToday.toLocaleString()}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">OPD collection</div>
+            </div>
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
+              <div className="text-xs text-amber-700 font-bold uppercase mb-1">Queue Waiting</div>
+              <div className="text-3xl font-black text-amber-900">{myWaitingVisits.length}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">
+                {myWaitingVisits.length > 0 ? `Next: #${myWaitingVisits[0].token_number}` : "Khali hai"}
               </div>
-              <div className="text-xs text-gray-500 mt-1">Direct OPD Consultation collection</div>
+            </div>
+            <div className={`p-4 rounded-2xl border text-center ${
+              myInRoomVisit
+                ? "bg-blue-50 border-blue-100"
+                : "bg-gray-50 border-gray-100"
+            }`}>
+              <div className={`text-xs font-bold uppercase mb-1 ${
+                myInRoomVisit ? "text-blue-700" : "text-gray-400"
+              }`}>Chamber Status</div>
+              <div className={`text-sm font-black ${
+                myInRoomVisit ? "text-blue-900" : "text-gray-400"
+              }`}>
+                {myInRoomVisit
+                  ? `#${myInRoomVisit.token_number} In Room`
+                  : "Khali"}
+              </div>
+              <div className="text-[11px] text-gray-400 mt-0.5">
+                {myInRoomVisit
+                  ? (myInRoomVisit.patient_name || dbPatients.getById(myInRoomVisit.patient_id)?.full_name || "Patient")
+                  : "Koi patient nahi"}
+              </div>
             </div>
           </div>
         </section>
       )}
 
-      {/* Quick Actions (Role Tailored) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4" aria-label="Quick actions">
-        {user?.role === "doctor" ? (
+      {/* Quick Actions — Doctor: sirf OPD + EMR, no settings */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4" aria-label="Quick actions">
+        {isDoctor ? (
           <>
             <button
               onClick={() => navigate("/doctor/queue")}
               className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
             >
-              <span className="material-symbols-outlined">queue</span>
-              <span className="font-label-md text-label-md font-bold">My OPD Queue</span>
+              <span className="material-symbols-outlined">stethoscope</span>
+              <span className="font-label-md text-label-md font-bold">Doctor Consultation Queue</span>
             </button>
             <button
               onClick={() => navigate("/patients")}
@@ -369,13 +516,6 @@ export default function Dashboard() {
             >
               <span className="material-symbols-outlined">group</span>
               <span className="font-label-md text-label-md font-bold">Patients &amp; EMR Records</span>
-            </button>
-            <button
-              onClick={() => navigate("/settings")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-            >
-              <span className="material-symbols-outlined">settings</span>
-              <span className="font-label-md text-label-md font-bold">Clinic Profile &amp; Settings</span>
             </button>
           </>
         ) : (

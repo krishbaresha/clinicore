@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { dbInventory, dbClinic } from "../api/db.js";
 import { formatPKR, formatDate } from "../utils/formatters.js";
 import { printProductStockCard } from "../utils/thermalPrinter.js";
@@ -75,12 +76,20 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
     if (onStockUpdated) onStockUpdated();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
-      <div className="bg-white border border-teal-100 w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-white border border-teal-100 w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[88vh] max-h-[720px]"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
-        <div className="px-6 py-4 bg-teal-900 text-white flex items-center justify-between border-b border-teal-800">
+        <div className="px-6 py-4 bg-teal-900 text-white flex items-center justify-between border-b border-teal-800 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-teal-800 border border-teal-700 flex items-center justify-center text-teal-200">
               <span className="material-symbols-outlined text-xl">analytics</span>
@@ -109,267 +118,201 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
         </div>
 
         {/* Live Multi-Location Stock Breakdown Cards */}
-        <div className="p-6 bg-gray-50 border-b border-gray-200">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            
-            {/* 1. Main Warehouse Godown Stock */}
-            <div className="bg-white p-4 rounded-2xl border border-teal-200 shadow-sm relative overflow-hidden">
-              <div className="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-teal-600">warehouse</span>
-                Godown Stock
-              </div>
-              <div className="text-2xl font-black font-headline text-gray-900 mt-1">
-                {summary.warehouse_stock} <span className="text-xs font-normal text-gray-500">{currentItem.box_label || "Packs"}</span>
-              </div>
-              <button
-                onClick={() => setTransferMode("to_store")}
-                className="mt-2 text-xs font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1"
-              >
-                <span>Shift to Store</span>
-                <span className="material-symbols-outlined text-xs">arrow_forward</span>
-              </button>
-            </div>
-
-            {/* 2. Medical Store Counter Stock */}
-            <div className="bg-white p-4 rounded-2xl border border-teal-200 shadow-sm relative overflow-hidden">
-              <div className="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-teal-600">storefront</span>
-                Store POS Stock
-              </div>
-              <div className="text-2xl font-black font-headline text-gray-900 mt-1">
-                {summary.store_stock} <span className="text-xs font-normal text-gray-500">{currentItem.unit_label || "Units"}</span>
-              </div>
-              <button
-                onClick={() => setTransferMode("to_warehouse")}
-                className="mt-2 text-xs font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1"
-              >
-                <span>Return to Godown</span>
-                <span className="material-symbols-outlined text-xs">arrow_back</span>
-              </button>
-            </div>
-
-            {/* 3. Total Inward Purchased */}
-            <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm">
-              <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-emerald-600">download</span>
-                Total Inward
-              </div>
-              <div className="text-2xl font-black font-headline text-emerald-700 mt-1">
-                +{summary.total_purchased}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">Supplier Purchases</div>
-            </div>
-
-            {/* 4. Total Outward Wholesale */}
-            <div className="bg-white p-4 rounded-2xl border border-teal-200 shadow-sm">
-              <div className="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-teal-600">local_shipping</span>
-                Wholesale Sold
-              </div>
-              <div className="text-2xl font-black font-headline text-teal-900 mt-1">
-                -{summary.total_sold_wholesale}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">Sindh Parties</div>
-            </div>
-
-            {/* 5. Total Outward Retail */}
-            <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm">
-              <div className="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-amber-600">point_of_sale</span>
-                Retail Counter
-              </div>
-              <div className="text-2xl font-black font-headline text-amber-700 mt-1">
-                -{summary.total_sold_retail}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">Walk-in Patients</div>
-            </div>
-
+        <div className="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-b border-teal-100 grid grid-cols-2 md:grid-cols-5 gap-3 text-center shrink-0">
+          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm">
+            <div className="text-[10px] text-gray-500 font-bold uppercase">Main Godown</div>
+            <div className="text-base font-extrabold text-teal-950">{summary.warehouse_stock} units</div>
           </div>
+          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm">
+            <div className="text-[10px] text-gray-500 font-bold uppercase">Store Counter</div>
+            <div className="text-base font-extrabold text-teal-950">{summary.store_stock} units</div>
+          </div>
+          <div className="p-2.5 bg-teal-600 text-white rounded-2xl shadow-sm">
+            <div className="text-[10px] text-teal-100 font-bold uppercase">Total Base Stock</div>
+            <div className="text-base font-extrabold">{summary.total_base_stock} units</div>
+          </div>
+          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm">
+            <div className="text-[10px] text-gray-500 font-bold uppercase">Total Inward</div>
+            <div className="text-base font-extrabold text-emerald-700">+{summary.total_purchased} units</div>
+          </div>
+          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm col-span-2 md:col-span-1">
+            <div className="text-[10px] text-gray-500 font-bold uppercase">Total Outward</div>
+            <div className="text-base font-extrabold text-rose-600">
+              -{summary.total_sold_retail + summary.total_sold_wholesale} units
+            </div>
+          </div>
+        </div>
 
-          {/* Inline Stock Shift Modal / Form */}
-          {transferMode && (
-            <form onSubmit={handleExecuteTransfer} className="mt-4 p-4 rounded-2xl bg-teal-50 border border-teal-200 flex flex-wrap items-center gap-3 animate-fadeIn">
-              <div className="text-sm font-bold text-teal-900 flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-600">sync_alt</span>
-                {transferMode === "to_store" ? "Shift from Godown ➔ Store Counter" : "Return from Store Counter ➔ Godown"}
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-bold text-gray-700">Quantity:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={transferMode === "to_store" ? (currentItem.warehouse_stock ?? 999) : (currentItem.store_stock ?? 999)}
-                  value={transferQty}
-                  onChange={(e) => setTransferQty(e.target.value)}
-                  className="w-20 px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-sm font-bold text-center"
-                  required
-                />
-              </div>
-              <div className="w-36">
-                <input
-                  type="text"
-                  placeholder="Staff: e.g. Usama"
-                  value={transferredBy}
-                  onChange={(e) => setTransferredBy(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-xs font-semibold"
-                  title="Shifted / Carried By"
-                />
-              </div>
-              <div className="flex-1 min-w-[180px]">
-                <input
-                  type="text"
-                  placeholder="Notes / Reason (e.g. Counter replenishment)"
-                  value={transferNotes}
-                  onChange={(e) => setTransferNotes(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-xs"
-                />
-              </div>
+        {/* Internal Stock Transfer Drawer */}
+        {transferMode && (
+          <form onSubmit={handleExecuteTransfer} className="p-4 bg-amber-50/80 border-b border-amber-200 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+            <div className="flex items-center gap-2 font-bold text-amber-950">
+              <span className="material-symbols-outlined text-amber-700">swap_horiz</span>
+              {transferMode === "to_store" ? "Shift from Godown ➔ Store Counter" : "Return from Store ➔ Godown"}
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="font-semibold text-gray-700">Quantity:</label>
+              <input
+                type="number"
+                min="1"
+                value={transferQty}
+                onChange={(e) => setTransferQty(e.target.value)}
+                className="w-20 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-white font-bold text-xs"
+                required
+              />
+
+              <label className="font-semibold text-gray-700">Handler:</label>
+              <input
+                type="text"
+                value={transferredBy}
+                onChange={(e) => setTransferredBy(e.target.value)}
+                placeholder="Staff name"
+                className="w-28 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-white text-xs"
+                required
+              />
+
+              <input
+                type="text"
+                value={transferNotes}
+                onChange={(e) => setTransferNotes(e.target.value)}
+                placeholder="Reason / Notes (Optional)"
+                className="w-44 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-white text-xs"
+              />
+
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm transition-colors"
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-sm"
               >
                 Confirm Shift
               </button>
               <button
                 type="button"
                 onClick={() => setTransferMode(null)}
-                className="px-3 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold transition-colors"
+                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl"
               >
                 Cancel
               </button>
-            </form>
-          )}
-        </div>
+            </div>
+          </form>
+        )}
 
-        {/* Toolbar & Filters */}
-        <div className="px-6 py-3 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
-          
-          {/* Tab Filters */}
-          <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-2xl">
-            <button
-              onClick={() => setFilterType("all")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                filterType === "all" ? "bg-white text-teal-900 shadow-sm border border-teal-200" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              All Movements ({transactions.length})
-            </button>
-            <button
-              onClick={() => setFilterType("inward")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 ${
-                filterType === "inward" ? "bg-emerald-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <span className="material-symbols-outlined text-xs">download</span>
-              Inward Purchases
-            </button>
-            <button
-              onClick={() => setFilterType("outward")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 ${
-                filterType === "outward" ? "bg-teal-700 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <span className="material-symbols-outlined text-xs">upload</span>
-              Outward Sales
-            </button>
-            <button
-              onClick={() => setFilterType("transfers")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 ${
-                filterType === "transfers" ? "bg-teal-800 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <span className="material-symbols-outlined text-xs">sync_alt</span>
-              Internal Shifts
-            </button>
+        {/* Filter and Search Bar */}
+        <div className="p-4 bg-white border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-2xl w-full sm:w-auto">
+            {[
+              { id: "all", label: "All Audit Logs" },
+              { id: "inward", label: "Inward (Purchases)" },
+              { id: "outward", label: "Outward (Sales)" },
+              { id: "transfers", label: "Godown Shifts" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilterType(tab.id)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  filterType === tab.id
+                    ? "bg-white text-teal-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Search Box */}
-          <div className="relative min-w-[240px]">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <input
               type="text"
-              placeholder="Search Party, Voucher, Bilty..."
+              placeholder="Filter voucher, party, salesman..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-300 bg-gray-50 focus:bg-white text-xs text-gray-900 font-medium focus:outline-none focus:border-teal-600"
+              className="px-3 py-1.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-teal-600 w-full sm:w-56"
             />
-          </div>
 
+            {!transferMode && (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setTransferMode("to_store")}
+                  className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 border border-teal-200 rounded-xl text-xs font-bold transition-all"
+                  title="Shift stock from Godown to Front Store"
+                >
+                  Shift to Store
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTransferMode("to_warehouse")}
+                  className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition-all"
+                  title="Return stock from Front Store to Godown"
+                >
+                  Return to Godown
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Traceability Ledger Table */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Scrollable Lifecycle Ledger Table */}
+        <div className="flex-1 overflow-y-auto min-h-0">
           {transactions.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <span className="material-symbols-outlined text-4xl mb-2 text-gray-300">history_toggle_off</span>
-              <p className="text-sm font-semibold">No movement transactions found for this filter.</p>
+            <div className="p-12 text-center text-gray-400 text-xs">
+              <span className="material-symbols-outlined text-4xl mb-2 text-gray-300 block">history_toggle_off</span>
+              No stock movements recorded for this filter.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
+            <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 uppercase tracking-wider font-bold border-b border-gray-100">
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Type</th>
-                    <th className="py-3 px-4">Voucher #</th>
-                    <th className="py-3 px-4">Party / Customer / Source</th>
-                    <th className="py-3 px-4">Territory / Transport</th>
-                    <th className="py-3 px-4 text-center">In Qty</th>
-                    <th className="py-3 px-4 text-center">Out Qty</th>
-                    <th className="py-3 px-4 text-right">Rate</th>
-                    <th className="py-3 px-4 text-right">Net Amount</th>
+                <thead className="bg-gray-50 text-gray-700 font-bold uppercase text-[11px] sticky top-0 border-b border-gray-200 shadow-xs">
+                  <tr>
+                    <th className="p-3">Date &amp; Time</th>
+                    <th className="p-3">Activity / Channel</th>
+                    <th className="p-3">Voucher #</th>
+                    <th className="p-3">Party / Customer</th>
+                    <th className="p-3 text-center">Movement Qty</th>
+                    <th className="p-3 text-right">Value (PKR)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                  {transactions.map((tx, idx) => (
-                    <tr key={idx} className="hover:bg-teal-50/50 transition-colors">
-                      <td className="py-3 px-4 font-mono text-gray-500 whitespace-nowrap">
-                        {formatDate(tx.date)}
+                <tbody className="divide-y divide-gray-100 font-medium">
+                  {transactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-teal-50/40 transition-colors">
+                      <td className="p-3 text-gray-600 whitespace-nowrap">
+                        {formatDate(tx.date || tx.created_at)}
                       </td>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        {tx.type === "PURCHASE" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            📥 Inward Purchase
+                      <td className="p-3">
+                        <span className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold inline-flex items-center gap-1 ${
+                          tx.type === "PURCHASE"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : tx.type === "WHOLESALE_B2B"
+                            ? "bg-indigo-100 text-indigo-800"
+                            : tx.type === "RETAIL_SALE"
+                            ? "bg-teal-100 text-teal-800"
+                            : tx.type === "SALE_RETURN"
+                            ? "bg-rose-100 text-rose-800"
+                            : "bg-amber-100 text-amber-900"
+                        }`}>
+                          <span className="material-symbols-outlined text-xs">
+                            {tx.type === "PURCHASE"
+                              ? "arrow_downward"
+                              : tx.type === "INTERNAL_TRANSFER"
+                              ? "sync_alt"
+                              : tx.type === "SALE_RETURN"
+                              ? "keyboard_return"
+                              : "arrow_upward"}
                           </span>
-                        )}
-                        {tx.type === "WHOLESALE_B2B" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-300">
-                            🚚 Wholesale B2B
-                          </span>
-                        )}
-                        {tx.type === "RETAIL_SALE" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
-                            🏪 Retail POS
-                          </span>
-                        )}
-                        {tx.type === "INTERNAL_TRANSFER" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                            🔄 Internal Shift
-                          </span>
-                        )}
+                          {tx.type_label || tx.type}
+                        </span>
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-gray-800 whitespace-nowrap">
-                        {tx.voucher_no}
+                      <td className="p-3 font-mono font-bold text-teal-900">{tx.voucher_no || "-"}</td>
+                      <td className="p-3">
+                        <div className="font-bold text-gray-900">{tx.party_name || "Direct Counter"}</div>
+                        {tx.salesman && <div className="text-[10px] text-gray-400">Rep: {tx.salesman}</div>}
                       </td>
-                      <td className="py-3 px-4 font-bold text-gray-900">
-                        {tx.party_name}
+                      <td className={`p-3 text-center font-bold font-mono ${
+                        tx.quantity > 0 ? "text-emerald-700" : tx.quantity < 0 ? "text-rose-600" : "text-amber-800"
+                      }`}>
+                        {tx.quantity > 0 ? `+${tx.quantity}` : tx.quantity} units
                       </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {tx.city && <span className="font-semibold text-gray-800">{tx.city} </span>}
-                        {tx.bilty_no && <span className="text-[11px] text-teal-700 font-mono">(Bilty: {tx.bilty_no}) </span>}
-                        {tx.salesman && <span className="text-[11px] text-teal-900 font-mono">[{tx.salesman}]</span>}
-                        {!tx.city && !tx.bilty_no && !tx.salesman && (tx.destination || "—")}
-                      </td>
-                      <td className="py-3 px-4 text-center font-bold text-emerald-700">
-                        {tx.qty_in > 0 ? `+${tx.qty_in}` : "—"}
-                      </td>
-                      <td className="py-3 px-4 text-center font-bold text-rose-600">
-                        {tx.qty_out > 0 ? `-${tx.qty_out}` : "—"}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono text-gray-600">
-                        {formatPKR(tx.unit_price)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold font-mono text-gray-900">
+                      <td className="p-3 text-right font-extrabold text-gray-900">
                         {formatPKR(tx.total_amount)}
                       </td>
                     </tr>
@@ -381,7 +324,7 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-xs text-gray-600">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-xs text-gray-600 shrink-0">
           <div>
             Showing <span className="font-bold text-gray-900">{transactions.length}</span> verified lifecycle transactions for <span className="font-bold text-gray-900">{currentItem.medicine_name}</span>
           </div>
@@ -397,4 +340,6 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : null;
 }

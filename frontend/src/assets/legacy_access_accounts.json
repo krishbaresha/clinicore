@@ -1,0 +1,2360 @@
+[
+  {
+    "id": "acc_1",
+    "account_no": 1,
+    "account_name": "BM Pvt LTD",
+    "account_type": "Supplier",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_2",
+    "account_no": 2,
+    "account_name": "Counter",
+    "account_type": "Customer",
+    "naration": "Counter Sale",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_3",
+    "account_no": 3,
+    "account_name": "Cash In Hand",
+    "account_type": "Cash",
+    "naration": "Counter Cash",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_4",
+    "account_no": 4,
+    "account_name": "MEKTUM Pvt Ltd",
+    "account_type": "Supplier",
+    "naration": "Company",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_5",
+    "account_no": 5,
+    "account_name": "BLOSSOM",
+    "account_type": "Supplier",
+    "naration": "Company",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_6",
+    "account_no": 6,
+    "account_name": "Paul Brooks Homoeo Lab",
+    "account_type": "Supplier",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_7",
+    "account_no": 7,
+    "account_name": "German Homeopathic Store (Dr Saqib Khan)",
+    "account_type": "Local Market",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_8",
+    "account_no": 8,
+    "account_name": "Local Purchase",
+    "account_type": "Supplier",
+    "naration": "Cash Purchase",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_9",
+    "account_no": 9,
+    "account_name": "Sufi Homeopathic Store",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_10",
+    "account_no": 10,
+    "account_name": "Dr Asif Homeopathic Clinic & Store",
+    "account_type": "Customer",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_11",
+    "account_no": 11,
+    "account_name": "HFP Private Limited",
+    "account_type": "Supplier",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_12",
+    "account_no": 12,
+    "account_name": "Hassan Homeopathic Store",
+    "account_type": "Local Market",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_13",
+    "account_no": 13,
+    "account_name": "Shop Expense",
+    "account_type": "Expense",
+    "naration": "Daily Expenses",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_14",
+    "account_no": 14,
+    "account_name": "Noman Homeopathic Store",
+    "account_type": "Local Market",
+    "naration": "Customer",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_15",
+    "account_no": 15,
+    "account_name": "Bilal Homoeopathic Store",
+    "account_type": "Local Market",
+    "naration": "LPR Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_16",
+    "account_no": 16,
+    "account_name": "Hamza Personal",
+    "account_type": "Expense",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_17",
+    "account_no": 17,
+    "account_name": "Sindh Homeopathic Store",
+    "account_type": "Local Market",
+    "naration": "MitthuU",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_18",
+    "account_no": 18,
+    "account_name": "Rafay Homeopathic Store",
+    "account_type": "Local Market",
+    "naration": "LPR Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_19",
+    "account_no": 19,
+    "account_name": "Ali Danish Homoeopathic Store",
+    "account_type": "Local Market",
+    "naration": "LPR Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_20",
+    "account_no": 20,
+    "account_name": "B.H.P Laboratory (PVT) LTD",
+    "account_type": "Supplier",
+    "naration": "Company",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_21",
+    "account_no": 21,
+    "account_name": "Bilty Expense",
+    "account_type": "Expense",
+    "naration": "Freight",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_22",
+    "account_no": 22,
+    "account_name": "Muslim Homoeopathic Store LPR",
+    "account_type": "Local Market",
+    "naration": "local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_23",
+    "account_no": 23,
+    "account_name": "ZAM ZAM Homoeo Pharma",
+    "account_type": "Supplier",
+    "naration": "Company",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_24",
+    "account_no": 24,
+    "account_name": "Sale Tax",
+    "account_type": "Other",
+    "naration": "Legal Accout",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_25",
+    "account_no": 25,
+    "account_name": "F.O.R",
+    "account_type": "Other",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_26",
+    "account_no": 26,
+    "account_name": "Dr Asif Personal",
+    "account_type": "Cash",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_27",
+    "account_no": 27,
+    "account_name": "Dr Asif (Investment)",
+    "account_type": "Capital",
+    "naration": "Investment",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_29",
+    "account_no": 29,
+    "account_name": "Faqir",
+    "account_type": "Expense",
+    "naration": "Allah Naam",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_29",
+    "account_no": 29,
+    "account_name": "Discount",
+    "account_type": "Expense",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_30",
+    "account_no": 30,
+    "account_name": "Kent Homoeopathic Pharmacy",
+    "account_type": "Supplier",
+    "naration": "Company",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_31",
+    "account_no": 31,
+    "account_name": "Chand Homoeopathic Store",
+    "account_type": "Local Market",
+    "naration": "local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_32",
+    "account_no": 32,
+    "account_name": "Tawaqal Homoeopathic Store",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_33",
+    "account_no": 33,
+    "account_name": "(GHR) HOMOEO PHARMA",
+    "account_type": "Supplier",
+    "naration": "FAR - MAN Services",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_34",
+    "account_no": 34,
+    "account_name": "H/Dr Yousuf (Kotri)",
+    "account_type": "Kotri",
+    "naration": "Homoeo Dr",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_35",
+    "account_no": 35,
+    "account_name": "Dr Aftab Ahmed (HYD)",
+    "account_type": "Customer",
+    "naration": "C/o Kashif Bhai 03113119919",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_36",
+    "account_no": 36,
+    "account_name": "L/Dr Sakina Aslam TMK",
+    "account_type": "TMK",
+    "naration": "TMK",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_37",
+    "account_no": 37,
+    "account_name": "H/Dr Danish karmani",
+    "account_type": "SANGER",
+    "naration": "Sanger",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_38",
+    "account_no": 38,
+    "account_name": "H/Dr Azger Mughal",
+    "account_type": "Khaber",
+    "naration": "Khaber",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_39",
+    "account_no": 39,
+    "account_name": "Eagle Homoeo & Harbal Pharma",
+    "account_type": "Supplier",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_40",
+    "account_no": 40,
+    "account_name": "Dua Homoeopathic Store",
+    "account_type": "Local Market",
+    "naration": "LPR",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_41",
+    "account_no": 41,
+    "account_name": "Sindh H/S Badin",
+    "account_type": "Customer",
+    "naration": "Badin",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_42",
+    "account_no": 42,
+    "account_name": "NP BM (Pvt.) Limited",
+    "account_type": "Supplier",
+    "naration": "Lahore",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_43",
+    "account_no": 43,
+    "account_name": "L/Dr.Sofia Qamar (kotri)",
+    "account_type": "Kotri",
+    "naration": "kotri",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_44",
+    "account_no": 44,
+    "account_name": "Faraz Ahmed SPO BM",
+    "account_type": "Sales Man",
+    "naration": "SPO BM (03083123554)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_45",
+    "account_no": 45,
+    "account_name": "L/Dr Najma Bloch",
+    "account_type": "Hyderabad",
+    "naration": "Hala Naka",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_46",
+    "account_no": 46,
+    "account_name": "Sohail Homoeo & Harbal Store",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_47",
+    "account_no": 47,
+    "account_name": "M.Ayobe Qurashi",
+    "account_type": "Customer",
+    "naration": "03163078748",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_48",
+    "account_no": 48,
+    "account_name": "NazZ Homoeo & Harbal Pharmacy",
+    "account_type": "Supplier",
+    "naration": "Karachi",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_49",
+    "account_no": 49,
+    "account_name": "Shalimar Homoeo Store LPR",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_50",
+    "account_no": 50,
+    "account_name": "Masood Homoeo Pharma PVT",
+    "account_type": "Supplier",
+    "naration": "Lahore",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_51",
+    "account_no": 51,
+    "account_name": "Al Sehat Homoeo/Pharma",
+    "account_type": "Supplier",
+    "naration": "Karachi",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_52",
+    "account_no": 52,
+    "account_name": "Sulaman Madical Store",
+    "account_type": "Chamber",
+    "naration": "03003072454 Chamber",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_53",
+    "account_no": 53,
+    "account_name": "Muneer Medical Store",
+    "account_type": "Jhand Mori",
+    "naration": "Jhan Mori 03043239383",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_54",
+    "account_no": 54,
+    "account_name": "Muslim Medical Store",
+    "account_type": "Jhand Mori",
+    "naration": "Jahan Mori 03063289160",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_55",
+    "account_no": 55,
+    "account_name": "Talpur Medical Store (Jahan Mori)",
+    "account_type": "Jhand Mori",
+    "naration": "Jahan Mori03003798440",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_56",
+    "account_no": 56,
+    "account_name": "Wasaan Medical Store",
+    "account_type": "Jhand Mori",
+    "naration": "Jahan Mori 03052973520",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_57",
+    "account_no": 57,
+    "account_name": "Zulfiqar (Jahan Mori)",
+    "account_type": "Jahand Mori",
+    "naration": "Medical Store Jahan Mori",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_58",
+    "account_no": 58,
+    "account_name": "Waheed Bhai",
+    "account_type": "Sales Man",
+    "naration": "Saleman (03123033590)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_59",
+    "account_no": 59,
+    "account_name": "Star Homoeo Store",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_60",
+    "account_no": 60,
+    "account_name": "Dr Farhad Khanoot",
+    "account_type": "Khanoot",
+    "naration": "Khanoot (0343-9603257)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_61",
+    "account_no": 61,
+    "account_name": "H/Dr.Irfan (T.A)",
+    "account_type": "T.Adam",
+    "naration": "Tando Adam 03133791369",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_62",
+    "account_no": 62,
+    "account_name": "Dr Akram (Rehman Clinic) (Shahdadpure)",
+    "account_type": "SHADADPUR",
+    "naration": "03023277150",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_63",
+    "account_no": 63,
+    "account_name": "Dr Asif Blossom",
+    "account_type": "Sales Man",
+    "naration": "HYD 03378027007",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_64",
+    "account_no": 64,
+    "account_name": "Cantimade Traders",
+    "account_type": "Supplier",
+    "naration": "Gujranwala",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_65",
+    "account_no": 65,
+    "account_name": "T.S Laboratories",
+    "account_type": "Supplier",
+    "naration": "Faisalabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_66",
+    "account_no": 66,
+    "account_name": "Pakistan H/S LPR",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_67",
+    "account_no": 67,
+    "account_name": "Dr Shabbir (Odero Lal)",
+    "account_type": "Odero Lal",
+    "naration": "Odero Llal",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_68",
+    "account_no": 68,
+    "account_name": "Jameel H/S LPR",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_69",
+    "account_no": 69,
+    "account_name": "W.S Pharmacy & Research Center",
+    "account_type": "Supplier",
+    "naration": "Lahore 03462935566-03008749474",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_70",
+    "account_no": 70,
+    "account_name": "Dr Zahoor T.Adam",
+    "account_type": "T.Adam",
+    "naration": "Tando Aadam 03133345862",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_71",
+    "account_no": 71,
+    "account_name": "Sindh Homoeo Store (Noabad)",
+    "account_type": "Noabad",
+    "naration": "0345-4126859  0345-6126859",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_72",
+    "account_no": 72,
+    "account_name": "Baba Homoeo Store",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_73",
+    "account_no": 73,
+    "account_name": "Dr Ghulam Asghar  (Pir Jo Goth)",
+    "account_type": "C/O Waheed Bhai",
+    "naration": "Pir Jo Goth (0306-3344461)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_74",
+    "account_no": 74,
+    "account_name": "Hakeem Sikander Ameer",
+    "account_type": "Supplier",
+    "naration": "Multan (0300-6308776)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_75",
+    "account_no": 75,
+    "account_name": "Abdul Wahab Pansar Store",
+    "account_type": "C/O Waheed Bhai",
+    "naration": "Bukhri Road Aubaro (0333-7147915)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_76",
+    "account_no": 76,
+    "account_name": "Mr Waheed HFP SPO",
+    "account_type": "Customer",
+    "naration": "Salesman HFP Homoeopharmacy",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_77",
+    "account_no": 77,
+    "account_name": "Sheroze H/S Muzzamil",
+    "account_type": "Local Market",
+    "naration": "LPR",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_78",
+    "account_no": 78,
+    "account_name": "Makka Homoeopathic Store Nawabshah",
+    "account_type": "N/S",
+    "naration": "DR Taj-Ud-Din (0333-7511411)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_79",
+    "account_no": 79,
+    "account_name": "Dr Ajaab Khan (Khanoot)",
+    "account_type": "Khanoot",
+    "naration": "Khanoot (0341-3232167)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_80",
+    "account_no": 80,
+    "account_name": "Dr Waqeel (KHANOOT)",
+    "account_type": "KHANOOT",
+    "naration": "kHANOOT (03413510544) Chair",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_81",
+    "account_no": 81,
+    "account_name": "Dr Adalat Khan (Khanoot)",
+    "account_type": "Khanoot",
+    "naration": "Khanoot (0346-7555812)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_82",
+    "account_no": 82,
+    "account_name": "Dr Anwar Khan (Khanoot)",
+    "account_type": "Khanoot",
+    "naration": "Khanoot",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_83",
+    "account_no": 83,
+    "account_name": "Dr Saleem Qazi (NAWABSHAH)",
+    "account_type": "NAWABSHAH",
+    "naration": "Nawabshah (03003230815)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_84",
+    "account_no": 84,
+    "account_name": "Rahib Madical Store (Tando Bhago)",
+    "account_type": "Tando Bhago",
+    "naration": "Tando Bhaga (0332-2550940)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_85",
+    "account_no": 85,
+    "account_name": "Hakeem Dainsh (kunri)",
+    "account_type": "Kunri",
+    "naration": "Kunri ( 0333-2878358)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_86",
+    "account_no": 86,
+    "account_name": "Dr Jamaal Nasir (T.M.K)",
+    "account_type": "TMK",
+    "naration": "(T.M.K) (03332672267)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_87",
+    "account_no": 87,
+    "account_name": "Ameer Madical Store (T.M.K)",
+    "account_type": "TMK",
+    "naration": "(TMK)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_88",
+    "account_no": 88,
+    "account_name": "Dr Ghulam Qadir Baloch (GULAB LAGARI)",
+    "account_type": "Gulab Lagari",
+    "naration": "GHLAB LAGARI (0300-3796368)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_89",
+    "account_no": 89,
+    "account_name": "Dr Bhagwan DazZ (RATO DERO)",
+    "account_type": "Rato Dero",
+    "naration": "(0333-3856717)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_90",
+    "account_no": 90,
+    "account_name": "Al-Haseeb Clanic (Hala)",
+    "account_type": "Hala",
+    "naration": "(0303-3509255)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_91",
+    "account_no": 91,
+    "account_name": "Muzamil Homoeo Store (D.K.M)",
+    "account_type": "D.K.M",
+    "naration": "Darya Kham Mari",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_92",
+    "account_no": 92,
+    "account_name": "Dr Dav Kumar (Odero Lal)",
+    "account_type": "Odero Lal",
+    "naration": "Odero Lal",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_93",
+    "account_no": 93,
+    "account_name": "Dr Ghulam Qadir Baloch (Ghulab Lagri)",
+    "account_type": "Ghulab Lagari",
+    "naration": "Ghulab Lagari",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_94",
+    "account_no": 94,
+    "account_name": "Ameer M/S (TMK)",
+    "account_type": "TMK",
+    "naration": "(03",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_95",
+    "account_no": 95,
+    "account_name": "Panjetan Pak M/S (DKM)",
+    "account_type": "D.K.M",
+    "naration": "Yasir (0313-8103995) (0303-2533007)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_96",
+    "account_no": 96,
+    "account_name": "Bismillah Pansar (Pinjra Pol) HYD",
+    "account_type": "Hyderabad",
+    "naration": "Pinjra Pol (HYD) (0319-2593655)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_97",
+    "account_no": 97,
+    "account_name": "Gul M/S (Tando Jaam)",
+    "account_type": "Tando Jaam",
+    "naration": "Tando Jaam (0316-3386595)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_98",
+    "account_no": 98,
+    "account_name": "Danish Homoeo Store (Shadadpur)",
+    "account_type": "SHADADPUR",
+    "naration": "Shadadpur",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_99",
+    "account_no": 99,
+    "account_name": "Al-Khadija Homoeo Store (HYD)",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_100",
+    "account_no": 100,
+    "account_name": "Dr Talib-ud-Din (Moro)",
+    "account_type": "Moro",
+    "naration": "Moro (0302-3217372)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_101",
+    "account_no": 101,
+    "account_name": "Sakhi Shahbaz Homoeo Store (Moro)",
+    "account_type": "Moro",
+    "naration": "Moro (0301-2984019)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_102",
+    "account_no": 102,
+    "account_name": "Dr Shazad Awan (Qazi Ahmed)",
+    "account_type": "Qazi Ahmed",
+    "naration": "Qazi Ahmed (0306-3402938)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_103",
+    "account_no": 103,
+    "account_name": "Dr Ghafoor Malik Aman M/S (SANJHORO)",
+    "account_type": "Sanjhoro",
+    "naration": "Sanjhoro (0301-3456732)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_104",
+    "account_no": 104,
+    "account_name": "Dr Adil (hali road)",
+    "account_type": "Hyderabad",
+    "naration": "03332615624",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_105",
+    "account_no": 105,
+    "account_name": "Fazal Medical Store (Jahan Mori)",
+    "account_type": "Jahan Mori",
+    "naration": "(Jahan Mori)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_106",
+    "account_no": 106,
+    "account_name": "Zulfiqar Medical Store (Jahan Mori)",
+    "account_type": "Jahan Mori",
+    "naration": "(Jahan Mori)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_107",
+    "account_no": 107,
+    "account_name": "Mueer Medical Store (Jahan Mori)",
+    "account_type": "Jahan Mori",
+    "naration": "Jahan Mori",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_108",
+    "account_no": 108,
+    "account_name": "Wasan Medical Store (Jahan Mori)",
+    "account_type": "Jahan Mori",
+    "naration": "(Jahan Mori)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_109",
+    "account_no": 109,
+    "account_name": "Naseer Medical Store (Jahan Mori)",
+    "account_type": "Jahan Mori",
+    "naration": "Jahan Mori",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_110",
+    "account_no": 110,
+    "account_name": "Mughal H/S",
+    "account_type": "Local Market",
+    "naration": "Local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_111",
+    "account_no": 111,
+    "account_name": "Dr Shah Nawaz (BANDHI)",
+    "account_type": "Bandhi",
+    "naration": "Bandhi (0302-2159332)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_112",
+    "account_no": 112,
+    "account_name": "Hakeem Abid Ali (GOLARCHI)",
+    "account_type": "GOLARCHI",
+    "naration": "Golarchi (0310-3038432)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_113",
+    "account_no": 113,
+    "account_name": "Bhej Pagara Madical Store (SANGER)",
+    "account_type": "SANGER",
+    "naration": "03333326976",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_114",
+    "account_no": 114,
+    "account_name": "Ali Homoeo Store (SANGER)",
+    "account_type": "SANGER",
+    "naration": "03332919730",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_115",
+    "account_no": 115,
+    "account_name": "Hakeem Nanumal Pansar Store (PANOAQIL)",
+    "account_type": "PANOAQIL",
+    "naration": "Panoaqil (Bike) (0307-2860924)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_116",
+    "account_no": 116,
+    "account_name": "Ghazi M/S (Kumba)",
+    "account_type": "Kumba",
+    "naration": "Kumba (0309-7471371)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_117",
+    "account_no": 117,
+    "account_name": "kashi ChachuU",
+    "account_type": "Meneger",
+    "naration": "Maneger",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_118",
+    "account_no": 118,
+    "account_name": "DR Shar Bahdur (Khanoot)",
+    "account_type": "Khanoot",
+    "naration": "Khanoot",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_119",
+    "account_no": 119,
+    "account_name": "Al-Shaffa Pansar (Phulali)",
+    "account_type": "Hyderabad",
+    "naration": "Phulali HYD",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_120",
+    "account_no": 120,
+    "account_name": "Fazal M/S (JHAND-MORI)",
+    "account_type": "Jhand Mori",
+    "naration": "jhand mori",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_121",
+    "account_no": 121,
+    "account_name": "Chotay MamuU",
+    "account_type": "Saleman",
+    "naration": "0335-2162804",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_122",
+    "account_no": 122,
+    "account_name": "AL-Shaffa H/S (KHANOOT)",
+    "account_type": "Khanoot",
+    "naration": "khanoot (0348-1860097)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_123",
+    "account_no": 123,
+    "account_name": "Bismillah M/S (DHARKI)",
+    "account_type": "DHARKI",
+    "naration": "Dharki (0300-3266572) LED",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_124",
+    "account_no": 124,
+    "account_name": "Hassan Homoeo Clinic Herbal Store (ODEROLAL)",
+    "account_type": "Odero lal",
+    "naration": "Odero lal (0304-6798746)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_125",
+    "account_no": 125,
+    "account_name": "Hoor M/S Lajpat Road",
+    "account_type": "Local Market",
+    "naration": "local Market",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_126",
+    "account_no": 126,
+    "account_name": "Faran Pharmacy",
+    "account_type": "Supplier",
+    "naration": "Multan Road Lahore 042-37514412-14",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_127",
+    "account_no": 127,
+    "account_name": "Dr Ahsan Mohsin H/S (SANGAR)",
+    "account_type": "SANGER",
+    "naration": "Sanger",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_128",
+    "account_no": 128,
+    "account_name": "Dr Alam (Tulsi) TMK",
+    "account_type": "TMK",
+    "naration": "TMK 0346-8252304",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_129",
+    "account_no": 129,
+    "account_name": "Pawan M/S JAMSABAD (KGM)",
+    "account_type": "KGM",
+    "naration": "KGM 0321-2032784",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_130",
+    "account_no": 130,
+    "account_name": "Al-Fareed H/S Shehdadpur",
+    "account_type": "SHADADPUR",
+    "naration": "Dr Fareed (0336-3552377)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_131",
+    "account_no": 131,
+    "account_name": "Aslam Belani (Tnado Bago)",
+    "account_type": "Tando Bhago",
+    "naration": "Tando bago",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_132",
+    "account_no": 132,
+    "account_name": "Dr Rajab Hassaan H/S (TandoBago)",
+    "account_type": "Tando Bhago",
+    "naration": "Dr Rajab Memon",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_133",
+    "account_no": 133,
+    "account_name": "Maqsood M/S (TANDO ALAYAR)",
+    "account_type": "Tando Alayar",
+    "naration": "Tando Alayar (0333-7520452)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_134",
+    "account_no": 134,
+    "account_name": "Dr Ismail Wasti  (TMK)",
+    "account_type": "TMK",
+    "naration": "(0311-3093205) (0336-0080120)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_135",
+    "account_no": 135,
+    "account_name": "M.A Herbal Pharmacy Kerachi",
+    "account_type": "Supplier",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_136",
+    "account_no": 136,
+    "account_name": "Al-Madina M/S (New Dambalo)",
+    "account_type": "Dambalo",
+    "naration": "New Dambalo (0303-3116698)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_137",
+    "account_no": 137,
+    "account_name": "Dr Rasheed Kashmiri (Tando Alayar)",
+    "account_type": "Tando Alayar",
+    "naration": "T.A,Y",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_138",
+    "account_no": 138,
+    "account_name": "Rooshan Pansar (Tando Alayar)",
+    "account_type": "Tando Alayar",
+    "naration": "(0304-3680004) (0301-2900266)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_139",
+    "account_no": 139,
+    "account_name": "Al-Fareed H/S DR Hader Garwar",
+    "account_type": "Tando Alayar",
+    "naration": "(0300-3005606)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_140",
+    "account_no": 140,
+    "account_name": "WajuU Bhai W/S Saleman",
+    "account_type": "Saleman",
+    "naration": "Saleman (0315-8384036)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_141",
+    "account_no": 141,
+    "account_name": "Jindran M/S (Tando Adam)",
+    "account_type": "T.Adam",
+    "naration": "(0306-3444402)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_142",
+    "account_no": 142,
+    "account_name": "Dr Hanif Jokhiyo (Dolat Pur)",
+    "account_type": "Dolat Pur",
+    "naration": "Dr Ghulam Kadir Jokhiyo (0300-3213243)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_143",
+    "account_no": 143,
+    "account_name": "Baloch Homoeo Clinic (Ghulab Lagari)",
+    "account_type": "Ghulab Lagari",
+    "naration": "Ghulab Lagari  (0310-0333634)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_144",
+    "account_no": 144,
+    "account_name": "Dr Shahid Ahmed (Tando Alayar)",
+    "account_type": "Tando Alayar",
+    "naration": "Tando Alayar (0301-2523722)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_145",
+    "account_no": 145,
+    "account_name": "Talha M/S (TMK)",
+    "account_type": "TMK",
+    "naration": "(0310-1169024)_(0310-3216972)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_146",
+    "account_no": 146,
+    "account_name": "MADINA M/S (TMK)",
+    "account_type": "TMK",
+    "naration": "(0333-2802219)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_147",
+    "account_no": 147,
+    "account_name": "Shokat M/S (TMK)",
+    "account_type": "TMK",
+    "naration": "0344-3805759",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_148",
+    "account_no": 148,
+    "account_name": "Mehran H/S Dr Akram (Shadadpur)",
+    "account_type": "SHADADPUR",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_149",
+    "account_no": 149,
+    "account_name": "Hakeem Abdul Rehman (khanoot)",
+    "account_type": "Khanoot",
+    "naration": "0346-8004862",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_150",
+    "account_no": 150,
+    "account_name": "Dr Manzoor (Shah Pur Janiya)",
+    "account_type": "S P J",
+    "naration": "SPJ (03)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_151",
+    "account_no": 151,
+    "account_name": "Ali Khan M/S (TALHAR)",
+    "account_type": "Talhar",
+    "naration": "(0313-33637027)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_152",
+    "account_no": 152,
+    "account_name": "Dr Tayyab (Tando Adam)",
+    "account_type": "T.Adam",
+    "naration": "(0312-1383275)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_153",
+    "account_no": 153,
+    "account_name": "Hassan Homoeo Store (Larkana)",
+    "account_type": "Larkana",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_154",
+    "account_no": 154,
+    "account_name": "Dr Aslam (Qazi Ahmed)",
+    "account_type": "Qazi Ahmed",
+    "naration": "(03013814501)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_155",
+    "account_no": 155,
+    "account_name": "Dr Usman ( Nawab Wali Muhammed )",
+    "account_type": "Qazi Ahmed",
+    "naration": "03",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_156",
+    "account_no": 156,
+    "account_name": "Sarwari Pansar (Noabad)",
+    "account_type": "Noabad",
+    "naration": "0308-2521436",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_157",
+    "account_no": 157,
+    "account_name": "Hamza Sohail H/S (Lajpat Road)",
+    "account_type": "Hyderabad",
+    "naration": "Local Market (0300-0297519)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_158",
+    "account_no": 158,
+    "account_name": "Dr Abdul Gaffar (SHADADPUR)",
+    "account_type": "SHADADPUR",
+    "naration": "(03",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_159",
+    "account_no": 159,
+    "account_name": "Zain Dawa Khana (GOLARCHI)",
+    "account_type": "GOLARCHI",
+    "naration": "Golarchi",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_160",
+    "account_no": 160,
+    "account_name": "M/S Labortaries",
+    "account_type": "Supplier",
+    "naration": "00",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_161",
+    "account_no": 161,
+    "account_name": "DR Maqsood (Larkana)",
+    "account_type": "Larkana",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_162",
+    "account_no": 162,
+    "account_name": "Suni Madical Store (Tando Alayar)",
+    "account_type": "Tando Alayar",
+    "naration": "",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_163",
+    "account_no": 163,
+    "account_name": "Mehmood Madical Store (Noabad)",
+    "account_type": "Noabad",
+    "naration": "03000352853",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_164",
+    "account_no": 164,
+    "account_name": "Dr Alam Sher (Khanoot)",
+    "account_type": "Khanoot",
+    "naration": "Doctor",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_165",
+    "account_no": 165,
+    "account_name": "Shahid Medical Store (Chambar)",
+    "account_type": "Chamber",
+    "naration": "03013512018",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_166",
+    "account_no": 166,
+    "account_name": "Dr Yousuf Arain (Dambalo)",
+    "account_type": "Dambalo",
+    "naration": "03413738393",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_167",
+    "account_no": 167,
+    "account_name": "Tahir Kent SPO",
+    "account_type": "Sales Man",
+    "naration": "Salesman",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_168",
+    "account_no": 168,
+    "account_name": "JR PHARMA",
+    "account_type": "Supplier",
+    "naration": "KARACHI",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_169",
+    "account_no": 169,
+    "account_name": "Haji Sawan",
+    "account_type": "Badain",
+    "naration": "Badain",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_170",
+    "account_no": 170,
+    "account_name": "Dr Amir Sidiqui",
+    "account_type": "Hyderabad",
+    "naration": "Pinjra pull",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_171",
+    "account_no": 171,
+    "account_name": "Dr Abdul Ahakoor Memon",
+    "account_type": "Matyari",
+    "naration": "Matyari",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_172",
+    "account_no": 172,
+    "account_name": "Dr Abdul Shakoor Memon",
+    "account_type": "Matyari",
+    "naration": "Matyari",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_173",
+    "account_no": 173,
+    "account_name": "Dr Rajesh Kumar",
+    "account_type": "TMK",
+    "naration": "TMK",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_174",
+    "account_no": 174,
+    "account_name": "DR Danish kirmani",
+    "account_type": "SANGER",
+    "naration": "SANGER",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_175",
+    "account_no": 175,
+    "account_name": "Dr Tayyab Ansari",
+    "account_type": "T.Adam",
+    "naration": "T.Adam",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_176",
+    "account_no": 176,
+    "account_name": "Dr Naseer Ahmed",
+    "account_type": "Hyderabad",
+    "naration": "Qasmabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_177",
+    "account_no": 177,
+    "account_name": "Affan Bilal H/S (HYD)",
+    "account_type": "Hyderabad",
+    "naration": "LAJPAT ROAD",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_178",
+    "account_no": 178,
+    "account_name": "Affan Muslim H/S (HYD)",
+    "account_type": "Hyderabad",
+    "naration": "LAJPAT ROAD",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_179",
+    "account_no": 179,
+    "account_name": "Affan Noman H/S",
+    "account_type": "Hyderabad",
+    "naration": "Lajpat Road",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_180",
+    "account_no": 180,
+    "account_name": "Affan Shalimar H/S",
+    "account_type": "Hyderabad",
+    "naration": "LAJPAT RODE",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_181",
+    "account_no": 181,
+    "account_name": "Affan Dua H/S",
+    "account_type": "Hyderabad",
+    "naration": "LAJPAT ROAD",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_182",
+    "account_no": 182,
+    "account_name": "Affan Chand H/S",
+    "account_type": "Hyderabad",
+    "naration": "LAJPAT ROAD",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_183",
+    "account_no": 183,
+    "account_name": "Dr Abdul Ghani (Mehar)",
+    "account_type": "Mehar",
+    "naration": "Betto Road Mehar 03337574438",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_184",
+    "account_no": 184,
+    "account_name": "Dr Rafeeq Bulandi",
+    "account_type": "Hyderabad",
+    "naration": "Latifabad No 11",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_185",
+    "account_no": 185,
+    "account_name": "Iqbal (MASOOD)",
+    "account_type": "Hyderabad",
+    "naration": "Hyderabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_186",
+    "account_no": 186,
+    "account_name": "Dr Parwar",
+    "account_type": "Hyderabad",
+    "naration": "Hyderabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_187",
+    "account_no": 187,
+    "account_name": "DR SHAHI MAND KHANOT",
+    "account_type": "Khanoot",
+    "naration": "Khanoot",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_188",
+    "account_no": 188,
+    "account_name": "Danish Medical Store (Badin)",
+    "account_type": "Badain",
+    "naration": "Badin 03153170021",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_189",
+    "account_no": 189,
+    "account_name": "GULSHAN M/Store (T.M.K)",
+    "account_type": "TMK",
+    "naration": "T.M.K",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_190",
+    "account_no": 190,
+    "account_name": "AFFAN QURESHI",
+    "account_type": "Hyderabad",
+    "naration": "HYDERABAD",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_191",
+    "account_no": 191,
+    "account_name": "Dr Ameen",
+    "account_type": "Khanoot",
+    "naration": "khanoot",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_192",
+    "account_no": 192,
+    "account_name": "Sakhi Shahbaz H/Store (Moro)",
+    "account_type": "Moro",
+    "naration": "Moro",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_193",
+    "account_no": 193,
+    "account_name": "DR Hassan (sanger)",
+    "account_type": "SANGER",
+    "naration": "Sanger",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_194",
+    "account_no": 194,
+    "account_name": "DR SUHAIB RASHEED (Dar ul shifa H/S)",
+    "account_type": "Larkana",
+    "naration": "LARKANA",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_195",
+    "account_no": 195,
+    "account_name": "Akram Pansar Tando Allah Yar",
+    "account_type": "Tando Alayar",
+    "naration": "Tando Alayar 03123004865",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_196",
+    "account_no": 196,
+    "account_name": "Shahbaz Homoeo Store (Mirpur)",
+    "account_type": "Mirpur",
+    "naration": "Dr Rauf 03003388621",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_197",
+    "account_no": 197,
+    "account_name": "Dr Aslam HYDERABAD",
+    "account_type": "Hyderabad",
+    "naration": "Hyderabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_198",
+    "account_no": 198,
+    "account_name": "Dr kashif",
+    "account_type": "Local Market",
+    "naration": "GERMAN",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_199",
+    "account_no": 199,
+    "account_name": "DR KASHIF GERMAN",
+    "account_type": "Local Market",
+    "naration": "GERMAN",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_200",
+    "account_no": 200,
+    "account_name": "Khilji Dawakhana (Shahdadpur)",
+    "account_type": "SHADADPUR",
+    "naration": "03003358862",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_201",
+    "account_no": 201,
+    "account_name": "Taj homeo store",
+    "account_type": "Mirpur",
+    "naration": "mirpur",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_202",
+    "account_no": 202,
+    "account_name": "Latif HomoeoPathic Store (Nawabshah)",
+    "account_type": "NAWABSHAH",
+    "naration": "03322822311",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_203",
+    "account_no": 203,
+    "account_name": "DR BASHIR KHAMBO",
+    "account_type": "Tando Alayar",
+    "naration": "Tando Alayar",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_204",
+    "account_no": 204,
+    "account_name": "DR Munawar (badin)",
+    "account_type": "Badain",
+    "naration": "badain",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_205",
+    "account_no": 205,
+    "account_name": "Dr Atibar Hussain (Hasnain Homoeo Clinic) Panoaqil",
+    "account_type": "PANOAQIL",
+    "naration": "Panoqil",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_206",
+    "account_no": 206,
+    "account_name": "Memon Medical store (TANDO BHAGO)",
+    "account_type": "Tando Bhago",
+    "naration": "Tando bhago",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_207",
+    "account_no": 207,
+    "account_name": "GR PVT (isalamabad pharma)",
+    "account_type": "Supplier",
+    "naration": "supplier",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_208",
+    "account_no": 208,
+    "account_name": "Dr Abdul Muiz",
+    "account_type": "Mirpur",
+    "naration": "Mirpur",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_209",
+    "account_no": 209,
+    "account_name": "Sindh Medical store (Tando Alayar)",
+    "account_type": "Tando Alayar",
+    "naration": "Tando Alayar",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_210",
+    "account_no": 210,
+    "account_name": "Roshan pansar (GAMBAT)",
+    "account_type": "(GAMBAT)",
+    "naration": "(GAMBAT)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_211",
+    "account_no": 211,
+    "account_name": "Dr Lal Bux Gopang (Piro Lashari)",
+    "account_type": "Piro Lashari",
+    "naration": "Qalandari Homeo Clinic Piro Lashari",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_212",
+    "account_no": 212,
+    "account_name": "Boric pharma",
+    "account_type": "Supplier",
+    "naration": "karachi",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_213",
+    "account_no": 213,
+    "account_name": "Dr Atta ullah Thebo German Homoeo Clinic (Talhar)",
+    "account_type": "Talhar",
+    "naration": "Talhar",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_214",
+    "account_no": 214,
+    "account_name": "Dr Manzoor Ahmed (DolatPur)",
+    "account_type": "Dolat Pur",
+    "naration": "Dolat pur",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_215",
+    "account_no": 215,
+    "account_name": "Kosar M.S (T.M.K)",
+    "account_type": "TMK",
+    "naration": "TMK",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_216",
+    "account_no": 216,
+    "account_name": "Hakeem Qurban Ali (T.G.A)",
+    "account_type": "Tando Ghulam Ali",
+    "naration": "Tando Ghulam Ali",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_217",
+    "account_no": 217,
+    "account_name": "Areez pansar store (Tando Alayar)",
+    "account_type": "Tando Alayar",
+    "naration": "Tando Alayar",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_218",
+    "account_no": 218,
+    "account_name": "Danish saleman",
+    "account_type": "Hyderabad",
+    "naration": "Hyderabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_219",
+    "account_no": 219,
+    "account_name": "Krishna M/S (Noabad)",
+    "account_type": "Noabad",
+    "naration": "Noabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_220",
+    "account_no": 220,
+    "account_name": "DR Jabbar (Tando Jaam)",
+    "account_type": "Tando Jaam",
+    "naration": "Tando Jaam",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_221",
+    "account_no": 221,
+    "account_name": "Dr manzoor Ahmed (Tando Jaam)",
+    "account_type": "Tando Jaam",
+    "naration": "Tando Jaam",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_222",
+    "account_no": 222,
+    "account_name": "Jai Pur M/S (SANGER)",
+    "account_type": "SANGER",
+    "naration": "SANGER (0308-3352606)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_223",
+    "account_no": 223,
+    "account_name": "Rafay H/S (Larkana)DR Abdul Malik",
+    "account_type": "Larkana",
+    "naration": "03008083292 (Larkana)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_224",
+    "account_no": 224,
+    "account_name": "Public Pharma (faisalabad)",
+    "account_type": "Supplier",
+    "naration": "Supplier",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_225",
+    "account_no": 225,
+    "account_name": "Dr Shair Alam (Khairpur)",
+    "account_type": "Khairpur Miras",
+    "naration": "Amjad H/Store Hockey Groung Luqman Khairpur",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_226",
+    "account_no": 226,
+    "account_name": "DR Imran Qureshi (sanger)",
+    "account_type": "SANGER",
+    "naration": "SANGER",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_227",
+    "account_no": 227,
+    "account_name": "Mehtab H/S (DR Parwaiz Bhatti)",
+    "account_type": "SHADADPUR",
+    "naration": "(0304-3759206)",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_228",
+    "account_no": 228,
+    "account_name": "Muslim M/S (Tando Allahyar)",
+    "account_type": "Tando Alayar",
+    "naration": "0312-3942539",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_229",
+    "account_no": 229,
+    "account_name": "saleem pansar",
+    "account_type": "Tando Alayar",
+    "naration": "Tado Alayar",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_230",
+    "account_no": 230,
+    "account_name": "DR Arbaz Baig(hyderabad)",
+    "account_type": "Hyderabad",
+    "naration": "hyderabd",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_231",
+    "account_no": 231,
+    "account_name": "Shayan Pansar (Tando Bhago)",
+    "account_type": "Tando Bhago",
+    "naration": "03423274751",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_232",
+    "account_no": 232,
+    "account_name": "L/DR Parveen Lalu Lashari (kali mori)",
+    "account_type": "Hyderabad",
+    "naration": "hyderabd",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_233",
+    "account_no": 233,
+    "account_name": "Hakeem Abdul Muqeem (Al Hafiz Pansar)(khipro)",
+    "account_type": "Khipro",
+    "naration": "03431372171",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_234",
+    "account_no": 234,
+    "account_name": "DR Abdul Hameed (Tando alayar)",
+    "account_type": "Tando Alayar",
+    "naration": "03063039187",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_235",
+    "account_no": 235,
+    "account_name": "Kamal",
+    "account_type": "Supplier",
+    "naration": "supplier",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_236",
+    "account_no": 236,
+    "account_name": "Dr Muhakum uddin Abro (Hala)",
+    "account_type": "Hala",
+    "naration": "03013580511",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_237",
+    "account_no": 237,
+    "account_name": "Habibullah Pansar Store (Hyderabad)",
+    "account_type": "Hyderabad",
+    "naration": "Latifabad Unit No 10 Hyderabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_238",
+    "account_no": 238,
+    "account_name": "Fluger",
+    "account_type": "Supplier",
+    "naration": "supplier",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_239",
+    "account_no": 239,
+    "account_name": "Dr Zulfiqar Ali       ( 03003236075)",
+    "account_type": "NAWABSHAH",
+    "naration": "NAWABSHAH",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_240",
+    "account_no": 240,
+    "account_name": "Hakim Mohammed Iqbal (03403000212)",
+    "account_type": "Tharparkar",
+    "naration": "Tharparkar",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_241",
+    "account_no": 241,
+    "account_name": "Dr Usama Ali (0310-3200577)",
+    "account_type": "Hyderabad",
+    "naration": "Hyderabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_242",
+    "account_no": 242,
+    "account_name": "Dr Faraz (0313-0325200)",
+    "account_type": "Hyderabad",
+    "naration": "Hyderabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_243",
+    "account_no": 243,
+    "account_name": "AL Rasheed Clinic (DR Mehrunissa)",
+    "account_type": "Tharushah",
+    "naration": "Tharushah",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_244",
+    "account_no": 244,
+    "account_name": "Sindh Homeo Store (Sukkar)",
+    "account_type": "Sukkar",
+    "naration": "Sukkar",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_245",
+    "account_no": 245,
+    "account_name": "Dr Tasawar Hussain (Gularchi)",
+    "account_type": "GOLARCHI",
+    "naration": "Maaz Homoeo Clinic Gularchi 03032352254",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_246",
+    "account_no": 246,
+    "account_name": "Armaa pharma",
+    "account_type": "Supplier",
+    "naration": "supplier",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_247",
+    "account_no": 247,
+    "account_name": "Medii Trades",
+    "account_type": "Supplier",
+    "naration": "supplier",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_248",
+    "account_no": 248,
+    "account_name": "DR Saleem",
+    "account_type": "SANGER",
+    "naration": "sanger",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_249",
+    "account_no": 249,
+    "account_name": "Faiz medical store",
+    "account_type": "Jahand Mori",
+    "naration": "Jahand Mori",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_250",
+    "account_no": 250,
+    "account_name": "Dr iqbal (Muzammil H/S)",
+    "account_type": "Darya Khan Mari",
+    "naration": "Darya Khan Mari",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_251",
+    "account_no": 251,
+    "account_name": "DR Shahid Ahmed",
+    "account_type": "Bashirabad",
+    "naration": "Bashirabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_252",
+    "account_no": 252,
+    "account_name": "DR Bashir Ahmed (Bashirabad)",
+    "account_type": "Bashirabad",
+    "naration": "Bashirabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_253",
+    "account_no": 253,
+    "account_name": "Dr Aijaz",
+    "account_type": "SHADADPUR",
+    "naration": "SHADADPUR",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_254",
+    "account_no": 254,
+    "account_name": "Memon H/S (Herabad)",
+    "account_type": "Hyderabad",
+    "naration": "Hyderabad",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_255",
+    "account_no": 255,
+    "account_name": "Dr Sarwar (0341- 3486614)",
+    "account_type": "Tando Jaam",
+    "naration": "Tando Jaam",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_256",
+    "account_no": 256,
+    "account_name": "Jawaid Pansar Store (K.G.M)",
+    "account_type": "KGM",
+    "naration": "03073031352",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_257",
+    "account_no": 257,
+    "account_name": "Poshia Clinic (jahand mori)",
+    "account_type": "Jahand Mori",
+    "naration": "Jahand Mori",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_258",
+    "account_no": 258,
+    "account_name": "Parveez M/S (jahand mori)",
+    "account_type": "Jahand Mori",
+    "naration": "Jahand Mori",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_259",
+    "account_no": 259,
+    "account_name": "Manooj M/S (jahand mori)",
+    "account_type": "Jahand Mori",
+    "naration": "Jahand Mori",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_260",
+    "account_no": 260,
+    "account_name": "DR Tariq (Puleli)",
+    "account_type": "Hyderabad",
+    "naration": "k",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_261",
+    "account_no": 261,
+    "account_name": "DR Ramesh Kumar (Samaro City )",
+    "account_type": "Umar Kot",
+    "naration": "Umar Kot",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "acc_262",
+    "account_no": 262,
+    "account_name": "Ali Raza",
+    "account_type": "Supplier",
+    "naration": "Salesman",
+    "opening_balance": 0,
+    "created_at": "2026-08-22T00:00:00.000Z"
+  }
+]

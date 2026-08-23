@@ -4,8 +4,18 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ClinicFlow — Clinic Management System</title>
-    <meta name="description" content="ClinicFlow — A modern clinic management system for doctors and receptionists. Manage patients, visits, prescriptions, and store inventory." />
+    <title>CliniCore — Clinic &amp; Wholesale Pharmacy Management System</title>
+    <meta name="description" content="CliniCore &amp; DrCreate — Offline-first Clinic &amp; Wholesale Pharmacy Management System (clinicore.me)." />
+    
+    <!-- PWA Manifest & Mobile Configuration -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#005c55" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CliniCore" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+
     <!-- Google Fonts: Hanken Grotesk + Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,5 +26,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((reg) => console.log('✅ ClinicFlow PWA Service Worker registered:', reg.scope))
+            .catch((err) => console.log('⚠️ Service Worker registration note:', err));
+        });
+      }
+    </script>
   </body>
 </html>
+

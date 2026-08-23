@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbClinic, dbUsers, dbClinicServices, exportFullDatabase, importFullDatabase, resetDatabaseToDemoData, hashPassword } from "../api/db.js";
+import { dbClinic, dbUsers, dbClinicServices, exportFullDatabase, importFullDatabase, resetDatabaseToDemoData, clearAllTransactionalData, hashPassword } from "../api/db.js";
 
 export default function ClinicSettings() {
   const { user, clinic, refreshClinic, refreshUser } = useAuth();
@@ -541,21 +541,10 @@ export default function ClinicSettings() {
                   <div className="flex items-center justify-between sm:justify-end gap-sm w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30 flex-wrap">
                     {s.is_owner ? (
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
-                        ⭐ Principal Owner
+                        ⭐ Principal Owner (Super Admin)
                       </span>
                     ) : (
                       <div className="flex items-center gap-2 flex-wrap">
-                        {user?.is_owner && s.role === "doctor" && (
-                          <button
-                            type="button"
-                            onClick={() => setTransferModal(s)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all shadow-xs"
-                            title="Designate this Doctor as Principal Owner"
-                          >
-                            <span className="material-symbols-outlined text-[16px] text-amber-600">workspace_premium</span>
-                            Make Principal Doctor
-                          </button>
-                        )}
                         <label className="flex items-center gap-1.5 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-medium hover:bg-gray-50">
                           <input
                             type="checkbox"
@@ -889,42 +878,44 @@ export default function ClinicSettings() {
                         last_email_backup: new Date().toISOString()
                       });
 
-                      const backup = exportFullDatabase();
-                      const backupStr = JSON.stringify(backup, null, 2);
+                      // Export encrypted .cfbak payload
+                      const encryptedBackupStr = exportFullDatabase(true);
 
-                      // Always trigger local JSON file download safeguard
-                      const blob = new Blob([backupStr], { type: "application/json" });
+                      // Trigger local .cfbak encrypted file download safeguard
+                      const blob = new Blob([encryptedBackupStr], { type: "application/octet-stream" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `ClinicFlow_Backup_${new Date().toISOString().split("T")[0]}.json`;
+                      const dateStr = new Date().toISOString().split("T")[0];
+                      a.download = `ClinicFlow_Encrypted_Backup_${dateStr}.cfbak`;
+                      document.body.appendChild(a);
                       a.click();
+                      document.body.removeChild(a);
                       URL.revokeObjectURL(url);
 
                       const targetEmails = clinicForm.backup_email.split(",").map((e) => e.trim()).filter(Boolean);
 
-                      // Option A: If Resend API Key is provided, send real .json attachment via Resend API!
+                      // Option A: If Resend API Key is provided, send real encrypted .cfbak attachment via Resend API!
                       if (clinicForm.resend_api_key?.trim()) {
                         try {
-                          const base64Content = btoa(unescape(encodeURIComponent(backupStr)));
+                          const base64Content = btoa(unescape(encodeURIComponent(encryptedBackupStr)));
                           const resendPayload = {
                             from: "ClinicFlow Backup <onboarding@resend.dev>",
                             to: targetEmails,
-                            subject: `🏥 ClinicFlow Full Database Backup - ${clinicForm.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
+                            subject: `🏥 ClinicFlow Encrypted Vault Backup - ${clinicForm.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
                             html: `
                               <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #ccfbf1;">
-                                <h2 style="color: #0f766e; margin-top: 0;">🏥 ClinicFlow Full Database Backup</h2>
+                                <h2 style="color: #0f766e; margin-top: 0;">🏥 ClinicFlow Encrypted Database Backup</h2>
                                 <p><strong>Clinic:</strong> ${clinicForm.name || "ClinicFlow Clinic"}</p>
                                 <p><strong>Date & Time:</strong> ${new Date().toLocaleString("en-PK")}</p>
-                                <p><strong>Summary:</strong> Patients: ${backup.data.patients?.length || 0} | Sales: ${backup.data.sales?.length || 0} | Purchases: ${backup.data.purchases?.length || 0}</p>
                                 <p style="background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; font-weight: bold;">
-                                  📎 Your full un-truncated database backup is attached to this email as a <code>.json</code> file!
+                                  🔒 Your full encrypted database vault is attached as a secure <code>.cfbak</code> file! Only ClinicFlow Software can restore this file.
                                 </p>
                               </div>
                             `,
                             attachments: [
                               {
-                                filename: `ClinicFlow_Backup_${new Date().toISOString().split("T")[0]}.json`,
+                                filename: `ClinicFlow_Encrypted_Backup_${dateStr}.cfbak`,
                                 content: base64Content
                               }
                             ]
@@ -943,19 +934,19 @@ export default function ClinicSettings() {
                             });
                           } catch (fetchErr) {
                             // Network/CORS error — do NOT proxy through third-party
-                            alert(`⚠️ Email send failed (network/CORS): ${fetchErr.message}. Local backup JSON was downloaded. Configure a backend proxy for reliable email delivery.`);
+                            alert(`⚠️ Email send failed (network/CORS): ${fetchErr.message}. Local encrypted .cfbak file was downloaded.`);
                             if (refreshClinic) refreshClinic();
                             return;
                           }
 
                           if (res.ok) {
-                            alert(`✅ Resend API Success! Full Database Backup .json attachment delivered to inbox (${targetEmails.join(", ")}).`);
+                            alert(`✅ Resend API Success! Encrypted Database Backup (.cfbak) delivered to inbox (${targetEmails.join(", ")}).`);
                           } else {
                             const errTxt = await res.text();
                             if (errTxt.includes("You can only send testing emails to your own email address")) {
-                              alert(`💡 Resend Testing Mode Notice:\n\nResend Free Sandbox Key currently sends testing emails to your Resend account email (yoyobangali29@gmail.com).\n\nTo send to ${clinicForm.backup_email}, set target email to yoyobangali29@gmail.com OR verify your domain at resend.com/domains!\n\nLocal backup JSON was downloaded to your computer.`);
+                              alert(`💡 Resend Testing Mode Notice:\n\nResend Free Sandbox Key currently sends testing emails to your Resend account email (yoyobangali29@gmail.com).\n\nTo send to ${clinicForm.backup_email}, verify your domain at resend.com/domains!\n\nLocal encrypted .cfbak backup was downloaded to your computer.`);
                             } else {
-                              alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local backup JSON was downloaded.`);
+                              alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local encrypted .cfbak backup was downloaded.`);
                             }
                           }
                         } catch (err) {
@@ -1002,29 +993,22 @@ export default function ClinicSettings() {
             <div className="bg-teal-50/60 rounded-2xl p-4 border border-teal-100 space-y-3 flex flex-col justify-between">
               <div>
                 <h4 className="font-bold text-sm text-teal-900 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-teal-700 text-base">download</span>
-                  1-Click Export Database Backup
+                  <span className="material-symbols-outlined text-teal-700 text-base">enhanced_encryption</span>
+                  1-Click Export Encrypted Backup (.cfbak)
                 </h4>
                 <p className="text-xs text-gray-600 mt-1">
-                  Download all Patients, Visits, Prescriptions, Pharmacy Sales, Stock &amp; Khata Ledgers into a timestamped JSON file.
+                  Download all Patients, Visits, Prescriptions, Pharmacy Sales, Stock &amp; Khata Ledgers into a secure encrypted <strong>.cfbak</strong> file.
                 </p>
               </div>
               <button
                 onClick={() => {
-                  const backup = exportFullDatabase();
-                  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `ClinicFlow_Backup_${new Date().toISOString().split("T")[0]}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                  alert("✅ Database Backup downloaded successfully! Keep this file in a safe folder / USB.");
+                  exportFullDatabase();
+                  alert("✅ Encrypted .cfbak Backup downloaded successfully! Keep this file in a safe folder / USB.");
                 }}
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer"
               >
-                <span className="material-symbols-outlined text-base">download</span>
-                Download Backup (.json)
+                <span className="material-symbols-outlined text-base">lock</span>
+                Download Backup (.cfbak)
               </button>
             </div>
 
@@ -1033,18 +1017,18 @@ export default function ClinicSettings() {
               <div>
                 <h4 className="font-bold text-sm text-amber-900 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-amber-700 text-base">upload_file</span>
-                  Restore / Import Backup File
+                  Restore / Import Backup File (.cfbak / .json)
                 </h4>
                 <p className="text-xs text-amber-800/80 mt-1">
-                  Restore all database records from a previously saved ClinicFlow backup file.
+                  Restore all database records from a previously saved ClinicFlow <strong>.cfbak</strong> encrypted backup file.
                 </p>
               </div>
               <label className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center">
                 <span className="material-symbols-outlined text-base">upload</span>
-                Select Backup File to Restore
+                Select .cfbak File to Restore
                 <input
                   type="file"
-                  accept=".json"
+                  accept=".cfbak,.json"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -1052,15 +1036,18 @@ export default function ClinicSettings() {
                     const reader = new FileReader();
                     reader.onload = (event) => {
                       try {
-                        const parsed = JSON.parse(event.target.result);
-                        if (confirm(`⚠️ Restore Database from ${file.name}?\n\nThis will replace current data with the backup contents. Proceed?`)) {
-                          importFullDatabase(parsed);
-                          alert("✅ Database restored successfully! Reloading page...");
-                          window.location.reload();
+                        const content = event.target?.result;
+                        if (typeof content === "string") {
+                          const result = importFullDatabase(content);
+                          if (result.success) {
+                            alert("✅ Database restored successfully! Reloading...");
+                            window.location.reload();
+                          } else {
+                            alert("⚠️ Failed to restore backup: " + (result.error || "Corrupted file"));
+                          }
                         }
                       } catch (err) {
-                        console.error("Backup restore error:", err);
-                        alert("❌ Error restoring backup: Invalid JSON file format.");
+                        alert("⚠️ Failed to restore backup: " + err.message);
                       }
                     };
                     reader.readAsText(file);
@@ -1070,20 +1057,23 @@ export default function ClinicSettings() {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-teal-100 flex justify-between items-center flex-wrap gap-2 text-xs">
-            <span className="text-gray-500">Want to reset test records back to default demo data?</span>
-            <button
-              onClick={() => {
-                if (confirm("⚠️ Are you sure you want to RESET all data back to clean factory demo state? All custom added patients and sales will be reset!")) {
-                  resetDatabaseToDemoData();
-                  alert("Factory reset complete. Reloading app...");
-                  window.location.reload();
-                }
-              }}
-              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl font-bold transition-colors"
-            >
-              Reset to Factory Demo Data
-            </button>
+          <div className="pt-3 border-t border-teal-100 flex justify-between items-center flex-wrap gap-2 text-xs">
+            <span className="text-gray-500 font-medium">Database Maintenance &amp; Setup Modes:</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (confirm("🧹 Detach all mock transactions and activate Clean Setup (0 dummy queue patients/bills)?\n\nYour Clinic Profile, Staff Users, Accounts, and Medicine Catalog will stay 100% intact.")) {
+                    clearAllTransactionalData();
+                    alert("✅ Mock data detached successfully! Database is now completely clean (0 transactions). Reloading app...");
+                    window.location.reload();
+                  }
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">cleaning_services</span>
+                Detach Mock Data (0 Transactions)
+              </button>
+            </div>
           </div>
         </section>
       )}

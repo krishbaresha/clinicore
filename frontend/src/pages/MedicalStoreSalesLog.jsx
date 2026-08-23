@@ -4,6 +4,8 @@ import { getSales, getExpenses, getReturns, addPharmacyExpense, deletePharmacyEx
 import { dbClinic } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import { formatDate } from "../utils/formatters.js";
+import SaleInvoiceModal from "../components/SaleInvoiceModal.jsx";
+
 
 export default function MedicalStoreSalesLog() {
   const navigate = useNavigate();
@@ -34,7 +36,11 @@ export default function MedicalStoreSalesLog() {
   // Reconciliation State
   const [countedCashInput, setCountedCashInput] = useState("");
 
+  // DrCreate Sale Invoice Modal State
+  const [showSaleInvoiceModal, setShowSaleInvoiceModal] = useState(false);
+
   const [error, setError] = useState("");
+
 
   function loadAllData() {
     const sr = getSales();
@@ -166,18 +172,15 @@ export default function MedicalStoreSalesLog() {
         <div className="flex gap-sm flex-wrap">
           <button
             type="button"
-            onClick={() => {
-              if (confirm("Reset database to clean demo data with multi-unit packaging, sales, expenses & returns?")) {
-                resetDemoData();
-                loadAllData();
-              }
-            }}
-            className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-3 py-2 rounded-xl font-bold hover:bg-amber-100 transition-colors flex items-center gap-1"
+            onClick={() => setShowSaleInvoiceModal(true)}
+            className="text-xs bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-4 py-2 rounded-2xl flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+            title="Open DrCreate & MS Access Style Sale Invoice (Form & History List)"
           >
-            <span className="material-symbols-outlined text-sm">restart_alt</span>
-            Reset Demo Data
+            <span className="material-symbols-outlined text-sm">point_of_sale</span>
+            Sale Invoice (DrCreate)
           </button>
           <button id="view-inventory-btn" onClick={() => navigate("/store")} className="btn-secondary">
+
             <span className="material-symbols-outlined text-[16px]">inventory_2</span>
             Inventory
           </button>
@@ -626,6 +629,16 @@ export default function MedicalStoreSalesLog() {
           </form>
         </div>
       )}
+
+      {/* DrCreate & MS Access Sale Invoice Form & List Modal */}
+      <SaleInvoiceModal
+        isOpen={showSaleInvoiceModal}
+        onClose={() => {
+          setShowSaleInvoiceModal(false);
+          loadAllData();
+        }}
+      />
     </div>
   );
 }
+

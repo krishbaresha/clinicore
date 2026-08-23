@@ -1,0 +1,62 @@
+{
+  "name": "CliniCore — Doctor Clinic & Wholesale Pharmacy",
+  "short_name": "CliniCore",
+  "description": "Offline-first Clinic & Wholesale Pharmacy Management System (clinicore.me)",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#005c55",
+  "theme_color": "#005c55",
+  "categories": ["medical", "business", "productivity", "finance"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/clinic-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "OPD Doctor Queue",
+      "short_name": "Doctor Queue",
+      "description": "Open live OPD patient queue",
+      "url": "/doctor/queue",
+      "icons": [{ "src": "/favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Retail Store POS",
+      "short_name": "Store POS",
+      "description": "Fast pharmacy POS checkout counter",
+      "url": "/store/pos",
+      "icons": [{ "src": "/favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Central Godown Wholesale",
+      "short_name": "Godown Wholesale",
+      "description": "Wholesale B2B Supply & Sale Invoices",
+      "url": "/store/warehouse",
+      "icons": [{ "src": "/favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Supplier Purchases (GRN)",
+      "short_name": "Purchases GRN",
+      "description": "Inward Goods & Supplier Ledgers",
+      "url": "/store/purchases",
+      "icons": [{ "src": "/favicon.png", "sizes": "192x192" }]
+    }
+  ]
+}

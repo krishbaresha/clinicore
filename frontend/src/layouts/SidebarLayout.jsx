@@ -1,8 +1,15 @@
+// ClinicFlow Master Enterprise Responsive Layout & Collapsible Navigation Engine v2.5
+// Built with UI/UX Pro Max standards for high-performance medical workflows
 import { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { getInitials } from "../utils/formatters.js";
 import { dbClinic, exportFullDatabase } from "../api/db.js";
+import PullToRefresh from "../components/PullToRefresh.jsx";
+import LanguageSwitcher from "../components/LanguageSwitcher.jsx";
+import LicenseBanner from "../components/LicenseBanner.jsx";
+import { syncEngine } from "../api/syncEngine.js";
+import { useTranslation } from "react-i18next";
 
 // 1. Unified Front Desk & Medical Store Operator (Receptionist + Pharmacist / Cashier)
 const UNIFIED_DESK_NAV = [
@@ -15,28 +22,25 @@ const UNIFIED_DESK_NAV = [
   { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
   { label: "Warehouse & Wholesale", icon: "warehouse", path: "/store/warehouse" },
   { label: "Pending Reports", icon: "pending_actions", path: "/reception/pending-reports" },
-  { label: "Patients", icon: "group", path: "/patients" },
+  { label: "Patients & EMR", icon: "group", path: "/patients" },
   { label: "Fees & CashBook", icon: "payments", path: "/fees" },
-  { label: "Live TV Screen", icon: "tv", path: "/live", target: "_blank" },
-  { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
 
 // 2. Warehouse & Wholesale Distribution Portal
 const WAREHOUSE_NAV = [
+  { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Godown & Wholesale", icon: "warehouse", path: "/store/warehouse" },
   { label: "Company Purchases (GRN)", icon: "add_business", path: "/store/purchases" },
   { label: "Store Counter Inventory", icon: "inventory_2", path: "/store" },
   { label: "Fees & CashBook", icon: "payments", path: "/fees" },
-  { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
 
-// 3. Doctor Consultation Portal
+// 3. Doctor — Strict Consultation-Only Portal (3 tabs only)
+// Rule: Doctor ke pas sirf apna consultation data dikhe
 const DOCTOR_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
-  { label: "My OPD Queue", icon: "queue", path: "/doctor/queue" },
+  { label: "Doctor Consultation", icon: "stethoscope", path: "/doctor/queue" },
   { label: "Patients & EMR", icon: "group", path: "/patients" },
-  { label: "Fees & Reports", icon: "payments", path: "/fees" },
-  { label: "Settings", icon: "settings", path: "/settings", spacer: true },
 ];
 
 const NAV_BY_ROLE = {
@@ -53,7 +57,6 @@ const NAV_DEFAULT = [
   { label: "Register Patient", icon: "how_to_reg", path: "/reception/register" },
   { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
   { label: "Doctor OPD Queue", icon: "queue", path: "/doctor/queue" },
-  { label: "Live TV Screen", icon: "tv", path: "/live", target: "_blank" },
   { label: "Retail POS", icon: "point_of_sale", path: "/store/pos" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
   { label: "Purchases (GRN)", icon: "local_shipping", path: "/store/purchases" },
@@ -61,52 +64,72 @@ const NAV_DEFAULT = [
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Patients & EMR", icon: "group", path: "/patients" },
   { label: "Fees & CashBook", icon: "payments", path: "/fees" },
-  { label: "Settings", icon: "settings", path: "/settings", spacer: true },
+  { label: "Clinic Settings", icon: "settings", path: "/settings", spacer: true },
 ];
-
-function NavItems({ items, onItemClick }) {
-  return (
-    <ul className="space-y-1">
-      {items.map((item) => (
-        <li key={item.path} className={item.spacer ? "mt-4" : ""}>
-          {item.target === "_blank" ? (
-            <a
-              href={item.path}
-              target="_blank"
-              rel="noreferrer"
-              onClick={onItemClick}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 nav-item hover:bg-teal-50 hover:text-teal-800 text-slate-700"
-            >
-              <span className="material-symbols-outlined text-teal-600">{item.icon}</span>
-              <span className="font-body-md text-body-md flex items-center justify-between flex-1">
-                {item.label}
-                <span className="material-symbols-outlined text-xs text-gray-400">open_in_new</span>
-              </span>
-            </a>
-          ) : (
-            <NavLink
-              to={item.path}
-              end={item.path === "/store" || item.end}
-              onClick={onItemClick}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150 ${isActive ? "nav-item-active" : "nav-item"
-                }`
-              }
-            >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="font-body-md text-body-md">{item.label}</span>
-            </NavLink>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 export default function SidebarLayout({ children }) {
   const { user, clinic, logout } = useAuth();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  // Desktop Collapsible Sidebar State
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    return localStorage.getItem("cf_sidebar_expanded") !== "false";
+  });
+  
+  // Mobile Slide-over Drawer State
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // Native PWA Deferred Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  // Live PWA Cloud Sync Status State
+  const [syncState, setSyncState] = useState(() => syncEngine.getStatus());
+
+  useEffect(() => {
+    const unsub = syncEngine.subscribe(setSyncState);
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        console.log("PWA Installed successfully");
+      }
+      setDeferredPrompt(null);
+    } else {
+      alert(
+        "📱 To install ClinicFlow as a Native Desktop / Mobile App:\n\n" +
+        "1. Chrome / Edge Desktop: Click the Install icon in your address bar (top-right).\n" +
+        "2. Android Chrome: Tap Menu (⋮) ➔ 'Install App' or 'Add to Home Screen'.\n" +
+        "3. Apple iOS Safari: Tap Share (📤) ➔ 'Add to Home Screen'."
+      );
+    }
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem("cf_sidebar_expanded", next.toString());
+      return next;
+    });
+  };
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileDrawerOpen(false);
+  }, [location.pathname]);
 
   // Background Automated Backup Timer — runs silently across Doctor/Cashier/Reception desks
   useEffect(() => {
@@ -173,167 +196,393 @@ export default function SidebarLayout({ children }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Build nav items — hide Settings for non-owner users (route is also guarded)
+  // Build nav items — ensure Admin / Owner gets full settings access
+  const isAdminOrOwner = user?.is_owner || user?.role === "admin" || user?.role === "owner" || user?.userId === "user_admin";
   const rawNavItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
-  const navItems = user?.is_owner ? rawNavItems : rawNavItems.filter((item) => item.path !== "/settings");
+  const navItems = isAdminOrOwner ? rawNavItems : rawNavItems.filter((item) => item.path !== "/settings");
 
   function handleLogout() {
     logout();
     navigate("/login");
   }
 
-  function SidebarContent({ onItemClick }) {
+  const { t } = useTranslation();
+
+  // Shared Nav List Renderer
+  function NavigationList({ isFullWidth = true, onItemClick }) {
     return (
-      <>
-        {/* Logo */}
-        <div className="px-5 mb-4 flex items-center gap-2 shrink-0">
-          <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-            medical_services
-          </span>
-          <h1 className="font-bold text-lg text-primary truncate">{clinic?.name || "ClinicFlow"}</h1>
-        </div>
+      <ul className="space-y-1">
+        {navItems.map((item) => {
+          // Dynamic translation lookup
+          let displayLabel = item.label;
+          if (item.path === "/dashboard") displayLabel = t("nav.dashboard", item.label);
+          else if (item.path === "/reception/queue" || item.path === "/reception/register") displayLabel = t("nav.receptionQueue", item.label);
+          else if (item.path === "/doctor/queue") displayLabel = t("nav.doctorQueue", item.label);
+          else if (item.path === "/store/pos") displayLabel = t("nav.storePos", item.label);
+          else if (item.path === "/store/warehouse") displayLabel = t("nav.warehouse", item.label);
+          else if (item.path === "/store/purchases") displayLabel = t("nav.purchases", item.label);
+          else if (item.path === "/patients") displayLabel = t("nav.patients", item.label);
+          else if (item.path === "/fees") displayLabel = t("nav.fees", item.label);
+          else if (item.path === "/settings") displayLabel = t("nav.settings", item.label);
 
-        {/* User Chip with Quick Logout Button */}
-        {user && (
-          <div className="mx-2 mb-3 flex items-center justify-between gap-2 bg-teal-50/80 border border-teal-100 rounded-2xl px-3 py-2 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                {getInitials(user.name)}
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-xs text-gray-900 truncate">{user.name}</p>
-                <p className="text-[10px] font-semibold text-teal-700 capitalize">{user.role}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              title="Sign Out / Switch User"
-              className="p-1.5 text-rose-600 hover:text-white hover:bg-rose-600 rounded-xl transition-all flex items-center justify-center shrink-0 border border-rose-200"
-            >
-              <span className="material-symbols-outlined text-base">logout</span>
-            </button>
-          </div>
-        )}
+          return (
+            <li key={item.path} className={item.spacer ? "mt-3 pt-3 border-t border-teal-50" : ""}>
+              <NavLink
+                to={item.path}
+                end={item.path === "/store" || item.end}
+                onClick={onItemClick}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all duration-200 cursor-pointer ${
+                    isActive
+                      ? "bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-md shadow-teal-700/20 font-bold"
+                      : "text-slate-600 hover:bg-teal-50 hover:text-teal-950 font-medium"
+                  } ${!isFullWidth ? "justify-center px-0" : ""}`
+                }
+                title={!isFullWidth ? displayLabel : undefined}
+              >
+                <span className={`material-symbols-outlined text-xl flex-shrink-0 ${
+                  !isFullWidth ? "text-2xl" : ""
+                }`}>
+                  {item.icon}
+                </span>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2 touch-scroll">
-          <NavItems items={navItems} onItemClick={onItemClick} />
-        </nav>
-
-        {/* Logout Pinned Bottom */}
-        <div className="px-2 mt-auto pt-2 border-t border-gray-200 shrink-0 bg-white/90">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 rounded-xl transition-all text-xs font-bold shadow-xs"
-          >
-            <span className="material-symbols-outlined text-base">logout</span>
-            Sign Out / Exit Portal
-          </button>
-        </div>
-      </>
+                {isFullWidth && (
+                  <span className="text-xs tracking-tight truncate flex-1">
+                    {displayLabel}
+                  </span>
+                )}
+              </NavLink>
+            </li>
+          );
+        })}
+      </ul>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row overflow-x-hidden">
-      {/* ── Desktop Sidebar ─────────────────────────────── */}
-      <aside className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-[260px] border-r border-white/20 backdrop-blur-xl bg-white/70 shadow-[0_8px_32px_0_rgba(15,118,110,0.08)] z-50 py-5">
-        <SidebarContent onItemClick={undefined} />
-      </aside>
+    <div className="min-h-screen bg-[#f8faf9] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
+      
+      {/* ── Top License & Subscription Reminder Banner ── */}
+      <LicenseBanner />
 
-      {/* ── Mobile & Tablet Top App Bar with Direct 1-Click Logout ── */}
-      <header className="md:hidden sticky top-0 z-40 w-full flex justify-between items-center px-3 py-2.5 bg-white/95 backdrop-blur-md border-b border-teal-100 shadow-xs">
-        <div className="flex items-center gap-2">
+      {/* ── Top Header Bar (Fixed & Consistent Across Devices) ── */}
+      <header className="border-b border-teal-100 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs h-16 flex items-center px-4 sm:px-6 justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          {/* Sidebar Open/Close Toggle Button */}
           <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="p-1.5 text-gray-700 hover:bg-teal-50 rounded-xl focus:outline-none flex items-center justify-center"
-            aria-label="Open navigation menu"
+            onClick={() => {
+              if (window.innerWidth < 768) {
+                setMobileDrawerOpen(true);
+              } else {
+                toggleSidebar();
+              }
+            }}
+            className="p-2 rounded-2xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors flex items-center justify-center cursor-pointer shadow-xs active:scale-95"
+            title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
-            <span className="material-symbols-outlined text-2xl">menu</span>
+            <span className="material-symbols-outlined text-xl">
+              {sidebarOpen ? "menu_open" : "menu"}
+            </span>
           </button>
-          <span className="material-symbols-outlined text-teal-700 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-            medical_services
-          </span>
-          <span className="font-bold text-sm text-teal-950 truncate max-w-[140px] sm:max-w-[220px]">{clinic?.name || "ClinicFlow"}</span>
-        </div>
 
-        {user && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleLogout}
-              title="Sign Out Portal"
-              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white px-2.5 py-1 rounded-xl text-xs font-bold border border-rose-200 transition-all shadow-xs"
-            >
-              <span className="material-symbols-outlined text-sm">logout</span>
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-            <div className="w-7 h-7 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-[10px] shadow-xs">
-              {getInitials(user.name)}
+          {/* Brand Logo & Clinic Info */}
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/clinic-logo.png"
+              alt="Clinic Logo"
+              className="h-10 w-auto max-w-[120px] object-contain rounded-xl drop-shadow-xs"
+              onError={(e) => {
+                e.target.style.display = "none";
+                if (e.target.nextSibling) e.target.nextSibling.style.display = "flex";
+              }}
+            />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 hidden items-center justify-center text-white font-black shadow-md shadow-teal-700/20">
+              <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                medical_services
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-base text-teal-950 tracking-tight">CliniCore</span>
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800 border border-teal-200">
+                  HYBRID V2.5
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium truncate max-w-[160px] sm:max-w-xs">
+                {clinic?.name || "Dr. Muhammad Kashif Khan Clinic"}
+              </p>
             </div>
           </div>
-        )}
-      </header>
+        </div>
 
-      {/* ── Mobile Sidebar Drawer ─────────────────────────── */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          <aside className="relative flex flex-col w-[260px] max-w-[80vw] h-full bg-white/95 backdrop-blur-xl border-r border-white/20 shadow-2xl z-10 py-5">
-            <div className="px-5 mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>medical_services</span>
-                <span className="font-bold text-base text-primary truncate max-w-[140px]">{clinic?.name || "ClinicFlow"}</span>
+        {/* Right Header User Chip & Quick Action Links */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* PWA Cloud Sync Status Badge */}
+          <button
+            onClick={() => syncEngine.forceSyncNow()}
+            className={`px-2.5 py-1.5 rounded-2xl text-[11px] font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+              !syncState.isOnline
+                ? "bg-amber-50 text-amber-900 border-amber-200"
+                : syncState.isSyncing
+                ? "bg-teal-50 text-teal-800 border-teal-200 animate-pulse"
+                : syncState.pendingCount > 0
+                ? "bg-blue-50 text-blue-900 border-blue-200"
+                : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+            }`}
+            title={
+              !syncState.isOnline
+                ? `Offline: ${syncState.pendingCount} records stored locally in outbox`
+                : syncState.isSyncing
+                ? "Syncing records to cloud..."
+                : syncState.pendingCount > 0
+                ? `${syncState.pendingCount} pending records in outbox (Click to sync)`
+                : "Cloud Sync Active & In Lockstep"
+            }
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                !syncState.isOnline
+                  ? "bg-amber-500 animate-ping"
+                  : syncState.isSyncing
+                  ? "bg-teal-600 animate-spin"
+                  : "bg-emerald-500"
+              }`}
+            />
+            <span className="hidden lg:inline">
+              {!syncState.isOnline
+                ? `Offline (${syncState.pendingCount})`
+                : syncState.isSyncing
+                ? "Syncing..."
+                : syncState.pendingCount > 0
+                ? `Sync (${syncState.pendingCount})`
+                : "Cloud Live"}
+            </span>
+          </button>
+
+          <LanguageSwitcher />
+
+
+
+          {user && (
+            <div className="flex items-center gap-2 bg-teal-50/80 border border-teal-100 rounded-2xl px-2.5 sm:px-3 py-1.5 shadow-xs">
+              <div className="w-7 h-7 rounded-full bg-teal-700 text-white flex items-center justify-center font-black text-[11px] shadow-xs">
+                {getInitials(user.name)}
               </div>
-              <button onClick={() => setMobileMenuOpen(false)} className="p-1 rounded-full hover:bg-surface-container-high">
-                <span className="material-symbols-outlined text-2xl">close</span>
+              <div className="hidden sm:block text-left min-w-0 pr-1">
+                <p className="font-bold text-xs text-teal-950 truncate max-w-[120px]">{user.name}</p>
+                <p className="text-[9.5px] font-bold text-teal-700 capitalize leading-none">{user.role}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Sign Out / Exit Portal"
+                className="p-1 text-rose-600 hover:text-white hover:bg-rose-600 rounded-xl transition-all flex items-center justify-center border border-rose-200 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">logout</span>
               </button>
             </div>
-            <SidebarContent onItemClick={() => setMobileMenuOpen(false)} />
-          </aside>
+          )}
         </div>
-      )}
+      </header>
 
-      {/* ── Main Content Area ────────────────────────────── */}
-      <main className="flex-1 md:ml-[260px] min-h-screen pb-24 md:pb-8 min-w-0 w-full">
-        {children}
-      </main>
+      {/* ── Main Body with Collapsible Desktop Sidebar ── */}
+      <div className="flex flex-1 relative min-w-0">
 
-      {/* ── Mobile Bottom Navigation (Identical to PC Sidebar Tabs) ─────── */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-45 bg-white/95 backdrop-blur-lg border-t border-teal-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-        <ul className="flex justify-around items-center h-16 px-1 overflow-x-auto">
-          {navItems.map((item) => (
-            <li key={item.path} className="flex-1 min-w-[54px] text-center">
-              {item.target === "_blank" ? (
-                <a
-                  href={item.path}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-gray-500 font-medium hover:text-teal-700 transition-all"
+        {/* ── Desktop Left Sidebar Menu ── */}
+        <aside
+          className={`
+            hidden md:flex flex-col justify-between
+            bg-white border-r border-teal-100 shadow-sm
+            transition-all duration-300 ease-in-out fixed top-16 bottom-0 left-0 z-30
+            ${sidebarOpen ? "w-[280px]" : "w-[80px]"}
+          `}
+        >
+          {/* Navigation Items */}
+          <div className="p-3.5 space-y-2 overflow-y-auto flex-1 touch-scroll">
+            <div className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400 ${!sidebarOpen ? "text-center" : ""}`}>
+              {sidebarOpen ? "Clinic & Store Menu" : "•"}
+            </div>
+
+            <NavigationList isFullWidth={sidebarOpen} onItemClick={undefined} />
+          </div>
+
+          {/* Bottom Sidebar Footer */}
+          <div className="p-3 border-t border-teal-50 flex flex-col gap-2 bg-slate-50/60">
+            {sidebarOpen ? (
+              <>
+                {/* Install App Trigger Button in Sidebar */}
+                <button
+                  onClick={handleInstallPWA}
+                  className="w-full flex items-center justify-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-2xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                  title="Install ClinicFlow App"
                 >
-                  <span className="material-symbols-outlined text-xl">{item.icon}</span>
-                  <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label.split(" ")[0]}</span>
-                </a>
-              ) : (
-                <NavLink
-                  to={item.path}
-                  end={item.path === "/store" || item.end}
-                  className={({ isActive }) =>
-                    `flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all ${
-                      isActive
-                        ? "text-teal-800 font-black bg-teal-50"
-                        : "text-gray-500 font-medium hover:text-teal-700"
-                    }`
-                  }
+                  <span className="material-symbols-outlined text-base text-emerald-700">install_desktop</span>
+                  <span>Install Desktop App</span>
+                </button>
+
+                <div className="flex items-center justify-between w-full px-2 pt-1">
+                  <div className="text-[11px] font-bold text-slate-500">
+                    {clinic?.name?.split(" ")[0] || "ClinicFlow"} OS
+                  </div>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-1.5 rounded-xl hover:bg-teal-100 text-teal-800 transition-colors cursor-pointer"
+                    title="Collapse Sidebar"
+                  >
+                    <span className="material-symbols-outlined text-lg">chevron_left</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={handleInstallPWA}
+                  className="w-full p-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-colors flex items-center justify-center cursor-pointer border border-emerald-200"
+                  title="Install Desktop App"
                 >
-                  <span className="material-symbols-outlined text-xl">{item.icon}</span>
-                  <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label.split(" ")[0]}</span>
-                </NavLink>
+                  <span className="material-symbols-outlined text-base text-emerald-700">install_desktop</span>
+                </button>
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="w-full p-1.5 rounded-xl hover:bg-teal-100 text-teal-800 transition-colors flex items-center justify-center cursor-pointer"
+                  title="Expand Sidebar"
+                >
+                  <span className="material-symbols-outlined text-lg">chevron_right</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* ── Mobile Slide-over Drawer (Always Fully Expanded & Beautiful) ── */}
+        {mobileDrawerOpen && (
+          <div className="md:hidden fixed inset-0 z-50 flex">
+            {/* Backdrop Blur Overlay */}
+            <div
+              onClick={() => setMobileDrawerOpen(false)}
+              className="fixed inset-0 bg-teal-950/60 backdrop-blur-sm transition-opacity"
+            />
+
+            {/* Slide-out Drawer Panel */}
+            <aside className="relative flex flex-col w-[300px] max-w-[85vw] h-full bg-white shadow-2xl z-10 animate-slide-right">
+              {/* Drawer Top Header */}
+              <div className="p-4 border-b border-teal-100 flex items-center justify-between bg-gradient-to-r from-teal-50/80 to-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
+                    <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      medical_services
+                    </span>
+                  </div>
+                  <div>
+                    <h2 className="font-black text-sm text-teal-950 tracking-tight">ClinicFlow</h2>
+                    <p className="text-[10px] text-slate-500 font-medium truncate max-w-[160px]">
+                      {clinic?.name || "Clinic"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="p-1.5 rounded-xl hover:bg-teal-100 text-slate-500 hover:text-teal-900 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-xl">close</span>
+                </button>
+              </div>
+
+              {/* Staff Profile Card inside Mobile Drawer */}
+              {user && (
+                <div className="mx-3 mt-3 p-3 bg-teal-50/80 border border-teal-100 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                      {getInitials(user.name)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-teal-950 truncate">{user.name}</p>
+                      <p className="text-[10px] font-bold text-teal-700 capitalize leading-none">{user.role}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-xl transition-colors border border-rose-200"
+                    title="Sign Out"
+                  >
+                    <span className="material-symbols-outlined text-base">logout</span>
+                  </button>
+                </div>
               )}
+
+              {/* Navigation Items (Fully expanded with labels) */}
+              <div className="p-3 overflow-y-auto flex-1 touch-scroll">
+                <NavigationList isFullWidth={true} onItemClick={() => setMobileDrawerOpen(false)} />
+              </div>
+
+              {/* Mobile Drawer Bottom Actions */}
+              <div className="p-3 border-t border-teal-50 bg-slate-50/60 space-y-2">
+                <button
+                  onClick={() => {
+                    setMobileDrawerOpen(false);
+                    handleInstallPWA();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-2xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base text-emerald-700">install_mobile</span>
+                  <span>Install App on Phone</span>
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 px-3.5 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 rounded-2xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">logout</span>
+                  <span>Sign Out / Exit Portal</span>
+                </button>
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {/* ── Main Content Area with Dynamic Desktop Margin & Natural Scrolling ── */}
+        <main
+          className={`
+            flex-1 min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 pb-24 md:pb-12
+            transition-all duration-300 ease-in-out
+            ${sidebarOpen ? "md:ml-[280px]" : "md:ml-[80px]"}
+          `}
+        >
+          <PullToRefresh>
+            {children}
+          </PullToRefresh>
+        </main>
+      </div>
+
+      {/* ── Mobile Bottom Navigation Bar (Fast 1-Thumb Touch Targets) ── */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-40 bg-white/95 backdrop-blur-lg border-t border-teal-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <ul className="flex justify-around items-center h-16 px-1">
+          {navItems.slice(0, 4).map((item) => (
+            <li key={item.path} className="flex-1 min-w-[50px] text-center">
+              <NavLink
+                to={item.path}
+                end={item.path === "/store" || item.end}
+                className={({ isActive }) =>
+                  `flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all ${
+                    isActive
+                      ? "text-teal-800 font-black bg-teal-50"
+                      : "text-slate-500 font-semibold hover:text-teal-700"
+                  }`
+                }
+              >
+                <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label.split(" ")[0]}</span>
+              </NavLink>
             </li>
           ))}
+          <li className="flex-1 min-w-[50px] text-center">
+            <button
+              onClick={() => setMobileDrawerOpen(true)}
+              className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-teal-800 font-black hover:bg-teal-50 transition-all w-full cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-2xl">menu</span>
+              <span className="text-[10px] mt-0.5 tracking-tight">Menu</span>
+            </button>
+          </li>
         </ul>
       </nav>
     </div>

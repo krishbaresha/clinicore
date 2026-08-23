@@ -1,9 +1,57 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { dbInventory, dbStockTransfers, dbB2BSales, dbClinic, dbParties, dbSalesmen } from "../api/db.js";
-import { printThermalReceipt } from "../utils/thermalPrinter.js";
+import { dbInventory, dbStockTransfers, dbB2BSales, dbClinic, dbParties, dbSalesmen, dbWarehouses, dbAccounts } from "../api/db.js";
+import { printThermalReceipt, printChartOfAccountsReceipt } from "../utils/thermalPrinter.js";
 import { formatPKR, formatDate } from "../utils/formatters.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
+import StockLedgerModal from "../components/StockLedgerModal.jsx";
+import SaleInvoiceModal from "../components/SaleInvoiceModal.jsx";
+
+
+const SINDH_ACCOUNT_TYPES = [
+
+  "Supplier",
+  "Hyderabad",
+  "Local Market",
+  "Tando Alayar",
+  "TMK",
+  "Khanoot",
+  "SANGER",
+  "SHADADPUR",
+  "Larkana",
+  "Sukkar",
+  "Badain",
+  "GOLARCHI",
+  "Hala",
+  "Rato Dero",
+  "Umar Kot",
+  "Tharparkar",
+  "Tharushah",
+  "Talhar",
+  "Matyari",
+  "Dolat Pur",
+  "Dambalo",
+  "Ghulab Lagari",
+  "Jahan Mori",
+  "Kotri",
+  "Mirpur",
+  "Moro",
+  "NAWABSHAH",
+  "Noabad",
+  "PANOAQIL",
+  "Qazi Ahmed",
+  "Sanjhoro",
+  "T.Adam",
+  "Tando Bhago",
+  "Tando Ghulam Ali",
+  "Tando Jaam",
+  "Customer",
+  "Sales Man",
+  "Cash",
+  "Expense",
+  "Capital"
+];
 
 export default function WarehouseManagement() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -13,10 +61,49 @@ export default function WarehouseManagement() {
   const [b2bSales, setB2BSales] = useState([]);
   const [parties, setParties] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
-  const [activeTab, setActiveTab] = useState(urlTab && ["stock", "b2b", "transfer", "parties", "logs"].includes(urlTab) ? urlTab : "stock");
+  const [accounts, setAccounts] = useState([]);
+  const [activeTab, setActiveTab] = useState(urlTab && ["stock", "b2b", "transfer", "parties", "logs", "godowns"].includes(urlTab) ? urlTab : "stock");
+
+  // DrCreate Account Registration Form & Chart of Accounts State
+  const [showAccountForm, setShowAccountForm] = useState(false);
+  const [editingAccountId, setEditingAccountId] = useState(null);
+  const [accountForm, setAccountForm] = useState({
+    account_name: "",
+    account_no: "",
+    naration: "",
+    account_type: "Hyderabad",
+    opening_balance: "0",
+    date: new Date().toLocaleDateString("en-US"),
+  });
+  const accountNameRef = useRef(null);
+
+
+  // DrCreate 4-Level Stock Ledger Modal State
+  const [showStockLedgerModal, setShowStockLedgerModal] = useState(false);
+  const [ledgerInitialItem, setLedgerInitialItem] = useState(null);
+
+  // DrCreate Sale Invoice Modal State
+  const [showSaleInvoiceModal, setShowSaleInvoiceModal] = useState(false);
+
+  // Chart of Accounts Modal State
+  const [showChartOfAccountsModal, setShowChartOfAccountsModal] = useState(false);
+
+
+  const [modalAccountTypeFilter, setModalAccountTypeFilter] = useState("All");
+  const [modalAccountSearch, setModalAccountSearch] = useState("");
+  const [accessAccountsImportStatus, setAccessAccountsImportStatus] = useState({ loading: false, result: null, error: "" });
+
+  // Godown / Multi-Warehouse Management State
+  const [godowns, setGodowns] = useState([]);
+  const [showGodownModal, setShowGodownModal] = useState(false);
+  const [editingGodown, setEditingGodown] = useState(null);
+  const [godownForm, setGodownForm] = useState({
+    name: "", code: "", location: "", incharge_name: "", phone: "", notes: "", status: "active"
+  });
+
 
   useEffect(() => {
-    if (urlTab && ["stock", "b2b", "transfer", "parties", "logs"].includes(urlTab)) {
+    if (urlTab && ["stock", "b2b", "transfer", "parties", "logs", "godowns"].includes(urlTab)) {
       setActiveTab(urlTab);
     }
   }, [urlTab]);
@@ -83,8 +170,31 @@ export default function WarehouseManagement() {
       return;
     }
     const created = dbParties.add(newPartyForm);
+    
+    // Auto-sync into unified dbAccounts if not already existing
+    const existingAcc = dbAccounts.getAll().find((a) => a.account_name.toLowerCase() === created.name.toLowerCase());
+    if (!existingAcc) {
+      dbAccounts.add({
+        account_name: created.name,
+        account_no: created.party_code || dbAccounts.getNextAccountNo(),
+        naration: `${created.city || ""} (${created.phone || ""}) ${created.address || ""}`.trim(),
+        account_type: created.city || "Wholesale Party",
+        opening_balance: Number(created.balance_due) || 0,
+        date: new Date().toLocaleDateString("en-US"),
+      });
+    }
+
+
     alert(`Party "${created.name}" registered successfully with Code #${created.party_code || created.id}!`);
     setShowAddPartyModal(false);
+
+    // Auto-select party if user was on B2B Wholesale tab
+    setSelectedPartyId(created.id);
+    setPartySearchCode(created.party_code || created.id);
+    setB2bBuyerName(created.name);
+    setB2bBuyerPhone(created.phone || "");
+    setB2bCity(created.city || "Hyderabad");
+
     setNewPartyForm({
       party_code: "",
       name: "",
@@ -96,17 +206,167 @@ export default function WarehouseManagement() {
     refreshData();
   };
 
+
   const refreshData = () => {
     setInventory(dbInventory.getAll());
     setTransfers(dbStockTransfers.getAll());
     setB2BSales(dbB2BSales.getAll());
     setParties(dbParties.getAll());
     setSalesmen(dbSalesmen.getAll());
+    setGodowns(dbWarehouses.getAll());
+    const allAccs = dbAccounts.getAll();
+    setAccounts(allAccs);
+    setAccountForm((prev) => ({
+      ...prev,
+      account_no: prev.account_no || dbAccounts.getNextAccountNo(),
+      date: prev.date || new Date().toLocaleDateString("en-US"),
+    }));
   };
+
+  const handleOpenAccountForm = () => {
+    if (!showAccountForm) {
+      if (!editingAccountId) {
+        const nextNo = dbAccounts.getNextAccountNo();
+        setAccountForm((prev) => ({
+          ...prev,
+          account_no: nextNo,
+          date: new Date().toLocaleDateString("en-US"),
+        }));
+      }
+      setShowAccountForm(true);
+      setTimeout(() => accountNameRef.current?.focus(), 100);
+    } else {
+      setShowAccountForm(false);
+    }
+  };
+
+  const handleSelectAccountForEdit = (acc) => {
+    setEditingAccountId(acc.id || acc.account_no);
+    setAccountForm({
+      account_name: acc.account_name || "",
+      account_no: acc.account_no || "",
+      naration: acc.naration || "",
+      account_type: acc.account_type || "Hyderabad",
+      opening_balance: String(acc.opening_balance || "0"),
+      date: acc.created_at ? new Date(acc.created_at).toLocaleDateString("en-US") : new Date().toLocaleDateString("en-US"),
+    });
+    setShowChartOfAccountsModal(false);
+    setShowAccountForm(true);
+    setTimeout(() => accountNameRef.current?.focus(), 100);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAccountId(null);
+    const nextNo = dbAccounts.getNextAccountNo();
+    setAccountForm({
+      account_name: "",
+      account_no: nextNo,
+      naration: "",
+      account_type: "Hyderabad",
+      opening_balance: "0",
+      date: new Date().toLocaleDateString("en-US"),
+    });
+    setTimeout(() => accountNameRef.current?.focus(), 50);
+  };
+
+  const handleSaveAccount = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!accountForm.account_name.trim()) {
+      alert("Please enter Account Name.");
+      accountNameRef.current?.focus();
+      return;
+    }
+
+    if (editingAccountId) {
+      dbAccounts.update(editingAccountId, {
+        account_name: accountForm.account_name.trim(),
+        account_no: accountForm.account_no,
+        naration: accountForm.naration,
+        account_type: accountForm.account_type,
+        opening_balance: Number(accountForm.opening_balance) || 0,
+      });
+      alert(`Account #${accountForm.account_no} ("${accountForm.account_name}") updated successfully!`);
+      setEditingAccountId(null);
+    } else {
+      dbAccounts.add({
+        account_name: accountForm.account_name.trim(),
+        account_no: accountForm.account_no || dbAccounts.getNextAccountNo(),
+        naration: accountForm.naration,
+        account_type: accountForm.account_type,
+        opening_balance: Number(accountForm.opening_balance) || 0,
+        date: accountForm.date || new Date().toLocaleDateString("en-US"),
+      });
+    }
+
+    const nextNo = dbAccounts.getNextAccountNo();
+    setAccountForm({
+      account_name: "",
+      account_no: nextNo,
+      naration: "",
+      account_type: accountForm.account_type,
+      opening_balance: "0",
+      date: new Date().toLocaleDateString("en-US"),
+    });
+    setAccounts(dbAccounts.getAll());
+    setParties(dbParties.getAll());
+    setTimeout(() => accountNameRef.current?.focus(), 50);
+  };
+
+
+  const handleImportLegacyAccounts = async () => {
+    setAccessAccountsImportStatus({ loading: true, result: null, error: "" });
+    try {
+      const res = await dbAccounts.bulkImportFromAccess();
+      if (res.success) {
+        setAccessAccountsImportStatus({ loading: false, result: res, error: "" });
+        setAccounts(dbAccounts.getAll());
+        setParties(dbParties.getAll());
+      } else {
+        setAccessAccountsImportStatus({ loading: false, result: null, error: res.error || "Import failed" });
+      }
+    } catch (err) {
+      setAccessAccountsImportStatus({ loading: false, result: null, error: err.message });
+    }
+  };
+
+  // Filtered accounts for Chart of Accounts Modal
+  const modalFilteredAccounts = useMemo(() => {
+    return accounts.filter((a) => {
+      if (modalAccountTypeFilter !== "All" && (a.account_type || "").toLowerCase() !== modalAccountTypeFilter.toLowerCase()) {
+        return false;
+      }
+      if (modalAccountSearch.trim()) {
+        const q = modalAccountSearch.toLowerCase().trim();
+        const matchName = (a.account_name || "").toLowerCase().includes(q);
+        const matchNo = String(a.account_no || "").includes(q);
+        const matchType = (a.account_type || "").toLowerCase().includes(q);
+        if (!matchName && !matchNo && !matchType) return false;
+      }
+      return true;
+    });
+  }, [accounts, modalAccountTypeFilter, modalAccountSearch]);
+
+  const distinctAccountTypes = useMemo(() => {
+    const set = new Set(accounts.map((a) => a.account_type).filter(Boolean));
+    return ["All", ...Array.from(set)];
+  }, [accounts]);
+
+  // Modal backdrop body scroll lock
+  const isAnyPopupOpen = Boolean(showChartOfAccountsModal || showAddPartyModal || showGodownModal || isMovementModalOpen);
+  useEffect(() => {
+    if (isAnyPopupOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isAnyPopupOpen]);
 
   useEffect(() => {
     refreshData();
   }, []);
+
 
   const handleOpenMovement = (item) => {
     setSelectedItemForModal(item);
@@ -374,7 +634,45 @@ export default function WarehouseManagement() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setLedgerInitialItem(null);
+              setShowStockLedgerModal(true);
+            }}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-purple-900/20 transition-all active:scale-95"
+            title="Open DrCreate 4-Level Stock Ledger (Category -> SKU -> Timeline -> Vouchers)"
+          >
+            <span className="material-symbols-outlined text-base">menu_book</span>
+            Stock Ledger
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenAccountForm}
+            className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 shadow-md transition-all ${
+              showAccountForm
+                ? "bg-emerald-800 text-white shadow-emerald-900/20 ring-2 ring-emerald-400"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+            }`}
+            title="DrCreate & MS Access Style Account Registration"
+          >
+            <span className="material-symbols-outlined text-base">person_add</span>
+            {showAccountForm ? "Close Account Form" : "Account Registration"}
+          </button>
+
+
+          <button
+            type="button"
+            onClick={() => setShowSaleInvoiceModal(true)}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-700/20 transition-all active:scale-95"
+            title="Open DrCreate & MS Access Style Sale Invoice (Form & History List)"
+          >
+            <span className="material-symbols-outlined text-base">point_of_sale</span>
+            Sale Invoice (DrCreate)
+          </button>
+
           <button
             onClick={() => {
               setTransferDirection("to_store");
@@ -385,6 +683,7 @@ export default function WarehouseManagement() {
             <span className="material-symbols-outlined text-base">sync_alt</span>
             Two-Way Stock Transfer
           </button>
+
           
           <button
             onClick={() => handleTabChange("b2b")}
@@ -395,6 +694,198 @@ export default function WarehouseManagement() {
           </button>
         </div>
       </div>
+
+      {/* DrCreate / MS Access Style ACCOUNT REGISTRATION _FORM */}
+      {showAccountForm && (
+        <div className="bg-gradient-to-r from-emerald-850 via-teal-900 to-emerald-950 p-1 rounded-3xl shadow-xl animate-fadeIn">
+          <div className="bg-white rounded-[22px] p-5 sm:p-7 border border-emerald-100">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shadow-inner">
+                  <span className="material-symbols-outlined text-xl">contact_page</span>
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold font-headline text-emerald-950 flex items-center gap-2">
+                    ACCOUNT REGISTRATION _FORM
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-mono uppercase tracking-wider font-semibold">DrCreate Flow</span>
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Register Wholesale Parties, Pharma Suppliers, Sales Representatives &amp; Ledgers
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowChartOfAccountsModal(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold flex items-center gap-1.5 border border-teal-200 transition-all shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-sm">folder_open</span>
+                  Show List (Chart of Accounts)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAccountForm(false)}
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Active Edit Mode Banner */}
+            {editingAccountId && (
+              <div className="mt-4 px-4 py-2.5 rounded-2xl bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-2 animate-fadeIn">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                  <span className="material-symbols-outlined text-amber-600 text-base">edit_note</span>
+                  <span>Editing Mode: Account #{accountForm.account_no} — <span className="underline font-black">{accountForm.account_name}</span></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="text-xs font-bold text-amber-700 hover:text-amber-950 underline flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-xs">close</span>
+                  Cancel Edit (Switch to New)
+                </button>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveAccount} className="mt-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Account Name */}
+                <div className="lg:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Account Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    ref={accountNameRef}
+                    type="text"
+                    required
+                    placeholder="e.g. krish, Affan Bilal H/S (HYD), BM Pvt LTD"
+                    value={accountForm.account_name}
+                    onChange={(e) => setAccountForm({ ...accountForm, account_name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400"
+                  />
+                </div>
+
+                {/* Account No */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Account No <span className="text-[10px] text-gray-400 font-normal">(Auto Generated)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={accountForm.account_no}
+                    onChange={(e) => setAccountForm({ ...accountForm, account_no: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/50 text-xs font-mono font-bold text-emerald-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Account Type (Territories / Supplier / Heads) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Account Type / Territory Route <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={accountForm.account_type}
+                    onChange={(e) => setAccountForm({ ...accountForm, account_type: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-white"
+                  >
+                    {SINDH_ACCOUNT_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Opening Balance */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Oppening Balance (Rs.)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={accountForm.opening_balance}
+                    onChange={(e) => setAccountForm({ ...accountForm, opening_balance: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-mono font-bold text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={accountForm.date}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-xs font-mono text-gray-600 outline-none"
+                  />
+                </div>
+
+                {/* Naration */}
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Naration / Address / Phone Note
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Near Lajpat Chowk, Contact: 0300-1234567, Salesman: C/O Waheed Bhai"
+                    value={accountForm.naration}
+                    onChange={(e) => setAccountForm({ ...accountForm, naration: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Form Action Buttons */}
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                {editingAccountId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-sm">undo</span>
+                    Cancel Edit
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowChartOfAccountsModal(true)}
+                  className="px-5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold flex items-center gap-2 transition-all"
+                >
+                  <span className="material-symbols-outlined text-base text-gray-600">view_list</span>
+                  Show List
+                </button>
+
+                <button
+                  type="submit"
+                  className={`px-6 py-2.5 rounded-xl text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all active:scale-95 ${
+                    editingAccountId
+                      ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
+                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {editingAccountId ? "save" : "check_circle"}
+                  </span>
+                  {editingAccountId ? "Update Account" : "Submit (Save & Next)"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -499,6 +990,18 @@ export default function WarehouseManagement() {
         >
           <span className="material-symbols-outlined text-sm text-teal-600">store</span>
           Sindh Parties &amp; Ledgers ({parties.length})
+        </button>
+
+        <button
+          onClick={() => handleTabChange("godowns")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === "godowns"
+              ? "bg-white text-teal-900 shadow-sm border border-teal-200"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          <span className="material-symbols-outlined text-sm text-teal-600">warehouse</span>
+          Godown Master ({godowns.length})
         </button>
 
         <button
@@ -821,12 +1324,10 @@ export default function WarehouseManagement() {
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
                   { id: "all", label: "All Companies" },
-                  { id: "BM Pvt LTD", label: "BM Pvt LTD" },
-                  { id: "Paul Brooks Homoeo Lab", label: "Paul Brooks" },
-                  { id: "MEKTUM Pvt Ltd", label: "MEKTUM" },
-                  { id: "BLOSSOM Homoeo Pharma", label: "BLOSSOM" },
-                  { id: "Schwabe / German", label: "Schwabe" },
-                  { id: "Local Pharma Market", label: "Local Market" },
+                  ...Array.from(new Set(inventory.map((i) => i.company_name).filter(Boolean))).map((name) => ({
+                    id: name,
+                    label: name,
+                  })),
                 ].map((c) => (
                   <button
                     key={c.id}
@@ -1451,136 +1952,9 @@ export default function WarehouseManagement() {
               </table>
             </div>
           </div>
-
-          {/* Add New Party Modal */}
-          {showAddPartyModal && (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-              <form
-                onSubmit={handleSaveParty}
-                className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-fadeIn"
-              >
-                <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                  <div className="flex items-center gap-2 text-teal-800 font-bold text-base">
-                    <span className="material-symbols-outlined text-teal-600">add_business</span>
-                    Register New Wholesale Party / Account
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddPartyModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-1">
-                      <label className="block text-xs font-bold text-gray-700 mb-1">
-                        Party Code:
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 1044"
-                        value={newPartyForm.party_code}
-                        onChange={(e) => setNewPartyForm({ ...newPartyForm, party_code: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono font-bold uppercase focus:outline-none focus:border-teal-600"
-                      />
-                      <span className="text-[9px] text-gray-400">Empty = Auto</span>
-                    </div>
-
-                    <div className="col-span-2">
-                      <label className="block text-xs font-bold text-gray-700 mb-1">
-                        Party / Store Name: *
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Al-Shifa Homeo Store"
-                        value={newPartyForm.name}
-                        onChange={(e) => setNewPartyForm({ ...newPartyForm, name: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-bold focus:outline-none focus:border-teal-600"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">
-                        City / Territory:
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Hyderabad"
-                        value={newPartyForm.city}
-                        onChange={(e) => setNewPartyForm({ ...newPartyForm, city: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-semibold focus:outline-none focus:border-teal-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">
-                        Phone / Contact:
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="0300-1234567"
-                        value={newPartyForm.phone}
-                        onChange={(e) => setNewPartyForm({ ...newPartyForm, phone: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono focus:outline-none focus:border-teal-600"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Address / Goods Transport:
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Medical Market / Al-Madina Goods Bilty"
-                      value={newPartyForm.address}
-                      onChange={(e) => setNewPartyForm({ ...newPartyForm, address: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs focus:outline-none focus:border-teal-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Opening Udhaar Balance (Rs):
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={newPartyForm.balance_due}
-                      onChange={(e) => setNewPartyForm({ ...newPartyForm, balance_due: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono font-bold text-amber-700 focus:outline-none focus:border-teal-600"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-3 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddPartyModal(false)}
-                    className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <span className="material-symbols-outlined text-base">check_circle</span>
-                    Save Party
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
         </div>
       )}
+
 
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* TAB 5: WHOLESALE INVOICES LOG                                       */}
@@ -1666,6 +2040,531 @@ export default function WarehouseManagement() {
         />
       )}
 
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* TAB: GODOWN / MULTI-WAREHOUSE MASTER MANAGEMENT                    */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {activeTab === "godowns" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-teal-100 shadow-sm">
+            <div>
+              <div className="font-bold text-gray-900">Godown / Warehouse Master</div>
+              <div className="text-xs text-gray-500 mt-0.5">Manage all storage godowns. Stock valuation is computed per-location.</div>
+            </div>
+            <button
+              onClick={() => {
+                setEditingGodown(null);
+                setGodownForm({ name: "", code: "", location: "", incharge_name: "", phone: "", notes: "", status: "active" });
+                setShowGodownModal(true);
+              }}
+              className="bg-teal-600 text-white px-4 py-2.5 rounded-2xl font-bold text-xs hover:bg-teal-700 transition-colors shadow-md flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-base">add_home_work</span>
+              Add New Godown
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {godowns.map((gd) => {
+              const val = dbWarehouses.getStockValuation(gd.id);
+              const itemCount = inventory.filter((i) => (i.location_stocks?.[gd.id] || (gd.id === "wh_001" ? i.warehouse_stock : gd.is_store_counter ? (i.store_stock ?? i.stock_qty) : 0) || 0) > 0).length;
+              return (
+                <div
+                  key={gd.id}
+                  className={`bg-white rounded-3xl border ${gd.is_store_counter ? "border-emerald-200" : gd.is_default ? "border-teal-300 ring-2 ring-teal-100" : "border-gray-200"} p-5 shadow-sm hover:shadow-md transition-all space-y-3`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${gd.is_store_counter ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-teal-50 border border-teal-200 text-teal-700"}`}>
+                        <span className="material-symbols-outlined text-2xl">{gd.is_store_counter ? "storefront" : "warehouse"}</span>
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900 text-sm leading-tight">{gd.name}</div>
+                        <div className="text-[10px] font-mono text-gray-400 mt-0.5">{gd.code}</div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${gd.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>
+                        {gd.status}
+                      </span>
+                      {gd.is_default && (
+                        <span className="text-[9px] font-black bg-teal-600 text-white px-2 py-0.5 rounded-full">PRIMARY</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-gray-600 bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                    <div className="flex justify-between"><span className="text-gray-400">Location:</span><span className="font-semibold truncate max-w-[160px]">{gd.location || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Incharge:</span><span className="font-bold text-teal-800">{gd.incharge_name || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Phone:</span><span className="font-semibold">{gd.phone || "—"}</span></div>
+                    <div className="flex justify-between border-t border-gray-200 pt-1.5">
+                      <span className="text-gray-400">Stock Items:</span><span className="font-black text-teal-700">{itemCount} SKUs</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Est. Value:</span>
+                      <span className="font-black text-gray-900">Rs. {val.totalValue.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  {gd.notes && <div className="text-[10px] text-gray-400 italic">{gd.notes}</div>}
+
+                  <div className="pt-1 border-t border-gray-100 flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingGodown(gd);
+                        setGodownForm({ name: gd.name, code: gd.code, location: gd.location || "", incharge_name: gd.incharge_name || "", phone: gd.phone || "", notes: gd.notes || "", status: gd.status || "active" });
+                        setShowGodownModal(true);
+                      }}
+                      className="flex-1 text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 py-2 rounded-xl transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-sm">edit</span>
+                      Edit
+                    </button>
+                    {!gd.is_store_counter && !gd.is_default && (
+                      <button
+                        onClick={() => {
+                          if (!window.confirm(`Delete godown "${gd.name}"? This cannot be undone.`)) return;
+                          const ok = dbWarehouses.delete(gd.id);
+                          if (!ok) { alert("Cannot delete this godown (system-protected)."); return; }
+                          refreshData();
+                        }}
+                        className="text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 py-2 px-3 rounded-xl transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {godowns.length === 0 && (
+              <div className="col-span-full text-center py-16 bg-white rounded-3xl border border-gray-200">
+                <span className="material-symbols-outlined text-5xl text-gray-300 block mb-2">warehouse</span>
+                <div className="text-gray-500 font-semibold text-sm">No godowns found.</div>
+                <button onClick={() => { setEditingGodown(null); setGodownForm({ name: "", code: "", location: "", incharge_name: "", phone: "", notes: "", status: "active" }); setShowGodownModal(true); }} className="mt-3 bg-teal-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-teal-700">
+                  + Add First Godown
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Godown Add/Edit Modal (React Portal) */}
+      {showGodownModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            className="bg-white max-w-md w-full rounded-3xl p-6 border border-gray-200 shadow-2xl space-y-4 animate-scaleUp"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!godownForm.name.trim()) { alert("Godown name is required."); return; }
+              if (editingGodown) {
+                dbWarehouses.update(editingGodown.id, godownForm);
+              } else {
+                dbWarehouses.add(godownForm);
+              }
+              setShowGodownModal(false);
+              refreshData();
+            }}
+          >
+            <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
+              <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>warehouse</span>
+                {editingGodown ? `Edit: ${editingGodown.name}` : "Add New Godown"}
+              </h3>
+              <button type="button" onClick={() => setShowGodownModal(false)} className="text-gray-400 hover:text-gray-700">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+              <div className="col-span-2">
+                <label className="block text-gray-600 mb-1">Godown Name *</label>
+                <input type="text" required value={godownForm.name} onChange={(e) => setGodownForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Main Godown (Lajpat Road)" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold" />
+              </div>
+              <div>
+                <label className="block text-gray-600 mb-1">Short Code</label>
+                <input type="text" value={godownForm.code} onChange={(e) => setGodownForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. GDW-03" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-mono" />
+              </div>
+              <div>
+                <label className="block text-gray-600 mb-1">Status</label>
+                <select value={godownForm.status} onChange={(e) => setGodownForm((f) => ({ ...f, status: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-gray-600 mb-1">Location / Address</label>
+                <input type="text" value={godownForm.location} onChange={(e) => setGodownForm((f) => ({ ...f, location: e.target.value }))} placeholder="e.g. Site Area, Near Bus Stop, Hyderabad" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs" />
+              </div>
+              <div>
+                <label className="block text-gray-600 mb-1">Incharge Name</label>
+                <input type="text" value={godownForm.incharge_name} onChange={(e) => setGodownForm((f) => ({ ...f, incharge_name: e.target.value }))} placeholder="e.g. Raza Ahmed" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs" />
+              </div>
+              <div>
+                <label className="block text-gray-600 mb-1">Phone</label>
+                <input type="text" value={godownForm.phone} onChange={(e) => setGodownForm((f) => ({ ...f, phone: e.target.value }))} placeholder="03001234567" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-gray-600 mb-1">Notes</label>
+                <input type="text" value={godownForm.notes} onChange={(e) => setGodownForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional notes about this godown" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs" />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={() => setShowGodownModal(false)} className="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
+              <button type="submit" className="flex-1 bg-teal-600 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-teal-700 transition-colors">
+                {editingGodown ? "Save Changes" : "Add Godown"}
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+
+      {/* DrCreate / MS Access Style: Chart Of Accounts _List Popup Modal (React Portal) */}
+      {showChartOfAccountsModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+          <div className="bg-white max-w-4xl w-full rounded-3xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-scaleUp">
+            
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 px-6 py-4 flex items-center justify-between text-white shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                  <span className="material-symbols-outlined text-emerald-300 text-2xl">folder_shared</span>
+                </div>
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-white flex items-center gap-2">
+                    Chart Of Accounts _List
+                    <span className="text-[10px] bg-emerald-700/80 text-emerald-100 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
+                      {modalFilteredAccounts.length} / {accounts.length} Accounts
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-emerald-100/80">
+                    Master ledger directory of Wholesale Stores, Pharma Companies, Salesmen &amp; Financial Heads
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowChartOfAccountsModal(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            {/* Modal Filter & Search Bar */}
+            <div className="p-4 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label className="text-xs font-bold text-gray-600 whitespace-nowrap">Filter Type:</label>
+                <select
+                  value={modalAccountTypeFilter}
+                  onChange={(e) => setModalAccountTypeFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold text-gray-800 bg-white focus:ring-2 focus:ring-emerald-500 outline-none w-full sm:w-48"
+                >
+                  {distinctAccountTypes.map((t) => (
+                    <option key={t} value={t}>
+                      {t === "All" ? "All Account Types" : t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-sm">search</span>
+                <input
+                  type="text"
+                  placeholder="Search by Name, No, Type..."
+                  value={modalAccountSearch}
+                  onChange={(e) => setModalAccountSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-300 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none placeholder:text-gray-400 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Legacy Import Notification Banner */}
+            {accessAccountsImportStatus.result && (
+              <div className="px-6 py-2 bg-emerald-50 border-b border-emerald-200 text-xs text-emerald-800 font-bold flex items-center justify-between">
+                <span>✅ Successfully imported {accessAccountsImportStatus.result.count} legacy accounts from AshrafKhan.accdb! Total: {accessAccountsImportStatus.result.total}</span>
+                <button onClick={() => setAccessAccountsImportStatus({ loading: false, result: null, error: "" })} className="text-emerald-900 hover:underline">Dismiss</button>
+              </div>
+            )}
+            {accessAccountsImportStatus.error && (
+              <div className="px-6 py-2 bg-rose-50 border-b border-rose-200 text-xs text-rose-800 font-bold flex items-center justify-between">
+                <span>❌ Import error: {accessAccountsImportStatus.error}</span>
+                <button onClick={() => setAccessAccountsImportStatus({ loading: false, result: null, error: "" })} className="text-rose-900 hover:underline">Dismiss</button>
+              </div>
+            )}
+
+            {/* Accounts Table */}
+            <div className="flex-1 overflow-y-auto p-4 max-h-[55vh] custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+
+                <thead className="sticky top-0 bg-white shadow-sm z-10">
+                  <tr className="border-b-2 border-emerald-100 text-[11px] font-black text-gray-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-3">Account Name</th>
+                    <th className="py-2.5 px-3 text-center w-24">No</th>
+                    <th className="py-2.5 px-3 w-36">Account Type</th>
+                    <th className="py-2.5 px-3">Naration / Notes</th>
+                    <th className="py-2.5 px-3 text-center w-28">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-xs">
+                  {modalFilteredAccounts.length > 0 ? (
+                    modalFilteredAccounts.map((a) => (
+                      <tr
+                        key={a.id || a.account_no}
+                        onClick={() => handleSelectAccountForEdit(a)}
+                        className="hover:bg-emerald-50/70 cursor-pointer transition-colors group"
+                        title="Click to pick and edit this account"
+                      >
+                        <td className="py-2.5 px-3 font-bold text-gray-900 group-hover:text-emerald-800">
+                          {a.account_name}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-800 bg-emerald-50/30 rounded-lg">
+                          #{a.account_no}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            a.account_type === "Supplier"
+                              ? "bg-purple-100 text-purple-800 border border-purple-200"
+                              : a.account_type === "Cash" || a.account_type === "Expense"
+                              ? "bg-amber-100 text-amber-800 border border-amber-200"
+                              : "bg-teal-100 text-teal-800 border border-teal-200"
+                          }`}>
+                            {a.account_type}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-500 truncate max-w-xs">
+                          {a.naration || "-"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectAccountForEdit(a);
+                            }}
+                            className="px-2.5 py-1 rounded-xl bg-emerald-100 group-hover:bg-emerald-600 group-hover:text-white text-emerald-800 text-xs font-bold flex items-center gap-1 mx-auto transition-all shadow-sm active:scale-95"
+                          >
+                            <span className="material-symbols-outlined text-xs">edit</span>
+                            Pick / Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="text-center py-12 text-gray-400 font-semibold">
+                        <span className="material-symbols-outlined text-4xl block mb-1 text-gray-300">folder_off</span>
+                        No accounts found matching filter.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+
+              </table>
+            </div>
+
+            {/* Modal Bottom Action Buttons */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleImportLegacyAccounts}
+                  disabled={accessAccountsImportStatus.loading}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                  title="Import all 262 real registered accounts from AshrafKhan.accdb"
+                >
+                  <span className="material-symbols-outlined text-sm">download</span>
+                  {accessAccountsImportStatus.loading ? "Importing..." : "📥 Import Access Accounts (262)"}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => printChartOfAccountsReceipt(modalFilteredAccounts, modalAccountTypeFilter, dbClinic.get())}
+                  className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm">print</span>
+                  Print List
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => dbAccounts.exportCSV(modalFilteredAccounts, `chart_of_accounts_${modalAccountTypeFilter}.csv`)}
+                  className="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm">file_download</span>
+                  Export List
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowChartOfAccountsModal(false)}
+                  className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-bold transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* DrCreate 4-Level Stock Ledger Modal */}
+      <StockLedgerModal
+        isOpen={showStockLedgerModal}
+        onClose={() => {
+          setShowStockLedgerModal(false);
+          setLedgerInitialItem(null);
+        }}
+        initialItem={ledgerInitialItem}
+      />
+
+      {/* DrCreate & MS Access Sale Invoice Form & List Modal */}
+      <SaleInvoiceModal
+        isOpen={showSaleInvoiceModal}
+        onClose={() => setShowSaleInvoiceModal(false)}
+      />
+
+      {/* Add New Wholesale Party Modal (Global React Portal) */}
+      {showAddPartyModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <form
+            onSubmit={handleSaveParty}
+            className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scaleUp border border-gray-100"
+          >
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2 text-teal-800 font-bold text-base">
+                <span className="material-symbols-outlined text-teal-600">add_business</span>
+                Register New Wholesale Party / Account
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddPartyModal(false)}
+                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-1">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Party Code:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 1044"
+                    value={newPartyForm.party_code}
+                    onChange={(e) => setNewPartyForm({ ...newPartyForm, party_code: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono font-bold uppercase focus:outline-none focus:border-teal-600"
+                  />
+                  <span className="text-[9px] text-gray-400">Empty = Auto</span>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Party / Store Name: *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Al-Shifa Homeo Store"
+                    value={newPartyForm.name}
+                    onChange={(e) => setNewPartyForm({ ...newPartyForm, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-bold focus:outline-none focus:border-teal-600"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    City / Territory:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Hyderabad"
+                    value={newPartyForm.city}
+                    onChange={(e) => setNewPartyForm({ ...newPartyForm, city: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-semibold focus:outline-none focus:border-teal-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Phone / Contact:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="0300-1234567"
+                    value={newPartyForm.phone}
+                    onChange={(e) => setNewPartyForm({ ...newPartyForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono focus:outline-none focus:border-teal-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Address / Goods Transport:
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Medical Market / Al-Madina Goods Bilty"
+                  value={newPartyForm.address}
+                  onChange={(e) => setNewPartyForm({ ...newPartyForm, address: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs focus:outline-none focus:border-teal-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Opening Udhaar Balance (Rs):
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={newPartyForm.balance_due}
+                  onChange={(e) => setNewPartyForm({ ...newPartyForm, balance_due: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono font-bold text-amber-700 focus:outline-none focus:border-teal-600"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowAddPartyModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">check_circle</span>
+                Save Party
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+
     </div>
   );
 }
+
+
+
+

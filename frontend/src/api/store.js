@@ -95,3 +95,19 @@ export function getDashboardSummary() {
   const lowCount  = dbInventory.getLowStock().length;
   return { success: true, data: { patients_today: todayV.length, fees_today: feesToday, low_stock_count: lowCount }, error: null };
 }
+
+export function bulkImportInventory(items, mode = "merge") {
+  const result = dbInventory.bulkImport(items, mode);
+  return result.success ? { success: true, data: result, error: null } : { success: false, data: null, error: { code: "IMPORT_ERROR", message: result.message || "Failed to import items" } };
+}
+
+export async function bulkImportAccessInventory(limit = 4236, defaultStock = { store: 15, godown: 35 }) {
+  const result = await dbInventory.bulkImportFromAccess(limit, defaultStock);
+  return result.success ? { success: true, data: result, error: null } : { success: false, data: null, error: { code: "MIGRATION_ERROR", message: result.message || "Failed to import legacy Access catalog" } };
+}
+
+export async function getAccessInventoryCatalog() {
+  return { success: true, data: await dbInventory.getAccessCatalog(), error: null };
+}
+
+

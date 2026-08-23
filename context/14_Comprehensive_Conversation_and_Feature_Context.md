@@ -56,11 +56,29 @@
 
 ### Milestone 11 — Wholesale Cheque Payment & Overall Bill-Level Trade Discounts
 - **Cheque / Bank Payment Option:** Added `Cheque / Bank Transfer` payment mode with Cheque # / Ref, Bank Name, Clearance Date, and Cheque Amount fields.
-- **Overall Invoice Discounts:** Added overall percentage (%) discount and overall flat (Rs) discount on the entire B2B bill subtotal, with real-time net payable calculations.
+### Milestone 12 — Comprehensive Codebase Audit: Bugs, Performance, Cache & System Design Analysis
+- **Comprehensive Bug Audit:**
+  - *Silent Stock Drop on New Medicine Purchases:* Discovered `dbPurchases.add()` skips adding stock when a new medicine is purchased without a pre-existing `inventory_id`, and misses multi-unit conversions (`convertUnitsToBase`).
+  - *Supplier Ledger Disconnection:* `dbPurchases.add()` updates supplier balance but omits `PURCHASE_BILL` entry in `dbSupplierLedger`.
+  - *Godown (`location_stocks`) vs Counter (`store_stock`) State Desynchronization:* `deductStock` and `addStock` in `db.js` update legacy stock fields without updating `location_stocks['wh_str']`.
+  - *Pakistan Standard Time (UTC+5) Date Shift in Token Generation:* Late night tokens generated between 12:00 AM and 5:00 AM PKT collide with previous day UTC tokens due to `toISOString().split('T')[0]`.
+  - *Skipped Token Re-issue Sequence Race Condition:* Redundant double disk reads and mismatched ID generators in `reissueLateToken`.
+- **Functions Slowing Down App & Performance Bottlenecks:**
+  - *$O(N × M) Disk Writes in Checkout Loops:* Cart checkout iterates items and calls `deductStock` individually, triggering repeated full 2000-item `JSON.stringify` disk writes.
+  - *Unmemoized Linear Search on Keystrokes:* `dbInventory.search()` maps over full inventory to resolve fallback company names on every typed letter without debouncing.
+  - *Monolithic Seed Bundle:* 127KB (3,717 lines) embedded mock data parsed on startup.
+  - *Unbounded Polling Timers:* `setInterval` polling across multiple queue screens triggering unnecessary re-renders.
+- **Cache System Deep Dive:**
+  - *Direct Reference Mutation Risk:* In-memory `_COLLECTION_CACHE` returns mutable array references that can desync from `localStorage`.
+  - *Cross-Tab Cache Invalidation Gap:* Multi-tab updates lack automatic `storage` event listeners for cross-tab cache invalidation.
+  - *Redundant Company Name Mapping:* `dbInventory.getAll()` runs a full array transformation on every cache hit.
+- **System Design Principles:**
+  - Identified requirement to consolidate stock into a canonical `location_stocks` map (SSOT), introduce atomic transaction wrappers, and migrate heavy base64 image blobs to IndexedDB.
 
 ---
 
 ## 🔒 3. Golden Rules for Future AI Coding Sessions
 1. Always read `ClinicFlow/context/08_AI_Rules_and_Constraints.md` and `.agents/rules/AGENTS.md` before making changes.
-2. Update context files (`04_Screens_and_Sitemap.md`, `09_Progress_Log.md`) before editing source code.
+2. Update context files (`04_Screens_and_Sitemap.md`, `09_Progress_Log.md`, `14_Comprehensive_Conversation_and_Feature_Context.md`) before editing source code.
 3. Verify all changes with `npm run build` (maintain 0 errors, 0 warnings).
+

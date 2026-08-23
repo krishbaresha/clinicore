@@ -1,12 +1,285 @@
-import { useState, useEffect } from "react";
-import { dbSuppliers, dbPurchases, dbInventory, dbClinic } from "../api/db.js";
-import { printSupplierPurchaseReceipt } from "../utils/thermalPrinter.js";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { dbSuppliers, dbPurchases, dbInventory, dbClinic, dbSupplierLedger, dbAccounts, dbGrnMetadata } from "../api/db.js";
+import { printSupplierPurchaseReceipt, printPurchaseGRNReceipt } from "../utils/thermalPrinter.js";
+
+/**
+ * Expandable Combobox with built-in instant search and tall scrollable dropdown (DrCreate / MS Access Style)
+ */
+function ExpandableCombobox({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select or search...",
+  searchPlaceholder = "Type to search...",
+  onAddNew,
+  addNewLabel = "+ New",
+  required = false,
+  className = "",
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const filteredOptions = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase();
+    return options.filter((opt) =>
+      (opt.label || "").toLowerCase().includes(q) ||
+      (opt.sublabel || "").toLowerCase().includes(q) ||
+      (opt.badge || "").toLowerCase().includes(q)
+    );
+  }, [options, search]);
+
+  const selectedOpt = options.find((o) => o.id === value || o.label === value);
+
+  return (
+    <div ref={dropdownRef} className={`relative ${className}`}>
+      {label && (
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-[11px] font-bold text-gray-700">
+            {label} {required && <span className="text-rose-500">*</span>}
+          </label>
+          {onAddNew && (
+            <button
+              type="button"
+              onClick={onAddNew}
+              className="text-[10px] text-emerald-700 hover:text-emerald-900 font-black flex items-center gap-0.5"
+            >
+              <span className="material-symbols-outlined text-xs">add</span>
+              {addNewLabel}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Trigger Box */}
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen(!isOpen);
+          setSearch("");
+        }}
+        className={`w-full bg-white border ${isOpen ? "border-emerald-500 ring-2 ring-emerald-100" : "border-gray-300 hover:border-gray-400"} rounded-xl px-3 py-2 text-xs font-bold text-left flex items-center justify-between shadow-sm transition-all`}
+      >
+        <span className={`truncate ${selectedOpt ? "text-gray-900 font-black" : "text-gray-400 font-medium"}`}>
+          {selectedOpt ? (
+            <span className="flex items-center gap-1.5 truncate">
+              {selectedOpt.badge && (
+                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-800">
+                  {selectedOpt.badge}
+                </span>
+              )}
+              <span className="truncate">{selectedOpt.label}</span>
+              {selectedOpt.sublabel && (
+                <span className="text-gray-400 text-[10px] font-normal truncate">({selectedOpt.sublabel})</span>
+              )}
+            </span>
+          ) : (
+            placeholder
+          )}
+        </span>
+        <span className={`material-symbols-outlined text-base text-gray-400 transition-transform ${isOpen ? "rotate-180 text-emerald-600" : ""}`}>
+          arrow_drop_down
+        </span>
+      </button>
+
+      {/* Expandable Tall Dropdown Popup (10-15 rows visible with scroll) */}
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-emerald-300 shadow-2xl z-50 overflow-hidden animate-fade-in flex flex-col max-h-72">
+          {/* Search Header */}
+          <div className="p-2 border-b border-gray-100 bg-gray-50 flex items-center gap-1.5 sticky top-0 z-10">
+            <span className="material-symbols-outlined text-base text-emerald-700">search</span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={searchPlaceholder}
+              autoFocus
+              className="w-full bg-transparent border-0 text-xs font-bold text-gray-800 placeholder-gray-400 focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="text-gray-400 hover:text-gray-600 p-0.5"
+              >
+                <span className="material-symbols-outlined text-xs">close</span>
+              </button>
+            )}
+          </div>
+
+          {/* Options List */}
+          <div className="overflow-y-auto flex-1 p-1 space-y-0.5 max-h-60">
+            {filteredOptions.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-xs font-semibold">
+                No matches found for "{search}"
+              </div>
+            ) : (
+              filteredOptions.map((opt) => {
+                const isSelected = opt.id === value || opt.label === value;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt.id, opt);
+                      setIsOpen(false);
+                      setSearch("");
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors ${
+                      isSelected
+                        ? "bg-emerald-600 text-white font-black"
+                        : "hover:bg-emerald-50 text-gray-800 font-bold"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      {opt.badge && (
+                        <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black ${
+                          isSelected ? "bg-emerald-800 text-white" : "bg-emerald-100 text-emerald-800"
+                        }`}>
+                          {opt.badge}
+                        </span>
+                      )}
+                      <span className="truncate">{opt.label}</span>
+                      {opt.sublabel && (
+                        <span className={`text-[10px] font-medium truncate ${isSelected ? "text-emerald-200" : "text-gray-400"}`}>
+                          {opt.sublabel}
+                        </span>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <span className="material-symbols-outlined text-sm">check</span>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Filter inventory list dynamically by Supplier / Manufacturer Company Name
+ */
+function filterInventoryByCompanyOrSupplier(inventoryList, companyOrSupplierStr, supplierObj = null) {
+  if (!companyOrSupplierStr || companyOrSupplierStr === "all" || companyOrSupplierStr === "All") {
+    return inventoryList;
+  }
+
+  const raw = (companyOrSupplierStr || "").toLowerCase().trim();
+  const cleanName = raw
+    .replace(/\(.*\)/g, "")
+    .replace(/\b(pvt|ltd|limited|pharma|homoeo|homeopathic|lab|laboratories|co|store|agency|distributors?)\b/gi, "")
+    .trim();
+
+  const filtered = inventoryList.filter((inv) => {
+    const invComp = (inv.company_name || "").toLowerCase().trim();
+    const invSup = (inv.supplier_name || "").toLowerCase().trim();
+    const invCode = (inv.item_code || "").toLowerCase().trim();
+
+    // 1. Direct equality or substring
+    if (invComp && (invComp === raw || raw.includes(invComp) || invComp.includes(cleanName))) return true;
+    if (cleanName && invComp && (invComp.includes(cleanName) || cleanName.includes(invComp))) return true;
+    if (invSup && (invSup === raw || raw.includes(invSup) || invSup.includes(cleanName))) return true;
+
+    // 2. Supplier ID match
+    if (supplierObj && inv.supplier_id && inv.supplier_id === supplierObj.id) return true;
+
+    // 3. Known company brand abbreviations & prefixes
+    if (cleanName.includes("bm") && (invComp.includes("bm") || invCode.startsWith("bm-"))) return true;
+    if (cleanName.includes("paul") || cleanName.includes("brooks")) {
+      if (invComp.includes("paul") || invComp.includes("brooks") || invCode.startsWith("pb-")) return true;
+    }
+    if (cleanName.includes("schwabe") || cleanName.includes("german")) {
+      if (invComp.includes("schwabe") || invComp.includes("german") || invCode.startsWith("sc-") || invCode.startsWith("sch-")) return true;
+    }
+    if (cleanName.includes("mektum") || cleanName.includes("mkt")) {
+      if (invComp.includes("mektum") || invCode.startsWith("mek-") || invCode.startsWith("mkt-")) return true;
+    }
+    if (cleanName.includes("blossom") || cleanName.includes("bls")) {
+      if (invComp.includes("blossom") || invCode.startsWith("bls-")) return true;
+    }
+    if (cleanName.includes("eagle") || cleanName.includes("egl")) {
+      if (invComp.includes("eagle") || invCode.startsWith("egl-") || invCode.startsWith("eah-")) return true;
+    }
+    if (cleanName.includes("hfp")) {
+      if (invComp.includes("hfp") || invCode.startsWith("hfp-")) return true;
+    }
+
+    return false;
+  });
+
+  return filtered;
+}
 
 export default function SupplierPurchases() {
   const [suppliers, setSuppliers] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [inventoryList, setInventoryList] = useState([]);
+  const [accountsList, setAccountsList] = useState([]);
   const [activeTab, setActiveTab] = useState("suppliers"); // "suppliers" | "bills" | "new_purchase"
+
+  // DrCreate Purchase GRN Form State
+  const [showPurchaseGRNForm, setShowPurchaseGRNForm] = useState(false);
+  const [grnShowAllCompanies, setGrnShowAllCompanies] = useState(false);
+  const [tab4ShowAllCompanies, setTab4ShowAllCompanies] = useState(false);
+  const [referencesList, setReferencesList] = useState([]);
+  const [transportsList, setTransportsList] = useState([]);
+  const [showNewRefInput, setShowNewRefInput] = useState(false);
+  const [newRefText, setNewRefText] = useState("");
+  const [showNewTransportInput, setShowNewTransportInput] = useState(false);
+  const [newTransportText, setNewTransportText] = useState("");
+
+
+  const [grnForm, setGrnForm] = useState({
+    date: new Date().toLocaleDateString("en-US"),
+    voucher_no: "P-1001",
+    grn_no: "0",
+    reference: "",
+    account_name: "",
+    naration: "",
+    type: "Supplier",
+    payment_mode: "Cash",
+    transport: "By Hand",
+    bilty_no: "",
+    destination_type: "warehouse",
+  });
+
+  const [grnCart, setGrnCart] = useState({
+    product_code: "",
+    medicine_name: "",
+    inventory_id: "",
+    qty: "1",
+    rate: "",
+    gross: "",
+    disc_pct: "40",
+    disc_flat: "0",
+    net_amount: "",
+  });
+
+  const [grnItems, setGrnItems] = useState([]);
+  const [showGRNListModal, setShowGRNListModal] = useState(false);
+  const [grnListSearch, setGrnListSearch] = useState("");
+  const [grnListSupplierFilter, setGrnListSupplierFilter] = useState("All");
+  const grnProductInputRef = useRef(null);
+  const grnItemsEndRef = useRef(null);
+  const grnTableContainerRef = useRef(null);
+
 
   // Selected Supplier Drawer / Modal
   const [selectedSupplierDrawer, setSelectedSupplierDrawer] = useState(null);
@@ -14,11 +287,15 @@ export default function SupplierPurchases() {
 
   // New Purchase Form
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
+
   const [companyBillNoInput, setCompanyBillNoInput] = useState("");
   const [paidAmountInput, setPaidAmountInput] = useState("");
   const [purchaseItems, setPurchaseItems] = useState([
     { inventory_id: "", medicine_name: "", category: "Tablet", strength: "500 mg", received_unit_type: "box", unit_label: "pack", batch_no: "", expiry_date: "", qty: 1, cost_price: "", sale_price: "" }
   ]);
+
+  const itemsContainerRef = useRef(null);
+  const itemsEndRef = useRef(null);
 
   // View Invoice Detail Modal
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState(null);
@@ -33,26 +310,288 @@ export default function SupplierPurchases() {
   // Payment Settlement Modal
   const [paySupplierModal, setPaySupplierModal] = useState(null);
   const [payAmountInput, setPayAmountInput] = useState("");
+  const [paymentMode, setPaymentMode] = useState("cash"); // "cash" | "cheque" | "bank"
+  const [paymentRef, setPaymentRef] = useState(""); // Cheque # or Bank Ref
+  const [paymentNote, setPaymentNote] = useState("");
+
+  // Supplier Ledger History Drawer
+  const [ledgerDrawerSupplier, setLedgerDrawerSupplier] = useState(null);
+  const [supplierLedgerTxns, setSupplierLedgerTxns] = useState([]);
 
   // Global Bills Search
   const [globalBillsSearch, setGlobalBillsSearch] = useState("");
 
   const refreshData = () => {
     setSuppliers(dbSuppliers.getAll());
-    setPurchases(dbPurchases.getAll());
+    const purs = dbPurchases.getAll();
+    setPurchases(purs);
     setInventoryList(dbInventory.getAll());
+    setAccountsList(dbAccounts.getAll());
+    setReferencesList(dbGrnMetadata.getReferences());
+    setTransportsList(dbGrnMetadata.getTransports());
+    setGrnForm((prev) => ({
+      ...prev,
+      voucher_no: dbPurchases.getNextVoucherNo(),
+    }));
   };
+
+  const handleAddNewReference = () => {
+    if (!newRefText.trim()) return;
+    const added = dbGrnMetadata.addReference(newRefText.trim());
+    setReferencesList(dbGrnMetadata.getReferences());
+    setGrnForm((prev) => ({ ...prev, reference: added }));
+    setNewRefText("");
+    setShowNewRefInput(false);
+  };
+
+  const handleAddNewTransport = () => {
+    if (!newTransportText.trim()) return;
+    const added = dbGrnMetadata.addTransport(newTransportText.trim());
+    setTransportsList(dbGrnMetadata.getTransports());
+    setGrnForm((prev) => ({ ...prev, transport: added }));
+    setNewTransportText("");
+    setShowNewTransportInput(false);
+  };
+
+  const accountOptions = useMemo(() => {
+    const list = [];
+    suppliers.forEach((s) => {
+      list.push({
+        id: s.name,
+        label: s.name,
+        sublabel: s.contact_person || "Pharma Supplier",
+        badge: "🏢 Supplier",
+      });
+    });
+    accountsList.forEach((a) => {
+      if (!suppliers.some((s) => s.name.toLowerCase() === a.account_name.toLowerCase())) {
+        list.push({
+          id: a.account_name,
+          label: a.account_name,
+          sublabel: a.city || a.phone || a.account_type,
+          badge: `📒 ${a.account_type || "Account"}`,
+        });
+      }
+    });
+    return list;
+  }, [suppliers, accountsList]);
+
+  const referenceOptions = useMemo(() => {
+    return referencesList.map((r) => ({
+      id: r,
+      label: r,
+      badge: "👤 Rep",
+    }));
+  }, [referencesList]);
+
+  const transportOptions = useMemo(() => {
+    return transportsList.map((t) => ({
+      id: t,
+      label: t,
+      badge: "🚚 Carrier",
+    }));
+  }, [transportsList]);
+
+  // Dynamic Company-Filtered Inventory for Tab 1 (Purchase GRN _Form)
+  const filteredGrnInventory = useMemo(() => {
+    if (grnShowAllCompanies || !grnForm.account_name) return inventoryList;
+    const matched = filterInventoryByCompanyOrSupplier(inventoryList, grnForm.account_name);
+    return matched.length > 0 ? matched : inventoryList;
+  }, [inventoryList, grnForm.account_name, grnShowAllCompanies]);
+
+  const productOptions = useMemo(() => {
+    return filteredGrnInventory.map((inv) => ({
+      id: inv.id,
+      label: inv.medicine_name,
+      sublabel: `Cost: Rs. ${inv.cost_price_per_box || inv.cost_price || 0} · Godown: ${inv.warehouse_stock || 0}`,
+      badge: inv.company_name || inv.item_code || inv.category || "MED",
+      raw: inv,
+    }));
+  }, [filteredGrnInventory]);
 
   useEffect(() => {
     refreshData();
   }, []);
 
+
+  // DrCreate Purchase GRN Form Handlers
+  const handleSelectGRNMedicine = (invId) => {
+    if (!invId) {
+      setGrnCart((prev) => ({ ...prev, inventory_id: "", medicine_name: "", product_code: "", rate: "", gross: "", net_amount: "" }));
+      return;
+    }
+    const inv = inventoryList.find((i) => i.id === invId);
+    if (!inv) return;
+    const rate = inv.cost_price_per_box || inv.cost_price || inv.unit_sale_price || 0;
+    const qty = Number(grnCart.qty) || 1;
+    const gross = qty * rate;
+    const discPct = Number(grnCart.disc_pct) || 0;
+    const discFlat = Number(grnCart.disc_flat) || 0;
+    const net = Math.max(0, gross - (gross * (discPct / 100)) - discFlat);
+
+    setGrnCart({
+      product_code: inv.item_code || inv.company_name || "",
+      medicine_name: inv.medicine_name,
+      inventory_id: inv.id,
+      qty: String(qty),
+      rate: String(rate),
+      gross: String(gross),
+      disc_pct: grnCart.disc_pct || "40",
+      disc_flat: grnCart.disc_flat || "0",
+      net_amount: String(net),
+    });
+  };
+
+  const handleUpdateGRNCart = (field, val) => {
+    setGrnCart((prev) => {
+      const updated = { ...prev, [field]: val };
+      const q = Number(field === "qty" ? val : updated.qty) || 0;
+      const r = Number(field === "rate" ? val : updated.rate) || 0;
+      const gross = q * r;
+      const dPct = Number(field === "disc_pct" ? val : updated.disc_pct) || 0;
+      const dFlat = Number(field === "disc_flat" ? val : updated.disc_flat) || 0;
+      const net = Math.max(0, gross - (gross * (dPct / 100)) - dFlat);
+      updated.gross = String(gross);
+      updated.net_amount = String(net);
+      return updated;
+    });
+  };
+
+  const handleAddGRNItem = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!grnCart.medicine_name.trim()) {
+      alert("Please select or enter a Product Name.");
+      grnProductInputRef.current?.focus();
+      return;
+    }
+    if (Number(grnCart.qty) <= 0) {
+      alert("Please enter a valid Quantity.");
+      return;
+    }
+
+    const q = Number(grnCart.qty) || 1;
+    const r = Number(grnCart.rate) || 0;
+    const gross = q * r;
+    const dPct = Number(grnCart.disc_pct) || 0;
+    const dFlat = Number(grnCart.disc_flat) || 0;
+    const net = Math.max(0, gross - (gross * (dPct / 100)) - dFlat);
+
+    const newItem = {
+      id: "item_" + Date.now(),
+      inventory_id: grnCart.inventory_id || "",
+      product_code: grnCart.product_code,
+      medicine_name: grnCart.medicine_name.trim(),
+      qty: q,
+      qty_base_units: q,
+      rate: r,
+      cost_price: r,
+      gross: gross,
+      disc_pct: dPct > 0 ? `${dPct}%` : "0%",
+      disc_pct_num: dPct,
+      disc_flat: dFlat,
+      net: net,
+      total_cost: net,
+    };
+
+    setGrnItems((prev) => [...prev, newItem]);
+    setGrnCart({
+      product_code: "",
+      medicine_name: "",
+      inventory_id: "",
+      qty: "1",
+      rate: "",
+      gross: "",
+      disc_pct: "40",
+      disc_flat: "0",
+      net_amount: "",
+    });
+    setTimeout(() => {
+      if (grnTableContainerRef.current) {
+        grnTableContainerRef.current.scrollTop = grnTableContainerRef.current.scrollHeight;
+      }
+      if (grnItemsEndRef.current) {
+        grnItemsEndRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      grnProductInputRef.current?.focus();
+    }, 40);
+  };
+
+
+
+  const handleRemoveGRNItem = (idx) => {
+    setGrnItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveGRNBill = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (grnItems.length === 0) {
+      alert("Please add at least 1 medicine item to the cart before saving bill.");
+      return;
+    }
+    if (!grnForm.account_name.trim()) {
+      alert("Please select or enter Supplier Account Name.");
+      return;
+    }
+
+    const totalBill = grnItems.reduce((sum, it) => sum + (Number(it.net) || 0), 0);
+    const paidAmount = grnForm.payment_mode === "Cash" ? totalBill : 0;
+    const matchedSup = suppliers.find((s) => s.name.toLowerCase() === grnForm.account_name.toLowerCase());
+
+    const savedPur = dbPurchases.add({
+      invoice_no: grnForm.voucher_no || dbPurchases.getNextVoucherNo(),
+      supplier_name: grnForm.account_name,
+      supplier_id: matchedSup ? matchedSup.id : undefined,
+      grn_no: grnForm.grn_no || "0",
+      reference: grnForm.reference || "",
+      transport: grnForm.transport || "By Hand",
+      bilty_no: grnForm.bilty_no || "",
+      payment_mode: grnForm.payment_mode,
+      destination_type: grnForm.destination_type || "warehouse",
+      purchase_date: grnForm.date || new Date().toISOString(),
+      items: grnItems,
+      total_amount: totalBill,
+      paid_amount: paidAmount,
+      balance_due: totalBill - paidAmount,
+      notes: `Purchase GRN: ${grnForm.voucher_no} | Transport: ${grnForm.transport} | Bilty: ${grnForm.bilty_no}`,
+    });
+
+    // Auto-Print Thermal GRN Slip
+    printPurchaseGRNReceipt(savedPur, dbClinic.get());
+
+    // Reset Form for next entry
+    setGrnItems([]);
+    setGrnCart({
+      product_code: "",
+      medicine_name: "",
+      inventory_id: "",
+      qty: "1",
+      rate: "",
+      gross: "",
+      disc_pct: "40",
+      disc_flat: "0",
+      net_amount: "",
+    });
+    setGrnForm((prev) => ({
+      ...prev,
+      voucher_no: dbPurchases.getNextVoucherNo(),
+      grn_no: "0",
+      bilty_no: "",
+    }));
+    refreshData();
+    alert(`Purchase GRN ${savedPur.invoice_no} saved successfully & stock updated in Godown!`);
+  };
+
   const handleAddItemRow = () => {
-    setPurchaseItems([
-      ...purchaseItems,
+
+    setPurchaseItems((prev) => [
+      ...prev,
       { inventory_id: "", medicine_name: "", category: "Tablet", strength: "", received_unit_type: "box", unit_label: "pack", batch_no: "", expiry_date: "", qty: 1, cost_price: "", sale_price: "" }
     ]);
+    setTimeout(() => {
+      itemsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 60);
   };
+
 
   const handleSelectExistingMedicine = (index, inventoryId) => {
     const updated = [...purchaseItems];
@@ -132,8 +671,12 @@ export default function SupplierPurchases() {
           medicine_name: i.medicine_name,
           category: i.category || "Tablet",
           strength: i.strength || "",
+          company_name: supplier?.name || "",
+          has_multi_unit: Boolean(i.has_multi_unit || (Number(i.strips_per_box) > 1 || Number(i.units_per_strip) > 1)),
           received_unit_type: i.received_unit_type || "box",
           unit_label: i.unit_label || "pack",
+          box_label: i.box_label || "Pack",
+          strip_label: i.strip_label || "Strip",
           strips_per_box: Number(i.strips_per_box) || 10,
           units_per_strip: Number(i.units_per_strip) || 10,
           batch_no: i.batch_no || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -181,9 +724,19 @@ export default function SupplierPurchases() {
   const handleSupplierPayment = (e) => {
     e.preventDefault();
     if (!paySupplierModal || !payAmountInput) return;
-    dbSuppliers.recordPayment(paySupplierModal.id, Number(payAmountInput));
-    alert(`Payment of Rs. ${Number(payAmountInput).toLocaleString()} recorded! Supplier Ledger & Expenses updated.`);
+    const amt = Number(payAmountInput);
+    // Record in two-way supplier ledger
+    dbSupplierLedger.recordPayment(
+      paySupplierModal.id,
+      amt,
+      paymentMode,
+      paymentNote || undefined,
+      paymentRef || undefined
+    );
     setPaySupplierModal(null);
+    setPaymentRef("");
+    setPaymentNote("");
+    setPaymentMode("cash");
     setPayAmountInput("");
     refreshData();
   };
@@ -249,6 +802,13 @@ export default function SupplierPurchases() {
             <div className="text-xl font-black text-rose-800">Rs. {totalSupplierPayables.toLocaleString()}</div>
           </div>
           <button
+            onClick={() => setActiveTab("grn_form")}
+            className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2.5 rounded-2xl font-black text-xs hover:from-emerald-700 hover:to-teal-800 transition-all shadow-md shadow-emerald-200 flex items-center gap-1.5"
+          >
+            <span className="material-symbols-outlined text-base">receipt</span>
+            Purchase GRN (DrCreate)
+          </button>
+          <button
             onClick={() => setShowAddSupplier(true)}
             className="bg-teal-600 text-white px-4 py-2.5 rounded-2xl font-bold text-xs hover:bg-teal-700 transition-colors shadow-md shadow-teal-200 flex items-center gap-1.5"
           >
@@ -260,6 +820,18 @@ export default function SupplierPurchases() {
 
       {/* Tabs Navigation */}
       <div className="flex border-b border-gray-200 gap-2 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("grn_form")}
+          className={`pb-3 px-4 font-black text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === "grn_form" ? "border-emerald-600 text-emerald-800" : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <span className="material-symbols-outlined text-base text-emerald-600">receipt</span>
+          Purchase GRN _Form (DrCreate V2.0)
+          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-black">
+            {grnForm.voucher_no}
+          </span>
+        </button>
         <button
           onClick={() => setActiveTab("suppliers")}
           className={`pb-3 px-4 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
@@ -289,9 +861,504 @@ export default function SupplierPurchases() {
         </button>
       </div>
 
+      {/* TAB 0: DrCreate & MS Access Purchase GRN Form */}
+      {activeTab === "grn_form" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Visual Header Banner matching DrCreate */}
+          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 border border-emerald-500/30">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 text-white shadow-inner">
+                <span className="material-symbols-outlined text-3xl">inventory_2</span>
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-[11px] font-black uppercase tracking-wider mb-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+                  Pharmacy / Warehouse Goods Received Note
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
+                  Purchase GRN <span className="text-emerald-200 text-xl font-medium">_Form</span>
+                </h2>
+                <p className="text-xs text-emerald-100 mt-0.5 font-medium">
+                  MS Access &amp; DrCreate Inward Goods Entry, Bilty Tracking &amp; Instant Stock Replenishment
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowGRNListModal(true)}
+                className="bg-slate-900/80 hover:bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 border border-white/20"
+              >
+                <span className="material-symbols-outlined text-base">list_alt</span>
+                Show List
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveGRNBill}
+                className="bg-white text-emerald-800 hover:bg-emerald-50 px-6 py-2.5 rounded-2xl font-black text-xs transition-all shadow-lg flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">save</span>
+                Save Bill
+              </button>
+            </div>
+          </div>
+
+          {/* Form Container */}
+          <div className="bg-white rounded-3xl border border-emerald-200/80 p-6 shadow-sm space-y-6">
+            {/* Section 1: Basic Info */}
+            <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 md:p-5">
+              <div className="text-xs font-black text-emerald-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base text-emerald-700">info</span>
+                Basic Info
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+                {/* Date */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Date</label>
+                  <input
+                    type="text"
+                    value={grnForm.date}
+                    onChange={(e) => setGrnForm({ ...grnForm, date: e.target.value })}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {/* Voucher No */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Voucher No</label>
+                  <input
+                    type="text"
+                    value={grnForm.voucher_no}
+                    readOnly
+                    className="w-full bg-emerald-100/70 border border-emerald-300 text-emerald-900 rounded-xl px-3 py-2 text-xs font-black tracking-wider"
+                  />
+                </div>
+
+                {/* GRN No */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">GRN No (Challan #)</label>
+                  <input
+                    type="text"
+                    value={grnForm.grn_no}
+                    onChange={(e) => setGrnForm({ ...grnForm, grn_no: e.target.value })}
+                    placeholder="e.g. 142863"
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {/* Reference with + New */}
+                <div>
+                  {showNewRefInput ? (
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">New Reference</label>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={newRefText}
+                          onChange={(e) => setNewRefText(e.target.value)}
+                          placeholder="Enter Rep / Booker..."
+                          className="flex-1 bg-white border border-emerald-400 rounded-xl px-2.5 py-1.5 text-xs font-bold"
+                          autoFocus
+                          onKeyDown={(e) => e.key === "Enter" && handleAddNewReference()}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddNewReference}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-black text-xs"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowNewRefInput(false)}
+                          className="bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl font-bold text-xs"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <ExpandableCombobox
+                      label="Reference (Rep/Booker)"
+                      value={grnForm.reference}
+                      onChange={(val) => setGrnForm({ ...grnForm, reference: val })}
+                      options={referenceOptions}
+                      placeholder="Select or Search Rep..."
+                      searchPlaceholder="Search Rep / Booker..."
+                      onAddNew={() => setShowNewRefInput(true)}
+                      addNewLabel="+ New"
+                    />
+                  )}
+                </div>
+
+                {/* Account Name */}
+                <div className="sm:col-span-2">
+                  <ExpandableCombobox
+                    label="Account Name (Supplier / Company)"
+                    value={grnForm.account_name}
+                    onChange={(val) => setGrnForm({ ...grnForm, account_name: val })}
+                    options={accountOptions}
+                    placeholder="Select or Search Supplier / Account..."
+                    searchPlaceholder="Search 260+ Suppliers & Accounts..."
+                    required={true}
+                  />
+                </div>
+
+                {/* Naration */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Naration</label>
+                  <input
+                    type="text"
+                    value={grnForm.naration}
+                    onChange={(e) => setGrnForm({ ...grnForm, naration: e.target.value })}
+                    placeholder="Invoice remarks / note"
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-medium text-gray-800"
+                  />
+                </div>
+
+                {/* Payment Mode */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Payment Mode</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setGrnForm({ ...grnForm, payment_mode: "Cash" })}
+                      className={`flex-1 py-1.5 px-3 rounded-xl font-bold text-xs transition-all ${
+                        grnForm.payment_mode === "Cash" ? "bg-emerald-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      Cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGrnForm({ ...grnForm, payment_mode: "Credit" })}
+                      className={`flex-1 py-1.5 px-3 rounded-xl font-bold text-xs transition-all ${
+                        grnForm.payment_mode === "Credit" ? "bg-rose-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      Credit (Udhaar)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Transport with + New */}
+                <div className="sm:col-span-2">
+                  {showNewTransportInput ? (
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">New Transport Carrier</label>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={newTransportText}
+                          onChange={(e) => setNewTransportText(e.target.value)}
+                          placeholder="e.g. Al-Razi Transport, Larkana Goods..."
+                          className="flex-1 bg-white border border-emerald-400 rounded-xl px-2.5 py-1.5 text-xs font-bold"
+                          autoFocus
+                          onKeyDown={(e) => e.key === "Enter" && handleAddNewTransport()}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddNewTransport}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-black text-xs"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowNewTransportInput(false)}
+                          className="bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl font-bold text-xs"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <ExpandableCombobox
+                      label="Transport Carrier"
+                      value={grnForm.transport}
+                      onChange={(val) => setGrnForm({ ...grnForm, transport: val })}
+                      options={transportOptions}
+                      placeholder="Select or Search Carrier..."
+                      searchPlaceholder="Search Transport Carrier..."
+                      onAddNew={() => setShowNewTransportInput(true)}
+                      addNewLabel="+ New Carrier"
+                    />
+                  )}
+                </div>
+
+                {/* Bilty # */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Bilty #</label>
+                  <input
+                    type="text"
+                    value={grnForm.bilty_no}
+                    onChange={(e) => setGrnForm({ ...grnForm, bilty_no: e.target.value })}
+                    placeholder="Tracking / Bilty No"
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
+                  />
+                </div>
+
+                {/* Destination Location */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Stock Destination</label>
+                  <select
+                    value={grnForm.destination_type}
+                    onChange={(e) => setGrnForm({ ...grnForm, destination_type: e.target.value })}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-teal-800"
+                  >
+                    <option value="warehouse">🏢 Central Godown (Warehouse)</option>
+                    <option value="store">🏬 Pharmacy Counter (Store)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Cart Detail (Fast Line Item Add Bar) */}
+            <div className="bg-teal-50/60 border border-teal-200 rounded-2xl p-4 md:p-5 space-y-3">
+              <div className="text-xs font-black text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
+                Cart Detail (Fast Keyboard Entry &amp; Auto Rate)
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-12 gap-2.5 items-end">
+                {/* Product Code */}
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1">Product Code</label>
+                  <input
+                    type="text"
+                    value={grnCart.product_code}
+                    readOnly
+                    placeholder="Code"
+                    className="w-full bg-gray-100 border border-gray-300 rounded-xl px-2.5 py-2 text-xs font-mono font-bold text-gray-700 text-center"
+                  />
+                </div>
+
+                {/* Product Name Search with ExpandableCombobox */}
+                <div className="col-span-2 sm:col-span-3 md:col-span-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-gray-700">
+                      Product Name <span className="text-rose-500">*</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setGrnShowAllCompanies(!grnShowAllCompanies)}
+                      className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md transition-all ${
+                        grnShowAllCompanies
+                          ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                          : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                      }`}
+                      title={grnShowAllCompanies ? "Switch to Company-Filtered mode" : "Show all products regardless of supplier"}
+                    >
+                      {grnShowAllCompanies
+                        ? `🌐 All Brands (${inventoryList.length})`
+                        : `🏢 Filtered: ${filteredGrnInventory.length} Items`}
+                    </button>
+                  </div>
+                  <ExpandableCombobox
+                    value={grnCart.inventory_id}
+                    onChange={(val) => handleSelectGRNMedicine(val)}
+                    options={productOptions}
+                    placeholder={
+                      grnShowAllCompanies
+                        ? "-- Search All Medicines --"
+                        : `-- ${grnForm.account_name || "Supplier"} Products (${filteredGrnInventory.length}) --`
+                    }
+                    searchPlaceholder={
+                      grnShowAllCompanies
+                        ? "Search 500+ medicines..."
+                        : `Search within ${grnForm.account_name || "Company"}...`
+                    }
+                    required={true}
+                  />
+                </div>
+
+
+                {/* Qty */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Qty</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={grnCart.qty}
+                    onChange={(e) => handleUpdateGRNCart("qty", e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-black text-center text-gray-900 focus:border-teal-500"
+                  />
+                </div>
+
+                {/* Rate */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Rate</label>
+                  <input
+                    type="number"
+                    value={grnCart.rate}
+                    onChange={(e) => handleUpdateGRNCart("rate", e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
+                    placeholder="Rate"
+                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900 focus:border-teal-500"
+                  />
+                </div>
+
+                {/* Gross */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Gross</label>
+                  <input
+                    type="text"
+                    value={grnCart.gross}
+                    readOnly
+                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-700"
+                  />
+                </div>
+
+                {/* Disc % */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc %</label>
+                  <input
+                    type="number"
+                    value={grnCart.disc_pct}
+                    onChange={(e) => handleUpdateGRNCart("disc_pct", e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900"
+                  />
+                </div>
+
+                {/* Disc 0 */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc 0</label>
+                  <input
+                    type="number"
+                    value={grnCart.disc_flat}
+                    onChange={(e) => handleUpdateGRNCart("disc_flat", e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900"
+                  />
+                </div>
+
+                {/* Net Amount */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-emerald-800 mb-1 text-center">Net Amt</label>
+                  <input
+                    type="text"
+                    value={grnCart.net_amount}
+                    readOnly
+                    className="w-full bg-emerald-100/80 border border-emerald-300 rounded-xl px-2 py-2 text-xs font-black text-center text-emerald-950"
+                  />
+                </div>
+
+                {/* Add Button */}
+                <div className="md:col-span-1">
+                  <button
+                    type="button"
+                    onClick={handleAddGRNItem}
+                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-black py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 shadow-md shadow-emerald-200"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Itemized Table Grid with Smooth Scroll Container */}
+            <div
+              ref={grnTableContainerRef}
+              className="rounded-2xl border border-gray-200 shadow-sm max-h-80 min-h-[160px] overflow-y-auto custom-scrollbar relative bg-white"
+            >
+              <table className="w-full text-left text-xs">
+
+                <thead className="bg-emerald-700 text-white font-black uppercase tracking-wider text-[11px] sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3">Item Name</th>
+                    <th className="px-3 py-3 text-center">Qty</th>
+                    <th className="px-3 py-3 text-center">Rate</th>
+                    <th className="px-3 py-3 text-center">Gross</th>
+                    <th className="px-3 py-3 text-center">Disc(%)</th>
+                    <th className="px-3 py-3 text-center">Disc(0)</th>
+                    <th className="px-4 py-3 text-right">Net Amount</th>
+                    <th className="px-3 py-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium">
+                  {grnItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="text-center py-12 text-gray-400 font-semibold">
+                        <span className="material-symbols-outlined text-4xl block mb-1 text-gray-300">add_shopping_cart</span>
+                        No medicine items in this GRN bill yet. Select a product and click Add.
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {grnItems.map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-emerald-50/40 transition-colors">
+                          <td className="px-4 py-3 font-bold text-gray-900">
+                            {item.medicine_name} {item.product_code ? <span className="text-[10px] text-gray-400 font-mono">[{item.product_code}]</span> : ""}
+                          </td>
+                          <td className="px-3 py-3 text-center font-black text-emerald-800">{item.qty}</td>
+                          <td className="px-3 py-3 text-center text-gray-700">Rs. {Number(item.rate).toLocaleString()}</td>
+                          <td className="px-3 py-3 text-center text-gray-700">Rs. {Number(item.gross).toLocaleString()}</td>
+                          <td className="px-3 py-3 text-center text-gray-600">{item.disc_pct}</td>
+                          <td className="px-3 py-3 text-center text-gray-600">Rs. {item.disc_flat}</td>
+                          <td className="px-4 py-3 text-right font-black text-gray-900">Rs. {Number(item.net).toLocaleString()}</td>
+                          <td className="px-3 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGRNItem(idx)}
+                              className="text-rose-600 hover:text-rose-800 p-1 rounded-lg hover:bg-rose-50 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-base">delete</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      <tr ref={grnItemsEndRef}>
+                        <td colSpan="8" className="p-0 border-0" />
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+
+            {/* Section 4: Footer Summary & Action Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setShowGRNListModal(true)}
+                className="w-full sm:w-auto bg-slate-800 text-white hover:bg-slate-900 px-6 py-3 rounded-2xl font-bold text-xs transition-colors shadow-md flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-base">list_alt</span>
+                Show List (GRN History)
+              </button>
+
+              <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
+                <div className="bg-emerald-50 border border-emerald-200 px-5 py-2.5 rounded-2xl text-right">
+                  <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Total Bill</div>
+                  <div className="text-xl font-black text-emerald-950">
+                    Rs. {grnItems.reduce((s, it) => s + (Number(it.net) || 0), 0).toLocaleString()}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveGRNBill}
+                  className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 px-8 py-3 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-base">save</span>
+                  Save Bill
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB 1: Pharma Suppliers / Distributors Directory (Clean Company Cards) */}
       {activeTab === "suppliers" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
           {suppliers.length === 0 ? (
             <div className="col-span-full text-center py-16 bg-white rounded-3xl border border-gray-200">
               <span className="material-symbols-outlined text-5xl text-gray-300 block mb-2">domain_disabled</span>
@@ -355,7 +1422,7 @@ export default function SupplierPurchases() {
                   </div>
 
                   {/* Actions Bar */}
-                  <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
+                  <div className="pt-2 border-t border-gray-100 flex items-center gap-2 flex-wrap">
                     <button
                       onClick={() => {
                         setSelectedSupplierDrawer(sup);
@@ -366,15 +1433,29 @@ export default function SupplierPurchases() {
                       <span className="material-symbols-outlined text-base">receipt_long</span>
                       View Invoices ({supBills.length})
                     </button>
+                    <button
+                      onClick={() => {
+                        const txns = dbSupplierLedger.getBySupplier(sup.id);
+                        setLedgerDrawerSupplier(sup);
+                        setSupplierLedgerTxns(txns);
+                      }}
+                      className="flex-1 bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-base">account_balance</span>
+                      Ledger
+                    </button>
                     {balance > 0 && (
                       <button
                         onClick={() => {
                           setPaySupplierModal(sup);
                           setPayAmountInput(String(balance));
+                          setPaymentMode("cash");
+                          setPaymentRef("");
+                          setPaymentNote("");
                         }}
                         className="bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-2 rounded-xl font-bold text-xs transition-colors"
                       >
-                        Pay Cash
+                        Pay
                       </button>
                     )}
                   </div>
@@ -525,167 +1606,192 @@ export default function SupplierPurchases() {
 
           {/* Itemized Stock Form */}
           <div className="space-y-3 pt-2">
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-xs text-gray-700 uppercase tracking-wider">Itemized Stock Entries</span>
+            <div className="flex justify-between items-center bg-gray-50/80 p-2.5 rounded-2xl border border-gray-200">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-xs text-gray-800 uppercase tracking-wider">Itemized Stock Entries</span>
+                <span className="bg-teal-100 text-teal-800 text-[11px] font-extrabold px-2 py-0.5 rounded-full">
+                  {purchaseItems.length} {purchaseItems.length === 1 ? "Item" : "Items"}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={handleAddItemRow}
-                className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-3 py-1 rounded-xl font-bold hover:bg-teal-100"
+                className="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow-sm transition-all flex items-center gap-1"
               >
+                <span className="material-symbols-outlined text-sm">add</span>
                 + Add Line Item
               </button>
             </div>
 
-            {purchaseItems.map((item, index) => {
-              const activeSupplier = suppliers.find((s) => s.id === selectedSupplierId);
-              const filteredInventory = (selectedSupplierId && activeSupplier)
-                ? inventoryList.filter((inv) => 
-                    (inv.company_name || "").toLowerCase().includes(activeSupplier.name.toLowerCase()) || 
-                    activeSupplier.name.toLowerCase().includes((inv.company_name || "").toLowerCase()) ||
-                    activeSupplier.name.toLowerCase().includes("local")
-                  )
-                : inventoryList;
-              const displayList = filteredInventory.length > 0 ? filteredInventory : inventoryList;
+            {/* Bounded Scrollable Container */}
+            <div
+              ref={itemsContainerRef}
+              className="max-h-[440px] overflow-y-auto pr-1.5 space-y-3 rounded-2xl p-1 focus:outline-none"
+              tabIndex={0}
+            >
+              {purchaseItems.map((item, index) => {
+                const activeSupplier = suppliers.find((s) => s.id === selectedSupplierId);
+                const matchedInventory = (selectedSupplierId && activeSupplier)
+                  ? filterInventoryByCompanyOrSupplier(inventoryList, activeSupplier.name, activeSupplier)
+                  : inventoryList;
+                const displayList = tab4ShowAllCompanies
+                  ? inventoryList
+                  : (matchedInventory.length > 0 ? matchedInventory : inventoryList);
 
-              return (
-                <div key={index} className="grid grid-cols-12 gap-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-200 items-center">
-                  <div className="col-span-12 md:col-span-4 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Medicine Item *</label>
-                      {displayList.length > 0 && (
-                        <span className="text-[10px] font-semibold text-teal-700">
-                          {activeSupplier ? `Showing ${displayList.length} items for ${activeSupplier.name}` : "Auto-fill from Inventory"}
-                        </span>
-                      )}
+                return (
+                  <div key={index} className="grid grid-cols-12 gap-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-200 items-center shadow-xs">
+                    <div className="col-span-12 md:col-span-4 space-y-1">
+                      <div className="flex justify-between items-center">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase">Medicine Item *</label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black text-teal-800">
+                            {activeSupplier
+                              ? (tab4ShowAllCompanies ? `All (${displayList.length})` : `${displayList.length} for ${activeSupplier.name.split(" ")[0]}`)
+                              : "Auto-fill from Inventory"}
+                          </span>
+                          {activeSupplier && (
+                            <button
+                              type="button"
+                              onClick={() => setTab4ShowAllCompanies(!tab4ShowAllCompanies)}
+                              className="text-[9px] font-black underline text-teal-600 hover:text-teal-900"
+                            >
+                              {tab4ShowAllCompanies ? "Filter Brand" : "All Brands"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <select
+                        value={item.inventory_id || ""}
+                        onChange={(e) => handleSelectExistingMedicine(index, e.target.value)}
+                        className="w-full border border-teal-200 bg-teal-50/40 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-900 focus:ring-1 focus:ring-teal-500 mb-1"
+                      >
+                        <option value="">+ Custom / New Medicine Entry</option>
+                        {displayList.map((inv) => (
+                          <option key={inv.id} value={inv.id}>
+                            [{inv.company_name || "BM Pvt LTD"}] {inv.medicine_name} ({inv.strength || inv.category}) — {inv.stock_qty} left
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Medicine Name (e.g. Panadol 500mg)"
+                        value={item.medicine_name}
+                        onChange={(e) => handleItemChange(index, "medicine_name", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white"
+                        required
+                      />
                     </div>
-                    <select
-                      value={item.inventory_id || ""}
-                      onChange={(e) => handleSelectExistingMedicine(index, e.target.value)}
-                      className="w-full border border-teal-200 bg-teal-50/40 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-900 focus:ring-1 focus:ring-teal-500 mb-1"
-                    >
-                      <option value="">+ Custom / New Medicine Entry</option>
-                      {displayList.map((inv) => (
-                        <option key={inv.id} value={inv.id}>
-                          [{inv.company_name || "BM Pvt LTD"}] {inv.medicine_name} ({inv.strength || inv.category}) — {inv.stock_qty} left
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Medicine Name (e.g. Panadol 500mg)"
-                      value={item.medicine_name}
-                      onChange={(e) => handleItemChange(index, "medicine_name", e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white"
-                      required
-                    />
+
+                    <div className="col-span-6 md:col-span-2">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Category / Form</label>
+                      <select
+                        value={item.category || "Tablet"}
+                        onChange={(e) => handleItemChange(index, "category", e.target.value)}
+                        className="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs font-medium"
+                      >
+                        <option value="Tablet">Tablet</option>
+                        <option value="Capsule">Capsule</option>
+                        <option value="Syrup / Suspension">Syrup / Suspension</option>
+                        <option value="Injection / IV">Injection / IV</option>
+                        <option value="Cream / Ointment / Gel">Cream / Gel</option>
+                        <option value="Eye / Ear Drops">Eye/Ear Drops</option>
+                      </select>
+                    </div>
+
+                    <div className="col-span-6 md:col-span-2">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Received Format</label>
+                      <select
+                        value={item.received_unit_type || "box"}
+                        onChange={(e) => handleItemChange(index, "received_unit_type", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-800 bg-white"
+                      >
+                        <option value="box">Boxes / Packs</option>
+                        <option value="strip">Strips / Pattay</option>
+                        <option value="unit">Base Units / Tablets</option>
+                      </select>
+                    </div>
+
+                    <div className="col-span-4 md:col-span-1">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase text-center">Qty</label>
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        min="1"
+                        value={item.qty}
+                        onChange={(e) => handleItemChange(index, "qty", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-center bg-white"
+                        required
+                      />
+                    </div>
+
+                    <div className="col-span-4 md:col-span-1">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Cost (Rs)</label>
+                      <input
+                        type="number"
+                        placeholder="Cost"
+                        value={item.cost_price}
+                        onChange={(e) => handleItemChange(index, "cost_price", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold bg-white"
+                        required
+                      />
+                    </div>
+
+                    <div className="col-span-3 md:col-span-1">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Disc %</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="0%"
+                        value={item.disc_pct || ""}
+                        onChange={(e) => handleItemChange(index, "disc_pct", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-center bg-white font-mono"
+                      />
+                    </div>
+
+                    <div className="col-span-3 md:col-span-1">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Disc Rs</label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={item.disc_flat || ""}
+                        onChange={(e) => handleItemChange(index, "disc_flat", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-center bg-white font-mono"
+                      />
+                    </div>
+
+                    <div className="col-span-3 md:col-span-1">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase">MRP / Sale</label>
+                      <input
+                        type="number"
+                        placeholder="Sale"
+                        value={item.sale_price}
+                        onChange={(e) => handleItemChange(index, "sale_price", e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold bg-white"
+                      />
+                    </div>
+
+                    <div className="col-span-1 text-center pt-3">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItemRow(index)}
+                        className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50 transition-colors"
+                        title="Delete item row"
+                      >
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
                   </div>
-
-                <div className="col-span-6 md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase">Category / Form</label>
-                  <select
-                    value={item.category || "Tablet"}
-                    onChange={(e) => handleItemChange(index, "category", e.target.value)}
-                    className="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs font-medium"
-                  >
-                    <option value="Tablet">Tablet</option>
-                    <option value="Capsule">Capsule</option>
-                    <option value="Syrup / Suspension">Syrup / Suspension</option>
-                    <option value="Injection / IV">Injection / IV</option>
-                    <option value="Cream / Ointment / Gel">Cream / Gel</option>
-                    <option value="Eye / Ear Drops">Eye/Ear Drops</option>
-                  </select>
-                </div>
-
-                <div className="col-span-6 md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase">Received Format</label>
-                  <select
-                    value={item.received_unit_type || "box"}
-                    onChange={(e) => handleItemChange(index, "received_unit_type", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-800 bg-white"
-                  >
-                    <option value="box">Boxes / Packs</option>
-                    <option value="strip">Strips / Pattay</option>
-                    <option value="unit">Base Units / Tablets</option>
-                  </select>
-                </div>
-
-                <div className="col-span-4 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase text-center">Qty</label>
-                  <input
-                    type="number"
-                    placeholder="Qty"
-                    min="1"
-                    value={item.qty}
-                    onChange={(e) => handleItemChange(index, "qty", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-center bg-white"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-4 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase">Cost (Rs)</label>
-                  <input
-                    type="number"
-                    placeholder="Cost"
-                    value={item.cost_price}
-                    onChange={(e) => handleItemChange(index, "cost_price", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold bg-white"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-3 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase">Disc %</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="0%"
-                    value={item.disc_pct || ""}
-                    onChange={(e) => handleItemChange(index, "disc_pct", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-center bg-white font-mono"
-                  />
-                </div>
-
-                <div className="col-span-3 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase">Disc Rs</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={item.disc_flat || ""}
-                    onChange={(e) => handleItemChange(index, "disc_flat", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-center bg-white font-mono"
-                  />
-                </div>
-
-                <div className="col-span-3 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase">MRP / Sale</label>
-                  <input
-                    type="number"
-                    placeholder="Sale"
-                    value={item.sale_price}
-                    onChange={(e) => handleItemChange(index, "sale_price", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold bg-white"
-                  />
-                </div>
-
-                <div className="col-span-1 text-center pt-3">
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveItemRow(index)}
-                    className="text-rose-500 hover:text-rose-700 p-1"
-                  >
-                    <span className="material-symbols-outlined text-lg">delete</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+              <div ref={itemsEndRef} />
+            </div>
           </div>
 
-          <div className="border-t border-gray-200 pt-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-4">
+          {/* Sticky Bottom Summary Bar */}
+          <div className="sticky bottom-2 z-20 bg-white/95 backdrop-blur-md p-4 rounded-2xl border-2 border-teal-500/20 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4 transition-all">
+            <div className="flex items-center gap-4 flex-wrap">
               <div>
                 <div className="text-xs text-gray-500 font-medium">Calculated Bill Total:</div>
                 <div className="text-2xl font-black text-teal-800">Rs. {calculateTotalBill().toLocaleString()}</div>
@@ -697,16 +1803,27 @@ export default function SupplierPurchases() {
                   placeholder="0 for Full Udhaar"
                   value={paidAmountInput}
                   onChange={(e) => setPaidAmountInput(e.target.value)}
-                  className="border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-bold w-40"
+                  className="border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-bold w-40 bg-white"
                 />
               </div>
             </div>
-            <button
-              type="submit"
-              className="bg-teal-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20"
-            >
-              Save Stock Entry &amp; Print Voucher
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAddItemRow}
+                className="btn-secondary text-xs flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                Add Item
+              </button>
+              <button
+                type="submit"
+                className="bg-teal-700 hover:bg-teal-800 text-white font-bold px-6 py-2.5 rounded-2xl text-xs shadow-lg transition-colors flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-base">save</span>
+                Save Stock Entry &amp; Print Voucher
+              </button>
+            </div>
           </div>
         </form>
       )}
@@ -905,21 +2022,76 @@ export default function SupplierPurchases() {
         </div>
       )}
 
-      {/* MODAL: Payment Settlement */}
+      {/* MODAL: Enhanced Payment Settlement — Multi-Mode */}
       {paySupplierModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleSupplierPayment} className="bg-white max-w-sm w-full rounded-3xl p-6 border border-gray-200 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-gray-900 text-base">Record Supplier Cash Payment</h3>
-            <p className="text-xs text-gray-500">Pay cash to <strong>{paySupplierModal.name}</strong></p>
+          <form onSubmit={handleSupplierPayment} className="bg-white max-w-md w-full rounded-3xl p-6 border border-gray-200 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="border-b border-gray-100 pb-3">
+              <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-600" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
+                Supplier Payment Settlement
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">Record payment to <strong>{paySupplierModal.name}</strong></p>
+              {(paySupplierModal.balance_due || 0) > 0 && (
+                <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800">
+                  Outstanding Balance: Rs. {(paySupplierModal.balance_due || 0).toLocaleString()}
+                </div>
+              )}
+            </div>
+
+            {/* Payment Mode Toggle */}
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1.5">Payment Mode *</label>
+              <div className="flex gap-2">
+                {["cash", "cheque", "bank"].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setPaymentMode(mode)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      paymentMode === mode ? "bg-emerald-600 text-white border-emerald-600" : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    {mode === "cash" ? "💵 Cash" : mode === "cheque" ? "📄 Cheque" : "🏦 Bank"}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">Amount Paid Now (Rs) *</label>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Amount Paid Now (Rs.) *</label>
               <input
                 type="number"
                 value={payAmountInput}
                 onChange={(e) => setPayAmountInput(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold text-teal-800"
                 required
+              />
+            </div>
+
+            {(paymentMode === "cheque" || paymentMode === "bank") && (
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  {paymentMode === "cheque" ? "Cheque Number" : "Bank Reference / Transfer ID"}
+                </label>
+                <input
+                  type="text"
+                  value={paymentRef}
+                  onChange={(e) => setPaymentRef(e.target.value)}
+                  placeholder={paymentMode === "cheque" ? "e.g. MCB-001234" : "e.g. HBL-TRF-20260821"}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">Payment Note (Optional)</label>
+              <input
+                type="text"
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder="e.g. Partial payment for August 2026 bills"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs"
               />
             </div>
 
@@ -935,7 +2107,7 @@ export default function SupplierPurchases() {
                 type="submit"
                 className="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-emerald-700"
               >
-                Save Payment
+                ✓ Record Payment
               </button>
             </div>
           </form>
@@ -1010,6 +2182,227 @@ export default function SupplierPurchases() {
           </form>
         </div>
       )}
+      {/* MODAL: Supplier Ledger Transaction History Drawer */}
+      {ledgerDrawerSupplier && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-end p-4">
+          <div className="bg-white w-full max-w-lg h-full max-h-[100vh] overflow-y-auto rounded-3xl border border-gray-200 shadow-2xl flex flex-col">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-3xl">
+              <div>
+                <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
+                  <span className="material-symbols-outlined text-purple-600" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
+                  Ledger — {ledgerDrawerSupplier.name}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">Two-Way Transaction Audit (Payable &amp; Receivable)</p>
+              </div>
+              <button
+                onClick={() => setLedgerDrawerSupplier(null)}
+                className="text-gray-400 hover:text-gray-700 font-bold"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Ledger Totals Summary */}
+            {(() => {
+              const totals = dbSupplierLedger.getTotals(ledgerDrawerSupplier.id);
+              return (
+                <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 border-b border-gray-100">
+                  <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl text-center">
+                    <div className="text-[10px] font-bold text-rose-700 uppercase">Total Debit</div>
+                    <div className="font-black text-rose-900 text-sm">Rs. {totals.totalDebits.toLocaleString()}</div>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-center">
+                    <div className="text-[10px] font-bold text-emerald-700 uppercase">Total Paid</div>
+                    <div className="font-black text-emerald-900 text-sm">Rs. {totals.totalCredits.toLocaleString()}</div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-center">
+                    <div className="text-[10px] font-bold text-amber-700 uppercase">Balance</div>
+                    <div className="font-black text-amber-900 text-sm">Rs. {totals.balance.toLocaleString()}</div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Transactions List */}
+            <div className="flex-1 p-4 space-y-2">
+              {supplierLedgerTxns.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <span className="material-symbols-outlined text-4xl block mb-2">receipt_long</span>
+                  No ledger transactions yet.
+                </div>
+              ) : (
+                supplierLedgerTxns.slice().reverse().map((tx) => {
+                  const isDebit = tx.debit > 0;
+                  const typeLabels = {
+                    PURCHASE_BILL: "Purchase Bill",
+                    CASH_PAYMENT: "Cash Payment",
+                    CHEQUE_PAYMENT: "Cheque Payment",
+                    BANK_PAYMENT: "Bank Transfer",
+                    RETURN_CLAIM: "Return / Credit Claim",
+                    ADVANCE: "Advance Payment",
+                  };
+                  return (
+                    <div key={tx.id} className={`p-3.5 rounded-2xl border ${isDebit ? "bg-rose-50/50 border-rose-200" : "bg-emerald-50/50 border-emerald-200"}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className={`text-xs font-black ${isDebit ? "text-rose-800" : "text-emerald-800"}`}>
+                            {typeLabels[tx.type] || tx.type}
+                          </div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">{new Date(tx.created_at).toLocaleString("en-PK")}</div>
+                          {tx.notes && <div className="text-[10px] text-gray-600 mt-0.5 italic">{tx.notes}</div>}
+                          {tx.invoice_no && <div className="text-[10px] font-mono text-gray-500">Ref: {tx.invoice_no}</div>}
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-black text-sm ${isDebit ? "text-rose-800" : "text-emerald-700"}`}>
+                            {isDebit ? "+" : "-"} Rs. {(isDebit ? tx.debit : tx.credit).toLocaleString()}
+                          </div>
+                          <div className="text-[10px] text-gray-500">Balance: Rs. {(tx.running_balance || 0).toLocaleString()}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Quick Pay Button */}
+            {(ledgerDrawerSupplier.balance_due || 0) > 0 && (
+              <div className="p-4 border-t border-gray-100">
+                <button
+                  onClick={() => {
+                    setLedgerDrawerSupplier(null);
+                    setPaySupplierModal(ledgerDrawerSupplier);
+                    setPayAmountInput(String(ledgerDrawerSupplier.balance_due || ""));
+                    setPaymentMode("cash"); setPaymentRef(""); setPaymentNote("");
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+                >
+                  💳 Record New Payment (Rs. {(ledgerDrawerSupplier.balance_due || 0).toLocaleString()} due)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Purchase GRN List Modal */}
+      {showGRNListModal && createPortal(
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-emerald-200 shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-2xl">receipt_long</span>
+                <div>
+                  <h3 className="font-black text-base md:text-lg">Purchase GRN _List</h3>
+                  <p className="text-[11px] text-emerald-200">Historical Inward Goods Received Notes &amp; Vouchers</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => dbPurchases.exportCSV(purchases)}
+                  className="bg-white/20 hover:bg-white/30 text-white border border-white/30 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">download</span>
+                  Export CSV
+                </button>
+                <button
+                  onClick={() => setShowGRNListModal(false)}
+                  className="text-white/80 hover:text-white p-1 rounded-lg"
+                >
+                  <span className="material-symbols-outlined text-xl">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Search Bar */}
+            <div className="p-4 bg-gray-50 border-b border-gray-200 flex flex-wrap gap-3 items-center justify-between">
+              <input
+                type="text"
+                value={grnListSearch}
+                onChange={(e) => setGrnListSearch(e.target.value)}
+                placeholder="Search by Voucher # (P-1001), Supplier, or GRN #..."
+                className="flex-1 min-w-[240px] bg-white border border-gray-300 rounded-xl px-3.5 py-2 text-xs font-bold focus:border-emerald-500"
+              />
+              <div className="text-xs text-gray-500 font-bold">
+                Total GRN Records: <span className="text-emerald-700 font-black">{purchases.length}</span>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-gray-100 text-gray-700 font-bold uppercase tracking-wider text-[10px] sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2.5">Date</th>
+                    <th className="px-3 py-2.5">Voucher #</th>
+                    <th className="px-3 py-2.5">GRN #</th>
+                    <th className="px-3 py-2.5">Supplier Name</th>
+                    <th className="px-3 py-2.5">Transport</th>
+                    <th className="px-3 py-2.5">Bilty #</th>
+                    <th className="px-3 py-2.5 text-center">Items</th>
+                    <th className="px-3 py-2.5 text-right">Total Bill</th>
+                    <th className="px-3 py-2.5 text-right">Balance Due</th>
+                    <th className="px-3 py-2.5 text-center">Print</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium">
+                  {purchases
+                    .filter((p) => {
+                      if (!grnListSearch.trim()) return true;
+                      const q = grnListSearch.toLowerCase();
+                      return (
+                        (p.invoice_no || p.voucher_no || "").toLowerCase().includes(q) ||
+                        (p.supplier_name || "").toLowerCase().includes(q) ||
+                        (p.grn_no || "").toLowerCase().includes(q)
+                      );
+                    })
+                    .map((p) => (
+                      <tr key={p.id} className="hover:bg-emerald-50/30">
+                        <td className="px-3 py-2.5 text-gray-500 font-mono">
+                          {(p.purchase_date || "").split("T")[0]}
+                        </td>
+                        <td className="px-3 py-2.5 font-black text-emerald-800">{p.invoice_no || p.voucher_no}</td>
+                        <td className="px-3 py-2.5 font-bold text-gray-700">{p.grn_no || "0"}</td>
+                        <td className="px-3 py-2.5 font-bold text-gray-900">{p.supplier_name}</td>
+                        <td className="px-3 py-2.5 text-gray-600">{p.transport || "By Hand"}</td>
+                        <td className="px-3 py-2.5 text-gray-600 font-mono">{p.bilty_no || "-"}</td>
+                        <td className="px-3 py-2.5 text-center font-bold text-teal-700">{(p.items || []).length}</td>
+                        <td className="px-3 py-2.5 text-right font-black text-gray-900">
+                          Rs. {Number(p.total_amount || 0).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-bold text-rose-700">
+                          Rs. {Number(p.balance_due || 0).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <button
+                            onClick={() => printPurchaseGRNReceipt(p, dbClinic.get())}
+                            className="bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 p-1.5 rounded-lg text-xs font-bold transition-colors"
+                            title="Print 80mm GRN Voucher"
+                          >
+                            <span className="material-symbols-outlined text-sm">print</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => setShowGRNListModal(false)}
+                className="bg-gray-800 text-white px-5 py-2 rounded-xl font-bold text-xs hover:bg-gray-900"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
+
