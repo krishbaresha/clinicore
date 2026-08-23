@@ -338,18 +338,21 @@ export default function ReceiptStudio() {
             </div>
           </div>
 
-          {/* Sub Navigation Tabs (Scrollable on Mobile) */}
+          {/* Sub Navigation Tabs (Scrollable on Mobile with Mobile Preview Switcher) */}
           <div className="flex bg-teal-100/60 p-1.5 rounded-2xl gap-1 overflow-x-auto scrollbar-none">
             {[
               { id: "blocks", label: "Blocks Order", icon: "drag_indicator" },
               { id: "branding", label: "Branding", icon: "storefront" },
               { id: "tuner", label: "Calculator", icon: "calculate" },
               { id: "typography", label: "Paper & Fonts", icon: "format_size" },
+              { id: "mobile_preview", label: "Live Preview", icon: "visibility", mobileOnly: true },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 min-w-[85px] sm:min-w-0 py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95 ${
+                  tab.mobileOnly ? "lg:hidden" : ""
+                } ${
                   activeTab === tab.id
                     ? "bg-white text-teal-900 shadow-sm font-black"
                     : "text-teal-800 hover:bg-white/50"
@@ -867,8 +870,8 @@ export default function ReceiptStudio() {
         {/* =================================================================== */}
         {/* RIGHT COLUMN: 100% Exact 80mm Live Thermal Paper Simulation (5 Cols) */}
         {/* =================================================================== */}
-        <div className="lg:col-span-5 flex flex-col items-center">
-          <div className="sticky top-20 w-full max-w-[340px]">
+        <div className={`lg:col-span-5 flex flex-col items-center min-w-0 ${activeTab === "mobile_preview" ? "flex" : "hidden lg:flex"}`}>
+          <div className="sticky top-20 w-full max-w-[340px] px-1 sm:px-0">
             <div className="text-center mb-3 font-bold text-xs text-teal-900 uppercase tracking-widest flex items-center justify-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
               Live 80mm Paper Roll Canvas
@@ -877,7 +880,7 @@ export default function ReceiptStudio() {
             {/* Realistic Thermal Receipt Paper Card */}
             <div
               id="thermal-render-target"
-              className="bg-white text-slate-900 p-5 rounded-2xl shadow-xl border border-slate-200 text-[11px] leading-tight select-none"
+              className="bg-white text-slate-900 p-4 sm:p-5 rounded-2xl shadow-xl border border-slate-200 text-[11px] leading-tight select-none min-w-0"
               style={{
                 width: "100%",
                 minHeight: "520px",
