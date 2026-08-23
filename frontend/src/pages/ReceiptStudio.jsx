@@ -28,7 +28,7 @@ const DEFAULT_BLOCKS = [
   { id: "divider_3", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule", padY: 2 },
   { id: "urdu_footer", name: "Urdu Terms & Instructions", enabled: true, category: "footer", icon: "translate", padY: 3, align: "center" },
   { id: "custom_note", name: "Custom Policy / Return Note", enabled: true, category: "footer", icon: "notes", padY: 2, align: "center", customText: "Thanks for visiting! Get well soon." },
-  { id: "powered_by", name: "Software Watermark", enabled: true, category: "footer", icon: "verified", padY: 2, align: "center", customText: "*** Powered by CliniCore Software ***\nwww.krishbaresa.tech | 0314-2291356" },
+  { id: "powered_by", name: "Software Watermark (Permanent)", enabled: true, locked: true, isPermanent: true, category: "footer", icon: "verified", padY: 2, align: "center", customText: "*** Powered by CliniCore Software ***\nwww.krishbaresa.tech | 0314-2291356" },
 ];
 
 export default function ReceiptStudio() {
@@ -399,13 +399,20 @@ export default function ReceiptStudio() {
                         </div>
                         <input
                           type="checkbox"
-                          checked={block.enabled}
-                          onChange={() => toggleBlock(block.id)}
-                          className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
+                          checked={block.isPermanent ? true : block.enabled}
+                          disabled={block.isPermanent}
+                          onChange={() => !block.isPermanent && toggleBlock(block.id)}
+                          className={`w-4 h-4 rounded text-teal-600 focus:ring-teal-500 ${block.isPermanent ? "opacity-75 cursor-not-allowed" : "cursor-pointer"}`}
                         />
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-base text-teal-700">{block.icon}</span>
                           <span className="text-xs font-bold text-slate-900">{block.name}</span>
+                          {block.isPermanent && (
+                            <span className="text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[10px]">lock</span>
+                              MANDATORY
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -548,19 +555,15 @@ export default function ReceiptStudio() {
                             />
                           </div>
                         ) : block.id === "powered_by" ? (
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-500 block mb-1">Watermark / Footer (Multi-line supported):</span>
-                            <textarea
-                              rows={2}
-                              value={block.customText ?? "*** Powered by CliniCore Software ***"}
-                              placeholder="Type watermark (Press Enter for new line)..."
-                              onChange={(e) => {
-                                const newBlocks = [...blocks];
-                                newBlocks[index].customText = e.target.value;
-                                setBlocks(newBlocks);
-                              }}
-                              className="w-full px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600 resize-y"
-                            />
+                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
+                            <div>
+                              <span className="text-[10px] font-black text-teal-900 block">*** Powered by CliniCore Software ***</span>
+                              <span className="text-[9.5px] font-bold text-slate-600 block">www.krishbaresa.tech &nbsp;|&nbsp; 0314-2291356</span>
+                            </div>
+                            <span className="text-[9.5px] font-black text-slate-500 bg-white border border-slate-300 px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
+                              <span className="material-symbols-outlined text-xs text-teal-600">verified</span>
+                              Permanent Brand
+                            </span>
                           </div>
                         ) : block.customText !== undefined || block.id.startsWith("custom_line_") ? (
                           <div>
@@ -1236,10 +1239,10 @@ export default function ReceiptStudio() {
 
                     case "powered_by":
                       return (
-                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[8.5px] text-slate-500 font-bold uppercase tracking-wider whitespace-pre-line border-t border-dashed border-slate-200 mt-2">
-                          <span className="text-teal-800 font-extrabold block">*** Powered by CliniCore Software ***</span>
-                          <span className="text-slate-600 font-semibold normal-case tracking-normal block text-[9px]">
-                            {block.customText && !block.customText.includes("*** Powered by") ? block.customText : "www.krishbaresa.tech | 0314-2291356"}
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 3}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[8.5px] text-slate-500 font-bold uppercase tracking-wider border-t border-dashed border-slate-300 mt-2.5 pt-1">
+                          <span className="text-teal-900 font-black block leading-tight">*** POWERED BY CLINICORE SOFTWARE ***</span>
+                          <span className="text-slate-700 font-bold normal-case tracking-normal block text-[9px] leading-tight mt-0.5">
+                            www.krishbaresa.tech &nbsp;|&nbsp; 0314-2291356
                           </span>
                         </div>
                       );
