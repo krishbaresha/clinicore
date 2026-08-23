@@ -197,10 +197,12 @@ export default function SidebarLayout({ children }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Build nav items — ensure Admin / Owner gets full settings access
+  // Build nav items — ensure Admin / Owner gets full settings & receipt studio access
   const isAdminOrOwner = user?.is_owner || user?.role === "admin" || user?.role === "owner" || user?.userId === "user_admin";
   const rawNavItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
-  const navItems = isAdminOrOwner ? rawNavItems : rawNavItems.filter((item) => item.path !== "/settings");
+  const navItems = isAdminOrOwner 
+    ? rawNavItems 
+    : rawNavItems.filter((item) => item.path !== "/settings" && item.path !== "/receipt-studio");
 
   function handleLogout() {
     logout();
