@@ -38,6 +38,21 @@ be specific so a human or next AI can correct it if wrong]
 - **Currently blocked on:** Awaiting user decision to proceed with deployment / backend setup.
 - **Overall completion estimate:** 100% frontend production ready.
 
+### Session: 2026-08-23 (Part 21) — Appwrite Cloud BaaS Architecture, Collections Blueprint & Zero-Lock-In Failover Plan
+ 
+**Task worked on:**
+1. **Rule 0 Context-First Alignment for Appwrite Cloud BaaS:**
+   - Designed the authoritative Schema Mapping matching `03_TRD_Architecture.md` & `db.js` into Appwrite Cloud Databases.
+   - Defined 7 Core Collections: `patients`, `visits`, `store_inventory`, `store_sales`, `warehouses`, `cashbook`, and `clinic_settings`.
+   - Defined Storage Bucket: `prescriptions_reports` (Max file size: 10MB, Allowed MIME: `image/jpeg`, `image/png`, `image/webp`).
+2. **Provider-Agnostic Database Driver Architecture:**
+   - Integrated dynamic backend switching: `src/api/db.js` wraps `DataDriver` interface (`AppwriteDriver` ⇄ `HostingerDriver` ⇄ `LocalDriver`).
+   - Ensures zero UI code refactoring if transitioning from Appwrite Cloud to Hostinger KVM VPS PostgreSQL/MySQL.
+3. **Automated Disaster Recovery & Dual-Vault Export:**
+   - 1-Click `.cfbak` encrypted snapshot export and restore remains fully compatible across all drivers.
+
+---
+
 ### Session: 2026-08-23 (Part 20) — Appwrite Cloud + Zero-Loss Hostinger Failover & Headless Clerk Auth Architecture
  
 **Task worked on:**
