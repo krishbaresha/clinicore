@@ -12,6 +12,7 @@
     "test": "node scripts/test_full_suite.mjs"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.9",
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "framer-motion": "^13.1.1",

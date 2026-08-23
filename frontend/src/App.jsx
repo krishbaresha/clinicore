@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, lazy, Suspense } from "react";
+import { ClerkProvider } from "@clerk/clerk-react";
 import { initDB } from "./api/db.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
@@ -146,16 +147,28 @@ function AppRoutes() {
   );
 }
 
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
 export default function App() {
   // Seed the localStorage DB once on very first load (bumped to v4 to force re-seed with new schema)
   useEffect(() => { initDB(); }, []);
 
-  return (
+  const content = (
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
   );
+
+  if (CLERK_PUBLISHABLE_KEY) {
+    return (
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/login">
+        {content}
+      </ClerkProvider>
+    );
+  }
+
+  return content;
 }
 

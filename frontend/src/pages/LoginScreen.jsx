@@ -1,11 +1,29 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useSignIn } from "@clerk/clerk-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbUsers, dbClinic } from "../api/db.js";
+
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  
+  // Safe Clerk hook access
+  let isClerkLoaded = false;
+  let signIn = null;
+  let setActive = null;
+  try {
+    if (CLERK_PUBLISHABLE_KEY) {
+      const clerkSignInObj = useSignIn();
+      isClerkLoaded = clerkSignInObj.isLoaded;
+      signIn = clerkSignInObj.signIn;
+      setActive = clerkSignInObj.setActive;
+    }
+  } catch (err) {
+    console.warn("Clerk context not available, using local auth engine", err);
+  }
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +37,7 @@ export default function LoginScreen() {
     setClinicData(dbClinic.get() || {});
   }, []);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     if (!identifier.trim() || !password.trim()) {
@@ -27,12 +45,38 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
+
+    // 1. If Clerk is configured and user typed an email, attempt Clerk verification first
+    if (CLERK_PUBLISHABLE_KEY && isClerkLoaded && identifier.includes("@")) {
+      try {
+        const result = await signIn.create({
+          identifier: identifier.trim(),
+          password: password,
+        });
+
+        if (result.status === "complete") {
+          await setActive({ session: result.createdSessionId });
+          // Link local session mirror
+          const localMatch = dbUsers.findByEmail(identifier.trim());
+          if (localMatch) {
+            login(identifier, password);
+          }
+          navigate("/dashboard", { replace: true });
+          setLoading(false);
+          return;
+        }
+      } catch (clerkErr) {
+        console.warn("Clerk auth failed, attempting fallback local verification:", clerkErr);
+      }
+    }
+
+    // 2. Local SHA-256 Auth & Offline Verification Fallback
     const result = login(identifier, password);
     setLoading(false);
     if (result.success) {
       navigate("/dashboard", { replace: true });
     } else {
-      setError(result.error.message);
+      setError(result.error?.message || "Invalid email/username or password.");
     }
   }
 
