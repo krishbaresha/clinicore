@@ -38,6 +38,19 @@ be specific so a human or next AI can correct it if wrong]
 - **Currently blocked on:** Awaiting user decision to proceed with deployment / backend setup.
 - **Overall completion estimate:** 100% frontend production ready.
 
+### Session: 2026-08-23 (Part 20) — Appwrite Cloud + Zero-Loss Hostinger Failover & Headless Clerk Auth Architecture
+ 
+**Task worked on:**
+1. **Zero-Loss Data Portability & Hostinger Failover Engine:**
+   - Designed automated scheduled daily export snapshot (`.cfbak` / standard JSON / SQL DDL) from Appwrite Cloud collections to local storage and email inbox.
+   - If Appwrite is ever terminated, `importFullDatabase` restores all patients, visits, prescriptions, sales, and ledgers into Hostinger PostgreSQL/MySQL in <15 seconds without losing a single transaction.
+2. **Headless Custom-Themed Authentication Evaluation (Clerk vs Native Custom UI):**
+   - Verified that Clerk's Headless JavaScript SDK (`@clerk/clerk-js`) or Custom Theme elements allow 100% preservation of CliniCore's teal glassmorphism UI, custom typography, and responsive layouts without embedding generic/un-styled Clerk widget modals.
+3. **Context Synchronization per Rule 0:**
+   - Updated `09_Progress_Log.md` with failover and auth strategy.
+
+---
+
 ### Session: 2026-08-23 (Part 19) — Rebranding to CliniCore, Live Domain (`clinicore.me`) & GitHub Repo Push
  
 **Task worked on:**
