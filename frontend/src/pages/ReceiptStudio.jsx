@@ -258,42 +258,42 @@ export default function ReceiptStudio() {
           <div className="flex items-center gap-3">
             <Link
               to="/dashboard"
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all shadow-inner shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all shadow-inner shrink-0 cursor-pointer"
               title="Return to Dashboard"
             >
               <span className="material-symbols-outlined text-lg sm:text-xl">arrow_back</span>
             </Link>
             <div className="min-w-0 flex-1">
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span>Receipt Design Studio</span>
                 <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-800 text-teal-200 border border-teal-700">
                   UI/UX Pro Max
                 </span>
               </h1>
               <p className="text-[10px] sm:text-[11px] text-teal-200 font-medium truncate">
-                Drag-and-drop thermal canvas customizer &amp; live receipt arithmetic tuner
+                Thermal canvas customizer &amp; live receipt arithmetic tuner
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none">
             <button
               onClick={handleResetDefaults}
-              className="flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-2 rounded-xl bg-teal-800/80 hover:bg-teal-800 text-teal-200 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shrink-0"
+              className="flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-2 rounded-xl bg-teal-800/80 hover:bg-teal-800 text-teal-200 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shrink-0 active:scale-95"
             >
               <span className="material-symbols-outlined text-sm">restart_alt</span>
               <span>Reset</span>
             </button>
             <button
               onClick={handleSaveConfig}
-              className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-teal-950 font-black text-xs flex items-center justify-center gap-1 shadow-md shadow-emerald-500/20 transition-all cursor-pointer shrink-0"
+              className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-teal-950 font-black text-xs flex items-center justify-center gap-1 shadow-md shadow-emerald-500/20 transition-all cursor-pointer shrink-0 active:scale-95"
             >
               <span className="material-symbols-outlined text-sm sm:text-base">save</span>
               <span>Save</span>
             </button>
             <button
               onClick={handlePrintPreview}
-              className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-white hover:bg-teal-50 text-teal-900 font-black text-xs flex items-center justify-center gap-1 shadow-md transition-all cursor-pointer shrink-0"
+              className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-white hover:bg-teal-50 text-teal-900 font-black text-xs flex items-center justify-center gap-1 shadow-md transition-all cursor-pointer shrink-0 active:scale-95"
             >
               <span className="material-symbols-outlined text-sm sm:text-base">print</span>
               <span>80mm Test</span>
@@ -303,80 +303,80 @@ export default function ReceiptStudio() {
       </header>
 
       {/* Main Studio Grid */}
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-7xl mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 min-w-0 overflow-x-hidden">
         
         {/* =================================================================== */}
         {/* LEFT COLUMN: Controls & Drag-Drop Studio (7 Columns)                */}
         {/* =================================================================== */}
-        <div className="lg:col-span-7 space-y-5">
+        <div className="lg:col-span-7 space-y-4 sm:space-y-5 min-w-0">
           
           {/* Template Switcher Bar */}
-          <div className="bg-white rounded-3xl p-4 border border-teal-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <span className="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="bg-white rounded-3xl p-3.5 sm:p-4 border border-teal-100 shadow-sm min-w-0">
+            <div className="flex items-center justify-between mb-2.5 px-1">
+              <span className="text-[11px] sm:text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-teal-600 text-sm">receipt</span>
                 Active Receipt Mode
               </span>
-              <span className="text-[11px] font-bold text-slate-500">80mm ESC/POS Standard</span>
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-500">80mm ESC/POS</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
               {TEMPLATE_TYPES.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setSelectedTemplate(t.id)}
-                  className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                  className={`p-2 sm:p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 cursor-pointer min-w-0 active:scale-95 ${
                     selectedTemplate === t.id
                       ? "bg-teal-50 border-teal-600 text-teal-900 shadow-sm"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-lg text-teal-700">{t.icon}</span>
-                  <span className="text-[11px] font-bold leading-tight line-clamp-1">{t.name}</span>
+                  <span className="material-symbols-outlined text-base sm:text-lg text-teal-700">{t.icon}</span>
+                  <span className="text-[10px] sm:text-[11px] font-bold leading-tight line-clamp-1 w-full">{t.name}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Sub Navigation Tabs */}
-          <div className="flex bg-teal-100/60 p-1.5 rounded-2xl gap-1">
+          {/* Sub Navigation Tabs (Scrollable on Mobile) */}
+          <div className="flex bg-teal-100/60 p-1.5 rounded-2xl gap-1 overflow-x-auto scrollbar-none">
             {[
-              { id: "blocks", label: "Drag & Drop Blocks", icon: "drag_indicator" },
-              { id: "branding", label: "Branding & Logo", icon: "storefront" },
-              { id: "tuner", label: "Live Calculator", icon: "calculate" },
+              { id: "blocks", label: "Blocks Order", icon: "drag_indicator" },
+              { id: "branding", label: "Branding", icon: "storefront" },
+              { id: "tuner", label: "Calculator", icon: "calculate" },
               { id: "typography", label: "Paper & Fonts", icon: "format_size" },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                className={`flex-1 min-w-[85px] sm:min-w-0 py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95 ${
                   activeTab === tab.id
                     ? "bg-white text-teal-900 shadow-sm font-black"
                     : "text-teal-800 hover:bg-white/50"
                 }`}
               >
                 <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-                <span>{tab.label}</span>
+                <span className="truncate">{tab.label}</span>
               </button>
             ))}
           </div>
 
           {/* TAB 1: DRAG & DROP BLOCKS MANAGER */}
           {activeTab === "blocks" && (
-            <div className="bg-white rounded-3xl p-5 border border-teal-100 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-teal-100 shadow-sm space-y-4 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                 <div>
-                  <h3 className="text-sm font-black text-slate-900">Receipt Sections Order &amp; Visibility</h3>
-                  <p className="text-xs text-slate-500 font-medium">
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900">Receipt Sections Order &amp; Visibility</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
                     Drag items up or down to re-order. Toggle checkbox to show or hide from printed receipt.
                   </p>
                 </div>
-                <span className="text-xs font-black text-teal-800 bg-teal-50 px-2.5 py-1 rounded-xl border border-teal-200">
+                <span className="text-[10px] sm:text-xs font-black text-teal-800 bg-teal-50 px-2.5 py-1 rounded-xl border border-teal-200 self-start sm:self-auto shrink-0">
                   {blocks.filter((b) => b.enabled).length} Active Blocks
                 </span>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 {blocks.map((block, index) => (
                   <div
                     key={block.id}
@@ -384,7 +384,7 @@ export default function ReceiptStudio() {
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragEnd={handleDragEnd}
-                    className={`p-3 rounded-2xl border transition-all ${
+                    className={`p-2.5 sm:p-3 rounded-2xl border transition-all min-w-0 ${
                       draggedIndex === index
                         ? "bg-teal-50 border-teal-400 opacity-60 shadow-lg scale-[1.02]"
                         : block.enabled
@@ -392,23 +392,23 @@ export default function ReceiptStudio() {
                         : "bg-slate-50 border-slate-200 opacity-50"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-teal-700">
-                          <span className="material-symbols-outlined text-lg">drag_indicator</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-teal-700 shrink-0">
+                          <span className="material-symbols-outlined text-base sm:text-lg">drag_indicator</span>
                         </div>
                         <input
                           type="checkbox"
                           checked={block.isPermanent ? true : block.enabled}
                           disabled={block.isPermanent}
                           onChange={() => !block.isPermanent && toggleBlock(block.id)}
-                          className={`w-4 h-4 rounded text-teal-600 focus:ring-teal-500 ${block.isPermanent ? "opacity-75 cursor-not-allowed" : "cursor-pointer"}`}
+                          className={`w-4 h-4 rounded text-teal-600 focus:ring-teal-500 shrink-0 ${block.isPermanent ? "opacity-75 cursor-not-allowed" : "cursor-pointer"}`}
                         />
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-base text-teal-700">{block.icon}</span>
-                          <span className="text-xs font-bold text-slate-900">{block.name}</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                          <span className="material-symbols-outlined text-sm sm:text-base text-teal-700 shrink-0">{block.icon}</span>
+                          <span className="text-xs font-bold text-slate-900 truncate">{block.name}</span>
                           {block.isPermanent && (
-                            <span className="text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                            <span className="text-[8.5px] sm:text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded-md flex items-center gap-0.5 shrink-0">
                               <span className="material-symbols-outlined text-[10px]">lock</span>
                               MANDATORY
                             </span>
@@ -416,10 +416,10 @@ export default function ReceiptStudio() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 border-t sm:border-t-0 pt-1.5 sm:pt-0 border-slate-100">
                         {/* Spacing / Padding Step Tuner */}
                         <div className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200" title="Vertical Spacing / Padding">
-                          <span className="text-[10px] font-bold text-slate-500">Space:</span>
+                          <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-500">Pad:</span>
                           <button
                             onClick={() => {
                               const newBlocks = [...blocks];
@@ -444,22 +444,24 @@ export default function ReceiptStudio() {
                         </div>
 
                         {/* Move Up / Down Buttons */}
-                        <button
-                          onClick={() => moveBlock(index, "up")}
-                          disabled={index === 0}
-                          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800"
-                          title="Move Up"
-                        >
-                          <span className="material-symbols-outlined text-sm">arrow_upward</span>
-                        </button>
-                        <button
-                          onClick={() => moveBlock(index, "down")}
-                          disabled={index === blocks.length - 1}
-                          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800"
-                          title="Move Down"
-                        >
-                          <span className="material-symbols-outlined text-sm">arrow_downward</span>
-                        </button>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => moveBlock(index, "up")}
+                            disabled={index === 0}
+                            className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800 cursor-pointer"
+                            title="Move Block Up"
+                          >
+                            <span className="material-symbols-outlined text-sm">arrow_upward</span>
+                          </button>
+                          <button
+                            onClick={() => moveBlock(index, "down")}
+                            disabled={index === blocks.length - 1}
+                            className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800 cursor-pointer"
+                            title="Move Block Down"
+                          >
+                            <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -593,7 +595,7 @@ export default function ReceiptStudio() {
               </div>
 
               {/* Add Custom New Block Action */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                 <button
                   onClick={() => {
                     const id = `custom_line_${Date.now()}`;
@@ -609,7 +611,7 @@ export default function ReceiptStudio() {
                     };
                     setBlocks([...blocks, newBlock]);
                   }}
-                  className="px-3.5 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <span className="material-symbols-outlined text-sm">add_circle</span>
                   Add Custom Text Line
@@ -628,7 +630,7 @@ export default function ReceiptStudio() {
                     };
                     setBlocks([...blocks, newBlock]);
                   }}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <span className="material-symbols-outlined text-sm">vertical_align_center</span>
                   Add Empty Gap Spacer
@@ -739,9 +741,9 @@ export default function ReceiptStudio() {
                 Modify quantities, unit prices, and trade discounts to inspect live math calculations with zero negative bounds.
               </p>
 
-              <div className="space-y-2">
+              <div className="space-y-2.5 min-w-0">
                 {posData.items.map((item, idx) => (
-                  <div key={item.id} className="grid grid-cols-12 gap-2 items-center text-xs bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-200 min-w-0">
                     <input
                       type="text"
                       value={item.name}
@@ -750,55 +752,58 @@ export default function ReceiptStudio() {
                         newItems[idx].name = e.target.value;
                         setPosData({ ...posData, items: newItems });
                       }}
-                      className="col-span-5 px-2.5 py-1.5 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold"
+                      className="flex-1 px-3 py-2 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold min-w-0"
+                      placeholder="Item Name"
                     />
-                    <div className="col-span-2 flex items-center gap-1">
-                      <span className="text-[10px] text-slate-500 font-bold">Qty:</span>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.qty}
-                        onChange={(e) => {
-                          const newItems = [...posData.items];
-                          newItems[idx].qty = Math.max(1, Number(e.target.value));
-                          setPosData({ ...posData, items: newItems });
-                        }}
-                        className="w-full px-2 py-1.5 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold text-center"
-                      />
-                    </div>
-                    <div className="col-span-3 flex items-center gap-1">
-                      <span className="text-[10px] text-slate-500 font-bold">Rs:</span>
-                      <input
-                        type="number"
-                        value={item.price}
-                        onChange={(e) => {
-                          const newItems = [...posData.items];
-                          newItems[idx].price = Math.max(0, Number(e.target.value));
-                          setPosData({ ...posData, items: newItems });
-                        }}
-                        className="w-full px-2 py-1.5 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold text-right"
-                      />
-                    </div>
-                    <div className="col-span-2 flex items-center gap-1">
-                      <span className="text-[10px] text-rose-600 font-bold">-%:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={item.disc_pct}
-                        onChange={(e) => {
-                          const newItems = [...posData.items];
-                          newItems[idx].disc_pct = Math.min(100, Math.max(0, Number(e.target.value)));
-                          setPosData({ ...posData, items: newItems });
-                        }}
-                        className="w-full px-1.5 py-1.5 bg-white rounded-xl border border-slate-300 text-rose-700 font-bold text-center"
-                      />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-500 font-bold">Qty:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.qty}
+                          onChange={(e) => {
+                            const newItems = [...posData.items];
+                            newItems[idx].qty = Math.max(1, Number(e.target.value));
+                            setPosData({ ...posData, items: newItems });
+                          }}
+                          className="w-14 px-2 py-1.5 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold text-center"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-500 font-bold">Rs:</span>
+                        <input
+                          type="number"
+                          value={item.price}
+                          onChange={(e) => {
+                            const newItems = [...posData.items];
+                            newItems[idx].price = Math.max(0, Number(e.target.value));
+                            setPosData({ ...posData, items: newItems });
+                          }}
+                          className="w-20 px-2 py-1.5 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold text-right"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-rose-600 font-bold">-%:</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.disc_pct}
+                          onChange={(e) => {
+                            const newItems = [...posData.items];
+                            newItems[idx].disc_pct = Math.min(100, Math.max(0, Number(e.target.value)));
+                            setPosData({ ...posData, items: newItems });
+                          }}
+                          className="w-14 px-1.5 py-1.5 bg-white rounded-xl border border-slate-300 text-rose-700 font-bold text-center"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Cash Received (Paid Amount):</label>
                   <input
