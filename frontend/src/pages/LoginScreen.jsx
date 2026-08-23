@@ -108,14 +108,11 @@ export default function LoginScreen() {
           
           {/* Brand Logo */}
           <div className="flex flex-col items-center gap-2 mb-6 text-center">
-            <div className="p-2 rounded-2xl bg-white/80 border border-teal-50 shadow-xs flex items-center justify-center">
+            <div className="p-3.5 rounded-3xl bg-white border border-teal-100 shadow-md flex items-center justify-center">
               <img
-                src="/clinic-logo.png"
-                alt="Clinic Logo"
-                className="h-24 sm:h-28 w-auto max-w-[260px] object-contain drop-shadow-md transition-transform hover:scale-105"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                }}
+                src="/favicon.svg"
+                alt="CliniCore Logo"
+                className="h-16 w-16 sm:h-20 sm:w-20 object-contain drop-shadow-md transition-transform hover:scale-105"
               />
             </div>
             <div>

@@ -291,19 +291,10 @@ export default function SidebarLayout({ children }) {
           {/* Brand Logo & Clinic Info */}
           <div className="flex items-center gap-2.5">
             <img
-              src="/clinic-logo.png"
-              alt="Clinic Logo"
-              className="h-10 w-auto max-w-[120px] object-contain rounded-xl drop-shadow-xs"
-              onError={(e) => {
-                e.target.style.display = "none";
-                if (e.target.nextSibling) e.target.nextSibling.style.display = "flex";
-              }}
+              src="/favicon.svg"
+              alt="CliniCore Logo"
+              className="h-10 w-10 object-contain rounded-xl drop-shadow-xs"
             />
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 hidden items-center justify-center text-white font-black shadow-md shadow-teal-700/20">
-              <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                medical_services
-              </span>
-            </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-black text-base text-teal-950 tracking-tight">CliniCore</span>

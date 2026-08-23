@@ -228,17 +228,10 @@ export default function LandingPage() {
           {/* Brand Logo & Name */}
           <Link to="/" className="flex items-center gap-2.5 sm:gap-3.5 group shrink-0 min-w-0">
             <img
-              src="/clinic-logo.png"
-              alt="Clinic Logo"
-              className="h-9 sm:h-11 w-auto max-w-[110px] sm:max-w-[130px] object-contain drop-shadow-xs group-hover:scale-105 transition-transform shrink-0"
-              onError={(e) => {
-                e.target.style.display = "none";
-                if (e.target.nextSibling) e.target.nextSibling.style.display = "flex";
-              }}
+              src="/favicon.svg"
+              alt="CliniCore Logo"
+              className="h-10 sm:h-12 w-10 sm:w-12 object-contain drop-shadow-md group-hover:scale-105 transition-transform shrink-0 rounded-2xl"
             />
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-teal-800 to-teal-600 text-white hidden items-center justify-center shadow-md shadow-teal-800/20 shrink-0">
-              <span className="material-symbols-outlined text-xl sm:text-2xl">medical_services</span>
-            </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -359,10 +352,9 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
                     <img
-                      src="/clinic-logo.png"
-                      alt="Clinic Logo"
-                      className="h-8 w-auto object-contain"
-                      onError={(e) => { e.target.style.display = "none"; }}
+                      src="/favicon.svg"
+                      alt="CliniCore Logo"
+                      className="h-9 w-9 object-contain rounded-xl drop-shadow-sm"
                     />
                     <div>
                       <h3 className="font-black text-sm text-slate-900 leading-tight truncate max-w-[170px]">{clinicName}</h3>
@@ -1029,10 +1021,9 @@ export default function LandingPage() {
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
                 <img
-                  src="/clinic-logo.png"
-                  alt="Clinic Logo"
-                  className="h-9 w-auto object-contain"
-                  onError={(e) => { e.target.style.display = "none"; }}
+                  src="/favicon.svg"
+                  alt="CliniCore Logo"
+                  className="h-8 w-8 object-contain rounded-lg"
                 />
                 <span className="font-black text-sm sm:text-base text-slate-900">{clinicName}</span>
               </div>
