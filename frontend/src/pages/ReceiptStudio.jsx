@@ -257,9 +257,9 @@ export default function ReceiptStudio() {
         <div className="max-w-7xl mx-auto px-3 py-2.5 sm:px-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
-              to="/dashboard"
+              to="/admin"
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all shadow-inner shrink-0 cursor-pointer"
-              title="Return to Dashboard"
+              title="Return to Super Admin Command Center"
             >
               <span className="material-symbols-outlined text-lg sm:text-xl">arrow_back</span>
             </Link>

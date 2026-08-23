@@ -69,19 +69,18 @@ function OwnerRoute({ children }) {
 }
 
 /**
- * AdminOrOwnerRoute — Senior Engineering Guard for High-Privilege Tools like Receipt Studio.
- * Requires user to be logged in as Owner/Admin OR authenticated via Super Admin Master Passcode.
+ * AdminOrOwnerRoute — Strict Super Admin Developer Guard for Receipt Studio.
+ * Requires user to be authenticated in Super Admin Panel via Developer Master Passcode.
  */
 function AdminOrOwnerRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   if (loading) return null;
   
   const isSuperAdminAuthed = typeof sessionStorage !== "undefined" && sessionStorage.getItem("cf_dev_auth") === "true";
-  const isAdminOrOwner = user && (user.is_owner || user.role === "admin" || user.role === "owner" || user.userId === "user_admin");
 
-  if (!isSuperAdminAuthed && !isAdminOrOwner) {
-    // If not authenticated as Admin/Owner, redirect to login
-    return <Navigate to="/login" replace />;
+  if (!isSuperAdminAuthed) {
+    // If not authenticated via Super Admin Master Passcode, bounce to Super Admin login
+    return <Navigate to="/admin" replace />;
   }
   return children;
 }
@@ -137,8 +136,8 @@ function AppRoutes() {
         <Route path="/developer"   element={<DeveloperAdminPanel />} />
         <Route path="/login"       element={<LoginScreen />} />
 
-        {/* ─── High-Security Thermal Receipt Studio (Admin / Owner Only) ─── */}
-        <Route path="/receipt-studio" element={<AdminProtectedLayout><ReceiptStudio /></AdminProtectedLayout>} />
+        {/* ─── High-Security Thermal Receipt Studio (Super Admin Master Passcode Only) ─── */}
+        <Route path="/receipt-studio" element={<AdminOrOwnerRoute><ReceiptStudio /></AdminOrOwnerRoute>} />
 
         {/* ─── Disabled Pages (Can be re-enabled in future if needed) ─── */}
         {/* <Route path="/clinic"      element={<ClinicPublicPage />} /> */}
