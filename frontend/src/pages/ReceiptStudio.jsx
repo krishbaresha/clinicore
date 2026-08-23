@@ -456,21 +456,131 @@ export default function ReceiptStudio() {
                       </div>
                     </div>
 
-                    {/* Inline Content Editor for Editable Blocks */}
-                    {block.customText !== undefined && block.enabled && (
-                      <div className="mt-2 pt-2 border-t border-slate-100 pl-8 flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-500 shrink-0">Custom Text:</span>
-                        <input
-                          type="text"
-                          value={block.customText}
-                          placeholder="Type custom text to display..."
-                          onChange={(e) => {
-                            const newBlocks = [...blocks];
-                            newBlocks[index].customText = e.target.value;
-                            setBlocks(newBlocks);
-                          }}
-                          className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
-                        />
+                    {/* Direct Inline Content & Label Editor for EVERY enabled block */}
+                    {block.enabled && (
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 pl-8 space-y-1.5">
+                        {block.id === "urdu_footer" ? (
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 block mb-1">Urdu Footer Content:</span>
+                            <textarea
+                              rows={2}
+                              dir="rtl"
+                              value={clinicConfig.urdu_footer_text}
+                              onChange={(e) => setClinicConfig({ ...clinicConfig, urdu_footer_text: e.target.value })}
+                              className="w-full px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-urdu focus:outline-none focus:border-teal-600"
+                            />
+                          </div>
+                        ) : block.id === "clinic_name" ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 shrink-0">Store Title:</span>
+                            <input
+                              type="text"
+                              value={clinicConfig.clinic_name}
+                              onChange={(e) => setClinicConfig({ ...clinicConfig, clinic_name: e.target.value })}
+                              className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-bold focus:outline-none focus:border-teal-600"
+                            />
+                          </div>
+                        ) : block.id === "tagline" ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 shrink-0">Tagline Text:</span>
+                            <input
+                              type="text"
+                              value={clinicConfig.tagline}
+                              onChange={(e) => setClinicConfig({ ...clinicConfig, tagline: e.target.value })}
+                              className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
+                            />
+                          </div>
+                        ) : block.id === "contact_info" ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-slate-500 shrink-0">Phone:</span>
+                              <input
+                                type="text"
+                                value={clinicConfig.phone}
+                                onChange={(e) => setClinicConfig({ ...clinicConfig, phone: e.target.value })}
+                                className="flex-1 px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-slate-500 shrink-0">Address:</span>
+                              <input
+                                type="text"
+                                value={clinicConfig.address}
+                                onChange={(e) => setClinicConfig({ ...clinicConfig, address: e.target.value })}
+                                className="flex-1 px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                              />
+                            </div>
+                          </div>
+                        ) : block.id === "doctor_info" ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-slate-500 shrink-0">Doctor:</span>
+                              <input
+                                type="text"
+                                value={clinicConfig.doctor_name}
+                                onChange={(e) => setClinicConfig({ ...clinicConfig, doctor_name: e.target.value })}
+                                className="flex-1 px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-slate-500 shrink-0">Room:</span>
+                              <input
+                                type="text"
+                                value={clinicConfig.doctor_room}
+                                onChange={(e) => setClinicConfig({ ...clinicConfig, doctor_room: e.target.value })}
+                                className="flex-1 px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                              />
+                            </div>
+                          </div>
+                        ) : block.id === "custom_note" ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 shrink-0">Note / Policy:</span>
+                            <input
+                              type="text"
+                              value={block.customText || clinicConfig.custom_policy_note}
+                              onChange={(e) => {
+                                const newBlocks = [...blocks];
+                                newBlocks[index].customText = e.target.value;
+                                setBlocks(newBlocks);
+                              }}
+                              className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
+                            />
+                          </div>
+                        ) : block.id === "powered_by" ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 shrink-0">Watermark:</span>
+                            <input
+                              type="text"
+                              value={block.customText ?? "*** Powered by CliniCore Software ***"}
+                              onChange={(e) => {
+                                const newBlocks = [...blocks];
+                                newBlocks[index].customText = e.target.value;
+                                setBlocks(newBlocks);
+                              }}
+                              className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
+                            />
+                          </div>
+                        ) : block.customText !== undefined || block.id.startsWith("custom_line_") ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 shrink-0">Custom Line:</span>
+                            <input
+                              type="text"
+                              value={block.customText || ""}
+                              placeholder="Type custom text..."
+                              onChange={(e) => {
+                                const newBlocks = [...blocks];
+                                newBlocks[index].customText = e.target.value;
+                                setBlocks(newBlocks);
+                              }}
+                              className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
+                            <span>Dynamic layout component active</span>
+                            <span className="font-semibold text-teal-800">Auto-formatted</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
