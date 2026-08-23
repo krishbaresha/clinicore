@@ -14,21 +14,21 @@ const TEMPLATE_TYPES = [
 ];
 
 const DEFAULT_BLOCKS = [
-  { id: "header_logo", name: "Clinic Logo Image", enabled: true, category: "header", icon: "image" },
-  { id: "clinic_name", name: "Clinic / Store Title", enabled: true, category: "header", icon: "title" },
-  { id: "tagline", name: "Tagline & Speciality", enabled: true, category: "header", icon: "subtitles" },
-  { id: "contact_info", name: "Address & Phone Line", enabled: true, category: "header", icon: "call" },
-  { id: "divider_1", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule" },
-  { id: "meta_info", name: "Invoice # & Timestamp", enabled: true, category: "meta", icon: "calendar_today" },
-  { id: "customer_info", name: "Customer / Patient Details", enabled: true, category: "meta", icon: "person" },
-  { id: "doctor_info", name: "Doctor & Room Details", enabled: true, category: "meta", icon: "stethoscope" },
-  { id: "items_table", name: "Itemized Price Table", enabled: true, category: "body", icon: "table_rows" },
-  { id: "divider_2", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule" },
-  { id: "financial_totals", name: "Subtotal & Net Calculations", enabled: true, category: "totals", icon: "payments" },
-  { id: "divider_3", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule" },
-  { id: "urdu_footer", name: "Urdu Terms & Instructions", enabled: true, category: "footer", icon: "translate" },
-  { id: "custom_note", name: "Custom Policy / Return Note", enabled: true, category: "footer", icon: "notes" },
-  { id: "powered_by", name: "Software Watermark", enabled: true, category: "footer", icon: "verified" },
+  { id: "header_logo", name: "Clinic Logo Image", enabled: true, category: "header", icon: "image", padY: 2, align: "center" },
+  { id: "clinic_name", name: "Clinic / Store Title", enabled: true, category: "header", icon: "title", padY: 2, align: "center", customText: "" },
+  { id: "tagline", name: "Tagline & Speciality", enabled: true, category: "header", icon: "subtitles", padY: 1, align: "center", customText: "" },
+  { id: "contact_info", name: "Address & Phone Line", enabled: true, category: "header", icon: "call", padY: 2, align: "center", customText: "" },
+  { id: "divider_1", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule", padY: 2 },
+  { id: "meta_info", name: "Invoice # & Timestamp", enabled: true, category: "meta", icon: "calendar_today", padY: 2, align: "left" },
+  { id: "customer_info", name: "Customer / Patient Details", enabled: true, category: "meta", icon: "person", padY: 2, align: "left" },
+  { id: "doctor_info", name: "Doctor & Room Details", enabled: true, category: "meta", icon: "stethoscope", padY: 2, align: "left" },
+  { id: "items_table", name: "Itemized Price Table", enabled: true, category: "body", icon: "table_rows", padY: 3 },
+  { id: "divider_2", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule", padY: 2 },
+  { id: "financial_totals", name: "Subtotal & Net Calculations", enabled: true, category: "totals", icon: "payments", padY: 3 },
+  { id: "divider_3", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule", padY: 2 },
+  { id: "urdu_footer", name: "Urdu Terms & Instructions", enabled: true, category: "footer", icon: "translate", padY: 3, align: "center" },
+  { id: "custom_note", name: "Custom Policy / Return Note", enabled: true, category: "footer", icon: "notes", padY: 2, align: "center", customText: "Thanks for visiting! Get well soon." },
+  { id: "powered_by", name: "Software Watermark", enabled: true, category: "footer", icon: "verified", padY: 2, align: "center" },
 ];
 
 export default function ReceiptStudio() {
@@ -384,7 +384,7 @@ export default function ReceiptStudio() {
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragEnd={handleDragEnd}
-                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                    className={`p-3 rounded-2xl border transition-all ${
                       draggedIndex === index
                         ? "bg-teal-50 border-teal-400 opacity-60 shadow-lg scale-[1.02]"
                         : block.enabled
@@ -392,42 +392,132 @@ export default function ReceiptStudio() {
                         : "bg-slate-50 border-slate-200 opacity-50"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-teal-700">
-                        <span className="material-symbols-outlined text-lg">drag_indicator</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-teal-700">
+                          <span className="material-symbols-outlined text-lg">drag_indicator</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={block.enabled}
+                          onChange={() => toggleBlock(block.id)}
+                          className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base text-teal-700">{block.icon}</span>
+                          <span className="text-xs font-bold text-slate-900">{block.name}</span>
+                        </div>
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={block.enabled}
-                        onChange={() => toggleBlock(block.id)}
-                        className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
-                      />
+
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-teal-700">{block.icon}</span>
-                        <span className="text-xs font-bold text-slate-900">{block.name}</span>
+                        {/* Spacing / Padding Step Tuner */}
+                        <div className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200" title="Vertical Spacing / Padding">
+                          <span className="text-[10px] font-bold text-slate-500">Space:</span>
+                          <button
+                            onClick={() => {
+                              const newBlocks = [...blocks];
+                              newBlocks[index].padY = Math.max(0, (newBlocks[index].padY || 2) - 1);
+                              setBlocks(newBlocks);
+                            }}
+                            className="text-xs font-black text-slate-600 hover:text-teal-800 px-1 cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <span className="text-[10px] font-black text-teal-900">{block.padY ?? 2}px</span>
+                          <button
+                            onClick={() => {
+                              const newBlocks = [...blocks];
+                              newBlocks[index].padY = Math.min(16, (newBlocks[index].padY || 2) + 1);
+                              setBlocks(newBlocks);
+                            }}
+                            className="text-xs font-black text-slate-600 hover:text-teal-800 px-1 cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Move Up / Down Buttons */}
+                        <button
+                          onClick={() => moveBlock(index, "up")}
+                          disabled={index === 0}
+                          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800"
+                          title="Move Up"
+                        >
+                          <span className="material-symbols-outlined text-sm">arrow_upward</span>
+                        </button>
+                        <button
+                          onClick={() => moveBlock(index, "down")}
+                          disabled={index === blocks.length - 1}
+                          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800"
+                          title="Move Down"
+                        >
+                          <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                        </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => moveBlock(index, "up")}
-                        disabled={index === 0}
-                        className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800"
-                        title="Move Up"
-                      >
-                        <span className="material-symbols-outlined text-sm">arrow_upward</span>
-                      </button>
-                      <button
-                        onClick={() => moveBlock(index, "down")}
-                        disabled={index === blocks.length - 1}
-                        className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800"
-                        title="Move Down"
-                      >
-                        <span className="material-symbols-outlined text-sm">arrow_downward</span>
-                      </button>
-                    </div>
+                    {/* Inline Content Editor for Editable Blocks */}
+                    {block.customText !== undefined && block.enabled && (
+                      <div className="mt-2 pt-2 border-t border-slate-100 pl-8 flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-500 shrink-0">Custom Text:</span>
+                        <input
+                          type="text"
+                          value={block.customText}
+                          placeholder="Type custom text to display..."
+                          onChange={(e) => {
+                            const newBlocks = [...blocks];
+                            newBlocks[index].customText = e.target.value;
+                            setBlocks(newBlocks);
+                          }}
+                          className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
+              </div>
+
+              {/* Add Custom New Block Action */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    const id = `custom_line_${Date.now()}`;
+                    const newBlock = {
+                      id,
+                      name: "Custom Note / Notice Line",
+                      enabled: true,
+                      category: "custom",
+                      icon: "edit_note",
+                      padY: 2,
+                      align: "center",
+                      customText: "Emergency Helpline: 0300-1234567",
+                    };
+                    setBlocks([...blocks, newBlock]);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">add_circle</span>
+                  Add Custom Text Line
+                </button>
+
+                <button
+                  onClick={() => {
+                    const id = `spacer_${Date.now()}`;
+                    const newBlock = {
+                      id,
+                      name: "Custom Vertical Space Gap",
+                      enabled: true,
+                      category: "layout",
+                      icon: "space_bar",
+                      padY: 8,
+                    };
+                    setBlocks([...blocks, newBlock]);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">vertical_align_center</span>
+                  Add Empty Gap Spacer
+                </button>
               </div>
             </div>
           )}
@@ -681,7 +771,7 @@ export default function ReceiptStudio() {
                   switch (block.id) {
                     case "header_logo":
                       return clinicConfig.logo_base64 ? (
-                        <div key={block.id} className="text-center my-0.5 py-0 leading-none">
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center leading-none">
                           <img
                             src={clinicConfig.logo_base64}
                             alt="Logo"
@@ -700,25 +790,25 @@ export default function ReceiptStudio() {
 
                     case "clinic_name":
                       return (
-                        <div key={block.id} className="text-center">
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center">
                           <h2 className="font-black text-sm text-slate-900 leading-tight">
-                            {clinicConfig.clinic_name}
+                            {block.customText || clinicConfig.clinic_name}
                           </h2>
                         </div>
                       );
 
                     case "tagline":
                       return (
-                        <div key={block.id} className="text-center">
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 1}px`, paddingBottom: `${block.padY ?? 1}px` }} className="text-center">
                           <p className="text-[10px] text-slate-600 font-semibold leading-tight mt-0.5">
-                            {clinicConfig.tagline}
+                            {block.customText || clinicConfig.tagline}
                           </p>
                         </div>
                       );
 
                     case "contact_info":
                       return (
-                        <div key={block.id} className="text-center text-[9.5px] text-slate-600 font-medium space-y-0.5 mt-0.5">
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[9.5px] text-slate-600 font-medium space-y-0.5 mt-0.5">
                           <p>{clinicConfig.address}</p>
                           <p className="font-bold text-slate-800">Phone: {clinicConfig.phone}</p>
                         </div>
@@ -727,7 +817,7 @@ export default function ReceiptStudio() {
                     case "divider_1":
                     case "divider_2":
                     case "divider_3":
-                      return <div key={block.id} className="border-t border-dashed border-slate-400 my-2" />;
+                      return <div key={block.id} style={{ marginTop: `${block.padY ?? 2}px`, marginBottom: `${block.padY ?? 2}px` }} className="border-t border-dashed border-slate-400" />;
 
                     case "meta_info":
                       if (selectedTemplate === "opd") {
@@ -1026,20 +1116,33 @@ export default function ReceiptStudio() {
                       ) : null;
 
                     case "custom_note":
-                      return clinicConfig.custom_policy_note ? (
-                        <div key={block.id} className="mt-1 text-center text-[9.5px] text-slate-500 font-semibold italic">
-                          "{clinicConfig.custom_policy_note}"
+                      return (block.customText || clinicConfig.custom_policy_note) ? (
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[9.5px] text-slate-600 font-semibold italic">
+                          "{block.customText || clinicConfig.custom_policy_note}"
                         </div>
                       ) : null;
 
                     case "powered_by":
                       return (
-                        <div key={block.id} className="mt-2 text-center text-[8.5px] text-slate-400 tracking-wider uppercase">
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[8.5px] text-slate-400 tracking-wider uppercase">
                           *** Powered by CliniCore Software ***
                         </div>
                       );
 
                     default:
+                      // Support user created custom text blocks & spacers
+                      if (block.id.startsWith("custom_line_")) {
+                        return (
+                          <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[10px] font-bold text-slate-800">
+                            {block.customText}
+                          </div>
+                        );
+                      }
+                      if (block.id.startsWith("spacer_")) {
+                        return (
+                          <div key={block.id} style={{ height: `${block.padY ?? 8}px` }} />
+                        );
+                      }
                       return null;
                   }
                 })}
