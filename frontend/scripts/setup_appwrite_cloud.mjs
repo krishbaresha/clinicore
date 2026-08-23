@@ -2,7 +2,7 @@ import { Client, Databases, Storage, Permission, Role } from "node-appwrite";
 
 const ENDPOINT = "https://sgp.cloud.appwrite.io/v1";
 const PROJECT_ID = "6a8abfc60007fa775924";
-const API_KEY = "standard_fc6997b247f24bedb40408d03d99ecee8955046167616548d10c28d23881ca9c44aae7a9dec0ca7f7591d99ef7d894ab7bfed51ee4c21961376196446958ae815bb4934dcae76cbe7c235bf39a552fab4aea36bd9fba133172de39db521886032229ebab9a76de911bdce1259b47b3312a056d7a352200d1ea1b2532706f6044";
+const API_KEY = process.env.APPWRITE_API_KEY || "";
 const DATABASE_ID = "clinicore_db";
 const BUCKET_ID = "prescriptions_vault";
 

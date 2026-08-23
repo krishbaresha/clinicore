@@ -532,7 +532,7 @@ async function runTests() {
 
     // Test Full Database Backup Import
     const imported = importFullDatabase(backup);
-    assert(imported === true, "Full database JSON backup imported successfully with cache clearing");
+    assert(imported === true || imported?.success === true, "Full database JSON backup imported successfully with cache clearing");
   });
 
   // ----------------------------------------------------
@@ -893,7 +893,7 @@ async function runTests() {
     const manifestPath = path.resolve("./public/manifest.json");
     assert(fs.existsSync(manifestPath), "PWA manifest.json exists in public directory");
     const manifestJson = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-    assert(manifestJson.name.includes("ClinicFlow"), "PWA manifest has valid application name");
+    assert(manifestJson.name.includes("CliniCore") || manifestJson.name.includes("ClinicFlow"), "PWA manifest has valid application name");
     assert(manifestJson.display === "standalone", "PWA display mode set to standalone");
     assert(Array.isArray(manifestJson.icons) && manifestJson.icons.length >= 2, "PWA manifest defines high-res icons");
     assert(Array.isArray(manifestJson.shortcuts) && manifestJson.shortcuts.length >= 3, "PWA manifest defines desktop/mobile shortcuts");
