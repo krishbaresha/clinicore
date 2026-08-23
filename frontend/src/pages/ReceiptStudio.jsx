@@ -732,14 +732,17 @@ export default function ReceiptStudio() {
                     case "meta_info":
                       if (selectedTemplate === "opd") {
                         return (
-                          <div key={block.id} className="text-center py-1">
-                            <div className="text-[10px] font-black uppercase tracking-wider text-teal-900 bg-teal-50 py-1 rounded-lg border border-teal-200">
-                              OPD Consultation Token
-                            </div>
-                            <div className="my-2 py-3 bg-teal-50/80 border-2 border-teal-700 rounded-2xl">
-                              <div className="text-[9.5px] font-bold text-teal-800 uppercase">Your Token Number</div>
-                              <div className="text-4xl font-black text-teal-950 my-0.5">#{opdData.token_no}</div>
-                              <div className="text-[10px] font-bold text-slate-600">{opdData.room}</div>
+                          <div key={block.id} className="py-1">
+                            {/* Sleek, Ink-Saving Compact Token Header */}
+                            <div className="flex items-center justify-between border-y border-slate-900 py-1.5 px-1 my-1 font-sans">
+                              <div className="text-left">
+                                <span className="text-[10px] uppercase font-bold text-slate-600 block leading-tight">Token Number</span>
+                                <span className="text-lg font-black text-slate-900 leading-none">TOKEN #{opdData.token_no}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[10px] font-bold text-slate-700 block">{opdData.room}</span>
+                                <span className="text-[9.5px] font-semibold text-slate-500">{formatDate(opdData.date)}</span>
+                              </div>
                             </div>
                           </div>
                         );
