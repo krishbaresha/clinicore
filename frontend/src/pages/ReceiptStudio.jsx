@@ -1,18 +1,38 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
 import { formatPKR, formatDate } from "../utils/formatters.js";
 import { executeThermalPrint } from "../utils/thermalPrinter.js";
 
 const TEMPLATE_TYPES = [
-  { id: "pos", name: "Retail Counter POS Receipt", icon: "point_of_sale" },
-  { id: "opd", name: "OPD Patient Token", icon: "confirmation_number" },
-  { id: "b2b", name: "Wholesale B2B Invoice", icon: "inventory_2" },
-  { id: "grn", name: "Supplier Purchase GRN", icon: "local_shipping" },
-  { id: "closing", name: "Day-End Z-Closing Statement", icon: "summarize" },
+  { id: "pos", name: "Retail Counter POS Receipt", icon: "point_of_sale", badge: "POS" },
+  { id: "opd", name: "OPD Patient Token", icon: "confirmation_number", badge: "OPD" },
+  { id: "b2b", name: "Wholesale B2B Invoice", icon: "inventory_2", badge: "B2B" },
+  { id: "grn", name: "Supplier Purchase GRN", icon: "local_shipping", badge: "GRN" },
+  { id: "closing", name: "Day-End Z-Closing Statement", icon: "summarize", badge: "AUDIT" },
+];
+
+const DEFAULT_BLOCKS = [
+  { id: "header_logo", name: "Clinic Logo Image", enabled: true, category: "header", icon: "image" },
+  { id: "clinic_name", name: "Clinic / Store Title", enabled: true, category: "header", icon: "title" },
+  { id: "tagline", name: "Tagline & Speciality", enabled: true, category: "header", icon: "subtitles" },
+  { id: "contact_info", name: "Address & Phone Line", enabled: true, category: "header", icon: "call" },
+  { id: "divider_1", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule" },
+  { id: "meta_info", name: "Invoice # & Timestamp", enabled: true, category: "meta", icon: "calendar_today" },
+  { id: "customer_info", name: "Customer / Patient Details", enabled: true, category: "meta", icon: "person" },
+  { id: "doctor_info", name: "Doctor & Room Details", enabled: true, category: "meta", icon: "stethoscope" },
+  { id: "items_table", name: "Itemized Price Table", enabled: true, category: "body", icon: "table_rows" },
+  { id: "divider_2", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule" },
+  { id: "financial_totals", name: "Subtotal & Net Calculations", enabled: true, category: "totals", icon: "payments" },
+  { id: "divider_3", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule" },
+  { id: "urdu_footer", name: "Urdu Terms & Instructions", enabled: true, category: "footer", icon: "translate" },
+  { id: "custom_note", name: "Custom Policy / Return Note", enabled: true, category: "footer", icon: "notes" },
+  { id: "powered_by", name: "Software Watermark", enabled: true, category: "footer", icon: "verified" },
 ];
 
 export default function ReceiptStudio() {
   const [selectedTemplate, setSelectedTemplate] = useState("pos");
+  const [activeTab, setActiveTab] = useState("blocks"); // "blocks" | "branding" | "tuner" | "typography"
   
   // Custom Header & Branding Config
   const [clinicConfig, setClinicConfig] = useState(() => {
@@ -26,16 +46,24 @@ export default function ReceiptStudio() {
       address: "Near Gul Center / Lajpat Road, Hyderabad, Sindh",
       phone: "0300-1234567 / 022-2780000",
       logo_base64: CLINIC_LOGO_BASE64,
-      show_logo: true,
-      show_tagline: true,
-      show_doctor_info: true,
-      show_urdu_footer: true,
-      show_barcode: true,
+      logo_size: 135,
+      paper_width: "80mm",
+      font_family: "monospace",
       urdu_footer_text: "نوٹ: خریدی ہوئی ادویات 3 دن میں تبدیل ہو سکتی ہیں۔ بغیر بل کے واپسی ممکن نہیں۔",
+      custom_policy_note: "Thanks for visiting! Get well soon.",
       doctor_name: "Dr. Muhammad Kashif Khan",
       doctor_qualifications: "D.H.M.S, R.H.M.P, Consultant Homoeopath",
       doctor_room: "Room # 1",
     };
+  });
+
+  // Reorderable & Toggleable Block Structure
+  const [blocks, setBlocks] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cf_receipt_blocks_order");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_BLOCKS;
   });
 
   // Mock Dynamic Transaction Data for Live Calculations
@@ -69,6 +97,9 @@ export default function ReceiptStudio() {
     date: new Date().toISOString(),
   });
 
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState(null);
+
   // Live Arithmetic Computation for POS Template
   const posCalculations = useMemo(() => {
     let subtotal = 0;
@@ -99,6 +130,42 @@ export default function ReceiptStudio() {
     };
   }, [posData]);
 
+  // Handle Drag & Drop
+  const handleDragStart = (index) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    const newBlocks = [...blocks];
+    const draggedItem = newBlocks[draggedIndex];
+    newBlocks.splice(draggedIndex, 1);
+    newBlocks.splice(index, 0, draggedItem);
+    setDraggedIndex(index);
+    setBlocks(newBlocks);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  const moveBlock = (index, direction) => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= blocks.length) return;
+    const newBlocks = [...blocks];
+    const item = newBlocks[index];
+    newBlocks.splice(index, 1);
+    newBlocks.splice(targetIndex, 0, item);
+    setBlocks(newBlocks);
+  };
+
+  const toggleBlock = (id) => {
+    setBlocks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, enabled: !b.enabled } : b))
+    );
+  };
+
   // Handle Logo Upload
   const handleLogoUpload = (e) => {
     const file = e.target.files?.[0];
@@ -113,9 +180,17 @@ export default function ReceiptStudio() {
   const handleSaveConfig = () => {
     try {
       localStorage.setItem("cf_receipt_custom_config", JSON.stringify(clinicConfig));
-      alert("✅ Custom Receipt Template Saved to Local Storage!");
+      localStorage.setItem("cf_receipt_blocks_order", JSON.stringify(blocks));
+      alert("✅ Custom Receipt Template & Layout Order Saved to Local Storage!");
     } catch (err) {
       alert("Failed to save: " + err.message);
+    }
+  };
+
+  const handleResetDefaults = () => {
+    if (confirm("Reset receipt layout order back to default factory styling?")) {
+      setBlocks(DEFAULT_BLOCKS);
+      localStorage.removeItem("cf_receipt_blocks_order");
     }
   };
 
@@ -129,10 +204,10 @@ export default function ReceiptStudio() {
           <meta charset="utf-8">
           <title>Preview_Receipt</title>
           <style>
-            @page { size: 80mm auto; margin: 0; }
+            @page { size: ${clinicConfig.paper_width || "80mm"} auto; margin: 0; }
             * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
             body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              font-family: ${clinicConfig.font_family === "sans" ? "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" : "monospace"};
               width: 76mm;
               margin: 0 auto;
               padding: 4px;
@@ -151,203 +226,296 @@ export default function ReceiptStudio() {
     executeThermalPrint(fullHtml, "Custom Receipt Preview");
   };
 
-  return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 font-sans">
-      {/* Top Header */}
-      <header className="max-w-7xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-2xl">receipt_long</span>
-          </div>
-          <div>
-            <h1 className="text-xl font-black text-white flex items-center gap-2">
-              CliniCore Receipt Studio &amp; Template Customizer
-              <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                Visual Lab
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400">
-              Customize thermal headers, logos, formatting, and live calculate arithmetic before production rollout.
-            </p>
-          </div>
-        </div>
+  // Block Renderer Map
+  const isBlockEnabled = (id) => blocks.find((b) => b.id === id)?.enabled;
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSaveConfig}
-            className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-teal-600/20 transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-base">save</span>
-            Save Template Defaults
-          </button>
-          <button
-            onClick={handlePrintPreview}
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-base">print</span>
-            Test Print (80mm)
-          </button>
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* Header Bar matching CliniCore Teal Theme */}
+      <header className="sticky top-0 z-30 bg-teal-900 text-white shadow-lg border-b border-teal-800">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              to="/dashboard"
+              className="w-10 h-10 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all shadow-inner"
+              title="Return to Dashboard"
+            >
+              <span className="material-symbols-outlined text-xl">arrow_back</span>
+            </Link>
+            <div>
+              <h1 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+                <span>Receipt Design Studio</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-800 text-teal-200 border border-teal-700">
+                  UI/UX Pro Max
+                </span>
+              </h1>
+              <p className="text-[11px] text-teal-200 font-medium">
+                Drag-and-drop thermal canvas customizer &amp; live receipt arithmetic tuner
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleResetDefaults}
+              className="px-3.5 py-2 rounded-xl bg-teal-800/80 hover:bg-teal-800 text-teal-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">restart_alt</span>
+              Reset Layout
+            </button>
+            <button
+              onClick={handleSaveConfig}
+              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-teal-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">save</span>
+              Save Layout
+            </button>
+            <button
+              onClick={handlePrintPreview}
+              className="px-4 py-2 rounded-xl bg-white hover:bg-teal-50 text-teal-900 font-black text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">print</span>
+              Test 80mm Print
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main Split Grid */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Main Studio Grid */}
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* =================================================================== */}
-        {/* LEFT COLUMN: Controls & Input Studio (7 Columns)                    */}
+        {/* LEFT COLUMN: Controls & Drag-Drop Studio (7 Columns)                */}
         {/* =================================================================== */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-5">
           
-          {/* 1. Template Switcher */}
-          <div className="bg-slate-800/80 rounded-3xl p-5 border border-slate-700/60 backdrop-blur-md shadow-xl">
-            <h3 className="text-xs font-black text-teal-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span className="material-symbols-outlined text-base">layers</span>
-              Select Receipt Template
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {/* Template Switcher Bar */}
+          <div className="bg-white rounded-3xl p-4 border border-teal-100 shadow-sm">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-teal-600 text-sm">receipt</span>
+                Active Receipt Mode
+              </span>
+              <span className="text-[11px] font-bold text-slate-500">80mm ESC/POS Standard</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {TEMPLATE_TYPES.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setSelectedTemplate(t.id)}
-                  className={`p-3 rounded-2xl border text-left transition-all flex flex-col gap-1 cursor-pointer ${
+                  className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center gap-1 cursor-pointer ${
                     selectedTemplate === t.id
-                      ? "bg-teal-600/20 border-teal-400 text-white shadow-md shadow-teal-500/10"
-                      : "bg-slate-900/60 border-slate-700/80 text-slate-400 hover:bg-slate-700/40"
+                      ? "bg-teal-50 border-teal-600 text-teal-900 shadow-sm"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-lg text-teal-400">{t.icon}</span>
-                  <span className="text-xs font-bold">{t.name}</span>
+                  <span className="material-symbols-outlined text-lg text-teal-700">{t.icon}</span>
+                  <span className="text-[11px] font-bold leading-tight line-clamp-1">{t.name}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 2. Clinic Identity & Header Customization */}
-          <div className="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/60 backdrop-blur-md shadow-xl space-y-4">
-            <h3 className="text-xs font-black text-teal-400 uppercase tracking-wider flex items-center gap-2">
-              <span className="material-symbols-outlined text-base">storefront</span>
-              Branding &amp; Header Customization
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Clinic / Store Name:</label>
-                <input
-                  type="text"
-                  value={clinicConfig.clinic_name}
-                  onChange={(e) => setClinicConfig({ ...clinicConfig, clinic_name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-100 font-semibold focus:outline-none focus:border-teal-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Tagline / Speciality:</label>
-                <input
-                  type="text"
-                  value={clinicConfig.tagline}
-                  onChange={(e) => setClinicConfig({ ...clinicConfig, tagline: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-100 font-semibold focus:outline-none focus:border-teal-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Phone / Helpline:</label>
-                <input
-                  type="text"
-                  value={clinicConfig.phone}
-                  onChange={(e) => setClinicConfig({ ...clinicConfig, phone: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-100 font-semibold focus:outline-none focus:border-teal-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">Address / Location:</label>
-                <input
-                  type="text"
-                  value={clinicConfig.address}
-                  onChange={(e) => setClinicConfig({ ...clinicConfig, address: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-100 font-semibold focus:outline-none focus:border-teal-500"
-                />
-              </div>
-            </div>
-
-            {/* Logo Management */}
-            <div className="pt-2 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="toggle-logo"
-                  checked={clinicConfig.show_logo}
-                  onChange={(e) => setClinicConfig({ ...clinicConfig, show_logo: e.target.checked })}
-                  className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
-                />
-                <label htmlFor="toggle-logo" className="text-xs font-bold text-slate-300 cursor-pointer">
-                  Show Clinic Logo in Receipt Header
-                </label>
-              </div>
-
-              <label className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm">upload</span>
-                Upload Custom Logo
-                <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-              </label>
-            </div>
+          {/* Sub Navigation Tabs */}
+          <div className="flex bg-teal-100/60 p-1.5 rounded-2xl gap-1">
+            {[
+              { id: "blocks", label: "Drag & Drop Blocks", icon: "drag_indicator" },
+              { id: "branding", label: "Branding & Logo", icon: "storefront" },
+              { id: "tuner", label: "Live Calculator", icon: "calculate" },
+              { id: "typography", label: "Paper & Fonts", icon: "format_size" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  activeTab === tab.id
+                    ? "bg-white text-teal-900 shadow-sm font-black"
+                    : "text-teal-800 hover:bg-white/50"
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
 
-          {/* 3. Section Toggles */}
-          <div className="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/60 backdrop-blur-md shadow-xl space-y-3">
-            <h3 className="text-xs font-black text-teal-400 uppercase tracking-wider flex items-center gap-2">
-              <span className="material-symbols-outlined text-base">tune</span>
-              Template Sections &amp; Footer Notes
-            </h3>
+          {/* TAB 1: DRAG & DROP BLOCKS MANAGER */}
+          {activeTab === "blocks" && (
+            <div className="bg-white rounded-3xl p-5 border border-teal-100 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Receipt Sections Order &amp; Visibility</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Drag items up or down to re-order. Toggle checkbox to show or hide from printed receipt.
+                  </p>
+                </div>
+                <span className="text-xs font-black text-teal-800 bg-teal-50 px-2.5 py-1 rounded-xl border border-teal-200">
+                  {blocks.filter((b) => b.enabled).length} Active Blocks
+                </span>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-900/60 border border-slate-700/80 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={clinicConfig.show_doctor_info}
-                  onChange={(e) => setClinicConfig({ ...clinicConfig, show_doctor_info: e.target.checked })}
-                  className="w-4 h-4 rounded text-teal-600"
-                />
-                <span className="font-bold text-slate-200">Show Doctor Name &amp; Room #</span>
-              </label>
+              <div className="space-y-2">
+                {blocks.map((block, index) => (
+                  <div
+                    key={block.id}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                      draggedIndex === index
+                        ? "bg-teal-50 border-teal-400 opacity-60 shadow-lg scale-[1.02]"
+                        : block.enabled
+                        ? "bg-white border-slate-200 hover:border-teal-300 shadow-xs"
+                        : "bg-slate-50 border-slate-200 opacity-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-teal-700">
+                        <span className="material-symbols-outlined text-lg">drag_indicator</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={block.enabled}
+                        onChange={() => toggleBlock(block.id)}
+                        className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-teal-700">{block.icon}</span>
+                        <span className="text-xs font-bold text-slate-900">{block.name}</span>
+                      </div>
+                    </div>
 
-              <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-900/60 border border-slate-700/80 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={clinicConfig.show_urdu_footer}
-                  onChange={(e) => setClinicConfig({ ...clinicConfig, show_urdu_footer: e.target.checked })}
-                  className="w-4 h-4 rounded text-teal-600"
-                />
-                <span className="font-bold text-slate-200">Show Urdu Instructions Note</span>
-              </label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => moveBlock(index, "up")}
+                        disabled={index === 0}
+                        className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800"
+                        title="Move Up"
+                      >
+                        <span className="material-symbols-outlined text-sm">arrow_upward</span>
+                      </button>
+                      <button
+                        onClick={() => moveBlock(index, "down")}
+                        disabled={index === blocks.length - 1}
+                        className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-teal-800"
+                        title="Move Down"
+                      >
+                        <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
 
-            {clinicConfig.show_urdu_footer && (
-              <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-300 mb-1">Urdu Footer Note:</label>
+          {/* TAB 2: BRANDING & LOGO */}
+          {activeTab === "branding" && (
+            <div className="bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-4">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600">storefront</span>
+                Clinic Identity &amp; Header Customization
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Clinic / Store Name:</label>
+                  <input
+                    type="text"
+                    value={clinicConfig.clinic_name}
+                    onChange={(e) => setClinicConfig({ ...clinicConfig, clinic_name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-semibold focus:outline-none focus:border-teal-600 bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tagline / Speciality:</label>
+                  <input
+                    type="text"
+                    value={clinicConfig.tagline}
+                    onChange={(e) => setClinicConfig({ ...clinicConfig, tagline: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-semibold focus:outline-none focus:border-teal-600 bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Helpline / Phone Number:</label>
+                  <input
+                    type="text"
+                    value={clinicConfig.phone}
+                    onChange={(e) => setClinicConfig({ ...clinicConfig, phone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-semibold focus:outline-none focus:border-teal-600 bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Address / Location:</label>
+                  <input
+                    type="text"
+                    value={clinicConfig.address}
+                    onChange={(e) => setClinicConfig({ ...clinicConfig, address: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-semibold focus:outline-none focus:border-teal-600 bg-slate-50"
+                  />
+                </div>
+              </div>
+
+              {/* Logo Settings */}
+              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {clinicConfig.logo_base64 && (
+                    <img src={clinicConfig.logo_base64} alt="Logo" className="w-14 h-10 object-contain bg-slate-100 p-1 rounded-lg border" />
+                  )}
+                  <label className="px-4 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm">upload</span>
+                    Upload Custom Logo Image
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-bold text-slate-600">Logo Size:</span>
+                  <input
+                    type="range"
+                    min="80"
+                    max="180"
+                    value={clinicConfig.logo_size || 135}
+                    onChange={(e) => setClinicConfig({ ...clinicConfig, logo_size: Number(e.target.value) })}
+                    className="accent-teal-600 cursor-pointer"
+                  />
+                  <span className="font-mono text-slate-500">{clinicConfig.logo_size || 135}px</span>
+                </div>
+              </div>
+
+              {/* Urdu Footer Editor */}
+              <div className="pt-3 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-700 mb-1">Urdu Footer Note / Policy:</label>
                 <textarea
                   rows={2}
                   dir="rtl"
                   value={clinicConfig.urdu_footer_text}
                   onChange={(e) => setClinicConfig({ ...clinicConfig, urdu_footer_text: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-100 text-sm font-urdu focus:outline-none focus:border-teal-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm font-urdu focus:outline-none focus:border-teal-600 bg-slate-50"
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* 4. Live Calculation Data Tuner */}
-          {selectedTemplate === "pos" && (
-            <div className="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/60 backdrop-blur-md shadow-xl space-y-4">
-              <h3 className="text-xs font-black text-teal-400 uppercase tracking-wider flex items-center gap-2">
-                <span className="material-symbols-outlined text-base">calculate</span>
-                Live Transaction &amp; Calculation Tuner
+          {/* TAB 3: LIVE CALCULATOR & PRICE TUNER */}
+          {activeTab === "tuner" && (
+            <div className="bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-4">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600">calculate</span>
+                Live Transaction &amp; Calculation Arithmetic Tuner
               </h3>
+              <p className="text-xs text-slate-500">
+                Modify quantities, unit prices, and trade discounts to inspect live math calculations with zero negative bounds.
+              </p>
 
               <div className="space-y-2">
                 {posData.items.map((item, idx) => (
-                  <div key={item.id} className="grid grid-cols-12 gap-2 items-center text-xs bg-slate-900/70 p-2.5 rounded-xl border border-slate-700/80">
+                  <div key={item.id} className="grid grid-cols-12 gap-2 items-center text-xs bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
                     <input
                       type="text"
                       value={item.name}
@@ -356,10 +524,10 @@ export default function ReceiptStudio() {
                         newItems[idx].name = e.target.value;
                         setPosData({ ...posData, items: newItems });
                       }}
-                      className="col-span-5 px-2 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white font-bold"
+                      className="col-span-5 px-2.5 py-1.5 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold"
                     />
                     <div className="col-span-2 flex items-center gap-1">
-                      <span className="text-[10px] text-slate-400">Qty:</span>
+                      <span className="text-[10px] text-slate-500 font-bold">Qty:</span>
                       <input
                         type="number"
                         min="1"
@@ -369,11 +537,11 @@ export default function ReceiptStudio() {
                           newItems[idx].qty = Math.max(1, Number(e.target.value));
                           setPosData({ ...posData, items: newItems });
                         }}
-                        className="w-full px-1.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white font-bold text-center"
+                        className="w-full px-2 py-1.5 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold text-center"
                       />
                     </div>
                     <div className="col-span-3 flex items-center gap-1">
-                      <span className="text-[10px] text-slate-400">Rs:</span>
+                      <span className="text-[10px] text-slate-500 font-bold">Rs:</span>
                       <input
                         type="number"
                         value={item.price}
@@ -382,11 +550,11 @@ export default function ReceiptStudio() {
                           newItems[idx].price = Math.max(0, Number(e.target.value));
                           setPosData({ ...posData, items: newItems });
                         }}
-                        className="w-full px-1.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-white font-bold text-right"
+                        className="w-full px-2 py-1.5 bg-white rounded-xl border border-slate-300 text-slate-900 font-bold text-right"
                       />
                     </div>
                     <div className="col-span-2 flex items-center gap-1">
-                      <span className="text-[10px] text-rose-400">-%:</span>
+                      <span className="text-[10px] text-rose-600 font-bold">-%:</span>
                       <input
                         type="number"
                         min="0"
@@ -397,7 +565,7 @@ export default function ReceiptStudio() {
                           newItems[idx].disc_pct = Math.min(100, Math.max(0, Number(e.target.value)));
                           setPosData({ ...posData, items: newItems });
                         }}
-                        className="w-full px-1.5 py-1 bg-slate-800 rounded-lg border border-slate-700 text-rose-300 font-bold text-center"
+                        className="w-full px-1.5 py-1.5 bg-white rounded-xl border border-slate-300 text-rose-700 font-bold text-center"
                       />
                     </div>
                   </div>
@@ -406,23 +574,59 @@ export default function ReceiptStudio() {
 
               <div className="grid grid-cols-2 gap-4 pt-2 text-xs">
                 <div>
-                  <label className="block font-bold text-slate-300 mb-1">Cash Received (Paid):</label>
+                  <label className="block font-bold text-slate-700 mb-1">Cash Received (Paid Amount):</label>
                   <input
                     type="number"
                     value={posData.paid_amount}
                     onChange={(e) => setPosData({ ...posData, paid_amount: Math.max(0, Number(e.target.value)) })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700 text-emerald-400 font-black text-sm text-right"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-emerald-50/60 border border-emerald-300 text-emerald-900 font-black text-sm text-right"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-300 mb-1">Overall Flat Discount (Rs):</label>
+                  <label className="block font-bold text-slate-700 mb-1">Overall Bill Discount (Rs Flat):</label>
                   <input
                     type="number"
                     value={posData.overall_disc_flat}
                     onChange={(e) => setPosData({ ...posData, overall_disc_flat: Math.max(0, Number(e.target.value)) })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700 text-rose-400 font-black text-sm text-right"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-rose-50/60 border border-rose-300 text-rose-900 font-black text-sm text-right"
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: TYPOGRAPHY & PAPER WIDTH */}
+          {activeTab === "typography" && (
+            <div className="bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-4">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600">format_size</span>
+                Thermal Font &amp; Paper Roll Settings
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">Paper Roll Width:</label>
+                  <select
+                    value={clinicConfig.paper_width}
+                    onChange={(e) => setClinicConfig({ ...clinicConfig, paper_width: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-slate-800"
+                  >
+                    <option value="80mm">80mm (Standard POS Desktop Printers)</option>
+                    <option value="58mm">58mm (Compact Mobile Handhelds)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">Print Font Style:</label>
+                  <select
+                    value={clinicConfig.font_family}
+                    onChange={(e) => setClinicConfig({ ...clinicConfig, font_family: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-slate-800"
+                  >
+                    <option value="monospace">Monospace (High Clarity Classic Thermal)</option>
+                    <option value="sans">Clean Modern Sans-Serif</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -433,227 +637,182 @@ export default function ReceiptStudio() {
         {/* RIGHT COLUMN: 100% Exact 80mm Live Thermal Paper Simulation (5 Cols) */}
         {/* =================================================================== */}
         <div className="lg:col-span-5 flex flex-col items-center">
-          <div className="sticky top-6 w-full max-w-[340px]">
-            <div className="text-center mb-2 font-bold text-xs text-slate-400 uppercase tracking-widest flex items-center justify-center gap-1.5">
+          <div className="sticky top-20 w-full max-w-[340px]">
+            <div className="text-center mb-3 font-bold text-xs text-teal-900 uppercase tracking-widest flex items-center justify-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              80mm Paper Roll Live Preview
+              Live 80mm Paper Roll Canvas
             </div>
 
             {/* Realistic Thermal Receipt Paper Card */}
             <div
               id="thermal-render-target"
-              className="bg-white text-slate-900 p-5 rounded-2xl shadow-2xl border-t-8 border-teal-600 font-mono text-[11px] leading-tight select-none"
-              style={{ width: "100%", minHeight: "480px" }}
+              className="bg-white text-slate-900 p-5 rounded-2xl shadow-xl border border-slate-200 text-[11px] leading-tight select-none"
+              style={{
+                width: "100%",
+                minHeight: "520px",
+                fontFamily: clinicConfig.font_family === "sans" ? "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" : "monospace",
+              }}
             >
-              {/* Header Logo */}
-              {clinicConfig.show_logo && clinicConfig.logo_base64 && (
-                <div className="text-center mb-2">
-                  <img
-                    src={clinicConfig.logo_base64}
-                    alt="Logo"
-                    className="max-w-[130px] h-auto mx-auto block object-contain"
-                  />
-                </div>
-              )}
-
-              {/* Clinic Name & Tagline */}
-              <div className="text-center font-sans space-y-0.5 mb-2">
-                <h2 className="font-black text-sm text-slate-900 leading-tight">
-                  {clinicConfig.clinic_name}
-                </h2>
-                {clinicConfig.show_tagline && (
-                  <p className="text-[10px] text-slate-600 font-semibold leading-tight">
-                    {clinicConfig.tagline}
-                  </p>
-                )}
-                <p className="text-[9.5px] text-slate-500 font-medium">{clinicConfig.address}</p>
-                <p className="text-[10px] font-bold text-slate-800">Phone: {clinicConfig.phone}</p>
-              </div>
-
-              <div className="border-t border-dashed border-slate-400 my-2" />
-
-              {/* ==================== POS RECEIPT BODY ==================== */}
-              {selectedTemplate === "pos" && (
-                <div>
-                  <div className="flex justify-between text-[10px] font-bold text-slate-700">
-                    <span>Inv: {posData.receipt_no}</span>
-                    <span>{formatDate(posData.date)}</span>
-                  </div>
-                  <div className="text-[10px] text-slate-600">
-                    Customer: <span className="font-bold text-slate-900">{posData.customer_name}</span>
-                  </div>
-                  <div className="text-[10px] text-slate-600 mb-2">
-                    Cashier: <span className="font-bold">{posData.cashier_name}</span>
-                  </div>
-
-                  <div className="border-t border-dashed border-slate-400 my-1" />
-
-                  {/* Items Header */}
-                  <div className="flex justify-between font-black text-[10px] text-slate-800 uppercase py-0.5">
-                    <span>Item Description</span>
-                    <span>Amount</span>
-                  </div>
-
-                  {/* Items List */}
-                  <div className="divide-y divide-dotted divide-slate-200 my-1">
-                    {posCalculations.computedItems.map((it) => (
-                      <div key={it.id} className="py-1">
-                        <div className="font-bold text-[11px] text-slate-900 flex justify-between">
-                          <span>{it.name}</span>
-                          {it.disc_pct > 0 && <span className="text-rose-700 text-[9.5px]">(-{it.disc_pct}%)</span>}
+              {/* Dynamic Block Render Engine based on User Drag-Drop Order */}
+              {blocks
+                .filter((b) => b.enabled)
+                .map((block) => {
+                  switch (block.id) {
+                    case "header_logo":
+                      return clinicConfig.logo_base64 ? (
+                        <div key={block.id} className="text-center mb-2">
+                          <img
+                            src={clinicConfig.logo_base64}
+                            alt="Logo"
+                            style={{ maxWidth: `${clinicConfig.logo_size || 135}px` }}
+                            className="h-auto mx-auto block object-contain"
+                          />
                         </div>
-                        <div className="flex justify-between text-[10px] text-slate-600">
-                          <span>{it.qty} × Rs. {it.price.toFixed(2)}</span>
-                          <span className="font-bold text-slate-900">Rs. {it.lineNet.toFixed(2)}</span>
+                      ) : null;
+
+                    case "clinic_name":
+                      return (
+                        <div key={block.id} className="text-center">
+                          <h2 className="font-black text-sm text-slate-900 leading-tight">
+                            {clinicConfig.clinic_name}
+                          </h2>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      );
 
-                  <div className="border-t border-dashed border-slate-400 my-1.5" />
+                    case "tagline":
+                      return (
+                        <div key={block.id} className="text-center">
+                          <p className="text-[10px] text-slate-600 font-semibold leading-tight mt-0.5">
+                            {clinicConfig.tagline}
+                          </p>
+                        </div>
+                      );
 
-                  {/* Financial Summary */}
-                  <div className="space-y-0.5 text-[11px]">
-                    <div className="flex justify-between text-slate-600">
-                      <span>Subtotal Gross:</span>
-                      <span>Rs. {posCalculations.subtotal.toFixed(2)}</span>
-                    </div>
+                    case "contact_info":
+                      return (
+                        <div key={block.id} className="text-center text-[9.5px] text-slate-600 font-medium space-y-0.5 mt-0.5">
+                          <p>{clinicConfig.address}</p>
+                          <p className="font-bold text-slate-800">Phone: {clinicConfig.phone}</p>
+                        </div>
+                      );
 
-                    {posCalculations.totalDiscount > 0 && (
-                      <div className="flex justify-between text-rose-700 font-bold">
-                        <span>Total Trade Discount:</span>
-                        <span>- Rs. {posCalculations.totalDiscount.toFixed(2)}</span>
-                      </div>
-                    )}
+                    case "divider_1":
+                    case "divider_2":
+                    case "divider_3":
+                      return <div key={block.id} className="border-t border-dashed border-slate-400 my-2" />;
 
-                    <div className="flex justify-between font-black text-sm text-slate-900 pt-1 border-t border-slate-300">
-                      <span>NET TOTAL BILL:</span>
-                      <span>Rs. {posCalculations.netBill.toFixed(2)}</span>
-                    </div>
+                    case "meta_info":
+                      return (
+                        <div key={block.id} className="flex justify-between text-[10px] font-bold text-slate-700">
+                          <span>Inv: {posData.receipt_no}</span>
+                          <span>{formatDate(posData.date)}</span>
+                        </div>
+                      );
 
-                    <div className="flex justify-between font-bold text-emerald-800 pt-0.5">
-                      <span>Cash Paid:</span>
-                      <span>Rs. {posCalculations.paid.toFixed(2)}</span>
-                    </div>
+                    case "customer_info":
+                      return (
+                        <div key={block.id} className="text-[10px] text-slate-600">
+                          Customer: <span className="font-bold text-slate-900">{posData.customer_name}</span> ({posData.customer_phone})
+                        </div>
+                      );
 
-                    {posCalculations.changeReturn > 0 && (
-                      <div className="flex justify-between font-black text-slate-900">
-                        <span>Change Returned:</span>
-                        <span>Rs. {posCalculations.changeReturn.toFixed(2)}</span>
-                      </div>
-                    )}
+                    case "doctor_info":
+                      return (
+                        <div key={block.id} className="text-[10px] text-slate-600 mb-1">
+                          Consultant: <span className="font-bold">{clinicConfig.doctor_name}</span> ({clinicConfig.doctor_room})
+                        </div>
+                      );
 
-                    {posCalculations.balanceDue > 0 && (
-                      <div className="flex justify-between font-black text-rose-800 bg-rose-50 px-1 py-0.5 rounded">
-                        <span>Udhaar (Balance Due):</span>
-                        <span>Rs. {posCalculations.balanceDue.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+                    case "items_table":
+                      return (
+                        <div key={block.id}>
+                          <div className="flex justify-between font-black text-[10px] text-slate-800 uppercase py-0.5 border-y border-dashed border-slate-300">
+                            <span>Item Description</span>
+                            <span>Amount</span>
+                          </div>
+                          <div className="divide-y divide-dotted divide-slate-200 my-1">
+                            {posCalculations.computedItems.map((it) => (
+                              <div key={it.id} className="py-1">
+                                <div className="font-bold text-[11px] text-slate-900 flex justify-between">
+                                  <span>{it.name}</span>
+                                  {it.disc_pct > 0 && <span className="text-rose-700 text-[9.5px]">(-{it.disc_pct}%)</span>}
+                                </div>
+                                <div className="flex justify-between text-[10px] text-slate-600">
+                                  <span>{it.qty} × Rs. {it.price.toFixed(2)}</span>
+                                  <span className="font-bold text-slate-900">Rs. {it.lineNet.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
 
-              {/* ==================== OPD TOKEN BODY ==================== */}
-              {selectedTemplate === "opd" && (
-                <div className="text-center py-1">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-700">OPD Consultation Token</div>
-                  
-                  {/* Huge Token Circle */}
-                  <div className="my-2 py-3 bg-teal-50 border-2 border-teal-700 rounded-2xl">
-                    <div className="text-[10px] font-bold text-teal-800 uppercase">Your Token Number</div>
-                    <div className="text-4xl font-black text-teal-900 my-0.5">#{opdData.token_no}</div>
-                    <div className="text-[10px] font-bold text-slate-600">{opdData.room}</div>
-                  </div>
+                    case "financial_totals":
+                      return (
+                        <div key={block.id} className="space-y-0.5 text-[11px]">
+                          <div className="flex justify-between text-slate-600">
+                            <span>Subtotal Gross:</span>
+                            <span>Rs. {posCalculations.subtotal.toFixed(2)}</span>
+                          </div>
 
-                  <div className="text-left space-y-0.5 text-[10px] text-slate-700 my-2">
-                    <div>Patient: <span className="font-black text-slate-900">{opdData.patient_name}</span></div>
-                    <div>Guardian: <span>{opdData.patient_relation}</span></div>
-                    <div>Age / Gender: <span>{opdData.age} yrs • {opdData.gender}</span></div>
-                    <div className="flex justify-between pt-1 border-t border-slate-200">
-                      <span>Fee: <strong className="text-slate-900">Rs. {opdData.fee_amount}</strong> ({opdData.fee_status})</span>
-                      <span>MR#: {opdData.mr_no}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+                          {posCalculations.totalDiscount > 0 && (
+                            <div className="flex justify-between text-rose-700 font-bold">
+                              <span>Total Trade Discount:</span>
+                              <span>- Rs. {posCalculations.totalDiscount.toFixed(2)}</span>
+                            </div>
+                          )}
 
-              {/* ==================== B2B INVOICE BODY ==================== */}
-              {selectedTemplate === "b2b" && (
-                <div>
-                  <div className="text-center font-bold text-[10px] uppercase text-slate-700 mb-1">Wholesale Tax Invoice</div>
-                  <div className="flex justify-between text-[10px]">
-                    <span>Inv: WHO-6218</span>
-                    <span>Date: {formatDate(new Date())}</span>
-                  </div>
-                  <div className="text-[10px] font-bold text-slate-900">Party: Al-Rehman Homoeo (Tando Adam)</div>
-                  <div className="text-[9.5px] text-slate-600 mb-2">Transport: Al-Madina Goods (Bilty # 44102)</div>
+                          <div className="flex justify-between font-black text-sm text-slate-900 pt-1 border-t border-slate-300">
+                            <span>NET TOTAL BILL:</span>
+                            <span>Rs. {posCalculations.netBill.toFixed(2)}</span>
+                          </div>
 
-                  <div className="border-t border-dashed border-slate-400 my-1" />
-                  <div className="py-1 text-[10px]">
-                    <div className="flex justify-between font-bold">
-                      <span>10 Boxes BM Drops #1</span>
-                      <span>Rs. 3,500.00</span>
-                    </div>
-                    <div className="flex justify-between font-bold">
-                      <span>5 Boxes Schwabe Eye Drops</span>
-                      <span>Rs. 2,750.00</span>
-                    </div>
-                  </div>
-                  <div className="border-t border-dashed border-slate-400 my-1.5" />
-                  <div className="flex justify-between font-black text-xs">
-                    <span>TOTAL INVOICE:</span>
-                    <span>Rs. 6,250.00</span>
-                  </div>
-                  <div className="flex justify-between text-[10px] font-bold text-rose-700">
-                    <span>Party Udhaar Due:</span>
-                    <span>Rs. 6,250.00</span>
-                  </div>
-                </div>
-              )}
+                          <div className="flex justify-between font-bold text-emerald-800 pt-0.5">
+                            <span>Cash Paid:</span>
+                            <span>Rs. {posCalculations.paid.toFixed(2)}</span>
+                          </div>
 
-              {/* ==================== DAY-END CLOSING BODY ==================== */}
-              {selectedTemplate === "closing" && (
-                <div className="text-left space-y-1">
-                  <div className="text-center font-bold text-[10px] uppercase text-slate-700 mb-1">Executive Shift Z-Closing</div>
-                  <div className="flex justify-between text-[10px] font-bold">
-                    <span>Date: {formatDate(new Date())}</span>
-                    <span>Time: 9:00 PM</span>
-                  </div>
-                  <div className="border-t border-dashed border-slate-400 my-1" />
-                  <div className="flex justify-between text-[10.5px]">
-                    <span>• OPD Doctor Fees:</span>
-                    <span className="font-bold">Rs. 12,500</span>
-                  </div>
-                  <div className="flex justify-between text-[10.5px]">
-                    <span>• Retail POS Pharmacy:</span>
-                    <span className="font-bold">Rs. 34,200</span>
-                  </div>
-                  <div className="flex justify-between text-[10.5px]">
-                    <span>• Wholesale Godown Sales:</span>
-                    <span className="font-bold">Rs. 45,000</span>
-                  </div>
-                  <div className="flex justify-between text-[10.5px] text-rose-700">
-                    <span>• Operational Expenses:</span>
-                    <span className="font-bold">- Rs. 3,400</span>
-                  </div>
-                  <div className="border-t border-slate-300 pt-1 flex justify-between font-black text-xs text-teal-950">
-                    <span>NET CASH IN HAND:</span>
-                    <span>Rs. 88,300</span>
-                  </div>
-                </div>
-              )}
+                          {posCalculations.changeReturn > 0 && (
+                            <div className="flex justify-between font-black text-slate-900">
+                              <span>Change Returned:</span>
+                              <span>Rs. {posCalculations.changeReturn.toFixed(2)}</span>
+                            </div>
+                          )}
 
-              {/* Urdu Footer Instructions */}
-              {clinicConfig.show_urdu_footer && clinicConfig.urdu_footer_text && (
-                <div className="mt-3 pt-2 border-t border-dashed border-slate-400 text-center font-urdu text-[10.5px] text-slate-800 leading-snug" dir="rtl">
-                  {clinicConfig.urdu_footer_text}
-                </div>
-              )}
+                          {posCalculations.balanceDue > 0 && (
+                            <div className="flex justify-between font-black text-rose-800 bg-rose-50 px-1 py-0.5 rounded">
+                              <span>Udhaar (Balance Due):</span>
+                              <span>Rs. {posCalculations.balanceDue.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
 
-              {/* Powered By Footer */}
-              <div className="mt-2 text-center text-[8.5px] text-slate-400 font-sans tracking-wider uppercase">
-                *** Powered by CliniCore Software ***
-              </div>
+                    case "urdu_footer":
+                      return clinicConfig.urdu_footer_text ? (
+                        <div key={block.id} className="mt-3 pt-2 text-center font-urdu text-[10.5px] text-slate-800 leading-snug" dir="rtl">
+                          {clinicConfig.urdu_footer_text}
+                        </div>
+                      ) : null;
+
+                    case "custom_note":
+                      return clinicConfig.custom_policy_note ? (
+                        <div key={block.id} className="mt-1 text-center text-[9.5px] text-slate-500 font-semibold italic">
+                          "{clinicConfig.custom_policy_note}"
+                        </div>
+                      ) : null;
+
+                    case "powered_by":
+                      return (
+                        <div key={block.id} className="mt-2 text-center text-[8.5px] text-slate-400 tracking-wider uppercase">
+                          *** Powered by CliniCore Software ***
+                        </div>
+                      );
+
+                    default:
+                      return null;
+                  }
+                })}
             </div>
           </div>
         </div>
