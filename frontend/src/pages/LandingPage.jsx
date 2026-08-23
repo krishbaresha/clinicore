@@ -96,6 +96,29 @@ export default function LandingPage() {
     }
   }
 
+  const defaultDoctors = [
+    {
+      id: "doc_kashif",
+      name: "Dr. Muhammad Kashif Khan",
+      specialization: "Principal Consultant & Homeopath (D.H.M.S, R.H.M.P)",
+      room_number: "Main Chamber 1",
+      consultation_fee: 500,
+      is_owner: true,
+      availability_status: "available",
+    },
+    {
+      id: "doc_asif",
+      name: "Dr. Asif Ashraf",
+      specialization: "Associate Consultant & Chronic Care Specialist",
+      room_number: "Chamber 2",
+      consultation_fee: 400,
+      is_owner: false,
+      availability_status: "available",
+    },
+  ];
+
+  const displayDoctors = doctorsList.length > 0 ? doctorsList : defaultDoctors;
+
   const defaultServices = [
     {
       id: "ser_1",
@@ -718,8 +741,8 @@ export default function LandingPage() {
           </div>
 
           {/* Dynamic Doctors Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {doctorsList.map((doc) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-4xl mx-auto gap-6 sm:gap-8">
+            {displayDoctors.map((doc) => (
               <motion.div
                 key={doc.id}
                 initial={{ opacity: 0, y: 15 }}
@@ -727,21 +750,21 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.3 }}
-                className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-5 relative overflow-hidden group hover:border-teal-200"
+                className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-7 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-5 relative overflow-hidden group hover:border-teal-200"
               >
                 <div className="space-y-4">
                   {/* Doctor Avatar & Badges */}
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-teal-800 to-teal-600 text-white flex items-center justify-center font-black text-lg sm:text-xl shadow-md shadow-teal-800/20">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-800 to-teal-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-teal-800/20">
                       {doc.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {doc.is_owner && (
-                        <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
-                          ⭐ PRINCIPAL
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
+                          ⭐ PRINCIPAL CONSULTANT
                         </span>
                       )}
-                      <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-slate-50 text-slate-700 border border-slate-200">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-200">
                         {doc.room_number || "Chamber 1"}
                       </span>
                     </div>
@@ -749,7 +772,7 @@ export default function LandingPage() {
 
                   {/* Doctor Name & Specialization */}
                   <div>
-                    <h3 className="font-black text-base sm:text-lg text-slate-900 group-hover:text-teal-800 transition-colors">
+                    <h3 className="font-black text-lg text-slate-900 group-hover:text-teal-800 transition-colors">
                       {doc.name}
                     </h3>
                     <p className="text-xs font-semibold text-slate-500 mt-0.5">
@@ -758,10 +781,10 @@ export default function LandingPage() {
                   </div>
 
                   {/* Chamber Details */}
-                  <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-1 text-xs font-medium text-slate-600">
+                  <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1.5 text-xs font-medium text-slate-600">
                     <div className="flex items-center justify-between">
                       <span>{t("landing.doctors.fee")}</span>
-                      <strong className="text-slate-900 font-bold font-mono">Rs. {doc.consultation_fee || 300}</strong>
+                      <strong className="text-slate-900 font-bold font-mono">Rs. {doc.consultation_fee || 500}</strong>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>{t("landing.doctors.status")}</span>
@@ -777,29 +800,13 @@ export default function LandingPage() {
                   href={`https://wa.me/${clinicWhatsapp}?text=Assalam-o-Alaikum,%20I%20would%20like%20to%20consult%20with%20${encodeURIComponent(doc.name)}.`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2.5 rounded-2xl bg-teal-50 hover:bg-teal-800 text-teal-950 hover:text-white border border-teal-200 hover:border-teal-800 font-black text-xs transition-all shadow-xs cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 min-h-[46px] py-2.5 rounded-2xl bg-teal-50 hover:bg-teal-800 text-teal-950 hover:text-white border border-teal-200 hover:border-teal-800 font-black text-xs transition-all shadow-xs cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base">calendar_month</span>
                   {t("landing.doctors.inquireBtn")}
                 </a>
               </motion.div>
             ))}
-
-            {doctorsList.length === 0 && (
-              <div className="col-span-full bg-white border border-dashed border-slate-200 rounded-3xl p-8 sm:p-12 text-center space-y-3">
-                <span className="material-symbols-outlined text-3xl sm:text-4xl text-teal-600">person_add</span>
-                <h3 className="font-black text-base sm:text-lg text-slate-900">{t("landing.doctors.initializing")}</h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto font-medium">
-                  {t("landing.doctors.initDesc")}
-                </p>
-                <Link
-                  to="/admin"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-800 text-white text-xs font-bold"
-                >
-                  {t("landing.doctors.adminBtn")}
-                </Link>
-              </div>
-            )}
           </div>
 
         </div>
