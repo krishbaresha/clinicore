@@ -91,3 +91,32 @@ export class AppwriteRepository {
     }
   }
 }
+
+/**
+ * Cloud Storage Upload Helper for Prescriptions & Lab Photos
+ */
+export async function uploadFileToCloud(file, fileId = ID.unique()) {
+  if (!isAppwriteConfigured()) return null;
+  try {
+    const uploaded = await storage.createFile(BUCKET_ID, fileId, file);
+    // Return direct permanent view URL
+    const fileUrl = storage.getFileView(BUCKET_ID, uploaded.$id);
+    return {
+      fileId: uploaded.$id,
+      url: fileUrl.href || fileUrl.toString(),
+    };
+  } catch (err) {
+    console.warn("[Appwrite Storage] Upload error:", err);
+    return null;
+  }
+}
+
+export function getCloudFilePreview(fileId, width = 800, height = 800) {
+  if (!isAppwriteConfigured() || !fileId) return null;
+  try {
+    const previewUrl = storage.getFilePreview(BUCKET_ID, fileId, width, height);
+    return previewUrl.href || previewUrl.toString();
+  } catch (err) {
+    return null;
+  }
+}
