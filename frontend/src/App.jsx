@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, lazy, Suspense } from "react";
 import { ClerkProvider } from "@clerk/clerk-react";
-import { initDB } from "./api/db.js";
+import { initDB, dbPatients } from "./api/db.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import SidebarLayout from "./layouts/SidebarLayout.jsx";
@@ -150,8 +150,16 @@ function AppRoutes() {
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 export default function App() {
-  // Seed the localStorage DB once on very first load (bumped to v4 to force re-seed with new schema)
-  useEffect(() => { initDB(); }, []);
+  // Seed DB and run automated retention lifecycle check (purge patients inactive > 24 months)
+  useEffect(() => {
+    initDB();
+    try {
+      // Auto-purge patient profiles with 0 visits in the last 2 years (24 months)
+      dbPatients.autoPurgeExpiredPatients(24);
+    } catch (e) {
+      console.warn("Retention lifecycle check deferred:", e);
+    }
+  }, []);
 
   const content = (
     <BrowserRouter>

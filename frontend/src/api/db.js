@@ -509,6 +509,76 @@ export const dbPatients = {
     setCollection(KEYS.PATIENTS, updated);
     return updated.find((p) => p.id === id) || null;
   },
+  delete: (id) => {
+    // 1. Remove patient record
+    const patients = getCollection(KEYS.PATIENTS);
+    setCollection(KEYS.PATIENTS, patients.filter((p) => p.id !== id));
+
+    // 2. Cascade delete visits and prescription photos
+    const visits = getCollection(KEYS.VISITS);
+    setCollection(KEYS.VISITS, visits.filter((v) => v.patient_id !== id));
+
+    // 3. Cascade delete patient documents
+    const docs = getCollection(KEYS.DOCUMENTS);
+    setCollection(KEYS.DOCUMENTS, docs.filter((d) => d.patient_id !== id));
+
+    // 4. Cascade delete patient ledger entries
+    const ledger = getCollection(KEYS.PATIENT_LEDGER);
+    setCollection(KEYS.PATIENT_LEDGER, ledger.filter((l) => l.patient_id !== id));
+
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return true;
+  },
+  bulkWipeout: (ids = []) => {
+    if (!ids || ids.length === 0) return 0;
+    const idSet = new Set(ids);
+
+    const patients = getCollection(KEYS.PATIENTS);
+    setCollection(KEYS.PATIENTS, patients.filter((p) => !idSet.has(p.id)));
+
+    const visits = getCollection(KEYS.VISITS);
+    setCollection(KEYS.VISITS, visits.filter((v) => !idSet.has(v.patient_id)));
+
+    const docs = getCollection(KEYS.DOCUMENTS);
+    setCollection(KEYS.DOCUMENTS, docs.filter((d) => !idSet.has(d.patient_id)));
+
+    const ledger = getCollection(KEYS.PATIENT_LEDGER);
+    setCollection(KEYS.PATIENT_LEDGER, ledger.filter((l) => !idSet.has(l.patient_id)));
+
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return ids.length;
+  },
+  // Auto-Purge patients with no visits older than retentionMonths (default: 12 or 24 months)
+  autoPurgeExpiredPatients: (retentionMonths = 24) => {
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - retentionMonths);
+
+    const allVisits = getCollection(KEYS.VISITS);
+    const allPatients = getCollection(KEYS.PATIENTS);
+
+    // Map each patient's latest visit date
+    const latestVisitMap = new Map();
+    allVisits.forEach((v) => {
+      const vDate = new Date(v.visit_date || v.created_at || 0);
+      if (!latestVisitMap.has(v.patient_id) || vDate > latestVisitMap.get(v.patient_id)) {
+        latestVisitMap.set(v.patient_id, vDate);
+      }
+    });
+
+    const expiredPatientIds = [];
+    allPatients.forEach((p) => {
+      const lastVisit = latestVisitMap.get(p.id) || new Date(p.created_at || 0);
+      if (lastVisit < cutoffDate) {
+        expiredPatientIds.push(p.id);
+      }
+    });
+
+    if (expiredPatientIds.length > 0) {
+      console.log(`🧹 Auto-Retention Lifecycle: Purging ${expiredPatientIds.length} inactive patients older than ${retentionMonths} months...`);
+      dbPatients.bulkWipeout(expiredPatientIds);
+    }
+    return expiredPatientIds.length;
+  },
 };
 
 // ---------- Visits & Queue ----------

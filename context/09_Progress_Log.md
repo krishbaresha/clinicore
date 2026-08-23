@@ -38,6 +38,20 @@ be specific so a human or next AI can correct it if wrong]
 - **Currently blocked on:** Awaiting user decision to proceed with deployment / backend setup.
 - **Overall completion estimate:** 100% frontend production ready.
 
+### Session: 2026-08-23 (Part 22) — Automated Patient Data Retention Lifecycle & Counter Bulk Wipeout Engine
+ 
+**Task worked on:**
+1. **Configurable Data Retention & Auto-Purge Lifecycle (1–2 Years Policy):**
+   - Designed automated background sweeper to detect inactive patients with zero visits in the last 12/24/36 months.
+   - Automatically cascades and deletes linked visits, prescription photos, and timeline records from database and storage buckets.
+2. **Counter Staff Multi-Select & Full Profile Wipeout:**
+   - Added checkboxes and "Select All" actions on `PatientsList.jsx`.
+   - Allows reception/counter staff to manually select specific patients or bulk wipeout obsolete profiles with cascading ledger and photo cleanup.
+3. **Context Synchronization per Rule 0:**
+   - Updated `09_Progress_Log.md` and verified security constraints.
+
+---
+
 ### Session: 2026-08-23 (Part 21) — Appwrite Cloud BaaS Architecture, Collections Blueprint & Zero-Lock-In Failover Plan
  
 **Task worked on:**
