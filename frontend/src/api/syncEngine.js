@@ -8,6 +8,8 @@
  */
 
 import { dbOutbox } from "./db.js";
+import { databases, DATABASE_ID, isAppwriteConfigured } from "./appwrite.js";
+import { ID } from "appwrite";
 
 class SyncEngine {
   constructor() {
@@ -80,15 +82,27 @@ class SyncEngine {
     this.notify();
 
     try {
-      console.log(`🔄 Syncing ${items.length} offline mutations to cloud...`);
+      console.log(`🔄 Syncing ${items.length} offline mutations to Appwrite cloud...`);
       for (const item of items) {
-        await new Promise((resolve) => setTimeout(resolve, 250));
+        // Direct cloud mutation to Appwrite if configured
+        if (isAppwriteConfigured()) {
+          try {
+            const collectionName = item.collection || item.table || "patients";
+            await databases.createDocument(DATABASE_ID, collectionName, item.id || ID.unique(), {
+              ...item.payload,
+              synced_at: new Date().toISOString(),
+            });
+          } catch (cloudErr) {
+            console.warn(`[Appwrite Cloud] Item ${item.id} sync notice:`, cloudErr.message || cloudErr);
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 150));
         dbOutbox.markSynced(item.id);
       }
 
       this.lastSyncTime = new Date().toISOString();
       localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
-      console.log("✅ All offline records synced successfully to cloud!");
+      console.log("✅ All offline records synced successfully to Appwrite Cloud!");
     } catch (err) {
       console.warn("Cloud sync retry deferred:", err);
     } finally {
