@@ -702,6 +702,53 @@ export default function ReceiptStudio() {
                       return <div key={block.id} className="border-t border-dashed border-slate-400 my-2" />;
 
                     case "meta_info":
+                      if (selectedTemplate === "opd") {
+                        return (
+                          <div key={block.id} className="text-center py-1">
+                            <div className="text-[10px] font-black uppercase tracking-wider text-teal-900 bg-teal-50 py-1 rounded-lg border border-teal-200">
+                              OPD Consultation Token
+                            </div>
+                            <div className="my-2 py-3 bg-teal-50/80 border-2 border-teal-700 rounded-2xl">
+                              <div className="text-[9.5px] font-bold text-teal-800 uppercase">Your Token Number</div>
+                              <div className="text-4xl font-black text-teal-950 my-0.5">#{opdData.token_no}</div>
+                              <div className="text-[10px] font-bold text-slate-600">{opdData.room}</div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "b2b") {
+                        return (
+                          <div key={block.id}>
+                            <div className="text-center font-bold text-[10px] uppercase text-slate-700 mb-1">Wholesale Tax Invoice</div>
+                            <div className="flex justify-between text-[10px] font-bold">
+                              <span>Inv: WHO-6218</span>
+                              <span>Date: {formatDate(new Date())}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "grn") {
+                        return (
+                          <div key={block.id}>
+                            <div className="text-center font-bold text-[10px] uppercase text-slate-700 mb-1">Supplier Goods Receipt Note (GRN)</div>
+                            <div className="flex justify-between text-[10px] font-bold">
+                              <span>GRN: PUR-1042</span>
+                              <span>Date: {formatDate(new Date())}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "closing") {
+                        return (
+                          <div key={block.id}>
+                            <div className="text-center font-bold text-[10px] uppercase text-slate-700 mb-1">Executive Shift Z-Closing Statement</div>
+                            <div className="flex justify-between text-[10px] font-bold">
+                              <span>Date: {formatDate(new Date())}</span>
+                              <span>Time: 9:00 PM</span>
+                            </div>
+                          </div>
+                        );
+                      }
                       return (
                         <div key={block.id} className="flex justify-between text-[10px] font-bold text-slate-700">
                           <span>Inv: {posData.receipt_no}</span>
@@ -710,6 +757,41 @@ export default function ReceiptStudio() {
                       );
 
                     case "customer_info":
+                      if (selectedTemplate === "opd") {
+                        return (
+                          <div key={block.id} className="text-left space-y-0.5 text-[10px] text-slate-700 my-1">
+                            <div>Patient: <strong className="text-slate-900">{opdData.patient_name}</strong></div>
+                            <div>Guardian: <span>{opdData.patient_relation}</span></div>
+                            <div>Age / Gender: <span>{opdData.age} yrs • {opdData.gender}</span></div>
+                            <div>Phone: <span>{opdData.patient_phone}</span></div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "b2b") {
+                        return (
+                          <div key={block.id} className="text-[10px] text-slate-700 space-y-0.5 my-1">
+                            <div>Party: <strong className="text-slate-900">Al-Rehman Homoeo Store (Tando Adam)</strong></div>
+                            <div>City / Territory: <span>Tando Adam (Sindh)</span></div>
+                            <div>Transport / Bilty: <span>Al-Madina Goods (#44102)</span></div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "grn") {
+                        return (
+                          <div key={block.id} className="text-[10px] text-slate-700 space-y-0.5 my-1">
+                            <div>Supplier: <strong className="text-slate-900">Dr. Willmar Schwabe Germany</strong></div>
+                            <div>Carrier: <span>Karachi Goods Transport</span></div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "closing") {
+                        return (
+                          <div key={block.id} className="text-[10px] text-slate-700 space-y-0.5 my-1">
+                            <div>Closed By: <strong className="text-slate-900">Waheed Bhai (Cashier Desk)</strong></div>
+                            <div>Audit Scope: <span>All Terminals &amp; Godowns</span></div>
+                          </div>
+                        );
+                      }
                       return (
                         <div key={block.id} className="text-[10px] text-slate-600">
                           Customer: <span className="font-bold text-slate-900">{posData.customer_name}</span> ({posData.customer_phone})
@@ -717,6 +799,14 @@ export default function ReceiptStudio() {
                       );
 
                     case "doctor_info":
+                      if (selectedTemplate === "opd") {
+                        return (
+                          <div key={block.id} className="text-[10px] text-slate-700 border-t border-slate-200 pt-1 mt-1">
+                            <div>Consultant: <strong className="text-teal-900">{clinicConfig.doctor_name}</strong></div>
+                            <div className="text-[9px] text-slate-500">{clinicConfig.doctor_qualifications}</div>
+                          </div>
+                        );
+                      }
                       return (
                         <div key={block.id} className="text-[10px] text-slate-600 mb-1">
                           Consultant: <span className="font-bold">{clinicConfig.doctor_name}</span> ({clinicConfig.doctor_room})
@@ -724,6 +814,72 @@ export default function ReceiptStudio() {
                       );
 
                     case "items_table":
+                      if (selectedTemplate === "opd") {
+                        return (
+                          <div key={block.id} className="flex justify-between font-bold text-[11px] border-y border-dashed border-slate-300 py-1.5 my-1">
+                            <span>Consultation Fee:</span>
+                            <span className="font-black text-teal-950">Rs. {opdData.fee_amount.toFixed(2)} ({opdData.fee_status})</span>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "b2b") {
+                        return (
+                          <div key={block.id}>
+                            <div className="flex justify-between font-black text-[10px] text-slate-800 uppercase py-0.5 border-y border-dashed border-slate-300">
+                              <span>Carton / Medicine</span>
+                              <span>Amount</span>
+                            </div>
+                            <div className="divide-y divide-dotted divide-slate-200 my-1 text-[10.5px]">
+                              <div className="py-1 flex justify-between">
+                                <span>10 Boxes BM Cardio Drops #1</span>
+                                <span className="font-bold">Rs. 3,500.00</span>
+                              </div>
+                              <div className="py-1 flex justify-between">
+                                <span>5 Boxes Schwabe Cineraria Eye Drops</span>
+                                <span className="font-bold">Rs. 2,750.00</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "grn") {
+                        return (
+                          <div key={block.id}>
+                            <div className="flex justify-between font-black text-[10px] text-slate-800 uppercase py-0.5 border-y border-dashed border-slate-300">
+                              <span>Inward Medicine Batch</span>
+                              <span>Cost Total</span>
+                            </div>
+                            <div className="divide-y divide-dotted divide-slate-200 my-1 text-[10.5px]">
+                              <div className="py-1 flex justify-between">
+                                <span>50 Units Schwabe Drops (Batch #982)</span>
+                                <span className="font-bold">Rs. 18,500.00</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "closing") {
+                        return (
+                          <div key={block.id} className="space-y-1 my-1 text-[10.5px]">
+                            <div className="flex justify-between">
+                              <span>• OPD Doctor Consultation Fees:</span>
+                              <span className="font-bold">Rs. 12,500</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>• Retail Counter POS Sales:</span>
+                              <span className="font-bold">Rs. 34,200</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>• Wholesale Godown Sales:</span>
+                              <span className="font-bold">Rs. 45,000</span>
+                            </div>
+                            <div className="flex justify-between text-rose-700">
+                              <span>• Operational Expenses:</span>
+                              <span className="font-bold">- Rs. 3,400</span>
+                            </div>
+                          </div>
+                        );
+                      }
                       return (
                         <div key={block.id}>
                           <div className="flex justify-between font-black text-[10px] text-slate-800 uppercase py-0.5 border-y border-dashed border-slate-300">
@@ -748,6 +904,49 @@ export default function ReceiptStudio() {
                       );
 
                     case "financial_totals":
+                      if (selectedTemplate === "opd") {
+                        return (
+                          <div key={block.id} className="text-center font-mono text-[10px] text-slate-500 pt-1">
+                            MR No: <strong className="text-slate-800">{opdData.mr_no}</strong> • Status: Valid for Today Only
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "b2b") {
+                        return (
+                          <div key={block.id} className="space-y-0.5 text-[11px] pt-1 border-t border-slate-300">
+                            <div className="flex justify-between font-black text-sm text-slate-900">
+                              <span>NET INVOICE BILL:</span>
+                              <span>Rs. 6,250.00</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-rose-800 bg-rose-50 px-1 py-0.5 rounded">
+                              <span>Party Udhaar (Due):</span>
+                              <span>Rs. 6,250.00</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "grn") {
+                        return (
+                          <div key={block.id} className="space-y-0.5 text-[11px] pt-1 border-t border-slate-300">
+                            <div className="flex justify-between font-black text-sm text-slate-900">
+                              <span>TOTAL GRN BILL:</span>
+                              <span>Rs. 18,500.00</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-slate-700">
+                              <span>Supplier Payable Due:</span>
+                              <span>Rs. 18,500.00</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (selectedTemplate === "closing") {
+                        return (
+                          <div key={block.id} className="pt-1.5 border-t-2 border-slate-800 flex justify-between font-black text-sm text-teal-950">
+                            <span>NET CASH IN HAND:</span>
+                            <span>Rs. 88,300.00</span>
+                          </div>
+                        );
+                      }
                       return (
                         <div key={block.id} className="space-y-0.5 text-[11px]">
                           <div className="flex justify-between text-slate-600">
