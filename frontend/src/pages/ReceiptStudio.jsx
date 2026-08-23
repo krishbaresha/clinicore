@@ -533,46 +533,48 @@ export default function ReceiptStudio() {
                             </div>
                           </div>
                         ) : block.id === "custom_note" ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-500 shrink-0">Note / Policy:</span>
-                            <input
-                              type="text"
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 block mb-1">Note / Policy (Multi-line supported):</span>
+                            <textarea
+                              rows={2}
                               value={block.customText || clinicConfig.custom_policy_note}
+                              placeholder="Type note or policy (Press Enter for new line)..."
                               onChange={(e) => {
                                 const newBlocks = [...blocks];
                                 newBlocks[index].customText = e.target.value;
                                 setBlocks(newBlocks);
                               }}
-                              className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
+                              className="w-full px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600 resize-y"
                             />
                           </div>
                         ) : block.id === "powered_by" ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-500 shrink-0">Watermark:</span>
-                            <input
-                              type="text"
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 block mb-1">Watermark / Footer (Multi-line supported):</span>
+                            <textarea
+                              rows={2}
                               value={block.customText ?? "*** Powered by CliniCore Software ***"}
+                              placeholder="Type watermark (Press Enter for new line)..."
                               onChange={(e) => {
                                 const newBlocks = [...blocks];
                                 newBlocks[index].customText = e.target.value;
                                 setBlocks(newBlocks);
                               }}
-                              className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
+                              className="w-full px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600 resize-y"
                             />
                           </div>
                         ) : block.customText !== undefined || block.id.startsWith("custom_line_") ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-500 shrink-0">Custom Line:</span>
-                            <input
-                              type="text"
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 block mb-1">Custom Text Block (Multi-line supported):</span>
+                            <textarea
+                              rows={2}
                               value={block.customText || ""}
-                              placeholder="Type custom text..."
+                              placeholder="Type custom text (Press Enter for new line)..."
                               onChange={(e) => {
                                 const newBlocks = [...blocks];
                                 newBlocks[index].customText = e.target.value;
                                 setBlocks(newBlocks);
                               }}
-                              className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600"
+                              className="w-full px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-medium focus:outline-none focus:border-teal-600 resize-y"
                             />
                           </div>
                         ) : (
@@ -1227,15 +1229,15 @@ export default function ReceiptStudio() {
 
                     case "custom_note":
                       return (block.customText || clinicConfig.custom_policy_note) ? (
-                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[9.5px] text-slate-600 font-semibold italic">
-                          "{block.customText || clinicConfig.custom_policy_note}"
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[9.5px] text-slate-600 font-semibold italic whitespace-pre-line">
+                          {block.customText || clinicConfig.custom_policy_note}
                         </div>
                       ) : null;
 
                     case "powered_by":
                       return (
-                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[8.5px] text-slate-400 tracking-wider uppercase">
-                          *** Powered by CliniCore Software ***
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[8.5px] text-slate-400 tracking-wider uppercase whitespace-pre-line">
+                          {block.customText ?? "*** Powered by CliniCore Software ***"}
                         </div>
                       );
 
@@ -1243,7 +1245,7 @@ export default function ReceiptStudio() {
                       // Support user created custom text blocks & spacers
                       if (block.id.startsWith("custom_line_")) {
                         return (
-                          <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[10px] font-bold text-slate-800">
+                          <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[10px] font-bold text-slate-800 whitespace-pre-line">
                             {block.customText}
                           </div>
                         );
