@@ -6,24 +6,27 @@ import { dbUsers, dbClinic } from "../api/db.js";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+// Safe Clerk component wrapper to strictly adhere to React Hook Rules without crashing when Clerk is offline or unconfigured
+function useSafeClerkSignIn() {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    return { isLoaded: false, signIn: null, setActive: null };
+  }
+  try {
+    return useSignIn();
+  } catch {
+    return { isLoaded: false, signIn: null, setActive: null };
+  }
+}
+
 export default function LoginScreen() {
   const { login } = useAuth();
   const navigate = useNavigate();
   
-  // Safe Clerk hook access
-  let isClerkLoaded = false;
-  let signIn = null;
-  let setActive = null;
-  try {
-    if (CLERK_PUBLISHABLE_KEY) {
-      const clerkSignInObj = useSignIn();
-      isClerkLoaded = clerkSignInObj.isLoaded;
-      signIn = clerkSignInObj.signIn;
-      setActive = clerkSignInObj.setActive;
-    }
-  } catch (err) {
-    console.warn("Clerk context not available, using local auth engine", err);
-  }
+  // Safe Clerk hook execution
+  const clerkSignInObj = useSafeClerkSignIn();
+  const isClerkLoaded = Boolean(clerkSignInObj?.isLoaded);
+  const signIn = clerkSignInObj?.signIn || null;
+  const setActive = clerkSignInObj?.setActive || null;
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");

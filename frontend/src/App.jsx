@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import SidebarLayout from "./layouts/SidebarLayout.jsx";
 import LicenseGuard from "./components/LicenseGuard.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 // Lazy-loaded routes for ultra-fast bundle loading & low memory footprint
 const LoginScreen           = lazy(() => import("./pages/LoginScreen.jsx"));
@@ -164,11 +165,13 @@ export default function App() {
   }, []);
 
   const content = (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 
   if (CLERK_PUBLISHABLE_KEY) {
