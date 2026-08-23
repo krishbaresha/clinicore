@@ -21,7 +21,6 @@ const UNIFIED_DESK_NAV = [
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
   { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
   { label: "Warehouse & Wholesale", icon: "warehouse", path: "/store/warehouse" },
-  { label: "Receipt Studio", icon: "palette", path: "/receipt-studio" },
   { label: "Pending Reports", icon: "pending_actions", path: "/reception/pending-reports" },
   { label: "Patients & EMR", icon: "group", path: "/patients" },
   { label: "Fees & CashBook", icon: "payments", path: "/fees" },
@@ -33,7 +32,6 @@ const WAREHOUSE_NAV = [
   { label: "Godown & Wholesale", icon: "warehouse", path: "/store/warehouse" },
   { label: "Company Purchases (GRN)", icon: "add_business", path: "/store/purchases" },
   { label: "Store Counter Inventory", icon: "inventory_2", path: "/store" },
-  { label: "Receipt Studio", icon: "palette", path: "/receipt-studio" },
   { label: "Fees & CashBook", icon: "payments", path: "/fees" },
 ];
 

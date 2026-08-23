@@ -67,6 +67,24 @@ function OwnerRoute({ children }) {
 }
 
 /**
+ * AdminOrOwnerRoute — Senior Engineering Guard for High-Privilege Tools like Receipt Studio.
+ * Requires user to be logged in as Owner/Admin OR authenticated via Super Admin Master Passcode.
+ */
+function AdminOrOwnerRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  
+  const isSuperAdminAuthed = typeof sessionStorage !== "undefined" && sessionStorage.getItem("cf_dev_auth") === "true";
+  const isAdminOrOwner = user && (user.is_owner || user.role === "admin" || user.role === "owner" || user.userId === "user_admin");
+
+  if (!isSuperAdminAuthed && !isAdminOrOwner) {
+    // If not authenticated as Admin/Owner, redirect to login
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
+/**
  * AuthenticatedLayout — wraps protected pages in the SidebarLayout.
  */
 function AuthenticatedLayout({ children }) {
@@ -92,18 +110,33 @@ function OwnerLayout({ children }) {
   );
 }
 
+/**
+ * AdminProtectedLayout — wraps admin/owner pages in the SidebarLayout with strict permission check.
+ */
+function AdminProtectedLayout({ children }) {
+  return (
+    <AdminOrOwnerRoute>
+      <LicenseGuard>
+        <SidebarLayout>{children}</SidebarLayout>
+      </LicenseGuard>
+    </AdminOrOwnerRoute>
+  );
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<PageLoadingFallback />}>
       <Routes>
-        {/* Public & Admin Pages (No Login Required) */}
+        {/* Public & Admin Landing Pages */}
         <Route path="/"            element={<LandingPage />} />
         <Route path="/landing"     element={<LandingPage />} />
         <Route path="/admin"       element={<DeveloperAdminPanel />} />
         <Route path="/developer-admin" element={<DeveloperAdminPanel />} />
-        <Route path="/receipt-studio" element={<ReceiptStudio />} />
         <Route path="/developer"   element={<DeveloperAdminPanel />} />
         <Route path="/login"       element={<LoginScreen />} />
+
+        {/* ─── High-Security Thermal Receipt Studio (Admin / Owner Only) ─── */}
+        <Route path="/receipt-studio" element={<AdminProtectedLayout><ReceiptStudio /></AdminProtectedLayout>} />
 
         {/* ─── Disabled Pages (Can be re-enabled in future if needed) ─── */}
         {/* <Route path="/clinic"      element={<ClinicPublicPage />} /> */}
