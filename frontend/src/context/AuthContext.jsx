@@ -49,6 +49,11 @@ export function AuthProvider({ children }) {
     apiLogout();
     setUser(null);
     setClinic(null);
+    try {
+      if (typeof window !== "undefined" && window.Clerk && typeof window.Clerk.signOut === "function") {
+        window.Clerk.signOut().catch(() => {});
+      }
+    } catch {}
   }
 
   function refreshClinic() {
