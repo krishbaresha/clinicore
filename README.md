@@ -1,4 +1,4 @@
-# ClinicFlow 🩺
+# Clinicore 🩺
 
 ClinicFlow is a premium, modern, and highly responsive Clinic Management System designed for doctors and clinic receptionists. It streamlines patient registration, visit logs, smart prescription writing, inventory tracking, sales logging, and billing workflows.
 
