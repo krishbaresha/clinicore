@@ -84,12 +84,13 @@ class SyncEngine {
     try {
       console.log(`🔄 Syncing ${items.length} offline mutations to Appwrite cloud...`);
       for (const item of items) {
-        // Direct cloud mutation to Appwrite if configured
         if (isAppwriteConfigured()) {
           try {
             const collectionName = item.collection || item.table || "patients";
+            const payloadData = typeof item.payload === "object" ? JSON.stringify(item.payload) : String(item.payload);
+            
             await databases.createDocument(DATABASE_ID, collectionName, item.id || ID.unique(), {
-              ...item.payload,
+              data: payloadData,
               synced_at: new Date().toISOString(),
             });
           } catch (cloudErr) {
