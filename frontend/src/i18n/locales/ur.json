@@ -96,10 +96,7 @@
       "status": "Chamber Ki Haalat:",
       "inChamber": "Chamber Me Maujood",
       "onBreak": "Break / Rounds Par",
-      "inquireBtn": "Rabta / Appointment Book Karein",
-      "initializing": "Doctors Directory Shamil Ki Ja Rahi Hai",
-      "initDesc": "Super Admin panel me register kiye gaye doctors yahan show honge.",
-      "adminBtn": "Super Admin Me Doctor Add Karein"
+      "inquireBtn": "Rabta / Appointment Book Karein"
     },
     "services": {
       "badge": "Khas Ilaj & Tibbi Khidmat",

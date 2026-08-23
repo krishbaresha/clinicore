@@ -96,10 +96,7 @@
       "status": "Chamber Status:",
       "inChamber": "In Chamber",
       "onBreak": "On Break",
-      "inquireBtn": "Inquire / Book Consultation",
-      "initializing": "Doctors Directory Initializing",
-      "initDesc": "Doctor profiles registered in the Super Admin panel will automatically appear on this public page.",
-      "adminBtn": "Register Doctors in Super Admin"
+      "inquireBtn": "Inquire / Book Consultation"
     },
     "services": {
       "badge": "Specialized Care & Treatments",
