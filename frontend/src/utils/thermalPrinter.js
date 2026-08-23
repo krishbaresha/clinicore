@@ -39,6 +39,18 @@ function getLogoHeaderHtml(docTypeLabel = "") {
   return `<div style="text-align:center;margin:0 0 2px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:145px;max-height:85px;width:auto;height:auto;display:block;margin:0 auto;object-fit:contain;" />${docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-top:1px;">${docTypeLabel}</div>` : ""}</div>`;
 }
 
+/**
+ * Shared software branding watermark for all thermal receipts
+ */
+export function getWatermarkFooterHtml() {
+  return `
+    <div style="text-align: center; margin-top: 5px; padding-top: 3px; border-top: 1px dashed #cbd5e1; font-size: 8.5px; font-family: monospace; color: #475569; line-height: 1.35;">
+      <div style="font-weight: 800; color: #0f766e; letter-spacing: 0.3px;">*** Powered by CliniCore Software ***</div>
+      <div style="color: #334155; font-weight: 700;">www.krishbaresa.tech &nbsp;|&nbsp; 0314-2291356</div>
+    </div>
+  `;
+}
+
 
 
 export function escapeHtml(str) {

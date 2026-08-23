@@ -28,7 +28,7 @@ const DEFAULT_BLOCKS = [
   { id: "divider_3", name: "Dotted Divider Line", enabled: true, category: "layout", icon: "horizontal_rule", padY: 2 },
   { id: "urdu_footer", name: "Urdu Terms & Instructions", enabled: true, category: "footer", icon: "translate", padY: 3, align: "center" },
   { id: "custom_note", name: "Custom Policy / Return Note", enabled: true, category: "footer", icon: "notes", padY: 2, align: "center", customText: "Thanks for visiting! Get well soon." },
-  { id: "powered_by", name: "Software Watermark", enabled: true, category: "footer", icon: "verified", padY: 2, align: "center" },
+  { id: "powered_by", name: "Software Watermark", enabled: true, category: "footer", icon: "verified", padY: 2, align: "center", customText: "*** Powered by CliniCore Software ***\nwww.krishbaresa.tech | 0314-2291356" },
 ];
 
 export default function ReceiptStudio() {
@@ -1236,8 +1236,11 @@ export default function ReceiptStudio() {
 
                     case "powered_by":
                       return (
-                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[8.5px] text-slate-400 tracking-wider uppercase whitespace-pre-line">
-                          {block.customText ?? "*** Powered by CliniCore Software ***"}
+                        <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center text-[8.5px] text-slate-500 font-bold uppercase tracking-wider whitespace-pre-line border-t border-dashed border-slate-200 mt-2">
+                          <span className="text-teal-800 font-extrabold block">*** Powered by CliniCore Software ***</span>
+                          <span className="text-slate-600 font-semibold normal-case tracking-normal block text-[9px]">
+                            {block.customText && !block.customText.includes("*** Powered by") ? block.customText : "www.krishbaresa.tech | 0314-2291356"}
+                          </span>
                         </div>
                       );
 
