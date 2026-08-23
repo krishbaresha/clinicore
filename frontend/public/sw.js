@@ -1,9 +1,9 @@
 /**
  * ClinicFlow PWA Service Worker — Offline-First Engine
- * Version: 1.0.0
+ * Version: 1.1.0 (Auto Dynamic Chunk Cache Invalidation)
  */
 
-const CACHE_NAME = 'clinicflow-pwa-v1.0.0';
+const CACHE_NAME = 'clinicflow-pwa-v1.1.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

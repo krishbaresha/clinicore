@@ -8,30 +8,32 @@ import SidebarLayout from "./layouts/SidebarLayout.jsx";
 import LicenseGuard from "./components/LicenseGuard.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
-// Lazy-loaded routes for ultra-fast bundle loading & low memory footprint
-const LoginScreen           = lazy(() => import("./pages/LoginScreen.jsx"));
-const Dashboard             = lazy(() => import("./pages/Dashboard.jsx"));
-const PatientsList          = lazy(() => import("./pages/PatientsList.jsx"));
-const PatientProfile        = lazy(() => import("./pages/PatientProfile.jsx"));
-const AddNewPatient         = lazy(() => import("./pages/AddNewPatient.jsx"));
-const FeesReports           = lazy(() => import("./pages/FeesReports.jsx"));
-const MedicalStoreInventory = lazy(() => import("./pages/MedicalStoreInventory.jsx"));
-const ClinicSettings        = lazy(() => import("./pages/ClinicSettings.jsx"));
+import { lazyWithRetry } from "./utils/lazyWithRetry.js";
 
-const PatientRegistration   = lazy(() => import("./pages/PatientRegistration.jsx"));
-const ReceptionQueue        = lazy(() => import("./pages/ReceptionQueue.jsx"));
-const PendingReports        = lazy(() => import("./pages/PendingReports.jsx"));
-const DoctorQueue           = lazy(() => import("./pages/DoctorQueue.jsx"));
-const ConsultationScreen    = lazy(() => import("./pages/ConsultationScreen.jsx"));
-const MedicalStorePOS       = lazy(() => import("./pages/MedicalStorePOS.jsx"));
-const SupplierPurchases     = lazy(() => import("./pages/SupplierPurchases.jsx"));
-const MedicalStoreSalesLog  = lazy(() => import("./pages/MedicalStoreSalesLog.jsx"));
-const WarehouseManagement   = lazy(() => import("./pages/WarehouseManagement.jsx"));
-const PublicLiveQueue       = lazy(() => import("./pages/PublicLiveQueue.jsx"));
-const LandingPage           = lazy(() => import("./pages/LandingPage.jsx"));
-const ClinicPublicPage      = lazy(() => import("./pages/ClinicPublicPage.jsx"));
-const DeveloperAdminPanel   = lazy(() => import("./pages/DeveloperAdminPanel.jsx"));
-const ReceiptStudio         = lazy(() => import("./pages/ReceiptStudio.jsx"));
+// Lazy-loaded routes with auto-retry on dynamic chunk update / cache mismatch
+const LoginScreen           = lazyWithRetry(() => import("./pages/LoginScreen.jsx"));
+const Dashboard             = lazyWithRetry(() => import("./pages/Dashboard.jsx"));
+const PatientsList          = lazyWithRetry(() => import("./pages/PatientsList.jsx"));
+const PatientProfile        = lazyWithRetry(() => import("./pages/PatientProfile.jsx"));
+const AddNewPatient         = lazyWithRetry(() => import("./pages/AddNewPatient.jsx"));
+const FeesReports           = lazyWithRetry(() => import("./pages/FeesReports.jsx"));
+const MedicalStoreInventory = lazyWithRetry(() => import("./pages/MedicalStoreInventory.jsx"));
+const ClinicSettings        = lazyWithRetry(() => import("./pages/ClinicSettings.jsx"));
+
+const PatientRegistration   = lazyWithRetry(() => import("./pages/PatientRegistration.jsx"));
+const ReceptionQueue        = lazyWithRetry(() => import("./pages/ReceptionQueue.jsx"));
+const PendingReports        = lazyWithRetry(() => import("./pages/PendingReports.jsx"));
+const DoctorQueue           = lazyWithRetry(() => import("./pages/DoctorQueue.jsx"));
+const ConsultationScreen    = lazyWithRetry(() => import("./pages/ConsultationScreen.jsx"));
+const MedicalStorePOS       = lazyWithRetry(() => import("./pages/MedicalStorePOS.jsx"));
+const SupplierPurchases     = lazyWithRetry(() => import("./pages/SupplierPurchases.jsx"));
+const MedicalStoreSalesLog  = lazyWithRetry(() => import("./pages/MedicalStoreSalesLog.jsx"));
+const WarehouseManagement   = lazyWithRetry(() => import("./pages/WarehouseManagement.jsx"));
+const PublicLiveQueue       = lazyWithRetry(() => import("./pages/PublicLiveQueue.jsx"));
+const LandingPage           = lazyWithRetry(() => import("./pages/LandingPage.jsx"));
+const ClinicPublicPage      = lazyWithRetry(() => import("./pages/ClinicPublicPage.jsx"));
+const DeveloperAdminPanel   = lazyWithRetry(() => import("./pages/DeveloperAdminPanel.jsx"));
+const ReceiptStudio         = lazyWithRetry(() => import("./pages/ReceiptStudio.jsx"));
 
 function PageLoadingFallback() {
   return (
