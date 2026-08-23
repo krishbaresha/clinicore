@@ -757,12 +757,9 @@ export default function DeveloperAdminPanel() {
           </button>
 
           <img
-            src="/clinic-logo.png"
-            alt="Clinic Logo"
-            className="h-8 sm:h-10 w-auto max-w-[100px] sm:max-w-[120px] object-contain rounded-xl drop-shadow-xs shrink-0"
-            onError={(e) => {
-              e.target.style.display = "none";
-            }}
+            src="/favicon.svg"
+            alt="CliniCore Logo"
+            className="h-8 sm:h-10 w-8 sm:w-10 object-contain rounded-xl drop-shadow-xs shrink-0"
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
