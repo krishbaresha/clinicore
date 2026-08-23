@@ -7,11 +7,36 @@ import { formatPatientAge } from "./formatters.js";
 import { CLINIC_LOGO_BASE64 } from "./clinicLogoBase64.js";
 
 /**
+ * Get user customized receipt branding & layout configuration
+ */
+export function getCustomReceiptConfig() {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("cf_receipt_custom_config") : null;
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {
+    clinic_name: "Dr. Muhammad Kashif Khan Clinic & Wholesale Homoeo Store",
+    tagline: "Homoeopathic Consultant & Bulk Distributors (Interior Sindh)",
+    address: "Near Gul Center / Lajpat Road, Hyderabad, Sindh",
+    phone: "0300-1234567 / 022-2780000",
+    logo_base64: CLINIC_LOGO_BASE64,
+    show_logo: true,
+    show_tagline: true,
+    show_doctor_info: true,
+    show_urdu_footer: true,
+    urdu_footer_text: "نوٹ: خریدی ہوئی ادویات 3 دن میں تبدیل ہو سکتی ہیں۔ بغیر بل کے واپسی ممکن نہیں۔",
+  };
+}
+
+/**
  * Shared clinic logo HTML block for all thermal receipts.
  * Embedded Base64 Data URI ensures 100% offline & print iframe reliability with zero broken images.
  */
 function getLogoHeaderHtml(docTypeLabel = "") {
-  return `<div style="text-align:center;margin:0 0 4px 0;padding:0;line-height:1;"><img src="${CLINIC_LOGO_BASE64}" alt="Clinic Logo" style="max-width:145px;width:100%;height:auto;display:block;margin:0 auto;" />${docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;">${docTypeLabel}</div>` : ""}</div>`;
+  const cfg = getCustomReceiptConfig();
+  const logoSrc = (cfg.show_logo && cfg.logo_base64) ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
+  if (!cfg.show_logo) return docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;text-align:center;">${docTypeLabel}</div>` : "";
+  return `<div style="text-align:center;margin:0 0 4px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:145px;width:100%;height:auto;display:block;margin:0 auto;" />${docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;">${docTypeLabel}</div>` : ""}</div>`;
 }
 
 

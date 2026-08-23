@@ -30,6 +30,7 @@ const PublicLiveQueue       = lazy(() => import("./pages/PublicLiveQueue.jsx"));
 const LandingPage           = lazy(() => import("./pages/LandingPage.jsx"));
 const ClinicPublicPage      = lazy(() => import("./pages/ClinicPublicPage.jsx"));
 const DeveloperAdminPanel   = lazy(() => import("./pages/DeveloperAdminPanel.jsx"));
+const ReceiptStudio         = lazy(() => import("./pages/ReceiptStudio.jsx"));
 
 function PageLoadingFallback() {
   return (
@@ -98,7 +99,8 @@ function AppRoutes() {
         <Route path="/"            element={<LandingPage />} />
         <Route path="/landing"     element={<LandingPage />} />
         <Route path="/admin"       element={<DeveloperAdminPanel />} />
-        <Route path="/super-admin" element={<DeveloperAdminPanel />} />
+        <Route path="/developer-admin" element={<DeveloperAdminPanel />} />
+        <Route path="/receipt-studio" element={<ReceiptStudio />} />
         <Route path="/developer"   element={<DeveloperAdminPanel />} />
         <Route path="/login"       element={<LoginScreen />} />
 
