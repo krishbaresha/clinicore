@@ -254,49 +254,49 @@ export default function ReceiptStudio() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       {/* Header Bar matching CliniCore Teal Theme */}
       <header className="sticky top-0 z-30 bg-teal-900 text-white shadow-lg border-b border-teal-800">
-        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-3 py-2.5 sm:px-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
               to="/dashboard"
-              className="w-10 h-10 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all shadow-inner"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all shadow-inner shrink-0"
               title="Return to Dashboard"
             >
-              <span className="material-symbols-outlined text-xl">arrow_back</span>
+              <span className="material-symbols-outlined text-lg sm:text-xl">arrow_back</span>
             </Link>
-            <div>
-              <h1 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
                 <span>Receipt Design Studio</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-800 text-teal-200 border border-teal-700">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-800 text-teal-200 border border-teal-700">
                   UI/UX Pro Max
                 </span>
               </h1>
-              <p className="text-[11px] text-teal-200 font-medium">
+              <p className="text-[10px] sm:text-[11px] text-teal-200 font-medium truncate">
                 Drag-and-drop thermal canvas customizer &amp; live receipt arithmetic tuner
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
             <button
               onClick={handleResetDefaults}
-              className="px-3.5 py-2 rounded-xl bg-teal-800/80 hover:bg-teal-800 text-teal-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              className="flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-2 rounded-xl bg-teal-800/80 hover:bg-teal-800 text-teal-200 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shrink-0"
             >
               <span className="material-symbols-outlined text-sm">restart_alt</span>
-              Reset Layout
+              <span>Reset</span>
             </button>
             <button
               onClick={handleSaveConfig}
-              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-teal-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+              className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-teal-950 font-black text-xs flex items-center justify-center gap-1 shadow-md shadow-emerald-500/20 transition-all cursor-pointer shrink-0"
             >
-              <span className="material-symbols-outlined text-base">save</span>
-              Save Layout
+              <span className="material-symbols-outlined text-sm sm:text-base">save</span>
+              <span>Save</span>
             </button>
             <button
               onClick={handlePrintPreview}
-              className="px-4 py-2 rounded-xl bg-white hover:bg-teal-50 text-teal-900 font-black text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-white hover:bg-teal-50 text-teal-900 font-black text-xs flex items-center justify-center gap-1 shadow-md transition-all cursor-pointer shrink-0"
             >
-              <span className="material-symbols-outlined text-base">print</span>
-              Test 80mm Print
+              <span className="material-symbols-outlined text-sm sm:text-base">print</span>
+              <span>80mm Test</span>
             </button>
           </div>
         </div>

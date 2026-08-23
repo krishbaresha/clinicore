@@ -151,11 +151,15 @@ export default function LoginScreen() {
                   id="identifier"
                   name="identifier"
                   type="text"
-                  autoComplete="username"
-                  placeholder="Enter your email"
+                  inputMode="email"
+                  enterKeyHint="next"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username email"
+                  placeholder="Enter email or phone"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-sm text-gray-900 focus:outline-none transition-all"
+                  className="w-full bg-gray-50 border border-gray-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3.5 text-sm text-gray-900 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
             </div>
@@ -173,18 +177,19 @@ export default function LoginScreen() {
                   id="password"
                   name="password"
                   type="password"
+                  enterKeyHint="go"
                   autoComplete="current-password"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-sm text-gray-900 focus:outline-none transition-all"
+                  className="w-full bg-gray-50 border border-gray-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3.5 text-sm text-gray-900 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
             </div>
 
             {/* Error message */}
             {error && (
-              <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center">
+              <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center animate-shake">
                 {error}
               </div>
             )}
@@ -195,13 +200,40 @@ export default function LoginScreen() {
                 id="login-btn"
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-extrabold py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-teal-700/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                className="w-full min-h-[48px] bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-extrabold py-3.5 rounded-2xl text-sm transition-all shadow-lg shadow-teal-700/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-[0.99]"
               >
                 {loading ? "Authenticating..." : "Login to Terminal"}
                 {!loading && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
               </button>
             </div>
           </form>
+
+          {/* Quick Staff Account Switcher for 1-Tap Mobile Testing */}
+          {usersList.length > 0 && (
+            <div className="w-full mt-6 pt-4 border-t border-gray-100">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block text-center mb-2.5">
+                Quick 1-Tap Login (Demo / Staff Accounts)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                {usersList.slice(0, 4).map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => handleQuickLogin(u.email || u.phone, "123456")}
+                    className="p-2 rounded-xl bg-gray-50 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 text-left transition-all flex items-center gap-2 group cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center font-black text-xs shrink-0 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                      {u.name ? u.name.charAt(0).toUpperCase() : "U"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11px] font-bold text-gray-800 truncate">{u.name}</div>
+                      <div className="text-[9.5px] text-gray-400 capitalize">{u.role || "Staff"}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
