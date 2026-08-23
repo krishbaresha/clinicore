@@ -639,6 +639,7 @@ export default function DeveloperAdminPanel() {
   const NAV_ITEMS = [
     { id: "licensing", label: "Software Licensing & Remote Control", icon: "vpn_key", badge: "Control" },
     { id: "audits", label: "Multi-Godown & Clinic Audits", icon: "analytics", badge: "Live" },
+    { id: "receipt_studio", label: "Thermal Receipt Studio & Customizer", icon: "receipt_long", badge: "New" },
     { id: "staff", label: "Doctors & Staff Master", icon: "group", count: usersList.length },
     { id: "clinic", label: "Clinic Identity & Governance", icon: "domain" },
     { id: "apis", label: "Automated Services & Resend API", icon: "mail" },
@@ -1703,6 +1704,81 @@ export default function DeveloperAdminPanel() {
                       })}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================= */}
+          {/* TAB: THERMAL RECEIPT STUDIO & CUSTOMIZER                          */}
+          {/* ================================================================= */}
+          {activeTab === "receipt_studio" && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl -z-0 pointer-events-none" />
+                <div className="relative z-10 max-w-2xl space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-700/60 border border-teal-500/30 text-teal-200 text-xs font-bold">
+                    <span className="material-symbols-outlined text-sm">palette</span>
+                    Universal Thermal Print Engine Synchronizer
+                  </div>
+                  <h3 className="text-2xl font-black tracking-tight text-white">
+                    80mm Thermal Receipt Studio &amp; Customizer
+                  </h3>
+                  <p className="text-sm text-teal-100/80 leading-relaxed font-medium">
+                    Customize clinic logos, titles, taglines, phone/address lines, doctor info, paper width, and block drag-and-drop order. All changes made in the Studio dynamically reflect across Counter POS, OPD Tokens, Wholesale Invoices, GRN Vouchers, and Day-End statements.
+                  </p>
+                  <div className="pt-2 flex flex-wrap items-center gap-3">
+                    <Link
+                      to="/receipt-studio"
+                      className="px-6 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-teal-950 font-black text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer active:scale-95"
+                    >
+                      <span className="material-symbols-outlined">launch</span>
+                      Open Fullscreen Receipt Studio
+                    </Link>
+                    <button
+                      onClick={() => {
+                        const win = window.open("/receipt-studio", "_blank");
+                        if (win) win.focus();
+                      }}
+                      className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined">open_in_new</span>
+                      Open in New Tab
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Feature Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
+                    <span className="material-symbols-outlined">drag_indicator</span>
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm">Drag &amp; Drop Block Order</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Re-order receipt sections (Logo, Meta Info, Customer, Doctor, Items Table, Totals, Urdu Terms) with instant live preview.
+                  </p>
+                </div>
+
+                <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
+                    <span className="material-symbols-outlined">verified</span>
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm">Permanent Verified Branding</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Mandatory CliniCore Software and developer contact watermark (<span className="font-mono font-bold text-teal-800">0314-2291356</span>) locked across all prints.
+                  </p>
+                </div>
+
+                <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
+                    <span className="material-symbols-outlined">crop</span>
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm">Auto-Crop Logo Scanner</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Canvas pixel boundary scanner automatically trims whitespace padding to eliminate paper roll and ink bloat.
+                  </p>
                 </div>
               </div>
             </div>

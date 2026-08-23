@@ -29,14 +29,29 @@ export function getCustomReceiptConfig() {
 }
 
 /**
- * Shared clinic logo HTML block for all thermal receipts.
- * Embedded Base64 Data URI ensures 100% offline & print iframe reliability with zero broken images.
+ * Shared clinic header HTML block for all thermal receipts.
+ * Dynamically adheres to user customized titles, addresses, phones, and logo from Receipt Studio.
  */
 function getLogoHeaderHtml(docTypeLabel = "") {
   const cfg = getCustomReceiptConfig();
-  const logoSrc = (cfg.show_logo && cfg.logo_base64) ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
-  if (!cfg.show_logo) return docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px;text-align:center;">${docTypeLabel}</div>` : "";
-  return `<div style="text-align:center;margin:0 0 2px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:145px;max-height:85px;width:auto;height:auto;display:block;margin:0 auto;object-fit:contain;" />${docTypeLabel ? `<div style="font-size:9.5px;font-weight:800;color:#333;text-transform:uppercase;letter-spacing:0.4px;margin-top:1px;">${docTypeLabel}</div>` : ""}</div>`;
+  const logoSrc = (cfg.show_logo !== false && cfg.logo_base64) ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
+  
+  let headerHtml = "";
+  if (cfg.show_logo !== false && logoSrc) {
+    headerHtml += `<div style="text-align:center;margin:0 0 2px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:145px;max-height:85px;width:auto;height:auto;display:block;margin:0 auto;object-fit:contain;" /></div>`;
+  }
+  
+  headerHtml += `
+    <div style="text-align: center; margin: 2px 0 3px 0; line-height: 1.25;">
+      <div style="font-size: 13px; font-weight: 900; color: #0f172a; text-transform: uppercase;">${escapeHtml(cfg.clinic_name || "Clinic & Store")}</div>
+      ${cfg.tagline ? `<div style="font-size: 9.5px; font-weight: 600; color: #475569; margin-top: 1px;">${escapeHtml(cfg.tagline)}</div>` : ""}
+      <div style="font-size: 9px; font-weight: 500; color: #64748b; margin-top: 1px;">${escapeHtml(cfg.address || "")}</div>
+      <div style="font-size: 9.5px; font-weight: 700; color: #334155;">Phone: ${escapeHtml(cfg.phone || "")}</div>
+      ${docTypeLabel ? `<div style="font-size: 10px; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; padding: 2px 0; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">${escapeHtml(docTypeLabel)}</div>` : ""}
+    </div>
+  `;
+  
+  return headerHtml;
 }
 
 /**
