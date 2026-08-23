@@ -206,25 +206,17 @@ export default function DeveloperAdminPanel() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    const currentAdminPasscode = (getAdminPasscode() || DEFAULT_ADMIN_PASSCODE).trim();
-    const currentTabPin = (getTabPin() || DEFAULT_TAB_PIN).trim();
+    const currentAdminPasscode = (getAdminPasscode() || "").trim();
     const input = (passcodeInput || "").trim();
 
-    // Support Master Passcode, Tab PIN, or standard fallback
-    const isValid = 
-      input === currentAdminPasscode ||
-      input.toUpperCase() === currentAdminPasscode.toUpperCase() ||
-      input === currentTabPin ||
-      input.toUpperCase() === "KB2026" ||
-      input === "7860";
-
-    if (isValid) {
+    // Strict validation: Must match the configured admin master passcode exactly
+    if (input && currentAdminPasscode && input === currentAdminPasscode) {
       sessionStorage.setItem("cf_dev_auth", "true");
       setIsAuthenticated(true);
       setAuthError("");
       loadData();
     } else {
-      setAuthError("Incorrect Super Admin master passcode. Please enter KB2026 or your custom passcode.");
+      setAuthError("Incorrect Super Admin master passcode. Access Denied.");
     }
   };
 
@@ -700,7 +692,7 @@ export default function DeveloperAdminPanel() {
                   enterKeyHint="go"
                   value={passcodeInput}
                   onChange={(e) => setPasscodeInput(e.target.value)}
-                  placeholder="Enter Passcode (Default: KB2026)"
+                  placeholder="Enter Master Passcode"
                   className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-12 py-3.5 text-sm text-teal-950 focus:outline-none transition-all font-mono tracking-widest text-center"
                 />
                 <button
@@ -728,23 +720,6 @@ export default function DeveloperAdminPanel() {
               <span>Unlock Master Super Admin Plane</span>
               <span className="material-symbols-outlined text-base">arrow_forward</span>
             </button>
-
-            {/* Quick 1-Tap Unlock Helper */}
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setPasscodeInput("KB2026");
-                  sessionStorage.setItem("cf_dev_auth", "true");
-                  setIsAuthenticated(true);
-                  setAuthError("");
-                  loadData();
-                }}
-                className="text-xs font-bold text-teal-700 hover:text-teal-900 underline underline-offset-4 decoration-teal-300 cursor-pointer"
-              >
-                ⚡ 1-Tap Quick Unlock (Default KB2026)
-              </button>
-            </div>
           </form>
         </div>
       </div>
@@ -1003,7 +978,7 @@ export default function DeveloperAdminPanel() {
         </aside>
 
         {/* ── Main Content Pane ── */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 pb-24 md:pb-12">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden space-y-6 pb-24 md:pb-12">
           
           {/* Sub-Tab Password / PIN Challenge Screen */}
           {tabSecurity?.tabs?.[activeTab]?.locked && !unlockedTabs.has(activeTab) ? (
@@ -1396,38 +1371,40 @@ export default function DeveloperAdminPanel() {
                   </div>
 
                   {/* Audit Period Selector */}
-                  <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-teal-100">
-                    {[
-                      { id: "30_days", label: "30 Days" },
-                      { id: "6_months", label: "6 Months (حالیہ چھ ماہ)" },
-                      { id: "1_year", label: "1 Year (سالانہ آڈٹ)" },
-                      { id: "2_years", label: "2 Years (دو سالہ آڈٹ)" },
-                      { id: "all_time", label: "All Time" },
-                      { id: "custom", label: "Custom Range" },
-                    ].map((r) => (
-                      <button
-                        key={r.id}
-                        onClick={() => setAuditRange(r.id)}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                          auditRange === r.id
-                            ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
-                            : "text-slate-600 hover:text-teal-950"
-                        }`}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
+                  <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                    <div className="inline-flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-teal-100 min-w-full sm:min-w-0">
+                      {[
+                        { id: "30_days", label: "30 Days" },
+                        { id: "6_months", label: "6 Months (حالیہ چھ ماہ)" },
+                        { id: "1_year", label: "1 Year (سالانہ آڈٹ)" },
+                        { id: "2_years", label: "2 Years (دو سالہ آڈٹ)" },
+                        { id: "all_time", label: "All Time" },
+                        { id: "custom", label: "Custom Range" },
+                      ].map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => setAuditRange(r.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                            auditRange === r.id
+                              ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
+                              : "text-slate-600 hover:text-teal-950 hover:bg-slate-100"
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {/* Audit Export & Dispatch Actions Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-teal-50 bg-teal-50/40 p-3.5 rounded-2xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-teal-50 bg-teal-50/40 p-3.5 rounded-2xl">
                   <div className="flex items-center gap-2 text-xs font-bold text-teal-900">
                     <span className="material-symbols-outlined text-teal-700 text-base">ios_share</span>
                     <span>Audit Export &amp; Reporting Options:</span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="grid grid-cols-1 xs:grid-cols-3 sm:flex sm:flex-wrap items-center gap-2">
                     {/* Excel XLS File Export */}
                     <button
                       onClick={() => {
@@ -1649,43 +1626,43 @@ export default function DeveloperAdminPanel() {
               </div>
 
               {/* Bento Audit Metrics Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-teal-200/90 p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-[11px] font-bold text-teal-800 uppercase tracking-wider">Total Godown Stock Valuation</div>
-                  <div className="text-2xl font-black text-teal-950 mt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="bg-white border border-teal-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-teal-800 uppercase tracking-wider">Total Godown Stock Valuation</div>
+                  <div className="text-xl sm:text-2xl font-black text-teal-950 mt-1">
                     Rs. {auditMetrics.totalStockValuation.toLocaleString("en-PK")}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                  <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
                     {auditMetrics.totalUnitsCount.toLocaleString()} Total Units in Selected Godowns
                   </div>
                 </div>
 
-                <div className="bg-white border border-emerald-200/90 p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Total Clinic &amp; Store Inflows</div>
-                  <div className="text-2xl font-black text-emerald-950 mt-1">
+                <div className="bg-white border border-emerald-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Total Clinic &amp; Store Inflows</div>
+                  <div className="text-xl sm:text-2xl font-black text-emerald-950 mt-1">
                     Rs. {auditMetrics.totalInflows.toLocaleString("en-PK")}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                  <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
                     OPD: Rs. {auditMetrics.opdFeesTotal.toLocaleString()} | B2B: Rs. {auditMetrics.b2bSalesTotal.toLocaleString()}
                   </div>
                 </div>
 
-                <div className="bg-white border border-rose-200/90 p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-[11px] font-bold text-rose-800 uppercase tracking-wider">Total Outflows &amp; Purchases</div>
-                  <div className="text-2xl font-black text-rose-950 mt-1">
+                <div className="bg-white border border-rose-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-rose-800 uppercase tracking-wider">Total Outflows &amp; Purchases</div>
+                  <div className="text-xl sm:text-2xl font-black text-rose-950 mt-1">
                     Rs. {auditMetrics.totalOutflows.toLocaleString("en-PK")}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                    GRN Stock: Rs. {auditMetrics.supplierPurchasesCash.toLocaleString()} | Exp: Rs. {auditMetrics.expensesTotal.toLocaleString()}
+                  <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
+                    GRN: Rs. {auditMetrics.supplierPurchasesCash.toLocaleString()} | Exp: Rs. {auditMetrics.expensesTotal.toLocaleString()}
                   </div>
                 </div>
 
-                <div className="bg-white border border-purple-200/90 p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-[11px] font-bold text-purple-800 uppercase tracking-wider">Net Operating Margin</div>
-                  <div className={`text-2xl font-black mt-1 ${auditMetrics.netOperatingSurplus >= 0 ? "text-purple-950" : "text-rose-600"}`}>
+                <div className="bg-white border border-purple-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-purple-800 uppercase tracking-wider">Net Operating Margin</div>
+                  <div className={`text-xl sm:text-2xl font-black mt-1 ${auditMetrics.netOperatingSurplus >= 0 ? "text-purple-950" : "text-rose-600"}`}>
                     Rs. {auditMetrics.netOperatingSurplus.toLocaleString("en-PK")}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                  <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
                     {auditMetrics.netOperatingSurplus >= 0 ? "✅ Net Operational Profit" : "⚠️ Operating Deficit"}
                   </div>
                 </div>
@@ -1695,13 +1672,13 @@ export default function DeveloperAdminPanel() {
               <div className="bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <h4 className="font-black text-teal-950 text-base">Godown SKU Valuation &amp; Quantity Matrix</h4>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
                       type="text"
                       placeholder="Search SKU name, company..."
                       value={auditSearch}
                       onChange={(e) => setAuditSearch(e.target.value)}
-                      className="bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-4 py-2 text-xs font-semibold w-64 focus:outline-none focus:border-teal-600"
+                      className="bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-4 py-2 text-xs font-semibold w-full sm:w-64 focus:outline-none focus:border-teal-600"
                     />
                     <button
                       onClick={() => {
@@ -1717,7 +1694,7 @@ export default function DeveloperAdminPanel() {
                         document.body.removeChild(link);
                         showToast("📊 Audit CSV Exported!");
                       }}
-                      className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold rounded-2xl border border-teal-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold rounded-2xl border border-teal-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
                     >
                       <span className="material-symbols-outlined text-base text-teal-700">download</span>
                       Export CSV
@@ -1725,16 +1702,16 @@ export default function DeveloperAdminPanel() {
                   </div>
                 </div>
 
-                <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto w-full">
+                  <table className="w-full text-left text-xs min-w-[550px]">
                     <thead className="bg-teal-50/80 text-teal-900 font-black uppercase tracking-wider sticky top-0 z-10 border-b border-teal-100">
                       <tr>
-                        <th className="px-4 py-3">SKU Code</th>
-                        <th className="px-4 py-3">Medicine Name</th>
-                        <th className="px-4 py-3">Manufacturer Brand</th>
-                        <th className="px-4 py-3 text-center">Godown Stock</th>
-                        <th className="px-4 py-3 text-right">Unit Cost</th>
-                        <th className="px-4 py-3 text-right">Stock Valuation</th>
+                        <th className="px-3.5 py-3">SKU Code</th>
+                        <th className="px-3.5 py-3">Medicine Name</th>
+                        <th className="px-3.5 py-3">Manufacturer Brand</th>
+                        <th className="px-3.5 py-3 text-center">Godown Stock</th>
+                        <th className="px-3.5 py-3 text-right">Unit Cost</th>
+                        <th className="px-3.5 py-3 text-right">Stock Valuation</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-teal-50 font-medium">
