@@ -685,7 +685,7 @@ export default function DeveloperAdminPanel() {
                   required
                   value={passcodeInput}
                   onChange={(e) => setPasscodeInput(e.target.value)}
-                  placeholder="Enter master passcode (KB2026)"
+                  placeholder="Enter Master Passcode"
                   className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-sm text-teal-950 focus:outline-none transition-all font-mono tracking-widest text-center"
                 />
               </div>
@@ -984,7 +984,7 @@ export default function DeveloperAdminPanel() {
                       setTabPinInput(e.target.value);
                       setTabPinError("");
                     }}
-                    placeholder="Enter Security PIN (KB2026)"
+                    placeholder="Enter Security PIN"
                     className="w-full bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 focus:outline-none transition-all font-mono tracking-widest text-center font-bold"
                   />
                 </div>
@@ -2385,7 +2385,7 @@ export default function DeveloperAdminPanel() {
                     type="password"
                     value={staffForm.password}
                     onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-                    placeholder="Default: 123456"
+                    placeholder="Enter Account Password"
                     className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-mono"
                   />
                 </div>
@@ -2499,7 +2499,7 @@ export default function DeveloperAdminPanel() {
                       })
                     }
                     className="w-full bg-white border border-amber-300 rounded-xl pl-9 pr-3 py-2 text-xs font-mono font-bold text-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500 tracking-wider"
-                    placeholder="Enter Tab PIN (e.g. 7860)"
+                    placeholder="Enter Tab Security PIN"
                   />
                 </div>
                 <p className="text-[10px] text-amber-800 font-medium">
@@ -2657,7 +2657,7 @@ export default function DeveloperAdminPanel() {
                   setChallengePinInput(e.target.value);
                   setChallengePinError("");
                 }}
-                placeholder="Enter Tab PIN (e.g. 7860)"
+                placeholder="Enter Tab Security PIN"
                 className="w-full bg-slate-50 border border-amber-300 focus:border-amber-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs font-mono font-bold text-slate-900 text-center tracking-widest focus:outline-none transition-all"
               />
             </div>
@@ -2717,7 +2717,7 @@ export default function DeveloperAdminPanel() {
                   setRevealPinInput(e.target.value);
                   setRevealPinError("");
                 }}
-                placeholder="Enter PIN (KB2026)"
+                placeholder="Enter Security PIN"
                 className="w-full bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-9 pr-3 py-2.5 text-xs text-slate-900 font-mono tracking-widest text-center font-bold"
               />
             </div>
