@@ -75,6 +75,28 @@
 - **System Design Principles:**
   - Identified requirement to consolidate stock into a canonical `location_stocks` map (SSOT), introduce atomic transaction wrappers, and migrate heavy base64 image blobs to IndexedDB.
 
+### Milestone 13 — Visual Thermal Receipt Studio & Admin Command Isolation
+- Built fullscreen visual Thermal Receipt Studio (`ReceiptStudio.jsx`) with live 80mm ESC/POS interactive toggle customizer.
+- Strictly isolated Receipt Studio under Super Admin Command Center (`/admin`) requiring master passcode (`cf_dev_auth`). Stripped from standard staff portals.
+
+### Milestone 14 — Zero-White Screen Dynamic Chunk Retry Engine & PWA v1.2.0
+- Built `lazyWithRetry.js` to catch chunk hash deployment mismatches and auto-reload transparently.
+- Bumped PWA Service Worker cache to `v1.2.0` with instant client cache claim.
+
+### Milestone 15 — Official CliniCore Brand Identity Overhaul
+- Generated official CliniCore vector SVG brand icon (`favicon.svg`, `clinic-logo.png`).
+- Replaced all legacy placeholders on Landing Page, Login Screen, Dashboard header, and Admin Command Center with CliniCore official branding.
+- Enforced strict brand rule: Clinic-specific doctor details apply exclusively to printed 80mm Thermal Receipts, Tokens, and Invoices.
+
+### Milestone 16 — Open Graph (OG) Social Card Banner Engine
+- Designed and embedded high-definition 1200x630 Open Graph banner card (`og-image.jpg`).
+- Injected full Open Graph (`og:image`) and Twitter Card (`twitter:image`) metadata into `index.html`.
+
+### Milestone 17 — Zero-FOIT Optimization & Appwrite Cloud Pro Verification
+- Fixed Google Material Symbols font load jitter with fixed `1em` box-sizing, inline-flex isolation, and stylesheet preloading.
+- Added Tailwind CSS v4 schemas to `.vscode/settings.json` clearing all IDE linter warnings.
+- Verified real-time connectivity to Appwrite Cloud Singapore cluster (`clinicore_db`, `patients`, `prescriptions_vault`).
+
 ---
 
 ## 🔒 3. Golden Rules for Future AI Coding Sessions
