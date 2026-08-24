@@ -1,5 +1,5 @@
-{
-  "_note_for_ai": "This is the canonical mock dataset for ClinicFlow. UPDATED 13-Aug-2026 to reflect the real clinic workflow: token/queue system, relation-name-based patient search, photo-based prescriptions (no typed medicine list), and a pharmacist role. Use these exact field names and shapes in all generated code.",
+﻿{
+  "_note_for_ai": "This is the canonical mock dataset for CliniCore. UPDATED 13-Aug-2026 to reflect the real clinic workflow: token/queue system, relation-name-based patient search, photo-based prescriptions (no typed medicine list), and a pharmacist role. Use these exact field names and shapes in all generated code.",
 
   "clinic": {
     "id": "clinic_001",

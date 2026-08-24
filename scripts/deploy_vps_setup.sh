@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # ==============================================================================
-# 🏥 ClinicFlow — Production VPS Auto-Provisioning & Deployment Engine
+# 🏥 CliniCore — Production VPS Auto-Provisioning & Deployment Engine
 # Target OS: Ubuntu 24.04 LTS (Hostinger KVM 1 VPS)
 # Stack: Nginx + PHP 8.3-FPM + MySQL 8.0 + Node.js 20 LTS + Certbot SSL
 # ==============================================================================
@@ -16,11 +16,11 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-LOG_FILE="/var/log/clinicflow_setup.log"
+LOG_FILE="/var/log/clinicore_setup.log"
 exec > >(tee -a "${LOG_FILE}") 2>&1
 
 echo -e "${CYAN}===================================================================${NC}"
-echo -e "${GREEN}    🏥 CLINICFLOW — PRODUCTION SERVER SETUP & PROVISIONING         ${NC}"
+echo -e "${GREEN}    🏥 CLINICORE — PRODUCTION SERVER SETUP & PROVISIONING         ${NC}"
 echo -e "${CYAN}===================================================================${NC}"
 echo -e "${YELLOW}Started at: $(date)${NC}"
 
@@ -92,8 +92,8 @@ systemctl start mysql
 systemctl enable mysql
 
 # Generate a cryptographically secure DB password
-DB_NAME="clinicflow"
-DB_USER="clinicflow_admin"
+DB_NAME="clinicore"
+DB_USER="clinicore_admin"
 DB_PASS="CF_Prod_$(openssl rand -hex 8)!"
 
 echo -e "${YELLOW}Configuring MySQL Database '${DB_NAME}' & Dedicated User '${DB_USER}'...${NC}"
@@ -119,7 +119,7 @@ echo -e "${GREEN}✓ Node.js version: $(node -v) | NPM version: $(npm -v)${NC}"
 # 6. DIRECTORY STRUCTURE & SECURE PERMISSIONS
 # ------------------------------------------------------------------------------
 echo -e "\n${BLUE}[6/8] Creating Production Directory Structure & Permissions...${NC}"
-APP_ROOT="/var/www/clinicflow"
+APP_ROOT="/var/www/clinicore"
 mkdir -p "${APP_ROOT}/frontend/dist"
 mkdir -p "${APP_ROOT}/backend/public"
 mkdir -p "${APP_ROOT}/storage/uploads/prescriptions"
@@ -128,7 +128,7 @@ mkdir -p "${APP_ROOT}/storage/backups"
 
 # Create production .env for backend
 cat <<EOF > "${APP_ROOT}/backend/.env"
-# ClinicFlow Production Environment Config
+# CliniCore Production Environment Config
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://srv1926851.hstgr.cloud
@@ -174,7 +174,7 @@ if ($uri === '/api/health' || $uri === '/api/v1/health' || $uri === '/api') {
         'success' => true,
         'data' => [
             'status'    => 'healthy',
-            'app'       => 'ClinicFlow Enterprise Engine',
+            'app'       => 'CliniCore Enterprise Engine',
             'version'   => '2.0.0',
             'runtime'   => 'PHP ' . PHP_VERSION,
             'timestamp' => date('c')
@@ -189,7 +189,7 @@ $gatewayFile = __DIR__ . '/../src/Config/Database.php';
 if (file_exists($gatewayFile)) {
     // Registered routes
     spl_autoload_register(function ($class) {
-        $prefix = 'ClinicFlow\\';
+        $prefix = 'CliniCore\\';
         $baseDir = __DIR__ . '/../src/';
         $len = strlen($prefix);
         if (strncmp($prefix, $class, $len) !== 0) return;
@@ -200,7 +200,7 @@ if (file_exists($gatewayFile)) {
     
     echo json_encode([
         'success' => true,
-        'data' => ['message' => 'ClinicFlow API Ready', 'endpoint' => $uri],
+        'data' => ['message' => 'CliniCore API Ready', 'endpoint' => $uri],
         'error' => null
     ]);
     exit;
@@ -210,7 +210,7 @@ echo json_encode([
     'success' => true,
     'data' => [
         'status'  => 'healthy',
-        'message' => 'ClinicFlow Server Online. Please sync backend source files.'
+        'message' => 'CliniCore Server Online. Please sync backend source files.'
     ],
     'error' => null
 ]);
@@ -226,14 +226,14 @@ chmod -R 775 "${APP_ROOT}/storage"
 echo -e "\n${BLUE}[7/8] Installing & Configuring Nginx Web Server...${NC}"
 apt-get install -y nginx certbot python3-certbot-nginx
 
-NGINX_CONF="/etc/nginx/sites-available/clinicflow"
+NGINX_CONF="/etc/nginx/sites-available/clinicore"
 cat <<'EOF' > "$NGINX_CONF"
 server {
     listen 80;
     listen [::]:80;
     server_name srv1926851.hstgr.cloud _;
 
-    root /var/www/clinicflow/frontend/dist;
+    root /var/www/clinicore/frontend/dist;
     index index.html index.htm;
 
     # Gzip Compression for Ultra-Fast Loads
@@ -266,7 +266,7 @@ server {
     location @backend {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME /var/www/clinicflow/backend/public/index.php;
+        fastcgi_param SCRIPT_FILENAME /var/www/clinicore/backend/public/index.php;
         fastcgi_param REQUEST_URI $request_uri;
         include fastcgi_params;
         fastcgi_read_timeout 120;
@@ -284,7 +284,7 @@ server {
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/clinicflow /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/clinicore /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl restart nginx
@@ -295,11 +295,11 @@ echo -e "${GREEN}✓ Nginx configured and restarted successfully.${NC}"
 # 8. AUTOMATED DAILY BACKUP CRON ENGINE
 # ------------------------------------------------------------------------------
 echo -e "\n${BLUE}[8/8] Installing Automated Daily MySQL & Snapshot Backup Job...${NC}"
-BACKUP_SCRIPT="/usr/local/bin/clinicflow-backup.sh"
+BACKUP_SCRIPT="/usr/local/bin/clinicore-backup.sh"
 
 cat <<EOF > "$BACKUP_SCRIPT"
 #!/usr/bin/env bash
-BACKUP_DIR="/var/www/clinicflow/storage/backups"
+BACKUP_DIR="/var/www/clinicore/storage/backups"
 TIMESTAMP=\$(date +"%Y%m%d_%H%M%S")
 DB_FILE="\${BACKUP_DIR}/db_backup_\${TIMESTAMP}.sql.gz"
 
@@ -313,14 +313,14 @@ EOF
 chmod +x "$BACKUP_SCRIPT"
 
 # Register daily 03:00 AM PKT (22:00 UTC) cron job
-(crontab -l 2>/dev/null | grep -v "clinicflow-backup.sh" ; echo "0 22 * * * /usr/local/bin/clinicflow-backup.sh >/dev/null 2>&1") | crontab -
+(crontab -l 2>/dev/null | grep -v "clinicore-backup.sh" ; echo "0 22 * * * /usr/local/bin/clinicore-backup.sh >/dev/null 2>&1") | crontab -
 echo -e "${GREEN}✓ Daily automated database backup cron registered.${NC}"
 
 # ------------------------------------------------------------------------------
 # SUMMARY & CREDENTIALS VAULT
 # ------------------------------------------------------------------------------
 echo -e "\n${CYAN}===================================================================${NC}"
-echo -e "${GREEN}       🎉 CLINICFLOW SERVER PROVISIONING COMPLETE!                 ${NC}"
+echo -e "${GREEN}       🎉 CLINICORE SERVER PROVISIONING COMPLETE!                 ${NC}"
 echo -e "${CYAN}===================================================================${NC}"
 echo -e "${PURPLE}Generated Production Credentials Vault:${NC}"
 echo -e "  MySQL Database:   ${YELLOW}${DB_NAME}${NC}"

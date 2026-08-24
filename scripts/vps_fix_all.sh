@@ -1,20 +1,20 @@
-#!/bin/bash
+﻿#!/bin/bash
 # =============================================================================
-# ClinicFlow VPS Master Fix Script
+# CliniCore VPS Master Fix Script
 # Fixes: Namespace/folder casing, Nginx 403, DB setup, PHP-FPM socket, .env
 # =============================================================================
 
 set -e
-CLINICFLOW_DIR="/var/www/clinicflow"
-BACKEND_DIR="$CLINICFLOW_DIR/backend"
-FRONTEND_DIR="$CLINICFLOW_DIR/frontend"
-DB_NAME="clinicflow"
-DB_USER="clinicflow_user"
+CLINICORE_DIR="/var/www/clinicore"
+BACKEND_DIR="$CLINICORE_DIR/backend"
+FRONTEND_DIR="$CLINICORE_DIR/frontend"
+DB_NAME="clinicore"
+DB_USER="clinicore_user"
 DB_PASS="CF_Secure2024!"
 
 echo ""
 echo "======================================================"
-echo "  ClinicFlow VPS Master Fix — Starting..."
+echo "  CliniCore VPS Master Fix — Starting..."
 echo "======================================================"
 
 # ─────────────────────────────────────────────────────────
@@ -83,8 +83,8 @@ echo "  DB '$DB_NAME' and user '$DB_USER' ready."
 echo ""
 echo "[4/8] Importing production schema..."
 
-if [ -f "$CLINICFLOW_DIR/database/production_schema.sql" ]; then
-    mysql -u root "$DB_NAME" < "$CLINICFLOW_DIR/database/production_schema.sql"
+if [ -f "$CLINICORE_DIR/database/production_schema.sql" ]; then
+    mysql -u root "$DB_NAME" < "$CLINICORE_DIR/database/production_schema.sql"
     TABLE_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME';")
     echo "  Schema imported. Tables: $TABLE_COUNT"
 else
@@ -97,8 +97,8 @@ fi
 echo ""
 echo "[5/8] Importing seed data..."
 
-if [ -f "$CLINICFLOW_DIR/database/production_seed.sql" ]; then
-    mysql -u root "$DB_NAME" < "$CLINICFLOW_DIR/database/production_seed.sql"
+if [ -f "$CLINICORE_DIR/database/production_seed.sql" ]; then
+    mysql -u root "$DB_NAME" < "$CLINICORE_DIR/database/production_seed.sql"
     USER_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM \`$DB_NAME\`.users;" 2>/dev/null || echo "0")
     echo "  Seed imported. Users: $USER_COUNT"
 else
@@ -114,7 +114,7 @@ echo "[6/8] Writing production .env..."
 JWT_SECRET=$(openssl rand -hex 32)
 
 cat > "$BACKEND_DIR/.env" <<ENV_EOF
-APP_NAME=ClinicFlow
+APP_NAME=CliniCore
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=http://77.37.45.233
@@ -153,7 +153,7 @@ cat > "$FRONTEND_DIR/dist/index.html" <<'HTML_EOF'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClinicFlow Enterprise</title>
+    <title>CliniCore Enterprise</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Segoe UI',sans-serif}
@@ -167,7 +167,7 @@ cat > "$FRONTEND_DIR/dist/index.html" <<'HTML_EOF'
 <body>
     <div class="card">
         <div style="font-size:64px">🏥</div>
-        <h1>ClinicFlow Enterprise</h1>
+        <h1>CliniCore Enterprise</h1>
         <p>Backend API is running. Frontend deployment pending.</p>
         <span class="badge">✓ API Online</span>
         <a href="/api/health">View API Health →</a>
@@ -178,7 +178,7 @@ HTML_EOF
 echo "  Frontend placeholder created."
 fi
 
-cat > /etc/nginx/sites-available/clinicflow <<NGINX_EOF
+cat > /etc/nginx/sites-available/clinicore <<NGINX_EOF
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -213,12 +213,12 @@ server {
     location ~ /\.(env|git) { deny all; return 403; }
     location ~* ^/backend/src { deny all; return 403; }
 
-    access_log /var/log/nginx/clinicflow_access.log;
-    error_log  /var/log/nginx/clinicflow_error.log warn;
+    access_log /var/log/nginx/clinicore_access.log;
+    error_log  /var/log/nginx/clinicore_error.log warn;
 }
 NGINX_EOF
 
-ln -sf /etc/nginx/sites-available/clinicflow /etc/nginx/sites-enabled/clinicflow
+ln -sf /etc/nginx/sites-available/clinicore /etc/nginx/sites-enabled/clinicore
 [ -f /etc/nginx/sites-enabled/default ] && rm /etc/nginx/sites-enabled/default && echo "  Removed default site."
 
 nginx -t && echo "  Nginx config: VALID" || { echo "  ERROR: Nginx config invalid!"; nginx -t; }
@@ -232,8 +232,8 @@ echo "[8/8] Fixing permissions and restarting services..."
 mkdir -p "$BACKEND_DIR/storage/files"
 mkdir -p "$BACKEND_DIR/storage/logs"
 
-chown -R www-data:www-data "$CLINICFLOW_DIR"
-chmod -R 755 "$CLINICFLOW_DIR"
+chown -R www-data:www-data "$CLINICORE_DIR"
+chmod -R 755 "$CLINICORE_DIR"
 chmod -R 775 "$BACKEND_DIR/storage"
 chmod 640 "$BACKEND_DIR/.env"
 
@@ -273,10 +273,10 @@ mysql -u root -e "SELECT id, name, role, email FROM $DB_NAME.users LIMIT 5;" 2>/
 echo ""
 echo "======================================================"
 if [ "$HTTP_CODE" = "200" ]; then
-    echo "  SUCCESS: ClinicFlow API is LIVE!"
+    echo "  SUCCESS: CliniCore API is LIVE!"
 else
     echo "  WARNING: API returned $HTTP_CODE — check logs:"
-    echo "  tail -20 /var/log/nginx/clinicflow_error.log"
+    echo "  tail -20 /var/log/nginx/clinicore_error.log"
 fi
 echo "  URL: http://77.37.45.233/"
 echo "  API: http://77.37.45.233/api/health"

@@ -1,14 +1,14 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Utils;
+namespace CliniCore\Utils;
 
-use ClinicFlow\Config\Env;
+use CliniCore\Config\Env;
 use Exception;
 
 class JWT {
     private static function getSecret(): string {
-        return (string) Env::get('JWT_SECRET', 'clinicflow_enterprise_secure_token_secret_key_2026');
+        return (string) Env::get('JWT_SECRET', 'clinicore_enterprise_secure_token_secret_key_2026');
     }
 
     private static function base64UrlEncode(string $data): string {

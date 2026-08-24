@@ -1,12 +1,12 @@
--- ============================================================================
--- ClinicFlow — Production Database Schema (MySQL 8.0 / InnoDB)
+﻿-- ============================================================================
+-- CliniCore — Production Database Schema (MySQL 8.0 / InnoDB)
 -- Clinic & Wholesale Homoeopathic Management System
 -- Version: 2.0 (Production Release)
 -- Target Server: Hostinger KVM 1 (Ubuntu 24.04 LTS, MySQL 8.0)
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS clinicflow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE clinicflow;
+CREATE DATABASE IF NOT EXISTS clinicore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE clinicore;
 
 -- Disable Foreign Key Checks during setup
 SET FOREIGN_KEY_CHECKS = 0;

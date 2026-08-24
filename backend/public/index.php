@@ -1,14 +1,14 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
 /**
- * 🏥 ClinicFlow Enterprise REST API Gateway (PHP 8.3)
+ * 🏥 CliniCore Enterprise REST API Gateway (PHP 8.3)
  * Front Controller & Routing Gateway
  */
 
 // Enable PSR-4 Autoloader
 spl_autoload_register(function ($class) {
-    $prefix = 'ClinicFlow\\';
+    $prefix = 'CliniCore\\';
     $baseDir = __DIR__ . '/../src/';
 
     $len = strlen($prefix);
@@ -24,17 +24,17 @@ spl_autoload_register(function ($class) {
     }
 });
 
-use ClinicFlow\Config\Env;
-use ClinicFlow\Utils\Response;
-use ClinicFlow\Controllers\AuthController;
-use ClinicFlow\Controllers\PatientController;
-use ClinicFlow\Controllers\VisitController;
-use ClinicFlow\Controllers\InventoryController;
-use ClinicFlow\Controllers\PosSalesController;
-use ClinicFlow\Controllers\B2bSalesController;
-use ClinicFlow\Controllers\PurchaseController;
-use ClinicFlow\Controllers\FinanceController;
-use ClinicFlow\Controllers\StorageController;
+use CliniCore\Config\Env;
+use CliniCore\Utils\Response;
+use CliniCore\Controllers\AuthController;
+use CliniCore\Controllers\PatientController;
+use CliniCore\Controllers\VisitController;
+use CliniCore\Controllers\InventoryController;
+use CliniCore\Controllers\PosSalesController;
+use CliniCore\Controllers\B2bSalesController;
+use CliniCore\Controllers\PurchaseController;
+use CliniCore\Controllers\FinanceController;
+use CliniCore\Controllers\StorageController;
 
 // Handle CORS Pre-Flight Requests
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
@@ -56,7 +56,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($uri === '/api/health' || $uri === '/api/v1/health') {
     Response::success([
         'status'    => 'healthy',
-        'app'       => 'ClinicFlow Enterprise Engine',
+        'app'       => 'CliniCore Enterprise Engine',
         'version'   => '2.0.0',
         'runtime'   => 'PHP ' . PHP_VERSION,
         'timestamp' => date('c')
@@ -133,7 +133,7 @@ try {
 
     // Unmatched Route Fallback
     else {
-        Response::notFound("Endpoint '{$method} {$uri}' does not exist on ClinicFlow API.");
+        Response::notFound("Endpoint '{$method} {$uri}' does not exist on CliniCore API.");
     }
 } catch (\Throwable $e) {
     error_log("Unhandled API Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());

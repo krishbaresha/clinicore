@@ -1,13 +1,13 @@
-<?php
+﻿<?php
 /**
- * Database Seed Script for ClinicFlow
+ * Database Seed Script for CliniCore
  * Inserts mock data from 07_Mock_Data.json into MySQL tables.
  */
 
 // Define absolute path to backend database config
 require_once __DIR__ . '/../backend/src/config/db.php';
 
-echo "Starting ClinicFlow Database Seeding...\n";
+echo "Starting CliniCore Database Seeding...\n";
 
 try {
     // 1. Initialize Database Connection
@@ -199,7 +199,7 @@ try {
         }
     }
 
-    echo "ClinicFlow Database Seeding completed successfully!\n";
+    echo "CliniCore Database Seeding completed successfully!\n";
 
 } catch (Exception $e) {
     echo "ERROR: " . $e->getMessage() . "\n";

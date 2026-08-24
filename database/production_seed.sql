@@ -1,9 +1,9 @@
--- ============================================================================
--- ClinicFlow — Production Seed Data
+﻿-- ============================================================================
+-- CliniCore — Production Seed Data
 -- Initial Master Data & Staff Accounts
 -- ============================================================================
 
-USE clinicflow;
+USE clinicore;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -32,12 +32,12 @@ ON DUPLICATE KEY UPDATE name=VALUES(name);
 -- Hash generated using standard bcrypt (Cost 12)
 INSERT INTO users (id, clinic_id, name, display_label, role, phone, email, password_hash, assigned_warehouse_id, is_principal_doctor, status)
 VALUES
-('user_kashif_01', 'clinic_001', 'Dr. Muhammad Kashif Khan', 'Dr. Kashif (Principal)', 'owner', '03473100304', 'drkashif@clinicflow.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_str', TRUE, 'active'),
-('user_asif_02', 'clinic_001', 'Dr. Asif Ashraf', 'Dr. Asif (Consultant)', 'doctor', '03001234567', 'drasif@clinicflow.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_str', FALSE, 'active'),
-('user_waheed_03', 'clinic_001', 'Waheed Bhai', 'Waheed (Counter 1)', 'receptionist', '03111234567', 'waheed@clinicflow.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_str', FALSE, 'active'),
-('user_raza_04', 'clinic_001', 'Raza Ali', 'Raza (Godown 1)', 'godown_incharge', '03009998877', 'raza@clinicflow.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_001', FALSE, 'active'),
-('user_usama_05', 'clinic_001', 'Usama Khan', 'Usama (Godown 2)', 'godown_incharge', '03221234567', 'usama@clinicflow.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_002', FALSE, 'active'),
-('user_admin_00', 'clinic_001', 'Super Administrator', 'Super Admin', 'admin', '03000000000', 'admin@clinicflow.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', NULL, FALSE, 'active')
+('user_kashif_01', 'clinic_001', 'Dr. Muhammad Kashif Khan', 'Dr. Kashif (Principal)', 'owner', '03473100304', 'drkashif@clinicore.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_str', TRUE, 'active'),
+('user_asif_02', 'clinic_001', 'Dr. Asif Ashraf', 'Dr. Asif (Consultant)', 'doctor', '03001234567', 'drasif@clinicore.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_str', FALSE, 'active'),
+('user_waheed_03', 'clinic_001', 'Waheed Bhai', 'Waheed (Counter 1)', 'receptionist', '03111234567', 'waheed@clinicore.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_str', FALSE, 'active'),
+('user_raza_04', 'clinic_001', 'Raza Ali', 'Raza (Godown 1)', 'godown_incharge', '03009998877', 'raza@clinicore.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_001', FALSE, 'active'),
+('user_usama_05', 'clinic_001', 'Usama Khan', 'Usama (Godown 2)', 'godown_incharge', '03221234567', 'usama@clinicore.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', 'wh_002', FALSE, 'active'),
+('user_admin_00', 'clinic_001', 'Super Administrator', 'Super Admin', 'admin', '03000000000', 'admin@clinicore.pk', '$2y$12$s0EaL64kL0yL247j6zQ7kOhF6Uj7g5yTqEwVjM9u5u6fU8m2kQ0m6', NULL, FALSE, 'active')
 ON DUPLICATE KEY UPDATE name=VALUES(name);
 
 -- 4. Master Salesmen

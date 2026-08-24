@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Controllers;
+namespace CliniCore\Controllers;
 
-use ClinicFlow\Config\Env;
-use ClinicFlow\Utils\Response;
-use ClinicFlow\Middleware\AuthMiddleware;
+use CliniCore\Config\Env;
+use CliniCore\Utils\Response;
+use CliniCore\Middleware\AuthMiddleware;
 
 class StorageController {
     public function upload(): void {

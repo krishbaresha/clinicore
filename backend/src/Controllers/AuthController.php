@@ -1,13 +1,13 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Controllers;
+namespace CliniCore\Controllers;
 
-use ClinicFlow\Config\Database;
-use ClinicFlow\Utils\JWT;
-use ClinicFlow\Utils\Response;
-use ClinicFlow\Utils\Validator;
-use ClinicFlow\Middleware\AuthMiddleware;
+use CliniCore\Config\Database;
+use CliniCore\Utils\JWT;
+use CliniCore\Utils\Response;
+use CliniCore\Utils\Validator;
+use CliniCore\Middleware\AuthMiddleware;
 use PDO;
 
 class AuthController {

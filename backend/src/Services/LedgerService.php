@@ -1,7 +1,7 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Services;
+namespace CliniCore\Services;
 
 use PDO;
 

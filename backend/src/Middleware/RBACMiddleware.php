@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Middleware;
+namespace CliniCore\Middleware;
 
-use ClinicFlow\Utils\Response;
+use CliniCore\Utils\Response;
 
 class RBACMiddleware {
     /**

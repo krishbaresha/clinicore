@@ -1,7 +1,7 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Utils;
+namespace CliniCore\Utils;
 
 class Validator {
     private array $data;

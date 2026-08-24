@@ -1,6 +1,6 @@
-{
-  "name": "clinicflow/backend-api",
-  "description": "ClinicFlow Enterprise REST API Engine (PHP 8.3 + MySQL 8.0)",
+﻿{
+  "name": "clinicore/backend-api",
+  "description": "CliniCore Enterprise REST API Engine (PHP 8.3 + MySQL 8.0)",
   "type": "project",
   "license": "proprietary",
   "require": {
@@ -8,7 +8,7 @@
   },
   "autoload": {
     "psr-4": {
-      "ClinicFlow\\": "src/"
+      "CliniCore\\": "src/"
     }
   }
 }

@@ -1,7 +1,7 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Config;
+namespace CliniCore\Config;
 
 class Env {
     private static bool $loaded = false;

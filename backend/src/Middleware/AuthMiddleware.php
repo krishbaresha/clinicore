@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Middleware;
+namespace CliniCore\Middleware;
 
-use ClinicFlow\Config\Database;
-use ClinicFlow\Utils\JWT;
-use ClinicFlow\Utils\Response;
+use CliniCore\Config\Database;
+use CliniCore\Utils\JWT;
+use CliniCore\Utils\Response;
 use PDO;
 
 class AuthMiddleware {

@@ -1,12 +1,12 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Config;
+namespace CliniCore\Config;
 
 use PDO;
 use PDOException;
 use Exception;
-use ClinicFlow\Utils\Response;
+use CliniCore\Utils\Response;
 
 class Database {
     private static ?PDO $instance = null;
@@ -17,7 +17,7 @@ class Database {
 
             $host = (string) Env::get('DB_HOST', '127.0.0.1');
             $port = (string) Env::get('DB_PORT', '3306');
-            $db   = (string) Env::get('DB_DATABASE', 'clinicflow');
+            $db   = (string) Env::get('DB_DATABASE', 'clinicore');
             $user = (string) Env::get('DB_USERNAME', 'root');
             $pass = (string) Env::get('DB_PASSWORD', '');
 

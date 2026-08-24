@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Services;
+namespace CliniCore\Services;
 
-use ClinicFlow\Config\Database;
+use CliniCore\Config\Database;
 use PDO;
 use Exception;
 

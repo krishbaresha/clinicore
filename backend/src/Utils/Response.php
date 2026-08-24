@@ -1,7 +1,7 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
-namespace ClinicFlow\Utils;
+namespace CliniCore\Utils;
 
 class Response {
     public static function json(mixed $data = null, bool $success = true, ?array $error = null, int $statusCode = 200, array $meta = []): void {
