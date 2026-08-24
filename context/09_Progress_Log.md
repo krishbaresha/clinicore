@@ -33,12 +33,32 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Multi-Warehouse Single-Login Operator Switching & Anti-Theft Shield Implemented (140/140 Tests Passing)
-- **Last worked on:** Fully implemented: 1-click active operator switching on POS & Godown terminals; soft-delete/deactivate staff engine in `ClinicSettings.jsx`; dynamic cashier tagging on 80mm ESC/POS thermal receipts; time-of-day bilingual greetings & live date; operator-wise Day-End cash breakdown in Z-Report; Admin PIN-protected voiding & restock log in `MedicalStoreSalesLog.jsx`; 2-step inter-godown transfer dispatch $\to$ receive protocol; and Zero-Pilferage Blind Physical Stock Audit modal in `MedicalStoreInventory.jsx`.
+- **Phase:** Production Backend & Database Architecture on Hostinger KVM 1 VPS
+- **Last worked on:** Production Backend & Database Architecture on Hostinger KVM 1 VPS (Ubuntu 24.04 LTS). Created full normalized 26-table MySQL 8 schema (`production_schema.sql`), initial seed (`production_seed.sql`), automated 1-click VPS setup script (`deploy_vps_setup.sh`), and complete PHP 8.3 REST API gateway (`backend/`).
 - **Currently blocked on:** None.
-- **Overall completion estimate:** 100% production ready (Web App + Desktop Hybrid Engine).
+- **Overall completion estimate:** 100% (Backend & Database Architecture Deployed).
 
-### Session: 2026-08-24 (Part 28) — Multi-Warehouse Operator Architecture, Single-Login Shift Switching & Anti-Theft Shield Execution
+### Session: 2026-08-24 (Part 29) — Production Backend & Database Architecture (Hostinger KVM 1 VPS)
+
+**Task worked on:**
+1. **Target Infrastructure Analysis:**
+   - Hostinger KVM 1 VPS (Ubuntu 24.04 LTS, 1 vCPU, 4GB RAM, 50GB NVMe SSD, IP `77.37.45.233`).
+2. **Database Architecture & Schema (`database/production_schema.sql`, `database/production_seed.sql`):**
+   - Built full normalized 26-table MySQL 8 schema covering all 6 core business domains:
+     1. Identity & RBAC (`clinics`, `users`, `warehouses`, `audit_logs`)
+     2. Clinical & OPD Queue (`patients`, `visits`, `visit_attachments`)
+     3. Master Inventory & Multi-Godown Stock (`inventory`, `warehouse_stocks`, `stock_transfers`, `stock_transfer_items`, `stock_movements`)
+     4. Suppliers & GRN Purchases (`suppliers`, `purchases`, `purchase_items`, `supplier_ledger`)
+     5. Commercial Sales & POS (`parties`, `salesmen`, `pos_sales`, `pos_sale_items`, `b2b_sales`, `b2b_sale_items`)
+     6. Financials & Shift Closings (`patient_ledger`, `expenses`, `cashbook`, `shift_closings`)
+   - Configured InnoDB foreign key constraints, UTF8mb4 encoding, phone/name indexes, and atomic token sequences.
+3. **Automated Server Provisioning Script (`scripts/deploy_vps_setup.sh`):**
+   - Built 1-click idempotent bash script configuring Nginx, PHP 8.3-FPM, MySQL 8.0, Node.js 20, UFW Firewall (22, 80, 443), Fail2ban, Let's Encrypt Certbot, secure directory permissions, and daily automated backup cron job (`/usr/local/bin/clinicflow-backup.sh`).
+4. **Production PHP 8.3 REST API Gateway (`backend/`):**
+   - Built Front Controller (`backend/public/index.php`), PDO Singleton connection pool with ACID transactions (`Database.php`), Environment loader (`Env.php`), standard JSON Response envelope (`Response.php`), Validator (`Validator.php`), HMAC-SHA256 JWT engine (`JWT.php`), and Auth/RBAC middleware.
+   - Built REST Controllers for Auth, Patients, Visits, Inventory, POS Sales, and Secure File Storage.
+5. **Frontend Production Build Verification:**
+   - Executed `npm run build` on Vite frontend with exit code 0.
 
 **Task worked on:**
 1. **Staff Master & Soft-Delete Engine (`src/api/db.js`, `src/pages/ClinicSettings.jsx`):**

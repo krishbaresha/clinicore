@@ -31,5 +31,9 @@ lerna-debug.log*
 # Local Database / uploads cache if any
 *.db
 uploads/
+storage/
+storage/backups/
+storage/uploads/
 Tech-Bill/
+backend/.env
 
