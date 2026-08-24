@@ -31,11 +31,9 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [usersList, setUsersList] = useState([]);
   const [clinicData, setClinicData] = useState(null);
 
   useEffect(() => {
-    setUsersList(dbUsers.getAll() || []);
     setClinicData(dbClinic.get() || {});
   }, []);
 
@@ -82,27 +80,35 @@ export default function LoginScreen() {
     }
   }
 
-  function handleQuickLogin(email, pass) {
-    setIdentifier(email);
-    setPassword(pass);
-    setError("");
-    setLoading(true);
-    const result = login(email, pass);
-    setLoading(false);
-    if (result.success) {
-      navigate("/dashboard", { replace: true });
-    } else {
-      setError(result.error?.message || "Login failed");
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center p-4 selection:bg-teal-600 selection:text-white relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#f8faf9] flex flex-col justify-between p-4 sm:p-6 selection:bg-teal-600 selection:text-white relative overflow-hidden font-sans">
       {CLERK_PUBLISHABLE_KEY && <ClerkSignInBridge onReady={setClerkAuth} />}
       {/* Decorative Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-96 bg-gradient-to-b from-teal-100/70 via-emerald-50/40 to-transparent blur-3xl -z-10 pointer-events-none" />
 
-      <main className="w-full max-w-md mx-auto relative z-10" aria-label="Staff Login">
+      {/* Top Floating Navigation Bar */}
+      <header className="w-full max-w-4xl mx-auto flex items-center justify-between py-2 px-1 relative z-20">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="px-3.5 py-2 rounded-2xl bg-white/80 hover:bg-white border border-teal-100 text-teal-950 font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:border-teal-300 cursor-pointer active:scale-95"
+        >
+          <span className="material-symbols-outlined text-base text-teal-700">arrow_back</span>
+          <span>Back to Home</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/admin")}
+          className="px-4 py-2 rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-teal-950 hover:from-purple-950 hover:to-slate-950 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-purple-900/20 transition-all cursor-pointer active:scale-95 border border-purple-500/30"
+          title="Switch to Super Admin Command Center & Remote Licensing"
+        >
+          <span className="material-symbols-outlined text-base text-purple-300">admin_panel_settings</span>
+          <span>Super Admin Login</span>
+        </button>
+      </header>
+
+      <main className="w-full max-w-md mx-auto my-auto relative z-10 py-4" aria-label="Staff Login">
         {/* Glassmorphism Card */}
         <div className="bg-white/90 backdrop-blur-xl border border-teal-100/90 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-teal-900/5 flex flex-col items-center">
           
@@ -208,34 +214,34 @@ export default function LoginScreen() {
             </div>
           </form>
 
-          {/* Quick Staff Account Switcher for 1-Tap Mobile Testing */}
-          {usersList.length > 0 && (
-            <div className="w-full mt-6 pt-4 border-t border-gray-100">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block text-center mb-2.5">
-                Quick 1-Tap Login (Demo / Staff Accounts)
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
-                {usersList.slice(0, 4).map((u) => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => handleQuickLogin(u.email || u.phone, "123456")}
-                    className="p-2 rounded-xl bg-gray-50 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 text-left transition-all flex items-center gap-2 group cursor-pointer"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center font-black text-xs shrink-0 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-                      {u.name ? u.name.charAt(0).toUpperCase() : "U"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[11px] font-bold text-gray-800 truncate">{u.name}</div>
-                      <div className="text-[9.5px] text-gray-400 capitalize">{u.role || "Staff"}</div>
-                    </div>
-                  </button>
-                ))}
+          {/* Quick Switch to Super Admin Button */}
+          <div className="w-full mt-5 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => navigate("/admin")}
+              className="w-full p-3 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-teal-50 hover:from-purple-100 hover:to-teal-100 border border-purple-200/80 text-purple-950 text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-xs cursor-pointer group"
+            >
+              <div className="w-6 h-6 rounded-lg bg-purple-200 text-purple-900 flex items-center justify-center text-xs group-hover:bg-purple-700 group-hover:text-white transition-colors">
+                <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
               </div>
-            </div>
-          )}
+              <span className="flex-1 text-left">Switch to Super Admin Portal</span>
+              <span className="material-symbols-outlined text-purple-700 text-sm group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+            </button>
+          </div>
         </div>
       </main>
+
+      {/* Bottom Footer */}
+      <footer className="w-full max-w-md mx-auto text-center py-3 text-xs text-gray-400 font-medium relative z-20">
+        <span>© 2026 ClinicFlow Hybrid OS • </span>
+        <button
+          type="button"
+          onClick={() => navigate("/live-queue")}
+          className="text-teal-700 hover:underline font-bold cursor-pointer"
+        >
+          Live OPD Waiting Queue
+        </button>
+      </footer>
     </div>
   );
 }

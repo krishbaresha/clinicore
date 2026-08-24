@@ -413,17 +413,53 @@ export const dbUsers = {
   },
   getById: (id) => getFromCollectionById(KEYS.USERS, id),
   getByEmail: (email) => dbUsers.getAll().find((u) => u.email?.toLowerCase() === email?.toLowerCase()) || null,
-  getDoctors: () => dbUsers.getAll().filter((u) => u.role === "doctor"),
+  getDoctors: () => dbUsers.getAll().filter((u) => u.role === "doctor" && u.status !== "inactive" && u.status !== "deactivated"),
+  getActiveStaff: (warehouseId = null) => {
+    const all = dbUsers.getAll().filter((u) => u.status !== "inactive" && u.status !== "deactivated");
+    if (!warehouseId) return all;
+    return all.filter((u) => 
+      !u.assigned_warehouse_id || 
+      u.assigned_warehouse_id === warehouseId || 
+      u.is_owner || 
+      u.role === "admin" || 
+      u.role === "owner"
+    );
+  },
+  deactivate: (id) => {
+    const users = getCollection(KEYS.USERS);
+    const updated = users.map((u) => (u.id === id ? { ...u, status: "inactive", deactivated_at: new Date().toISOString() } : u));
+    setCollection(KEYS.USERS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return true;
+  },
+  reactivate: (id) => {
+    const users = getCollection(KEYS.USERS);
+    const updated = users.map((u) => (u.id === id ? { ...u, status: "active", deactivated_at: null } : u));
+    setCollection(KEYS.USERS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return true;
+  },
   add: (user) => {
     const users = getCollection(KEYS.USERS);
-    const newUser = { ...user, id: generateId("user"), clinic_id: "clinic_001" };
+    const newUser = { 
+      ...user, 
+      id: generateId("user"), 
+      clinic_id: "clinic_001", 
+      status: user.status || "active",
+      assigned_warehouse_id: user.assigned_warehouse_id || "",
+      can_give_discounts: user.can_give_discounts ?? true,
+      max_discount_pct: Number(user.max_discount_pct) || 15,
+      created_at: new Date().toISOString()
+    };
     setCollection(KEYS.USERS, [...users, newUser]);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newUser;
   },
   update: (id, data) => {
     const users = getCollection(KEYS.USERS);
     const updated = users.map((u) => (u.id === id ? { ...u, ...data } : u));
     setCollection(KEYS.USERS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   },
   updateDoctorStatus: (doctorId, status, note, room) => {
     const users = getCollection(KEYS.USERS);
@@ -2346,12 +2382,16 @@ export const dbSales = {
       ...sale,
       id: generateId("sale"),
       receipt_no: invoiceNo,
+      cashier_id: sale.cashier_id || "",
+      cashier_name: sale.cashier_name || "Cashier Desk",
+      warehouse_id: sale.warehouse_id || "wh_str",
       sale_date: sale.sale_date || new Date().toISOString(),
       subtotal_amount: subtotal,
       discount_amount: discount,
       total_amount: total,
       paid_amount: paid,
       balance_due: Math.max(0, total - paid),
+      is_voided: false,
     };
 
     // Batched deduction: single in-memory pass + one disk write
@@ -2367,6 +2407,35 @@ export const dbSales = {
 
     setCollection(KEYS.SALES, [newSale, ...sales]);
     return newSale;
+  },
+  voidSale: (saleId, voidReason, authorizedBy = "Doctor / Admin") => {
+    const sales = getCollection(KEYS.SALES);
+    const target = sales.find((s) => s.id === saleId || s.receipt_no === saleId);
+    if (!target) return { success: false, error: "Sale invoice not found" };
+    if (target.is_voided) return { success: false, error: "Invoice is already voided" };
+
+    // Restock items back to inventory
+    (target.items || []).forEach((item) => {
+      if (item.inventory_id) {
+        const baseQty = Number(item.base_units || item.base_units_deducted || item.qty_base_units || item.quantity || item.qty || 1);
+        dbInventory.addStock(item.inventory_id, baseQty, target.destination_type === "warehouse" ? "warehouse" : "store");
+      }
+    });
+
+    const updated = sales.map((s) =>
+      s.id === target.id
+        ? {
+            ...s,
+            is_voided: true,
+            voided_at: new Date().toISOString(),
+            void_reason: voidReason || "Cancelled with authorization",
+            voided_by: authorizedBy,
+          }
+        : s
+    );
+    setCollection(KEYS.SALES, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return { success: true, data: target };
   },
 };
 
@@ -2591,10 +2660,65 @@ export const dbStockTransfers = {
       ...data,
       id: generateId("trf"),
       transfer_no: transferNo,
+      status: data.status || "completed", // "completed" | "in_transit" | "received"
       transfer_date: new Date().toISOString(),
     };
     setCollection(KEYS.STOCK_TRANSFERS, [newTransfer, ...transfers]);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newTransfer;
+  },
+  dispatchTransfer: (data) => {
+    const transfers = getCollection(KEYS.STOCK_TRANSFERS);
+    const transferNo = generateSequentialInvoiceNo("TRF");
+    const newTransfer = {
+      ...data,
+      id: generateId("trf"),
+      transfer_no: transferNo,
+      status: "in_transit",
+      dispatched_at: new Date().toISOString(),
+      transfer_date: new Date().toISOString(),
+    };
+    // Deduct stock from source warehouse
+    (data.items || []).forEach((it) => {
+      if (it.inventory_id) {
+        dbInventory.deductStock(it.inventory_id, Number(it.qty || it.quantity || 1), data.from_location || "warehouse");
+      }
+    });
+    setCollection(KEYS.STOCK_TRANSFERS, [newTransfer, ...transfers]);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return newTransfer;
+  },
+  receiveTransfer: (transferId, { received_by = "Incharge", damaged_count = 0, notes = "" } = {}) => {
+    const transfers = getCollection(KEYS.STOCK_TRANSFERS);
+    const target = transfers.find((t) => t.id === transferId);
+    if (!target || target.status === "received") return null;
+
+    // Add stock to destination location
+    (target.items || []).forEach((it) => {
+      if (it.inventory_id) {
+        const totalQty = Number(it.qty || it.quantity || 1);
+        const actualReceived = Math.max(0, totalQty - Number(damaged_count || 0));
+        if (actualReceived > 0) {
+          dbInventory.addStock(it.inventory_id, actualReceived, target.to_location || "store");
+        }
+      }
+    });
+
+    const updated = transfers.map((t) =>
+      t.id === transferId
+        ? {
+            ...t,
+            status: "received",
+            received_at: new Date().toISOString(),
+            received_by,
+            damaged_count: Number(damaged_count) || 0,
+            receiving_notes: notes,
+          }
+        : t
+    );
+    setCollection(KEYS.STOCK_TRANSFERS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return updated.find((t) => t.id === transferId);
   },
 };
 

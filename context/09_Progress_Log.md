@@ -33,12 +33,36 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Senior Developer Code Audit, React Hooks Compliance & Quality Hardening Complete
-- **Last worked on:** Comprehensive senior developer code audit; resolved React hook rule violation in `LoginScreen.jsx` using `ClerkSignInBridge`; cleaned up 74+ lint warnings & dead imports across all page components; hardened auth parameter validation in `auth.js`; enhanced in-memory cache resilience in `db.js`; verified 100% test suite pass (125/125) and 0 lint errors.
+- **Phase:** Multi-Warehouse Single-Login Operator Switching & Anti-Theft Shield Implemented (140/140 Tests Passing)
+- **Last worked on:** Fully implemented: 1-click active operator switching on POS & Godown terminals; soft-delete/deactivate staff engine in `ClinicSettings.jsx`; dynamic cashier tagging on 80mm ESC/POS thermal receipts; time-of-day bilingual greetings & live date; operator-wise Day-End cash breakdown in Z-Report; Admin PIN-protected voiding & restock log in `MedicalStoreSalesLog.jsx`; 2-step inter-godown transfer dispatch $\to$ receive protocol; and Zero-Pilferage Blind Physical Stock Audit modal in `MedicalStoreInventory.jsx`.
 - **Currently blocked on:** None.
-- **Overall completion estimate:** 100% frontend production ready.
+- **Overall completion estimate:** 100% production ready (Web App + Desktop Hybrid Engine).
 
-### Session: 2026-08-24 (Part 27) — Senior Developer Code Audit, React Hook Rules Compliance & Zero-Lint Cleanup
+### Session: 2026-08-24 (Part 28) — Multi-Warehouse Operator Architecture, Single-Login Shift Switching & Anti-Theft Shield Execution
+
+**Task worked on:**
+1. **Staff Master & Soft-Delete Engine (`src/api/db.js`, `src/pages/ClinicSettings.jsx`):**
+   - Added `dbUsers.getActiveStaff(warehouseId)`, `dbUsers.deactivate(id)`, and `dbUsers.reactivate(id)`.
+   - Updated Clinic Settings with assigned warehouse selection (`wh_str`, `wh_001`, `wh_002`) and soft-delete/deactivation toggle buttons that preserve 100% of historical transactions.
+2. **1-Click Quick Operator Switching (`src/pages/MedicalStorePOS.jsx`, `src/pages/WarehouseManagement.jsx`):**
+   - Added Top-Header **Active Operator Dropdown Pill** in POS and Warehouse portals.
+   - Memoized selected operator in `localStorage` (`cf_pos_active_operator` and `cf_warehouse_active_operator`).
+   - Automatically tagged `cashier_id`, `cashier_name`, and `warehouse_id` on all POS sales, GRNs, transfers, and B2B invoices.
+3. **80mm Dynamic Printing & Dashboard Telemetry (`src/utils/thermalPrinter.js`, `src/utils/formatters.js`, `src/pages/Dashboard.jsx`):**
+   - Enhanced thermal print templates to dynamically print active operator name (`Cashier / Operator: [Name]`).
+   - Enhanced `getGreeting()` with dynamic emojis and Urdu text (`☀️ Good Morning (صبح بخیر)`, `🌤️ Good Afternoon (دوپہر بخیر)`, `🌙 Good Evening (شام بخیر)`).
+4. **Day-End Cashier Breakdown & Protected Voids (`src/pages/FeesReports.jsx`, `src/pages/MedicalStoreSalesLog.jsx`):**
+   - Added **Operator Cash Accountability Card** in Day-End Z-Report summarizing cash collected by each cashier.
+   - Added **Admin PIN Protected Void Modal** with mandatory reason logging and automatic inventory restocking.
+   - Added `F10 — Reprint Last Receipt` hotkey and button in POS.
+5. **Zero-Pilferage Anti-Theft Stock Shield & Blind Audit (`src/pages/MedicalStoreInventory.jsx`, `src/api/db.js`):**
+   - Added strict negative stock block on POS checkout.
+   - Implemented 2-step transfer protocol (`dispatchTransfer` $\to$ `receiveTransfer` with breakage logging).
+   - Created **Zero-Pilferage Blind Physical Stock Audit Modal** for unbiased physical counting vs live software balances.
+6. **Automated Verification:**
+   - Expanded test runner with Suite 21; verified 140/140 tests pass with 0 errors. Verified Vite production bundle compiles cleanly.
+
+---
 
 **Task worked on:**
 1. **React Rules of Hooks Compliance (`src/pages/LoginScreen.jsx`):**

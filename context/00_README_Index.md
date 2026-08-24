@@ -28,6 +28,7 @@
 | **Offline Desktop & Sync** | `12_Desktop_Offline_First_Sync_Architecture.md` | Electron/SQLite embedded architecture, Outbox sync, Conflict resolution, Direct ESC/POS printing |
 | **Legacy Data Migration** | `13_Legacy_Access_Migration_Playbook.md` | Python Access extraction scripts, schema mapping, data sanitization, dry-run reconciliation |
 | **Master Feature & Memory Log** | `14_Comprehensive_Conversation_and_Feature_Context.md` | Full chronological user decisions, milestones, security audit fixes, and architectural context |
+| **Multi-Warehouse & Operator Switching** | `15_Multi_Warehouse_Operator_Architecture_and_Future_Roadmap.md` | Single-login operator switching, warehouse staff filtering, cash drawer audit, and future risk roadmap |
 | **AI Workflow Rules** | `08_AI_Rules_and_Constraints.md` | The hard rules that prevent guess-programming, scope creep, and inconsistent code |
 | **Code Standards** | `10_Code_Standards.md` | Folder structure, naming conventions, git commit style, testing expectations, error handling style |
 | **Progress Tracker** | `09_Progress_Log.md` | Session-by-session history — what was built, what was decided, what's next (THE memory file) |

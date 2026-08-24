@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, dbSuppliers } from "../api/db.js";
+import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, dbSuppliers, dbUsers, dbSalesmen } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import PhotoLightbox from "../components/PhotoLightbox.jsx";
 
@@ -183,10 +183,53 @@ export default function MedicalStorePOS() {
   const [cashTenderedInput, setCashTenderedInput] = useState("");
   const [showRxModal, setShowRxModal] = useState(false);
 
+  // Active POS Operator Switcher (Single-login multi-cashier workflow)
+  const [activeOperator, setActiveOperator] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cf_pos_active_operator");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { id: "op_default", name: "Counter Staff", role: "Cashier" };
+  });
+
+  const availableOperators = useMemo(() => {
+    const users = dbUsers.getActiveStaff ? dbUsers.getActiveStaff("wh_str") : dbUsers.getAll();
+    const salesmen = dbSalesmen.getAll ? dbSalesmen.getAll() : [];
+    const list = [
+      ...users.map((u) => ({ id: u.id, name: u.display_label || u.name, role: u.role || "Staff" })),
+      ...salesmen.map((s) => ({ id: s.id, name: s.name, role: "Salesman" })),
+    ];
+    const unique = [];
+    const names = new Set();
+    for (const op of list) {
+      if (op.name && !names.has(op.name.toLowerCase())) {
+        names.add(op.name.toLowerCase());
+        unique.push(op);
+      }
+    }
+    return unique.length > 0 ? unique : [{ id: "op_default", name: "Counter Staff", role: "Cashier" }];
+  }, []);
+
+  const handleOperatorChange = (op) => {
+    setActiveOperator(op);
+    try {
+      localStorage.setItem("cf_pos_active_operator", JSON.stringify(op));
+    } catch {}
+  };
+
+  const handleReprintLastReceipt = () => {
+    const allSales = dbSales.getAll();
+    if (!allSales || allSales.length === 0) {
+      alert("No previous sales found to reprint.");
+      return;
+    }
+    const lastSale = allSales[0];
+    printThermalReceipt(lastSale, dbClinic.get());
+  };
+
   const searchInputRef = useRef(null);
   const inventoryListRef = useRef(null);
   const cartContainerRef = useRef(null);
-
 
   // Dual-Mode Medicine Search
   const [searchMode, setSearchMode] = useState("global"); // "company" | "global"
@@ -234,6 +277,9 @@ export default function MedicalStorePOS() {
         e.preventDefault();
         const checkoutBtn = document.getElementById("pos-checkout-btn");
         if (checkoutBtn) checkoutBtn.click();
+      } else if (e.key === "F10") {
+        e.preventDefault();
+        handleReprintLastReceipt();
       } else if (e.key === "Escape") {
         setShowRxModal(false);
       }
@@ -392,13 +438,13 @@ export default function MedicalStorePOS() {
       return;
     }
 
-    // Check stock
+    // Check stock: Strict Anti-Theft Guard
     for (const cartItem of cart) {
       const inv = dbInventory.getById(cartItem.inventory_id);
       const available = inv ? (inv.store_stock ?? inv.stock_qty ?? inv.total_base_stock ?? 0) : 0;
       if (available < cartItem.quantity) {
-        const proceed = confirm(`⚠️ Warning: ${cartItem.medicine_name} has only ${available} units in Store Counter stock, but you are selling ${cartItem.quantity}.\n\nDo you want to proceed anyway?`);
-        if (!proceed) return;
+        alert(`🚫 Anti-Theft Guard: '${cartItem.medicine_name}' has only ${available} units available in Store Counter stock. Cannot sell ${cartItem.quantity} units.\n\nPlease request a stock transfer from Main Godown first.`);
+        return;
       }
     }
 
@@ -418,7 +464,9 @@ export default function MedicalStorePOS() {
       payment_type: paymentType,
       cash_tendered: paymentType === "cash" ? tenderedCashVal : paidVal,
       change_due: paymentType === "cash" ? changeDueVal : 0,
-      cashier_name: "Store Staff",
+      cashier_id: activeOperator.id,
+      cashier_name: activeOperator.name,
+      warehouse_id: "wh_str",
     });
 
     if (paymentType === "credit" && linkedPatient) {
@@ -448,15 +496,15 @@ export default function MedicalStorePOS() {
     }
     const today = dbVisits.getTodayAll();
     const allPat = dbPatients.getAll();
-    const matches = today.filter((v) => {
-      const pat = allPat.find((p) => p.id === v.patient_id);
-      return (
-        String(v.token_number).includes(q) ||
-        (pat?.full_name || "").toLowerCase().includes(q.toLowerCase()) ||
-        (pat?.phone || "").includes(q)
-      );
+    const filtered = (today || []).filter((v) => {
+      const p = allPat.find((pt) => pt.id === v.patient_id);
+      const name = p?.full_name?.toLowerCase() || "";
+      const phone = p?.phone || "";
+      const token = String(v.token_number || "");
+      const match = q.toLowerCase();
+      return name.includes(match) || phone.includes(match) || token.includes(match);
     });
-    setVisitSearchResults(matches);
+    setVisitSearchResults(filtered);
   }
 
   function linkVisit(v) {
@@ -470,7 +518,7 @@ export default function MedicalStorePOS() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-24 font-sans">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
         <div>
           <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-600 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -481,30 +529,64 @@ export default function MedicalStorePOS() {
           <p className="text-xs text-gray-500 mt-0.5">Fast Walk-in &amp; OPD Prescription Dispensing Terminal</p>
         </div>
 
-        {/* Customer Mode Switcher */}
-        <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+        {/* Right Controls: Operator Switcher + Reprint + Mode */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Active Cashier / Operator Quick Switcher */}
+          <div className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-xl shadow-xs">
+            <span className="material-symbols-outlined text-teal-700 text-sm">badge</span>
+            <span className="text-[11px] font-bold text-teal-900">Operator:</span>
+            <select
+              value={activeOperator.id}
+              onChange={(e) => {
+                const found = availableOperators.find((op) => op.id === e.target.value);
+                if (found) handleOperatorChange(found);
+              }}
+              className="bg-white text-teal-950 font-black text-xs px-2 py-1 rounded-lg border border-teal-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
+            >
+              {availableOperators.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.name} ({op.role})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Instant Reprint Last Bill (F10) */}
           <button
             type="button"
-            onClick={() => setCustomerMode("walkin")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              customerMode === "walkin"
-                ? "bg-teal-600 text-white shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
+            onClick={handleReprintLastReceipt}
+            title="Instant reprint last printed receipt (Hotkey: F10)"
+            className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs"
           >
-            Walk-In Customer
+            <span className="material-symbols-outlined text-sm text-amber-700">print</span>
+            Reprint (F10)
           </button>
-          <button
-            type="button"
-            onClick={() => setCustomerMode("link")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              customerMode === "link"
-                ? "bg-teal-600 text-white shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Link OPD Patient (F4)
-          </button>
+
+          {/* Customer Mode Switcher */}
+          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setCustomerMode("walkin")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                customerMode === "walkin"
+                  ? "bg-teal-600 text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Walk-In
+            </button>
+            <button
+              type="button"
+              onClick={() => setCustomerMode("link")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                customerMode === "link"
+                  ? "bg-teal-600 text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Link OPD (F4)
+            </button>
+          </div>
         </div>
       </div>
 

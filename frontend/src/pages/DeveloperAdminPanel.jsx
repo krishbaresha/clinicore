@@ -659,68 +659,105 @@ export default function DeveloperAdminPanel() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center p-4 selection:bg-teal-600 selection:text-white relative overflow-hidden font-sans">
+      <div className="min-h-screen bg-[#f8faf9] flex flex-col justify-between p-4 sm:p-6 selection:bg-teal-600 selection:text-white relative overflow-hidden font-sans">
         {/* Decorative Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-96 bg-gradient-to-b from-teal-100/70 via-emerald-50/40 to-transparent blur-3xl -z-10 pointer-events-none" />
 
-        <div className="w-full max-w-md bg-white/95 backdrop-blur-xl border border-teal-100/90 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-teal-900/10">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-teal-700/25">
-            <span className="material-symbols-outlined text-3xl">admin_panel_settings</span>
-          </div>
-          <h2 className="text-2xl font-black text-center text-teal-950 tracking-tight">
-            Super Admin Command Center
-          </h2>
-          <p className="text-xs text-center text-slate-500 mt-1 mb-6 font-medium">
-            K.B Software • Complete Multi-Godown, Staff &amp; Periodic Audit Engine
-          </p>
+        {/* Top Header Floating Navigation */}
+        <header className="w-full max-w-4xl mx-auto flex items-center justify-between py-2 px-1 relative z-20">
+          <Link
+            to="/login"
+            className="px-3.5 py-2 rounded-2xl bg-white/80 hover:bg-white border border-teal-100 text-teal-950 font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:border-teal-300 cursor-pointer active:scale-95"
+          >
+            <span className="material-symbols-outlined text-base text-teal-700">arrow_back</span>
+            <span>Switch to Staff Login</span>
+          </Link>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-teal-900 uppercase tracking-wider mb-1.5">
-                Super Admin Master Passcode
-              </label>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-600 text-lg select-none">
-                  lock
-                </span>
-                <input
-                  type={showPinText ? "text" : "password"}
-                  required
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  enterKeyHint="go"
-                  value={passcodeInput}
-                  onChange={(e) => setPasscodeInput(e.target.value)}
-                  placeholder="Enter Master Passcode"
-                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-12 py-3.5 text-sm text-teal-950 focus:outline-none transition-all font-mono tracking-widest text-center"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPinText(!showPinText)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-700 p-1 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-lg">
-                    {showPinText ? "visibility_off" : "visibility"}
-                  </span>
-                </button>
-              </div>
+          <Link
+            to="/"
+            className="px-3.5 py-2 rounded-2xl bg-white/80 hover:bg-white border border-teal-100 text-teal-950 font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:border-teal-300 cursor-pointer active:scale-95"
+          >
+            <span className="material-symbols-outlined text-base text-teal-700">home</span>
+            <span>Public Home</span>
+          </Link>
+        </header>
+
+        <main className="w-full max-w-md mx-auto my-auto relative z-10 py-4">
+          <div className="w-full bg-white/95 backdrop-blur-xl border border-teal-100/90 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-teal-900/10">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-teal-700/25">
+              <span className="material-symbols-outlined text-3xl">admin_panel_settings</span>
             </div>
+            <h2 className="text-2xl font-black text-center text-teal-950 tracking-tight">
+              Super Admin Command Center
+            </h2>
+            <p className="text-xs text-center text-slate-500 mt-1 mb-6 font-medium">
+              K.B Software • Complete Multi-Godown, Staff &amp; Periodic Audit Engine
+            </p>
 
-            {authError && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center animate-shake">
-                {authError}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-teal-900 uppercase tracking-wider mb-1.5">
+                  Super Admin Master Passcode
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-600 text-lg select-none">
+                    lock
+                  </span>
+                  <input
+                    type={showPinText ? "text" : "password"}
+                    required
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    enterKeyHint="go"
+                    value={passcodeInput}
+                    onChange={(e) => setPasscodeInput(e.target.value)}
+                    placeholder="Enter Master Passcode"
+                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-12 py-3.5 text-sm text-teal-950 focus:outline-none transition-all font-mono tracking-widest text-center"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPinText(!showPinText)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-700 p-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showPinText ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="w-full min-h-[48px] bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-teal-700/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
-            >
-              <span>Unlock Master Super Admin Plane</span>
-              <span className="material-symbols-outlined text-base">arrow_forward</span>
-            </button>
-          </form>
-        </div>
+              {authError && (
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center animate-shake">
+                  {authError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full min-h-[48px] bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-teal-700/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+              >
+                <span>Unlock Master Super Admin Plane</span>
+                <span className="material-symbols-outlined text-base">arrow_forward</span>
+              </button>
+            </form>
+
+            {/* Quick Switch to Staff Login */}
+            <div className="w-full mt-6 pt-4 border-t border-gray-100 text-center">
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 text-xs font-bold text-teal-800 hover:text-teal-950 hover:underline cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">badge</span>
+                <span>Go to Counter &amp; Doctor Staff Login</span>
+              </Link>
+            </div>
+          </div>
+        </main>
+
+        {/* Bottom Footer */}
+        <footer className="w-full max-w-md mx-auto text-center py-3 text-xs text-gray-400 font-medium relative z-20">
+          <span>© 2026 ClinicFlow • Master Developer Portal</span>
+        </footer>
       </div>
     );
   }
@@ -797,21 +834,33 @@ export default function DeveloperAdminPanel() {
           )}
 
           <Link
+            to="/login"
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-bold bg-white hover:bg-teal-50 text-teal-950 border border-teal-200 transition-colors flex items-center gap-1.5 shadow-xs"
+            title="Go to Staff & Cashier Login"
+          >
+            <span className="material-symbols-outlined text-base text-teal-700">badge</span>
+            <span className="hidden lg:inline">Staff Login</span>
+          </Link>
+
+          <Link
             to="/dashboard"
             className="p-1.5 sm:px-3.5 sm:py-1.5 rounded-2xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 transition-colors flex items-center gap-1.5"
-            title="Exit to Clinic"
+            title="Go to Clinic Dashboard"
           >
-            <span className="material-symbols-outlined text-base text-teal-700">arrow_back</span>
-            <span className="hidden sm:inline">Exit to Clinic</span>
+            <span className="material-symbols-outlined text-base text-teal-700">dashboard</span>
+            <span className="hidden sm:inline">Clinic Dashboard</span>
           </Link>
+
           <button
             onClick={() => {
               sessionStorage.removeItem("cf_dev_auth");
               setIsAuthenticated(false);
             }}
-            className="px-2 sm:px-3 py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+            className="px-2 sm:px-3 py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer flex items-center gap-1"
+            title="Lock Super Admin Session"
           >
-            Exit Master
+            <span className="material-symbols-outlined text-sm">lock</span>
+            <span>Lock Admin</span>
           </button>
         </div>
       </header>

@@ -301,6 +301,21 @@ export default function FeesReports() {
     0
   );
 
+  const operatorBreakdown = useMemo(() => {
+    const activeDaySales = allSales.filter((s) => (s.sale_date || s.created_at || "").split("T")[0] === targetDateStr && !s.is_voided);
+    const map = {};
+    activeDaySales.forEach((s) => {
+      const op = s.cashier_name || s.user_name || "Counter Staff";
+      if (!map[op]) {
+        map[op] = { name: op, totalSales: 0, cashSales: 0, count: 0 };
+      }
+      map[op].totalSales += Number(s.total_amount) || 0;
+      map[op].cashSales += Number(s.paid_amount !== undefined ? s.paid_amount : s.total_amount) || 0;
+      map[op].count += 1;
+    });
+    return Object.values(map);
+  }, [allSales, targetDateStr]);
+
   const dayB2B = allB2B.filter((b) => (b.sale_date || b.created_at || "").split("T")[0] === targetDateStr);
   const dayWholesaleSales = dayB2B.reduce(
     (sum, b) => sum + (Number(b.paid_amount !== undefined ? b.paid_amount : b.total_amount) || 0),
@@ -834,6 +849,43 @@ export default function FeesReports() {
                     Full Screen View
                   </button>
                 </div>
+              </div>
+
+              {/* Operator / Staff Cash Inflow Breakdown Card */}
+              <div className="bg-white rounded-3xl p-5 border border-purple-100 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+                      <span className="material-symbols-outlined text-lg">badge</span>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xs text-gray-900">Operator Cash Accountability</h3>
+                      <p className="text-[10px] text-gray-500">Sales breakdown by operating cashier</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold bg-purple-100 text-purple-900 px-2 py-0.5 rounded-full">
+                    {operatorBreakdown.length} Operators
+                  </span>
+                </div>
+
+                {operatorBreakdown.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic py-2">No retail sales recorded on this date.</p>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    {operatorBreakdown.map((op, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50/40 border border-purple-100 text-xs">
+                        <div>
+                          <span className="font-bold text-gray-900">{op.name}</span>
+                          <div className="text-[10px] text-gray-500">{op.count} invoices processed</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-black text-purple-950">Rs. {op.cashSales.toLocaleString()}</div>
+                          <div className="text-[9px] text-gray-400">Total: Rs. {op.totalSales.toLocaleString()}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Physical Cash Denominations Accordion */}

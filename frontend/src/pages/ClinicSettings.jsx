@@ -480,9 +480,26 @@ export default function ClinicSettings() {
                   onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
                   className="input-field"
                 >
+                  <option value="cashier">Cashier / POS Operator</option>
                   <option value="receptionist">Receptionist / Front Desk</option>
                   <option value="doctor">Doctor / Consultant</option>
                   <option value="pharmacist">Pharmacist / Store Staff</option>
+                  <option value="salesman">Salesman / Order Booker</option>
+                  <option value="admin">Branch Administrator</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant">Assigned Location / Warehouse</label>
+                <select
+                  value={staffForm.assigned_warehouse_id || ""}
+                  onChange={(e) => setStaffForm({ ...staffForm, assigned_warehouse_id: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="">All Locations / Central Staff</option>
+                  <option value="wh_str">Medical Store Counter (POS)</option>
+                  <option value="wh_001">Main Godown (Lajpat Road)</option>
+                  <option value="wh_002">Secondary Godown (Site Area)</option>
                 </select>
               </div>
 
@@ -524,86 +541,124 @@ export default function ClinicSettings() {
             <p className="font-body-md text-body-md text-outline">No staff accounts found.</p>
           ) : (
             <ul className="flex flex-col gap-sm">
-              {staff.map((s) => (
-                <li
-                  key={s.id}
-                  id={`staff-${s.id}`}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-sm gap-sm bg-surface-container-low rounded-lg"
-                >
-                  <div className="flex items-center gap-sm">
-                    <div className="w-10 h-10 rounded-full bg-secondary-container text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                      {s.name ? s.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() : "??"}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-body-md text-body-md font-semibold text-on-surface truncate">{s.name}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-sm w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30 flex-wrap">
-                    {s.is_owner ? (
-                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
-                        ⭐ Principal Owner (Super Admin)
-                      </span>
-                    ) : (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <label className="flex items-center gap-1.5 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-medium hover:bg-gray-50">
-                          <input
-                            type="checkbox"
-                            checked={!!s.can_view_financials}
-                            onChange={() => {
-                              const updatedVal = !s.can_view_financials;
-                              dbUsers.update(s.id, { can_view_financials: updatedVal });
-                              setStaff(dbUsers.getAll());
-                            }}
-                            className="rounded text-teal-600 focus:ring-teal-500"
-                          />
-                          <span>📊 Financial Reports Access</span>
-                        </label>
+              {staff.map((s) => {
+                const isInactive = s.status === "inactive" || s.status === "deactivated";
+                return (
+                  <li
+                    key={s.id}
+                    id={`staff-${s.id}`}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-sm gap-sm rounded-xl border transition-all ${
+                      isInactive ? "bg-gray-100/70 border-gray-300 opacity-75" : "bg-surface-container-low border-outline-variant/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-sm">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                        isInactive ? "bg-gray-300 text-gray-700" : "bg-secondary-container text-primary"
+                      }`}>
+                        {s.name ? s.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() : "??"}
                       </div>
-                    )}
-                    <span className={`px-sm py-1 rounded-full font-label-md text-label-md uppercase shrink-0 ${roleBadge(s.role)}`}>
-                      {s.role}
-                    </span>
-                    <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingStaff(s);
-                        setStaffForm({
-                          name: s.name,
-                          email: s.email,
-                          role: s.role,
-                          phone: s.phone || "",
-                          password: ""  // Never load existing password hash — require new entry
-                        });
-                        setShowStaffForm(true);
-                        setStaffError("");
-                      }}
-                      className="text-primary hover:text-primary-container p-1"
-                      title="Edit"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">edit</span>
-                    </button>
-                    {user?.userId !== s.id && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete ${s.name}?`)) {
-                            const users = JSON.parse(localStorage.getItem("cf_users") || "[]");
-                            const filtered = users.filter((u) => u.id !== s.id);
-                            localStorage.setItem("cf_users", JSON.stringify(filtered));
-                            setStaff(filtered);
-                          }
-                        }}
-                        className="text-error hover:text-on-error-container p-1"
-                        title="Delete"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">delete</span>
-                      </button>
-                    )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-body-md text-body-md font-semibold text-on-surface truncate">{s.name}</p>
+                          {isInactive ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                              Inactive (Soft-Deleted)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500">{s.email} {s.phone ? `• ${s.phone}` : ""}</p>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+
+                    <div className="flex items-center justify-between sm:justify-end gap-sm w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30 flex-wrap">
+                      {s.is_owner ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                          ⭐ Principal Owner (Super Admin)
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <label className="flex items-center gap-1.5 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-medium hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              checked={!!s.can_view_financials}
+                              onChange={() => {
+                                const updatedVal = !s.can_view_financials;
+                                dbUsers.update(s.id, { can_view_financials: updatedVal });
+                                setStaff(dbUsers.getAll());
+                              }}
+                              className="rounded text-teal-600 focus:ring-teal-500"
+                            />
+                            <span>📊 Financials Access</span>
+                          </label>
+                        </div>
+                      )}
+                      <span className={`px-sm py-1 rounded-full font-label-md text-label-md uppercase shrink-0 ${roleBadge(s.role)}`}>
+                        {s.role}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingStaff(s);
+                            setStaffForm({
+                              name: s.name,
+                              email: s.email,
+                              role: s.role,
+                              phone: s.phone || "",
+                              assigned_warehouse_id: s.assigned_warehouse_id || "",
+                              password: ""
+                            });
+                            setShowStaffForm(true);
+                            setStaffError("");
+                          }}
+                          className="text-primary hover:text-primary-container p-1 rounded-lg hover:bg-gray-100"
+                          title="Edit"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+
+                        {user?.userId !== s.id && (
+                          <>
+                            {isInactive ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  dbUsers.reactivate(s.id);
+                                  setStaff(dbUsers.getAll());
+                                }}
+                                className="text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1"
+                                title="Re-activate staff member"
+                              >
+                                <span className="material-symbols-outlined text-sm">replay</span>
+                                Re-Activate
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`Deactivate staff member "${s.name}"? Past records will remain safe, but they will be hidden from new billing dropdowns.`)) {
+                                    dbUsers.deactivate(s.id);
+                                    setStaff(dbUsers.getAll());
+                                  }
+                                }}
+                                className="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1"
+                                title="Deactivate (Soft-Delete) staff member"
+                              >
+                                <span className="material-symbols-outlined text-sm">block</span>
+                                Deactivate
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { dbInventory, dbStockTransfers, dbB2BSales, dbClinic, dbParties, dbSalesmen, dbWarehouses, dbAccounts } from "../api/db.js";
+import { dbInventory, dbStockTransfers, dbB2BSales, dbClinic, dbParties, dbSalesmen, dbWarehouses, dbAccounts, dbUsers } from "../api/db.js";
 import { printThermalReceipt, printChartOfAccountsReceipt } from "../utils/thermalPrinter.js";
 import { formatPKR, formatDate } from "../utils/formatters.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
@@ -101,6 +101,32 @@ export default function WarehouseManagement() {
     name: "", code: "", location: "", incharge_name: "", phone: "", notes: "", status: "active"
   });
 
+  // Active Godown Operator Switcher (Single-login multi-staff workflow)
+  const [activeGodownOperator, setActiveGodownOperator] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cf_warehouse_active_operator");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { id: "op_godown_01", name: "Raza", role: "Incharge" };
+  });
+
+  const availableGodownOperators = useMemo(() => {
+    const users = dbUsers.getActiveStaff ? dbUsers.getActiveStaff("wh_001") : dbUsers.getAll();
+    const smList = dbSalesmen.getAll ? dbSalesmen.getAll() : [];
+    const list = [
+      ...users.map((u) => ({ id: u.id, name: u.display_label || u.name, role: u.role || "Incharge" })),
+      ...smList.map((s) => ({ id: s.id, name: s.name, role: "Salesman" })),
+    ];
+    const unique = [];
+    const names = new Set();
+    for (const op of list) {
+      if (op.name && !names.has(op.name.toLowerCase())) {
+        names.add(op.name.toLowerCase());
+        unique.push(op);
+      }
+    }
+    return unique.length > 0 ? unique : [{ id: "op_godown_01", name: "Raza", role: "Incharge" }];
+  }, []);
 
   useEffect(() => {
     if (urlTab && ["stock", "b2b", "transfer", "parties", "logs", "godowns"].includes(urlTab)) {
@@ -635,6 +661,29 @@ export default function WarehouseManagement() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Active Godown Incharge Pill */}
+          <div className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-2xl shadow-xs">
+            <span className="material-symbols-outlined text-purple-700 text-sm">badge</span>
+            <span className="text-[11px] font-bold text-purple-900">Incharge:</span>
+            <select
+              value={activeGodownOperator.id}
+              onChange={(e) => {
+                const found = availableGodownOperators.find((op) => op.id === e.target.value);
+                if (found) {
+                  setActiveGodownOperator(found);
+                  try { localStorage.setItem("cf_warehouse_active_operator", JSON.stringify(found)); } catch {}
+                }
+              }}
+              className="bg-white text-purple-950 font-black text-xs px-2 py-1 rounded-xl border border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer"
+            >
+              {availableGodownOperators.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.name} ({op.role})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="button"
             onClick={() => {

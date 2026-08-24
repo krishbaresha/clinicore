@@ -17,6 +17,13 @@ export default function MedicalStoreSalesLog() {
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState("");
+  const [cashierFilter, setCashierFilter] = useState("ALL");
+
+  // Void Modal State
+  const [voidModalSale, setVoidModalSale] = useState(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [adminPin, setAdminPin] = useState("");
+  const [voidError, setVoidError] = useState("");
 
   // Return Modal State
   const [returnModalSale, setReturnModalSale] = useState(null);
@@ -41,7 +48,6 @@ export default function MedicalStoreSalesLog() {
 
   const [error, setError] = useState("");
 
-
   function loadAllData() {
     const sr = getSales();
     if (sr.success) setSales([...sr.data].sort((a, b) => new Date(b.sale_date) - new Date(a.sale_date)));
@@ -55,15 +61,45 @@ export default function MedicalStoreSalesLog() {
 
   useEffect(loadAllData, []);
 
+  const cashierOptions = Array.from(new Set(sales.map((s) => s.cashier_name || "Store Staff").filter(Boolean)));
+
   // Filtered sales search
   const filteredSales = sales.filter((s) => {
+    if (cashierFilter !== "ALL" && (s.cashier_name || "Store Staff") !== cashierFilter) {
+      return false;
+    }
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    const matchesId = (s.id || "").toLowerCase().includes(q);
+    const matchesId = (s.id || "").toLowerCase().includes(q) || (s.receipt_no || "").toLowerCase().includes(q);
     const matchesPatient = (s.patient_name || "").toLowerCase().includes(q);
+    const matchesCashier = (s.cashier_name || "").toLowerCase().includes(q);
     const matchesDate = formatDate(s.sale_date).toLowerCase().includes(q);
-    return matchesId || matchesPatient || matchesDate;
+    return matchesId || matchesPatient || matchesCashier || matchesDate;
   });
+
+  function handleConfirmVoid(e) {
+    e.preventDefault();
+    if (!voidModalSale) return;
+    if (adminPin !== "7860" && adminPin !== "1234") {
+      setVoidError("Invalid Admin PIN. Only Dr. Kashif or authorized manager can void sales.");
+      return;
+    }
+    if (!voidReason.trim()) {
+      setVoidError("Please provide a mandatory reason for voiding this invoice.");
+      return;
+    }
+    const res = dbSales.voidSale(voidModalSale.id, voidReason, "Authorized Manager");
+    if (res.success) {
+      setVoidModalSale(null);
+      setVoidReason("");
+      setAdminPin("");
+      setVoidError("");
+      loadAllData();
+      alert("Invoice voided successfully and items restocked.");
+    } else {
+      setVoidError(res.error || "Failed to void invoice");
+    }
+  }
 
   // Open Return Dialog
   function handleOpenReturnModal(sale) {
@@ -268,18 +304,39 @@ export default function MedicalStoreSalesLog() {
       {/* TAB 1: Sales & Returns Log */}
       {activeTab === "sales" && (
         <div className="space-y-4">
-          {/* Search bar */}
+          {/* Search and Cashier Filter bar */}
           <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between gap-4 flex-wrap">
-            <div className="relative flex-1 max-w-md">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by Receipt ID (#sale_), Patient Name, or Date..."
-                className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-teal-500"
-              />
+            <div className="flex items-center gap-3 flex-1 flex-wrap">
+              <div className="relative flex-1 min-w-[240px] max-w-md">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by Receipt ID (#sale_), Patient Name, or Date..."
+                  className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-teal-500"
+                />
+              </div>
+
+              {/* Cashier Filter */}
+              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                <span className="material-symbols-outlined text-gray-500 text-sm">badge</span>
+                <span className="text-xs font-bold text-gray-700">Cashier:</span>
+                <select
+                  value={cashierFilter}
+                  onChange={(e) => setCashierFilter(e.target.value)}
+                  className="bg-white text-xs font-bold border border-gray-300 rounded-lg px-2 py-1 focus:outline-none text-gray-800"
+                >
+                  <option value="ALL">All Cashiers ({sales.length})</option>
+                  {cashierOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+
             <div className="text-xs font-semibold text-gray-500">
               Showing <strong>{filteredSales.length}</strong> of <strong>{sales.length}</strong> receipts
             </div>
@@ -296,26 +353,44 @@ export default function MedicalStoreSalesLog() {
                 const saleItems = sale.items || (sale.inventory_id ? [{ medicine_name: sale.inventory_id, quantity: sale.quantity_sold, line_total: sale.sale_amount }] : []);
                 const saleTotal = sale.total_amount || sale.sale_amount || 0;
                 const isCredit = sale.payment_type === "credit";
+                const isVoided = sale.is_voided === true;
 
                 return (
                   <div
                     key={sale.id}
-                    className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    className={`bg-white rounded-2xl p-5 border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                      isVoided ? "border-rose-300 bg-rose-50/20 opacity-80" : "border-gray-200"
+                    }`}
                   >
                     <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-2.5 flex-wrap">
                         <span className="font-mono text-xs font-bold bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
-                          #{sale.id}
+                          #{sale.receipt_no || sale.id}
                         </span>
                         <span className="text-xs text-gray-500 flex items-center gap-1 font-medium">
                           <span className="material-symbols-outlined text-sm">calendar_today</span>
                           {new Date(sale.sale_date).toLocaleString("en-PK")}
                         </span>
+                        
+                        {/* Dynamic Cashier Tag */}
+                        <span className="text-xs bg-purple-50 text-purple-900 border border-purple-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">person</span>
+                          {sale.cashier_name || "Store Staff"}
+                        </span>
+
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           isCredit ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"
                         }`}>
                           {isCredit ? "Udhaar Sale" : "Cash Full"}
                         </span>
+
+                        {isVoided && (
+                          <span className="text-xs bg-rose-600 text-white px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">block</span>
+                            VOIDED ({sale.void_reason || "Cancelled"})
+                          </span>
+                        )}
+
                         {sale.patient_name && (
                           <span className="text-xs bg-sky-50 text-sky-800 px-2 py-0.5 rounded-md font-semibold">
                             {sale.patient_name}
@@ -336,7 +411,9 @@ export default function MedicalStoreSalesLog() {
                     <div className="flex items-center gap-4 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
                       <div className="text-right">
                         <div className="text-[10px] font-bold text-gray-400 uppercase">Receipt Amount</div>
-                        <div className="text-xl font-black text-teal-700">Rs. {saleTotal.toLocaleString()}</div>
+                        <div className={`text-xl font-black ${isVoided ? "line-through text-gray-400" : "text-teal-700"}`}>
+                          Rs. {saleTotal.toLocaleString()}
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -347,14 +424,32 @@ export default function MedicalStoreSalesLog() {
                           <span className="material-symbols-outlined text-base">print</span>
                           Print (80mm)
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenReturnModal(sale)}
-                          className="bg-rose-50 text-rose-700 border border-rose-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-rose-100 transition-colors flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-base">assignment_return</span>
-                          Return / Exchange
-                        </button>
+                        {!isVoided && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReturnModal(sale)}
+                              className="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors flex items-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-base">assignment_return</span>
+                              Return
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVoidModalSale(sale);
+                                setVoidReason("");
+                                setAdminPin("");
+                                setVoidError("");
+                              }}
+                              title="Void / Cancel this invoice (Requires Admin PIN)"
+                              className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-rose-100 transition-colors flex items-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-base">cancel</span>
+                              Void
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -624,6 +719,67 @@ export default function MedicalStoreSalesLog() {
               <button type="button" onClick={() => setReturnModalSale(null)} className="btn-secondary">Cancel</button>
               <button type="submit" className="bg-rose-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-rose-700 shadow-md">
                 Confirm Return &amp; Restock
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Void Invoice Dialog (Protected with Admin PIN) */}
+      {voidModalSale && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <form onSubmit={handleConfirmVoid} className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-rose-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <span className="material-symbols-outlined text-2xl">shield_lock</span>
+                <h3 className="font-black text-gray-900 text-base">Void Invoice #{voidModalSale.receipt_no || voidModalSale.id}</h3>
+              </div>
+              <button type="button" onClick={() => setVoidModalSale(null)} className="text-gray-400 hover:text-gray-600">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Voiding this invoice will cancel the transaction, mark it permanently as <strong>VOIDED</strong> in the audit ledger, and automatically restock all dispensed medicines back into Store inventory.
+            </p>
+
+            {voidError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-xl flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-rose-600">error</span>
+                {voidError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Mandatory Cancellation Reason *</label>
+              <textarea
+                required
+                rows={2}
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="e.g. Doctor changed prescription before patient left, duplicate entry..."
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Doctor / Admin Master PIN (Default: 7860) *</label>
+              <input
+                type="password"
+                required
+                maxLength={8}
+                value={adminPin}
+                onChange={(e) => setAdminPin(e.target.value)}
+                placeholder="Enter 4-digit Master PIN..."
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-mono tracking-widest text-center focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+              <button type="button" onClick={() => setVoidModalSale(null)} className="btn-secondary">Cancel</button>
+              <button type="submit" className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">block</span>
+                Authorize &amp; Void Sale
               </button>
             </div>
           </form>

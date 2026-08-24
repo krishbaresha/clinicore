@@ -44,6 +44,7 @@ import {
   dbB2BSales,
   dbPurchases,
   dbReturns,
+  dbStockTransfers,
   dbShiftClosings,
   dbAccounts,
   dbStockLedger,
@@ -980,6 +981,83 @@ async function runTests() {
 
     dbOutbox.markSynced(queuedItem.id);
     assert(dbOutbox.getAll().length === 0, "Outbox marked item synced and cleared");
+  });
+
+  // ====================================================
+  // SUITE 21: Multi-Warehouse Single-Login Operator Switching & Anti-Theft Shield
+  // ====================================================
+  await suite("21. Multi-Warehouse Operator Switching & Anti-Theft Protection", async () => {
+    // 1. Add Staff Members with Assigned Warehouses
+    const staffRaza = dbUsers.add({
+      name: "Raza Ali",
+      role: "cashier",
+      assigned_warehouse_id: "wh_str",
+      status: "active",
+    });
+    assert(staffRaza && staffRaza.id, "Staff member created with assigned warehouse 'wh_str'");
+
+    const staffUsama = dbUsers.add({
+      name: "Usama Incharge",
+      role: "godown_incharge",
+      assigned_warehouse_id: "wh_001",
+      status: "active",
+    });
+    assert(staffUsama && staffUsama.id, "Staff member created with assigned warehouse 'wh_001'");
+
+    // 2. Test Location-based Operator Filtering
+    const storeStaff = dbUsers.getActiveStaff("wh_str");
+    assert(storeStaff.some((u) => u.name === "Raza Ali"), "Counter POS filters active store staff correctly");
+
+    const godownStaff = dbUsers.getActiveStaff("wh_001");
+    assert(godownStaff.some((u) => u.name === "Usama Incharge"), "Main Godown filters godown incharge staff correctly");
+
+    // 3. Test POS Checkout Dynamic Operator Tagging
+    const sale = dbSales.checkout({
+      cashier_id: staffRaza.id,
+      cashier_name: staffRaza.name,
+      warehouse_id: "wh_str",
+      items: [{ medicine_name: "BM Drops No. 1", quantity: 1, unit_price: 350, line_total: 350 }],
+      total_amount: 350,
+      paid_amount: 350,
+    });
+    assert(sale.cashier_name === "Raza Ali", "POS checkout automatically tags cashier_name on receipt");
+    assert(sale.cashier_id === staffRaza.id, "POS checkout stores cashier_id");
+    assert(sale.is_voided === false, "New sale is initialized as non-voided");
+
+    // 4. Test Void Sale with Admin Authorization
+    const voidResult = dbSales.voidSale(sale.id, "Patient requested different potency", "Dr. Kashif");
+    assert(voidResult.success === true, "Sale invoice voided successfully with authorization");
+    const voidedSale = dbSales.getAll().find((s) => s.id === sale.id);
+    assert(voidedSale.is_voided === true, "Sale invoice marked as is_voided: true in database");
+    assert(voidedSale.void_reason === "Patient requested different potency", "Void reason recorded in audit ledger");
+
+    // 5. Test Soft-Delete / Deactivation
+    dbUsers.deactivate(staffRaza.id);
+    const activeStaffAfterDeact = dbUsers.getActiveStaff("wh_str");
+    assert(!activeStaffAfterDeact.some((u) => u.id === staffRaza.id), "Deactivated staff member hidden from active dropdowns");
+
+    // 6. Test Reactivation
+    dbUsers.reactivate(staffRaza.id);
+    const activeStaffAfterReact = dbUsers.getActiveStaff("wh_str");
+    assert(activeStaffAfterReact.some((u) => u.id === staffRaza.id), "Reactivated staff member restored to active dropdowns");
+
+    // 7. Test 2-Step Inter-Godown Stock Transfer Protocol
+    const testMed = dbInventory.getAll()[0];
+    const transfer = dbStockTransfers.dispatchTransfer({
+      from_location: "warehouse",
+      to_location: "store",
+      items: testMed ? [{ inventory_id: testMed.id, medicine_name: testMed.medicine_name, qty: 10 }] : [],
+      dispatched_by: staffUsama.name,
+    });
+    assert(transfer && transfer.status === "in_transit", "Stock transfer dispatched with status 'in_transit'");
+
+    const receivedTransfer = dbStockTransfers.receiveTransfer(transfer.id, {
+      received_by: staffRaza.name,
+      damaged_count: 1,
+      notes: "1 unit bottle seal broken during transit",
+    });
+    assert(receivedTransfer.status === "received", "Stock transfer acknowledged with status 'received'");
+    assert(receivedTransfer.damaged_count === 1, "Breakages recorded accurately in receiving audit");
   });
 
 

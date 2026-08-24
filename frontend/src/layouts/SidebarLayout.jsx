@@ -65,6 +65,7 @@ const NAV_DEFAULT = [
   { label: "Patients & EMR", icon: "group", path: "/patients" },
   { label: "Fees & CashBook", icon: "payments", path: "/fees" },
   { label: "Clinic Settings", icon: "settings", path: "/settings", spacer: true },
+  { label: "Super Admin Panel", icon: "admin_panel_settings", path: "/admin" },
 ];
 
 export default function SidebarLayout({ children }) {
@@ -196,11 +197,11 @@ export default function SidebarLayout({ children }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Build nav items — ensure Admin / Owner gets full settings, and Pharmacist/POS/Admin get receipt studio access
+  // Build nav items — ensure Admin / Owner gets full settings & super admin panel
   const isAdminOrOwner = user?.is_owner || user?.role === "admin" || user?.role === "owner" || user?.userId === "user_admin";
   const rawNavItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
   const navItems = rawNavItems.filter((item) => {
-    if (item.path === "/settings" && !isAdminOrOwner) return false;
+    if ((item.path === "/settings" || item.path === "/admin") && !isAdminOrOwner) return false;
     return true;
   });
 

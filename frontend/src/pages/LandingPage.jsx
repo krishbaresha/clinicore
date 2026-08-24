@@ -304,12 +304,22 @@ export default function LandingPage() {
 
             {/* Staff Portal Link */}
             <Link
-              to="/dashboard"
+              to="/login"
               className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 transition-all cursor-pointer whitespace-nowrap"
-              title="Staff &amp; Operator Workstation"
+              title="Staff &amp; Doctor Login"
             >
-              <span className="material-symbols-outlined text-base text-slate-600">lock</span>
+              <span className="material-symbols-outlined text-base text-slate-600">badge</span>
               <span className="hidden md:inline">{t("landing.nav.staffLogin")}</span>
+            </Link>
+
+            {/* Super Admin Command Center Link */}
+            <Link
+              to="/admin"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-950 border border-purple-200 transition-all cursor-pointer whitespace-nowrap"
+              title="Super Admin Command Center"
+            >
+              <span className="material-symbols-outlined text-base text-purple-700">admin_panel_settings</span>
+              <span className="hidden xl:inline">Admin Portal</span>
             </Link>
 
             {/* Mobile Hamburger Button */}

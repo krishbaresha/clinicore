@@ -40,12 +40,12 @@ export function getInitials(fullName) {
     .slice(0, 2);
 }
 
-/** Greeting based on the current hour: Good Morning / Afternoon / Evening */
+/** Greeting based on the current hour: Good Morning / Afternoon / Evening with Emojis & Urdu */
 export function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning";
-  if (hour < 17) return "Good Afternoon";
-  return "Good Evening";
+  if (hour >= 5 && hour < 12) return "☀️ Good Morning (صبح بخیر)";
+  if (hour >= 12 && hour < 17) return "🌤️ Good Afternoon (دوپہر بخیر)";
+  return "🌙 Good Evening (شام بخیر)";
 }
 
 /** Format today's date for the dashboard header: "Wednesday, 13 Aug 2026" */
