@@ -852,10 +852,10 @@ export default function FeesReports() {
               </div>
 
               {/* Operator / Staff Cash Inflow Breakdown Card */}
-              <div className="bg-white rounded-3xl p-5 border border-purple-100 shadow-sm space-y-3">
+              <div className="bg-white rounded-3xl p-5 border border-teal-100 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+                    <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
                       <span className="material-symbols-outlined text-lg">badge</span>
                     </div>
                     <div>
@@ -863,7 +863,7 @@ export default function FeesReports() {
                       <p className="text-[10px] text-gray-500">Sales breakdown by operating cashier</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold bg-purple-100 text-purple-900 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold bg-teal-100 text-teal-900 px-2 py-0.5 rounded-full">
                     {operatorBreakdown.length} Operators
                   </span>
                 </div>
@@ -873,13 +873,13 @@ export default function FeesReports() {
                 ) : (
                   <div className="space-y-2 pt-1">
                     {operatorBreakdown.map((op, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50/40 border border-purple-100 text-xs">
+                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-teal-50/40 border border-teal-100 text-xs">
                         <div>
                           <span className="font-bold text-gray-900">{op.name}</span>
                           <div className="text-[10px] text-gray-500">{op.count} invoices processed</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-black text-purple-950">Rs. {op.cashSales.toLocaleString()}</div>
+                          <div className="font-black text-teal-950">Rs. {op.cashSales.toLocaleString()}</div>
                           <div className="text-[9px] text-gray-400">Total: Rs. {op.totalSales.toLocaleString()}</div>
                         </div>
                       </div>

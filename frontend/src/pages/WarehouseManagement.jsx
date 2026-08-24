@@ -662,9 +662,9 @@ export default function WarehouseManagement() {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Active Godown Incharge Pill */}
-          <div className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-2xl shadow-xs">
-            <span className="material-symbols-outlined text-purple-700 text-sm">badge</span>
-            <span className="text-[11px] font-bold text-purple-900">Incharge:</span>
+          <div className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-2xl shadow-xs">
+            <span className="material-symbols-outlined text-teal-700 text-sm">badge</span>
+            <span className="text-[11px] font-bold text-teal-900">Incharge:</span>
             <select
               value={activeGodownOperator.id}
               onChange={(e) => {
@@ -674,7 +674,7 @@ export default function WarehouseManagement() {
                   try { localStorage.setItem("cf_warehouse_active_operator", JSON.stringify(found)); } catch {}
                 }
               }}
-              className="bg-white text-purple-950 font-black text-xs px-2 py-1 rounded-xl border border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer"
+              className="bg-white text-teal-950 font-black text-xs px-2 py-1 rounded-xl border border-teal-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
             >
               {availableGodownOperators.map((op) => (
                 <option key={op.id} value={op.id}>

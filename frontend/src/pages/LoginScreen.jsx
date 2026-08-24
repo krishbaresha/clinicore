@@ -100,10 +100,10 @@ export default function LoginScreen() {
         <button
           type="button"
           onClick={() => navigate("/admin")}
-          className="px-4 py-2 rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-teal-950 hover:from-purple-950 hover:to-slate-950 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-purple-900/20 transition-all cursor-pointer active:scale-95 border border-purple-500/30"
+          className="px-4 py-2 rounded-2xl bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-700 hover:from-teal-900 hover:to-emerald-800 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-teal-900/20 transition-all cursor-pointer active:scale-95 border border-teal-500/30"
           title="Switch to Super Admin Command Center & Remote Licensing"
         >
-          <span className="material-symbols-outlined text-base text-purple-300">admin_panel_settings</span>
+          <span className="material-symbols-outlined text-base text-teal-200">admin_panel_settings</span>
           <span>Super Admin Login</span>
         </button>
       </header>
@@ -219,13 +219,13 @@ export default function LoginScreen() {
             <button
               type="button"
               onClick={() => navigate("/admin")}
-              className="w-full p-3 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-teal-50 hover:from-purple-100 hover:to-teal-100 border border-purple-200/80 text-purple-950 text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-xs cursor-pointer group"
+              className="w-full p-3 rounded-2xl bg-gradient-to-r from-teal-50 via-emerald-50 to-teal-50 hover:from-teal-100 hover:to-emerald-100 border border-teal-200/90 text-teal-950 text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-xs cursor-pointer group"
             >
-              <div className="w-6 h-6 rounded-lg bg-purple-200 text-purple-900 flex items-center justify-center text-xs group-hover:bg-purple-700 group-hover:text-white transition-colors">
+              <div className="w-6 h-6 rounded-lg bg-teal-200/80 text-teal-900 flex items-center justify-center text-xs group-hover:bg-teal-700 group-hover:text-white transition-colors">
                 <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
               </div>
               <span className="flex-1 text-left">Switch to Super Admin Portal</span>
-              <span className="material-symbols-outlined text-purple-700 text-sm group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+              <span className="material-symbols-outlined text-teal-700 text-sm group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
             </button>
           </div>
         </div>

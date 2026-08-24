@@ -315,10 +315,10 @@ export default function LandingPage() {
             {/* Super Admin Command Center Link */}
             <Link
               to="/admin"
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-950 border border-purple-200 transition-all cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-950 border border-teal-200 transition-all cursor-pointer whitespace-nowrap shadow-2xs"
               title="Super Admin Command Center"
             >
-              <span className="material-symbols-outlined text-base text-purple-700">admin_panel_settings</span>
+              <span className="material-symbols-outlined text-base text-teal-700">admin_panel_settings</span>
               <span className="hidden xl:inline">Admin Portal</span>
             </Link>
 

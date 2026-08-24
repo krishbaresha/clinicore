@@ -559,10 +559,10 @@ export default function MedicalStoreInventory() {
                 setAuditSearchQuery("");
                 setShowBlindAuditModal(true);
               }}
-              className="px-3.5 py-2.5 rounded-2xl bg-purple-900/50 hover:bg-purple-900/80 text-purple-300 border border-purple-500/40 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+              className="px-3.5 py-2.5 rounded-2xl bg-teal-900/40 hover:bg-teal-900/70 text-teal-200 border border-teal-500/40 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
               title="Zero-Pilferage Blind Physical Stock Audit (Count shelf items without bias)"
             >
-              <span className="material-symbols-outlined text-base text-purple-400">fact_check</span>
+              <span className="material-symbols-outlined text-base text-teal-400">fact_check</span>
               <span>Blind Stock Audit</span>
             </button>
 
@@ -1904,19 +1904,19 @@ export default function MedicalStoreInventory() {
       {/* Zero-Pilferage Blind Physical Stock Audit Modal */}
       {showBlindAuditModal && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-purple-200 overflow-hidden font-sans">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-teal-200 overflow-hidden font-sans">
             {/* Header */}
-            <div className="bg-gradient-to-r from-purple-900 to-indigo-950 p-5 text-white flex items-center justify-between">
+            <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 p-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
                   <span className="material-symbols-outlined text-2xl">fact_check</span>
                 </div>
                 <div>
                   <h2 className="text-base font-black flex items-center gap-2">
                     <span>Zero-Pilferage Blind Physical Stock Audit</span>
-                    <span className="text-[10px] bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full font-bold border border-purple-400/30">Anti-Theft Protocol</span>
+                    <span className="text-[10px] bg-teal-500/30 text-teal-200 px-2 py-0.5 rounded-full font-bold border border-teal-400/30">Anti-Theft Protocol</span>
                   </h2>
-                  <p className="text-xs text-purple-200/70 mt-0.5">
+                  <p className="text-xs text-teal-200/70 mt-0.5">
                     Count physical units on shelves without bias. The system compares physical counts against live software balances.
                   </p>
                 </div>
@@ -1924,14 +1924,14 @@ export default function MedicalStoreInventory() {
               <button
                 type="button"
                 onClick={() => setShowBlindAuditModal(false)}
-                className="text-purple-300 hover:text-white p-1 rounded-lg"
+                className="text-teal-300 hover:text-white p-1 rounded-lg cursor-pointer"
               >
                 <span className="material-symbols-outlined text-2xl">close</span>
               </button>
             </div>
 
             {/* Filter / Search Bar */}
-            <div className="p-4 bg-purple-50/40 border-b border-purple-100 flex flex-wrap items-center justify-between gap-3">
+            <div className="p-4 bg-teal-50/40 border-b border-teal-100 flex flex-wrap items-center justify-between gap-3">
               <div className="relative flex-1 min-w-[240px]">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base">search</span>
                 <input
@@ -1939,7 +1939,7 @@ export default function MedicalStoreInventory() {
                   placeholder="Search medicine by name or code for physical audit..."
                   value={auditSearchQuery}
                   onChange={(e) => setAuditSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-purple-200 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-teal-200 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
@@ -1947,7 +1947,7 @@ export default function MedicalStoreInventory() {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-3 py-2 bg-white hover:bg-gray-50 border border-purple-200 text-purple-900 rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs"
+                  className="px-3 py-2 bg-white hover:bg-teal-50 border border-teal-200 text-teal-900 rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">print</span>
                   Print Count Sheet
@@ -1958,7 +1958,7 @@ export default function MedicalStoreInventory() {
             {/* Audit Table */}
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 bg-purple-100/90 backdrop-blur-xs text-purple-950 font-black text-[11px] uppercase border-b border-purple-200">
+                <thead className="sticky top-0 bg-teal-100/90 backdrop-blur-xs text-teal-950 font-black text-[11px] uppercase border-b border-teal-200">
                   <tr>
                     <th className="p-2.5">Medicine Name</th>
                     <th className="p-2.5">Company</th>
@@ -1967,7 +1967,7 @@ export default function MedicalStoreInventory() {
                     <th className="p-2.5 text-right">Variance / Audit Diff</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-purple-50">
+                <tbody className="divide-y divide-teal-50">
                   {inventory
                     .filter((item) => {
                       if (!auditSearchQuery.trim()) return true;
@@ -1986,7 +1986,7 @@ export default function MedicalStoreInventory() {
                       const diff = physicalEntered !== null ? physicalEntered - sysStock : null;
 
                       return (
-                        <tr key={item.id} className="hover:bg-purple-50/50 transition-colors">
+                        <tr key={item.id} className="hover:bg-teal-50/50 transition-colors">
                           <td className="p-2.5 font-bold text-gray-900">
                             {item.medicine_name}
                             <span className="ml-1 text-[10px] text-gray-400 font-normal">({item.item_code || "GEN"})</span>
@@ -1999,7 +1999,7 @@ export default function MedicalStoreInventory() {
                               placeholder="Enter count..."
                               value={auditCounts[item.id] ?? ""}
                               onChange={(e) => setAuditCounts({ ...auditCounts, [item.id]: e.target.value })}
-                              className="w-24 px-2 py-1 text-center font-black rounded-lg border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              className="w-24 px-2 py-1 text-center font-black rounded-lg border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
                             />
                           </td>
                           <td className="p-2.5 text-right font-bold text-gray-700">{sysStock}</td>
@@ -2038,7 +2038,7 @@ export default function MedicalStoreInventory() {
                   alert("Physical count verified and logged in cyclic audit register.");
                   setShowBlindAuditModal(false);
                 }}
-                className="px-5 py-2.5 bg-purple-900 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                className="px-5 py-2.5 bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
               >
                 Close &amp; Save Audit Progress
               </button>
