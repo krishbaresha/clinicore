@@ -1,4 +1,4 @@
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients } from "../api/db.js";
 import { formatCurrency, formatTodayLong, getGreeting } from "../utils/formatters.js";

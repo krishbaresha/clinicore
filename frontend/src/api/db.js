@@ -192,7 +192,6 @@ function getFromCollectionById(key, id) {
 function setCollection(key, data) {
   try {
     const raw = JSON.stringify(data);
-    localStorage.setItem(key, raw);
     _COLLECTION_CACHE.set(key, { raw, parsed: data });
 
     if (Array.isArray(data)) {
@@ -203,6 +202,8 @@ function setCollection(key, data) {
       }
       _ID_MAP_CACHE.set(key, idMap);
     }
+
+    localStorage.setItem(key, raw);
   } catch (e) {
     console.error("Failed to save collection to localStorage:", key, e);
   }

@@ -1,4 +1,4 @@
-import { Client, Databases, Storage, Account, ID, Query } from "appwrite";
+import { Client, Databases, Storage, Account, ID } from "appwrite";
 
 const ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT || "https://cloud.appwrite.io/v1";
 const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || "";
@@ -116,7 +116,7 @@ export function getCloudFilePreview(fileId, width = 800, height = 800) {
   try {
     const previewUrl = storage.getFilePreview(BUCKET_ID, fileId, width, height);
     return previewUrl.href || previewUrl.toString();
-  } catch (err) {
+  } catch {
     return null;
   }
 }

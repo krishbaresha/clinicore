@@ -195,7 +195,7 @@ export default function MedicalStorePOS() {
 
   const activeCompanyList = useMemo(() => {
     const fromSuppliers = (dbSuppliers.getAll() || []).map((s) => s.name).filter(Boolean);
-    const fromInventory = (dbInventory.getAll() || []).map((i) => i.company_name).filter(Boolean);
+    const fromInventory = (inventoryResults || []).map((i) => i.company_name).filter(Boolean);
     const set = Array.from(new Set([...fromSuppliers, ...fromInventory]));
     return set.map((name) => ({ code: name.slice(0, 4).toUpperCase(), name }));
   }, [inventoryResults]);

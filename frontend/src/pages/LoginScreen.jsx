@@ -1,32 +1,31 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSignIn } from "@clerk/clerk-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbUsers, dbClinic } from "../api/db.js";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-// Safe Clerk component wrapper to strictly adhere to React Hook Rules without crashing when Clerk is offline or unconfigured
-function useSafeClerkSignIn() {
-  if (!CLERK_PUBLISHABLE_KEY) {
-    return { isLoaded: false, signIn: null, setActive: null };
-  }
-  try {
-    return useSignIn();
-  } catch {
-    return { isLoaded: false, signIn: null, setActive: null };
-  }
+// Dedicated sub-component that safely consumes Clerk's useSignIn hook only when ClerkProvider is active
+function ClerkSignInBridge({ onReady }) {
+  const { isLoaded, signIn, setActive } = useSignIn();
+  useEffect(() => {
+    if (isLoaded && signIn && setActive) {
+      onReady({ isLoaded, signIn, setActive });
+    }
+  }, [isLoaded, signIn, setActive, onReady]);
+  return null;
 }
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const navigate = useNavigate();
   
-  // Safe Clerk hook execution
-  const clerkSignInObj = useSafeClerkSignIn();
-  const isClerkLoaded = Boolean(clerkSignInObj?.isLoaded);
-  const signIn = clerkSignInObj?.signIn || null;
-  const setActive = clerkSignInObj?.setActive || null;
+  // Safe Clerk state passed from bridge
+  const [clerkAuth, setClerkAuth] = useState(null);
+  const isClerkLoaded = Boolean(clerkAuth?.isLoaded);
+  const signIn = clerkAuth?.signIn || null;
+  const setActive = clerkAuth?.setActive || null;
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -99,6 +98,7 @@ export default function LoginScreen() {
 
   return (
     <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center p-4 selection:bg-teal-600 selection:text-white relative overflow-hidden font-sans">
+      {CLERK_PUBLISHABLE_KEY && <ClerkSignInBridge onReady={setClerkAuth} />}
       {/* Decorative Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-96 bg-gradient-to-b from-teal-100/70 via-emerald-50/40 to-transparent blur-3xl -z-10 pointer-events-none" />
 

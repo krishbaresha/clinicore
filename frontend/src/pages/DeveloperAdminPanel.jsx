@@ -113,7 +113,6 @@ export default function DeveloperAdminPanel() {
   const [b2bSalesList, setB2bSalesList] = useState([]);
   const [expensesList, setExpensesList] = useState([]);
   const [visitsList, setVisitsList] = useState([]);
-  const [cashBookList, setCashBookList] = useState([]);
 
   // Audit Filter States
   const [auditRange, setAuditRange] = useState("6_months"); // "30_days" | "6_months" | "1_year" | "all_time" | "custom"

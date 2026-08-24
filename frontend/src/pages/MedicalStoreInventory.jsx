@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
 import { dbClinic, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
 import { formatCurrency } from "../utils/formatters.js";
@@ -22,7 +21,6 @@ const COMPANY_OPTIONS = [
 ];
 
 export default function MedicalStoreInventory() {
-  const navigate = useNavigate();
   const [inventory, setInventory] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formTab, setFormTab] = useState("quick"); // "quick" | "advanced"
@@ -422,7 +420,6 @@ export default function MedicalStoreInventory() {
       if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
       if (companyFilter !== "all" && item.company_name !== companyFilter) return false;
 
-      const stock = item.total_base_stock ?? item.stock_qty ?? 0;
       if (stockStatusFilter === "low" && !isLowStock(item)) return false;
       if (stockStatusFilter === "out" && !isOutOfStock(item)) return false;
       if (stockStatusFilter === "in_stock" && (isLowStock(item) || isOutOfStock(item))) return false;

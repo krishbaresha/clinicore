@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { searchPatients } from "../api/patients.js";
-import { dbVisits, dbPatientLedger } from "../api/db.js";
+import { dbVisits } from "../api/db.js";
 import { formatDate, getInitials } from "../utils/formatters.js";
 
 export default function PatientsList() {

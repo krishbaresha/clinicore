@@ -31,7 +31,7 @@ async function setupAppwrite() {
   try {
     await databases.get(DATABASE_ID);
     console.log(`✅ Database '${DATABASE_ID}' found.`);
-  } catch (err) {
+  } catch {
     console.log(`Creating database '${DATABASE_ID}'...`);
     await databases.create(DATABASE_ID, "CliniCore DB");
     console.log(`✅ Database '${DATABASE_ID}' created.`);
@@ -41,7 +41,7 @@ async function setupAppwrite() {
   try {
     await storage.getBucket(BUCKET_ID);
     console.log(`✅ Bucket '${BUCKET_ID}' found.`);
-  } catch (err) {
+  } catch {
     console.log(`Creating bucket '${BUCKET_ID}'...`);
     await storage.createBucket(
       BUCKET_ID,
@@ -68,7 +68,7 @@ async function setupAppwrite() {
     try {
       await databases.getCollection(DATABASE_ID, table.id);
       console.log(`  ✓ Table '${table.id}' exists.`);
-    } catch (err) {
+    } catch {
       console.log(`  Creating table '${table.id}'...`);
       await databases.createCollection(
         DATABASE_ID,

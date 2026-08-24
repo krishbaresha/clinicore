@@ -45,7 +45,6 @@ import {
   dbPurchases,
   dbReturns,
   dbShiftClosings,
-  dbTenants,
   dbAccounts,
   dbStockLedger,
   dbCashBook,
@@ -716,7 +715,7 @@ async function runTests() {
     let printError = false;
     try {
       printPurchaseGRNReceipt(grnPurchase, dbClinic.get());
-    } catch (e) {
+    } catch {
       printError = true;
     }
     assert(!printError, "80mm Purchase GRN Thermal receipt formatted without exceptions");
@@ -792,7 +791,7 @@ async function runTests() {
     let printError = false;
     try {
       printSaleInvoiceReceipt(saleInvoice, dbClinic.get());
-    } catch (e) {
+    } catch {
       printError = true;
     }
     assert(!printError, "80mm Sale Invoice Thermal receipt formatted without exceptions");
@@ -814,7 +813,6 @@ async function runTests() {
 
     // 2. Add Cash Receive entry (Inflow from Party)
     const party = dbParties.getAll()[0];
-    const initialPartyBalance = Number(party.balance_due ?? party.current_balance ?? 0);
 
     const receiveEntry = dbCashBook.addEntry({
       voucher_no: nextCashVoucher,
@@ -849,14 +847,14 @@ async function runTests() {
     assert(summary.balance === summary.total_debit - summary.total_credit, `Net Cash balance verified: ${summary.balance}`);
 
     // 5. Verify 80mm Cash Voucher Thermal Receipt
-    let printError = false;
+    let printCashError = false;
     try {
       printCashVoucherReceipt(receiveEntry, dbClinic.get());
       printCashVoucherReceipt(paidEntry, dbClinic.get());
-    } catch (e) {
-      printError = true;
+    } catch {
+      printCashError = true;
     }
-    assert(!printError, "80mm Cash Voucher Thermal receipts formatted without exceptions");
+    assert(!printCashError, "80mm Cash Voucher Thermal receipts formatted without exceptions");
 
     // 6. Verify CSV export
     const csvData = dbCashBook.exportCSV([receiveEntry, paidEntry]);

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { autoCropLogoImage } from "../utils/imageCompressor.js";
 import { Link } from "react-router-dom";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
-import { formatPKR, formatDate } from "../utils/formatters.js";
+import { formatDate } from "../utils/formatters.js";
 import { executeThermalPrint } from "../utils/thermalPrinter.js";
 
 const TEMPLATE_TYPES = [
@@ -83,7 +83,7 @@ export default function ReceiptStudio() {
     paid_amount: 1550,
   });
 
-  const [opdData, setOpdData] = useState({
+  const [opdData] = useState({
     token_no: "01",
     patient_name: "Ghulam Murtaza Brohi",
     patient_relation: "S/O Haji Ali Bux",
@@ -169,16 +169,17 @@ export default function ReceiptStudio() {
 
   // Automatically auto-crop initial default logo on mount if needed
   useEffect(() => {
-    if (clinicConfig.logo_base64 && clinicConfig.logo_base64.length > 5000) {
-      autoCropLogoImage(clinicConfig.logo_base64, 400, 140)
+    const rawLogo = clinicConfig.logo_base64;
+    if (rawLogo && rawLogo.length > 5000) {
+      autoCropLogoImage(rawLogo, 400, 140)
         .then((cropped) => {
-          if (cropped && cropped !== clinicConfig.logo_base64) {
+          if (cropped && cropped !== rawLogo) {
             setClinicConfig((prev) => ({ ...prev, logo_base64: cropped }));
           }
         })
         .catch(() => {});
     }
-  }, []);
+  }, [clinicConfig.logo_base64]);
 
   // Handle Logo Upload with Automatic Margin Cropping
   const handleLogoUpload = async (e) => {
@@ -246,9 +247,6 @@ export default function ReceiptStudio() {
     `;
     executeThermalPrint(fullHtml, "Custom Receipt Preview");
   };
-
-  // Block Renderer Map
-  const isBlockEnabled = (id) => blocks.find((b) => b.id === id)?.enabled;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">

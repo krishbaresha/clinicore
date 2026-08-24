@@ -27,8 +27,8 @@ export function login(identifier, password) {
     failedAttempts = 0;
   }
 
-  const idLower = (identifier || "").trim().toLowerCase();
-  const cleanPhone = identifier.replace(/\D/g, "");
+  const idLower = (identifier || "").toString().trim().toLowerCase();
+  const cleanPhone = typeof identifier === "string" ? identifier.replace(/\D/g, "") : "";
   const allUsers = dbUsers.getAll();
 
   // Find user by exact email, phone, or username prefix

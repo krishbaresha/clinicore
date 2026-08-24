@@ -235,7 +235,6 @@ export default function SupplierPurchases() {
   const [activeTab, setActiveTab] = useState("suppliers"); // "suppliers" | "bills" | "new_purchase"
 
   // DrCreate Purchase GRN Form State
-  const [showPurchaseGRNForm, setShowPurchaseGRNForm] = useState(false);
   const [grnShowAllCompanies, setGrnShowAllCompanies] = useState(false);
   const [tab4ShowAllCompanies, setTab4ShowAllCompanies] = useState(false);
   const [referencesList, setReferencesList] = useState([]);
@@ -275,7 +274,6 @@ export default function SupplierPurchases() {
   const [grnItems, setGrnItems] = useState([]);
   const [showGRNListModal, setShowGRNListModal] = useState(false);
   const [grnListSearch, setGrnListSearch] = useState("");
-  const [grnListSupplierFilter, setGrnListSupplierFilter] = useState("All");
   const grnProductInputRef = useRef(null);
   const grnItemsEndRef = useRef(null);
   const grnTableContainerRef = useRef(null);

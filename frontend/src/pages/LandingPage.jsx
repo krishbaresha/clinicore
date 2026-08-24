@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function LandingPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [clinicData, setClinicData] = useState({});
   const [doctorsList, setDoctorsList] = useState([]);
@@ -117,7 +117,7 @@ export default function LandingPage() {
     },
   ];
 
-  const displayDoctors = doctorsList;
+  const displayDoctors = doctorsList.length > 0 ? doctorsList : defaultDoctors;
 
   const defaultServices = [
     {
