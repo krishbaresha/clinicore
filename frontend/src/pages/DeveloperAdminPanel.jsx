@@ -94,13 +94,29 @@ export default function DeveloperAdminPanel() {
     return 15;
   });
   const [emailPreviewHtml, setEmailPreviewHtml] = useState("");
+  const [automationLogs, setAutomationLogs] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("cf_automation_execution_logs") || "[]");
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     const handleTick = (e) => {
       setCountdownDetail(e?.detail || null);
     };
+    const handleLogsUpdate = () => {
+      try {
+        setAutomationLogs(JSON.parse(localStorage.getItem("cf_automation_execution_logs") || "[]"));
+      } catch {}
+    };
     window.addEventListener("cf_automation_tick", handleTick);
-    return () => window.removeEventListener("cf_automation_tick", handleTick);
+    window.addEventListener("cf_automation_logs_updated", handleLogsUpdate);
+    return () => {
+      window.removeEventListener("cf_automation_tick", handleTick);
+      window.removeEventListener("cf_automation_logs_updated", handleLogsUpdate);
+    };
   }, []);
 
   // Sub-Tab Granular Lock & Hide State
@@ -2653,6 +2669,43 @@ export default function DeveloperAdminPanel() {
                             return `${s}s`;
                           })()}
                         </span>
+                      </div>
+                    )}
+
+                    {/* Live Automation Execution Logs */}
+                    {automationLogs.length > 0 && (
+                      <div className="mt-3 bg-white border border-teal-100 rounded-2xl p-3 shadow-sm space-y-2 max-h-[200px] overflow-y-auto">
+                        <div className="flex items-center justify-between border-b border-teal-50 pb-1.5">
+                          <span className="text-[10px] font-black uppercase text-teal-900 tracking-wider">Live Execution Logs (Real-time)</span>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              localStorage.removeItem("cf_automation_execution_logs");
+                              setAutomationLogs([]);
+                            }}
+                            className="text-[9px] font-bold text-red-500 hover:text-red-700 bg-red-50 px-1.5 py-0.5 rounded"
+                          >
+                            Clear Logs
+                          </button>
+                        </div>
+                        <div className="space-y-1.5 text-[9px] font-medium font-mono">
+                          {automationLogs.map((log, idx) => (
+                            <div key={idx} className="flex flex-col gap-0.5 border-b border-slate-50 pb-1 last:border-0">
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                <span className={`px-1 rounded font-bold uppercase ${
+                                  log.status === "success" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                                  log.status === "failed" ? "bg-red-50 text-red-600 border border-red-100" :
+                                  "bg-amber-50 text-amber-600 border border-amber-100 animate-pulse"
+                                }`}>
+                                  {log.status}
+                                </span>
+                              </div>
+                              <div className="text-slate-900 font-bold">{log.reason}</div>
+                              <div className="text-slate-600 whitespace-pre-wrap">{log.message}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

@@ -255,8 +255,26 @@ export default function SidebarLayout({ children }) {
 
       if (!shouldTrigger) return;
 
+      const addAutomationLog = (status, reason, msg) => {
+        try {
+          const raw = localStorage.getItem("cf_automation_execution_logs") || "[]";
+          const logs = JSON.parse(raw);
+          logs.unshift({
+            timestamp: new Date().toISOString(),
+            status,
+            reason,
+            message: msg
+          });
+          localStorage.setItem("cf_automation_execution_logs", JSON.stringify(logs.slice(0, 10)));
+          window.dispatchEvent(new Event("cf_automation_logs_updated"));
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
       isExecuting = true;
       console.log(`[AutoBackup] Triggering automated background backup dispatch: ${triggerReason}...`);
+      addAutomationLog("pending", triggerReason, "Initiating database encryption and preparing payload...");
 
       try {
         const encryptedBackupStr = exportFullDatabase(true);
@@ -334,6 +352,7 @@ export default function SidebarLayout({ children }) {
 
         if (res.ok && data?.success) {
           console.log(`✅ [AutoBackup] Success! Scheduled backup delivered to ${targetEmail}`);
+          addAutomationLog("success", triggerReason, `Backup successfully delivered to ${targetEmail} (Resend ID: ${data?.id || "N/A"})`);
           dbClinic.update({
             last_daily_report_date: todayDateStr,
             last_email_backup: now.toISOString(),
@@ -344,9 +363,12 @@ export default function SidebarLayout({ children }) {
           } catch {}
         } else {
           console.warn("[AutoBackup] Resend Dispatch Response:", data);
+          const errMsg = data?.message || data?.error || "Unknown Resend API error";
+          addAutomationLog("failed", triggerReason, `Resend API Error: ${errMsg}`);
         }
       } catch (err) {
         console.warn("[AutoBackup] Background automated backup encountered error:", err.message);
+        addAutomationLog("failed", triggerReason, `System/Network Error: ${err.message}`);
       } finally {
         isExecuting = false;
       }
