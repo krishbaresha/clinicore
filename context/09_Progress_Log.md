@@ -1546,8 +1546,27 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Automated Verification:**
       - 149/149 test assertions passing (100%), 0 ESLint errors, and clean production bundle build in 758ms.
 
+30. **Automated 9:00 PM Email Scheduler & VPS Cron Engine Repair:**
+    - **Root Cause Analysis (Why Automation Failed Previously):**
+      1. *Field Desynchronization*: `DeveloperAdminPanel.jsx` stored `notification_email` and `report_frequency = "daily_9pm"`, but `SidebarLayout.jsx` background timer was inspecting `c.backup_email` and `c.backup_frequency`, resulting in early exit without execution.
+      2. *Browser CORS Block*: `SidebarLayout.jsx` was attempting `fetch("https://api.resend.com/emails")` directly in client browser, which is rejected by Resend CORS policy.
+      3. *Clock-Aware Trigger Absence*: The timer only checked elapsed milliseconds rather than local 21:00 (9:00 PM) wall-clock time, causing missed runs if browser was opened after 9 PM.
+    - **Engine Architecture Overhaul:**
+      - **Modular Email Template Utility (`frontend/src/utils/emailTemplate.js`):** Extracted responsive Dark Teal & Emerald email template generator with 1-click direct download and `.cfbak` encrypted database vault attachment.
+      - **Clock-Aware & Smart Catch-Up Trigger (`frontend/src/layouts/SidebarLayout.jsx`):**
+        - Checks `notification_email || backup_email`, `resend_api_key`, and `report_frequency` across both local storage and database.
+        - Evaluates local clock `now.getHours() >= 21` (9:00 PM PKT). If today's report date (`YYYY-MM-DD`) has not been dispatched, triggers automatically.
+        - Relays payload securely via VPS backend `${apiUrl}/api/v1/system/send-email` to bypass browser CORS completely.
+      - **Server-Side CLI Cron Engine (`backend/cron_daily_backup.php`):**
+        - Standalone PHP script to execute via server crontab (`0 16 * * *` = 21:00 PKT).
+        - Reads live MySQL data, packages encrypted snapshot, formats HTML template, and dispatches via Resend cURL.
+      - **VPS Automated Provisioning Script (`scripts/deploy_vps_setup.sh`):** Registered daily 9:00 PM cron job in crontab.
+    - **Automated Verification:**
+      - 149/149 test assertions passing (100%), 0 ESLint errors, clean production bundle build in 664ms, and commits pushed to GitHub `origin/main`.
+
 **Next Recommended Steps:**
-- Commit and push to GitHub so Vercel and VPS deploy the latest supplier edit engine and scrollbar fixes.
+- Advise user to verify Resend domain or ensure target email matches Resend registered account for Sandbox mode.
+
 
 
 
