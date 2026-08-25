@@ -165,6 +165,25 @@ export default function SidebarLayout({ children }) {
           shouldTrigger = true;
           triggerReason = "🧪 Live Automation Verification Test";
         }
+      } else if (frequency.startsWith("custom_interval:")) {
+        const mins = parseInt(frequency.split(":")[1]) || 5;
+        const intervalMs = mins * 60 * 1000;
+        if (nowMs - lastBackupMs >= intervalMs) {
+          shouldTrigger = true;
+          triggerReason = `Custom ${mins} Minutes Interval Audit`;
+        }
+      } else if (frequency.startsWith("custom_time:")) {
+        const timeStr = frequency.substring(frequency.indexOf(":") + 1);
+        const tParts = timeStr.split(":");
+        const targetHour = parseInt(tParts[0]) || 21;
+        const targetMin = parseInt(tParts[1]) || 0;
+        const currentMin = now.getMinutes();
+
+        // Trigger if current local clock matches or exceeds target time AND today's report hasn't been sent
+        if ((currentHour > targetHour || (currentHour === targetHour && currentMin >= targetMin)) && lastDailyReportDate !== todayDateStr) {
+          shouldTrigger = true;
+          triggerReason = `Custom Daily ${timeStr} Clock Closure`;
+        }
       } else if (frequency === "daily_9pm" || frequency === "daily") {
         if (currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
           shouldTrigger = true;
@@ -320,6 +339,73 @@ export default function SidebarLayout({ children }) {
     checkAndRunAutoBackup();
     const timer = setInterval(checkAndRunAutoBackup, 15 * 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Real-time Countdown Broadcast Engine (1-second tick)
+  useEffect(() => {
+    const tickInterval = setInterval(() => {
+      const c = dbClinic.get() || {};
+      const targetEmail = (c.notification_email || c.backup_email || localStorage.getItem("cf_notification_email") || "").trim();
+      const resendKey = (c.resend_api_key || localStorage.getItem("cf_resend_api_key") || "").trim();
+      const frequency = c.report_frequency || c.backup_frequency || localStorage.getItem("cf_report_frequency") || "daily_9pm";
+
+      if (!targetEmail || !resendKey || frequency === "manual") {
+        window.dispatchEvent(new CustomEvent("cf_automation_tick", { detail: null }));
+        return;
+      }
+
+      const now = new Date();
+      const nowMs = now.getTime();
+      const lastBackupMs = c.last_email_backup ? new Date(c.last_email_backup).getTime() : 0;
+      const lastDailyReportDate = c.last_daily_report_date || localStorage.getItem("cf_last_daily_report_date");
+      const todayDateStr = now.toLocaleDateString("en-CA");
+      const currentHour = now.getHours();
+
+      let secondsLeft = 0;
+      let label = "";
+
+      if (frequency === "every_1m" || frequency === "test_1min") {
+        const intervalMs = 10 * 1000;
+        secondsLeft = Math.max(0, Math.ceil((lastBackupMs + intervalMs - nowMs) / 1000));
+        label = "Testing Mode (10s threshold)";
+      } else if (frequency.startsWith("custom_interval:")) {
+        const mins = parseInt(frequency.split(":")[1]) || 5;
+        const intervalMs = mins * 60 * 1000;
+        secondsLeft = Math.max(0, Math.ceil((lastBackupMs + intervalMs - nowMs) / 1000));
+        label = `Every ${mins} Minutes`;
+      } else {
+        // Daily clock times
+        let targetHour = 21;
+        let targetMin = 0;
+        if (frequency === "daily_10pm") {
+          targetHour = 22;
+        } else if (frequency === "daily_8pm") {
+          targetHour = 20;
+        } else if (frequency.startsWith("custom_time:")) {
+          const timeStr = frequency.substring(frequency.indexOf(":") + 1);
+          const tParts = timeStr.split(":");
+          targetHour = parseInt(tParts[0]) || 21;
+          targetMin = parseInt(tParts[1]) || 0;
+        }
+
+        const targetDate = new Date(now);
+        targetDate.setHours(targetHour, targetMin, 0, 0);
+
+        if (lastDailyReportDate === todayDateStr) {
+          targetDate.setDate(targetDate.getDate() + 1);
+        } else if (nowMs >= targetDate.getTime()) {
+          targetDate.setTime(nowMs);
+        }
+
+        secondsLeft = Math.max(0, Math.ceil((targetDate.getTime() - nowMs) / 1000));
+        label = `Daily at ${String(targetHour).padStart(2, "0")}:${String(targetMin).padStart(2, "0")}`;
+      }
+
+      window.dispatchEvent(new CustomEvent("cf_automation_tick", {
+        detail: { secondsLeft, label, frequency }
+      }));
+    }, 1000);
+    return () => clearInterval(tickInterval);
   }, []);
 
   // Build nav items — ensure Admin / Owner gets full settings & super admin panel

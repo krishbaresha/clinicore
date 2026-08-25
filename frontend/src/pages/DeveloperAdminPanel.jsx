@@ -73,7 +73,35 @@ export default function DeveloperAdminPanel() {
   const [isPingingApi, setIsPingingApi] = useState(false);
   const [showEmailPreviewModal, setShowEmailPreviewModal] = useState(false);
   const [emailPreviewMode, setEmailPreviewMode] = useState("desktop"); // 'desktop' | 'mobile'
+  const [countdownDetail, setCountdownDetail] = useState(null);
+  const [selectedFreqType, setSelectedFreqType] = useState(() => {
+    const c = dbClinic.get() || {};
+    const freq = c.report_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "daily_9pm" : "daily_9pm");
+    if (freq.startsWith("custom_time:")) return "custom_time";
+    if (freq.startsWith("custom_interval:")) return "custom_interval";
+    return freq;
+  });
+  const [customTimeInput, setCustomTimeInput] = useState(() => {
+    const c = dbClinic.get() || {};
+    const freq = c.report_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "21:30" : "21:30");
+    if (freq.startsWith("custom_time:")) return freq.split(":")[1] || "21:30";
+    return "21:30";
+  });
+  const [customIntervalInput, setCustomIntervalInput] = useState(() => {
+    const c = dbClinic.get() || {};
+    const freq = c.report_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "15" : "15");
+    if (freq.startsWith("custom_interval:")) return parseInt(freq.split(":")[1]) || 15;
+    return 15;
+  });
   const [emailPreviewHtml, setEmailPreviewHtml] = useState("");
+
+  useEffect(() => {
+    const handleTick = (e) => {
+      setCountdownDetail(e?.detail || null);
+    };
+    window.addEventListener("cf_automation_tick", handleTick);
+    return () => window.removeEventListener("cf_automation_tick", handleTick);
+  }, []);
 
   // Sub-Tab Granular Lock & Hide State
   const [tabSecurity, setTabSecurity] = useState(() => {
@@ -191,6 +219,17 @@ export default function DeveloperAdminPanel() {
           const sClinic = json.data.clinic;
           setActiveClinic(sClinic);
           if (!preserveForm) {
+            const freq = sClinic.report_frequency || "daily_9pm";
+            let type = freq;
+            if (freq.startsWith("custom_time:")) {
+              type = "custom_time";
+              setCustomTimeInput(freq.substring(freq.indexOf(":") + 1) || "21:30");
+            } else if (freq.startsWith("custom_interval:")) {
+              type = "custom_interval";
+              setCustomIntervalInput(parseInt(freq.split(":")[1]) || 15);
+            }
+            setSelectedFreqType(type);
+
             setClinicForm((prev) => ({
               ...prev,
               name: sClinic.name || prev.name,
@@ -2516,17 +2555,26 @@ export default function DeveloperAdminPanel() {
                       <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Live Active</span>
                     </label>
                     <select
-                      value={clinicForm.report_frequency}
+                      value={selectedFreqType}
                       onChange={(e) => {
-                        const newFreq = e.target.value;
-                        setClinicForm({ ...clinicForm, report_frequency: newFreq });
+                        const val = e.target.value;
+                        setSelectedFreqType(val);
+                        let nextFreq = val;
+                        if (val === "custom_time") {
+                          nextFreq = `custom_time:${customTimeInput}`;
+                        } else if (val === "custom_interval") {
+                          nextFreq = `custom_interval:${customIntervalInput}`;
+                        }
+                        setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
                         try {
-                          localStorage.setItem("cf_report_frequency", newFreq);
+                          localStorage.setItem("cf_report_frequency", nextFreq);
                         } catch {}
                       }}
                       className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 cursor-pointer shadow-inner"
                     >
                       <option value="every_1m" className="text-amber-700 font-bold bg-amber-50">🧪 Testing Mode: Every 1 Minute (Live Automation Verification)</option>
+                      <option value="custom_time">⚙️ Custom Daily Clock Time...</option>
+                      <option value="custom_interval">⚙️ Custom Minute Interval...</option>
                       <option value="daily_9pm">🌙 Daily at 9:00 PM (Shift End Closure - Recommended)</option>
                       <option value="daily_10pm">🌙 Daily at 10:00 PM (Late Night Closure)</option>
                       <option value="daily_8pm">🌙 Daily at 8:00 PM (Evening Shift Closure)</option>
@@ -2537,33 +2585,76 @@ export default function DeveloperAdminPanel() {
                       <option value="monthly">📊 Monthly Executive Report</option>
                       <option value="manual">🚫 Manual On-Demand Only (Off)</option>
                     </select>
-                    <div className="mt-1.5 px-3 py-1.5 bg-teal-50/80 border border-teal-100 rounded-xl flex items-center gap-1.5 text-[11px] font-medium text-teal-900">
-                      <span className="material-symbols-outlined text-xs text-teal-700">schedule</span>
-                      <span>
-                        Status:{" "}
-                        <strong className="font-bold text-teal-950">
-                          {clinicForm.report_frequency === "every_1m"
-                            ? "🧪 Testing Mode: Every 1 Minute Automation Active"
-                            : clinicForm.report_frequency === "daily_9pm"
-                            ? "Daily 9:00 PM Shift-End Closure"
-                            : clinicForm.report_frequency === "daily_10pm"
-                            ? "Daily 10:00 PM Late Night Closure"
-                            : clinicForm.report_frequency === "daily_8pm"
-                            ? "Daily 8:00 PM Evening Shift Closure"
-                            : clinicForm.report_frequency === "every_12h"
-                            ? "Every 12 Hours Audit"
-                            : clinicForm.report_frequency === "every_6h"
-                            ? "Every 6 Hours Audit"
-                            : clinicForm.report_frequency === "hourly"
-                            ? "Hourly Real-Time Audit"
-                            : clinicForm.report_frequency === "weekly_saturday"
-                            ? "Weekly Saturday Summary"
-                            : clinicForm.report_frequency === "monthly"
-                            ? "Monthly Executive Closure"
-                            : "Manual On-Demand Only"}
-                        </strong>
-                      </span>
-                    </div>
+
+                    {/* Custom Clock Time Input */}
+                    {selectedFreqType === "custom_time" && (
+                      <div className="mt-2.5 space-y-1 animate-fade-in">
+                        <label className="block text-[10px] font-bold text-teal-900 uppercase">Set Custom Daily Time (24h format)</label>
+                        <input
+                          type="time"
+                          value={customTimeInput}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustomTimeInput(val);
+                            const nextFreq = `custom_time:${val}`;
+                            setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
+                            try {
+                              localStorage.setItem("cf_report_frequency", nextFreq);
+                            } catch {}
+                          }}
+                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-teal-950 font-mono shadow-inner"
+                        />
+                      </div>
+                    )}
+
+                    {/* Custom Interval Input */}
+                    {selectedFreqType === "custom_interval" && (
+                      <div className="mt-2.5 space-y-1 animate-fade-in">
+                        <label className="block text-[10px] font-bold text-teal-900 uppercase">Set Custom Interval (in Minutes)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="1440"
+                          value={customIntervalInput}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 15;
+                            setCustomIntervalInput(val);
+                            const nextFreq = `custom_interval:${val}`;
+                            setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
+                            try {
+                              localStorage.setItem("cf_report_frequency", nextFreq);
+                            } catch {}
+                          }}
+                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-teal-950 font-mono shadow-inner"
+                        />
+                      </div>
+                    )}
+
+                    {/* Countdown Display Alert Badge */}
+                    {countdownDetail && countdownDetail.secondsLeft !== null && (
+                      <div className="mt-3 p-3 bg-gradient-to-r from-teal-950 to-teal-900 border border-teal-800 rounded-2xl flex items-center justify-between text-white shadow-md shadow-teal-950/20">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-teal-300">Next Auto-Email:</span>
+                        </div>
+                        <span className="text-xs font-black font-mono text-emerald-400 bg-teal-900/60 px-2 py-0.5 rounded-md border border-teal-800">
+                          {(() => {
+                            const sec = countdownDetail.secondsLeft;
+                            if (sec === null || sec === undefined) return "Calculating...";
+                            if (sec <= 0) return "Triggering now...";
+                            const h = Math.floor(sec / 3600);
+                            const m = Math.floor((sec % 3600) / 60);
+                            const s = sec % 60;
+                            if (h > 0) return `${h}h ${m}m ${s}s`;
+                            if (m > 0) return `${m}m ${s}s`;
+                            return `${s}s`;
+                          })()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
