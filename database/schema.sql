@@ -1,4 +1,4 @@
-﻿CREATE DATABASE IF NOT EXISTS clinicore;
+CREATE DATABASE IF NOT EXISTS clinicore;
 USE clinicore;
 
 CREATE TABLE clinics (

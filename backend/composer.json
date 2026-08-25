@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "clinicore/backend-api",
   "description": "CliniCore Enterprise REST API Engine (PHP 8.3 + MySQL 8.0)",
   "type": "project",

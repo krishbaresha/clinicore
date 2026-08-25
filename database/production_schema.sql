@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- CliniCore — Production Database Schema (MySQL 8.0 / InnoDB)
 -- Clinic & Wholesale Homoeopathic Management System
 -- Version: 2.0 (Production Release)

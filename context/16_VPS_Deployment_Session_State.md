@@ -1,4 +1,4 @@
-﻿# CliniCore VPS Deployment — Session Save Context
+# CliniCore VPS Deployment — Session Save Context
 **Last Updated:** 2026-08-24 21:39 PKT
 
 ## Current VPS State

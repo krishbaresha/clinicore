@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # =============================================================================
 # CliniCore VPS Master Fix Script
 # Fixes: Namespace/folder casing, Nginx 403, DB setup, PHP-FPM socket, .env

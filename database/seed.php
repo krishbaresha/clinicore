@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Database Seed Script for CliniCore
  * Inserts mock data from 07_Mock_Data.json into MySQL tables.

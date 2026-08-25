@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # ==============================================================================
 # 🏥 CliniCore — Production VPS Auto-Provisioning & Deployment Engine
 # Target OS: Ubuntu 24.04 LTS (Hostinger KVM 1 VPS)
