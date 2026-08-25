@@ -1,106 +1,38 @@
-# ClinicFlow — AI Rules & Constraints (Anti-Guess-Programming Protocol)
-
-> **Read this before writing any code.** These rules exist to stop guess-programming — where an AI fills gaps in its understanding with assumptions instead of asking. Guess-programming produces bugs, mismatched naming, wasted credits (redoing work), and code that "looks right" but breaks integration. Follow every rule below without exception.
+# CliniCore — AI Rules & Constraints (Anti-Guess Protocol)
 
 ---
 
-## Rule 0 — Context-First Programming (MANDATORY BEFORE CODING)
-
-**Before writing or modifying ANY code**, an AI MUST:
-1. Review existing PRD, TRD, Sitemap, and Architecture documents.
-2. If adding a new feature, database field, route, or business formula, **UPDATE the context files first** (in `ClinicFlow/context/` or `desktop_software_engine/`).
-3. Log the change in `09_Progress_Log.md`.
-4. Only then write code. This ensures 0% guess coding and keeps all documentation 100% in sync with reality.
-
-## Rule 1 — Never invent field/variable/route names
-
-Only use names that already exist in `01_PRD.md`, `03_TRD_Architecture.md`, `04_Screens_and_Sitemap.md`, and `07_Mock_Data.json`. If a name is needed that isn't defined in these documents, **stop and ask** instead of inventing one. Do not silently rename existing fields "for clarity" or "best practice" — consistency matters more than personal style preference.
-
-## Rule 2 — If context is missing, ask — don't assume
-
-If a requirement is ambiguous or a detail is missing (e.g. "what happens if two patients have the exact same name and phone?"), do not silently pick an interpretation and proceed. State the ambiguity clearly and ask a specific question, or explicitly flag the assumption you're making in the Progress Log (Rule 7) so a human or another AI can catch it later.
-
-## Rule 3 — Never touch files/scope outside the current task
-
-If asked to build the "New Visit" screen, do not also refactor the "Patient Profile" screen "while you're at it," even if you notice something that looks improvable. Flag it instead ("Noticed X could be improved in Patient Profile — not touching it now, logging for later"). Scope creep is a leading cause of wasted credits and broken working code.
-
-## Rule 4 — Match existing patterns before introducing new ones
-
-Before writing new code, look at how similar things were already built in this project (naming style, folder structure, component patterns, error handling style). New code should look like it was written by the same person/system as existing code. If no precedent exists yet, use exactly what's defined in `03_TRD_Architecture.md`.
-
-## Rule 5 — Standard API response shape (never deviate)
-
-Every API response must follow this exact shape — no exceptions, no alternate formats:
-
-```json
-// Success
-{ "success": true, "data": { ... }, "error": null }
-
-// Error
-{ "success": false, "data": null, "error": { "code": "STRING_CODE", "message": "human readable message" } }
-```
-
-## Rule 6 — Every feature needs a "definition of done" before coding starts
-
-Before implementing anything, state in plain language: "This is done when [specific testable behavior]." Example: "Patient search is done when typing a partial name or phone number returns matching patients from `07_Mock_Data.json` within the UI, including zero-result state." If this can't be stated clearly, the task isn't specified enough to build yet — ask for clarification first.
-
-## Rule 7 — Always update the Progress Log after meaningful work
-
-After completing any task (a screen, an API route, a bug fix), update `09_Progress_Log.md` with: what was built, what decisions/assumptions were made, what's still broken or incomplete, and what the next step should be. This is mandatory — it's how a different AI session or a different AI tool picks up work without re-guessing everything from scratch. Treat this like a shift-handover note to a coworker who wasn't in the room.
-
-## Rule 8 — Don't silently swallow errors
-
-Never write a try/catch that hides an error without logging or surfacing it. Every error must be visible somewhere (console log at minimum, ideally shown to the user in a friendly way per the design system).
-
-## Rule 9 — Don't fabricate data or fake success
-
-If something isn't actually implemented yet (e.g. WhatsApp reminders in Phase 2), don't build a fake button that pretends to work. Either don't render it, or clearly mark it "Coming Soon" / disabled — per `02_MVP_Scope.md`. Fake-working features are worse than missing features because they hide broken promises until a real user hits them.
-
-## Rule 10 — Currency, date, and locale formats are fixed
-
-- Currency: PKR, displayed as "Rs. 1,200" (not "$" or "₨" or "PKR 1200").
-- Dates: displayed as `DD-MMM-YYYY` (e.g. "15-Mar-2023") in the UI; stored as ISO 8601 (`2023-03-15T10:00:00Z`) in the database/API — exactly as shown in `07_Mock_Data.json`.
-- Phone numbers: stored and displayed as entered in mock data format (`03XXXXXXXXX`), no country code assumptions added silently.
-
-## Rule 11 — Security defaults are non-negotiable
-
-Never generate code that stores passwords in plain text, exposes `.env`/secret values in frontend code, or skips authentication checks on any route "temporarily for testing" without a clear, loud comment (`// TEMP: remove before deploy`) that also gets logged in the Progress Log.
-
-## Rule 12 — When in doubt about a medical/clinical detail, don't guess
-
-This is healthcare-adjacent software. Never invent medical terminology, dosage conventions, or clinical logic. Use exactly what's in the mock data or what the doctor/user explicitly provides. If a clinical assumption seems necessary (e.g. "should low-stock threshold apply differently to controlled medicines?"), flag it — don't decide it silently.
-
-## Rule 14 — Zero-Guess Schema & Multi-Unit Preservation During Inventory Expansion
-
-Whenever adding fast-entry methods, bulk importers, or migration helpers:
-1. **Canonical Field Strictness:** All imported or quickly added medicines must conform to the authoritative schema defined in `02_Database_Schema_and_Data_Dictionary.md` (`medicine_name`, `company_name`, `item_code`, `unit_sale_price`, `cost_price_per_box`, `total_base_stock`, `store_stock`, `warehouse_stock`, `low_stock_threshold`, `category`).
-2. **Backward-Compatibility:** Existing multi-unit ratios (`has_multi_unit`, `strips_per_box`, `units_per_strip`), POS search deduplication, and FIFO checkout logic must not be altered, broken, or bypassed.
-3. **Non-Destructive Merge:** Batch import engines must detect existing IDs/codes and merge or append cleanly without wiping operational sales logs, patient ledgers, or supplier balance records.
-
-## Rule 15 — Anti-Regression & Zero-Unsolicited-Deletion Standard (STRICT)
-
-1. **Feature Preservation Guarantee:** Never remove, overwrite, strip, or simplify any working feature, interaction gesture (pull-to-refresh, modal portal, ESC close, keyboard shortcut), state management hook, or business arithmetic unless the user explicitly commands it.
-2. **Explicit User Warning Requirement:** If fulfilling a user request directly conflicts with or modifies an existing feature, the AI MUST explicitly warn the user, explain the exact implications, and request confirmation before proceeding.
-3. **Surgical Modifications Only:** Modifications must be targeted and surgical. Never wipe whole files or components to implement a partial change.
-
-## Rule 16 — Systematic Phased Development & Impact Audits
-
-1. **Pre-Implementation Research:** Analyze the exact root cause of any bug or request before writing code.
-2. **Side-Effect Audit:** Check adjacent pages, layouts, and data caches to ensure changes in one component do not degrade performance or styling in another.
-3. **Granular Security Protections:** Ensure sensitive administration tabs (licensing, remote kill-switches, API credentials, raw backups) support sub-tab authentication locks and hiding to allow safe delegation to staff.
+## 🏛️ Rule 0 — Context-First Protocol (MANDATORY)
+**Before writing or modifying any code:**
+1. You must update the corresponding context files (e.g. `04_Screens_and_Sitemap.md`, `09_Progress_Log.md`) to reflect the changes.
+2. Log all updates under the current milestone in `09_Progress_Log.md`.
+3. Only then proceed to write source code.
 
 ---
 
-## Quick Self-Check Before Submitting Any Code (AI should run through this mentally)
+## 🚫 Rule 1 — Anti-Guess Programming
+- **No Invented Names:** Use exact field and model names defined in the schema.
+- **No Unsolicited Deletion:** Never remove, overwrite, or simplify any working features, gestures, or logic unless explicitly commanded.
+- **Ambiguity Guard:** If a requirement is ambiguous, stop and ask instead of making assumptions.
 
-- [ ] Did I update the relevant context documents BEFORE writing code? (Rule 0)
-- [ ] Did I use only names/fields that already exist in the docs or mock data? (Rule 1)
-- [ ] Did I stay inside the scope of the current task only? (Rule 3)
-- [ ] Did I follow the standard API response shape? (Rule 5)
-- [ ] Did I avoid faking any not-yet-built feature as if it works? (Rule 9)
-- [ ] Did I update the Progress Log with what I did and any assumptions made? (Rule 7)
-- [ ] Did I ensure NO existing working features or gestures were accidentally removed? (Rule 15)
-- [ ] If I was unsure about anything, did I flag it instead of silently deciding? (Rule 2)
-- [ ] Did I respect the single-instance deployment model — no multi-tenant features? (Rule 13)
+---
 
+## 📂 Rule 2 — Code Standards & Folder Structure
 
+### Frontend Structure (`frontend/src/`):
+- `api/db.js`: Low-bloat database layer with local in-memory cache.
+- `api/syncEngine.js`: Remote synchronization poller.
+- `utils/thermalPrinter.js`: ESC/POS 80mm thermal receipt generator.
+- `pages/`: Lazy-loaded React page components.
+- `components/`: Reusable UI modules (modals, lightboxes, dropdowns).
+
+### Backend Structure (`backend/src/`):
+- `Controllers/`: Route controllers handling requests and responses.
+- `Models/`: Database model logic mapping to MySQL tables.
+- `Database.php`: Centralized PDO Connection manager.
+
+### Formatting Rules:
+- **Currency:** Display as `Rs. 1,200` (PKR).
+- **Dates:** DD-MMM-YYYY (e.g., `25-Aug-2026`) in UI; ISO 8601 in database.
+- **Phones:** Clean 11-digit local format (`03XXXXXXXXX`).
+- **Standard API Shape:** Always return `{ success: true/false, data: ..., error: ... }`.

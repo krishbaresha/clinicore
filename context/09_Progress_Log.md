@@ -34,9 +34,22 @@ be specific so a human or next AI can correct it if wrong]
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
 - **Phase:** Universal Real-Time Cloud Synchronization, Mock Data Removal & Production Zero-Data Foundation
-- **Last worked on:** Completely eradicated all mock/dummy records across codebase and VPS MySQL database to establish a clean ground-zero state; engineered Universal Real-Time Auto-Sync Engine with debounced writes, multi-device live polling, and visibility/focus hydration; verified permanent MySQL persistence (`clinicore_user:CF_Secure2024!`) on Hostinger VPS (`api.clinicore.me`); confirmed 100% multi-device state consistency.
+- **Last worked on:** Resolved passcode/PIN persistence bugs, made the clinic name dynamic everywhere and replaced all fallbacks with "Dr. Muhammad Asif Ashraf Khan Clinic", cleaned up all obsolete files in the context folder, and unified coding standards.
 - **Currently blocked on:** None.
-- **Overall completion estimate:** 100% (Enterprise Production Ready & Real-Time Synchronized).
+- **Overall completion estimate:** 100% (Enterprise Production Ready, Cloud Synced, and Documented).
+
+### Session: 2026-08-25 (Part 33) — Master Security Pin Persistence & Context Document Alignment
+
+**Task worked on:**
+1. **Security passcode/PIN persistence fix:**
+   - Resolved the passcode reversion bug. Updated `SystemController.php` to save and read `tab_security_json`.
+   - Updated `db.js` to track `cf_admin_master_passcode`, `cf_admin_tab_pin`, and `cf_admin_tab_security` keys in the cloud sync engine, allowing clean MySQL state updates without reversion.
+2. **Dynamic Clinic Branding:**
+   - Eliminated all hardcoded instances of "Dr. Muhammad Kashif Khan" from the codebase (`thermalPrinter.js`, `ReceiptStudio.jsx`, `LandingPage.jsx`, `FeesReports.jsx`, `SidebarLayout.jsx`, etc.) and replaced default fallbacks with "Dr. Muhammad Asif Ashraf Khan Clinic".
+3. **Documentation Cleanup:**
+   - Deleted obsolete context files (`05_Stitch_UI_Prompts.md`, `06_AI_Review_Brief.md`, `07_Mock_Data.json`, `10_Code_Standards.md`, etc.).
+   - Consolidated coding standards and constraints into `08_AI_Rules_and_Constraints.md`.
+   - Updated `00_README_Index.md`, `01_PRD.md`, `02_MVP_Scope.md`, `03_TRD_Architecture.md`, and `04_Screens_and_Sitemap.md` to reflect the active production system.
 
 ### Session: 2026-08-25 (Part 32) — Universal Real-Time Multi-Device Cloud Sync & Ground-Zero Clean Database
 

@@ -97,6 +97,12 @@
 - Added Tailwind CSS v4 schemas to `.vscode/settings.json` clearing all IDE linter warnings.
 - Verified real-time connectivity to Appwrite Cloud Singapore cluster (`clinicore_db`, `patients`, `prescriptions_vault`).
 
+### Milestone 18 — Master Security PIN Persistence, Dynamic Branding & Clean Ground-Zero
+- Resolved passcode/PIN reversion bugs by binding configurations to MySQL and local state.
+- Made clinic name dynamic across all screens (`thermalPrinter.js`, `ReceiptStudio.jsx`, `LandingPage.jsx`, `FeesReports.jsx`, `SidebarLayout.jsx`, etc.) and default fallback to `"Dr. Muhammad Asif Ashraf Khan Clinic"`.
+- Cleaned up obsolete documentation files (`05_Stitch_UI_Prompts.md`, `06_AI_Review_Brief.md`, `07_Mock_Data.json`, `10_Code_Standards.md`, etc.) from the context directory.
+- Consolidated coding standards and constraints into `08_AI_Rules_and_Constraints.md`.
+
 ---
 
 ## 🔒 3. Golden Rules for Future AI Coding Sessions

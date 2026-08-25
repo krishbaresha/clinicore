@@ -1,61 +1,30 @@
-# ClinicFlow — MVP Scope & Phased Roadmap
+# CliniCore — Production Modules & Specifications
 
-> **Note for AI tools:** Build ONLY what's in "MVP — Build Now" for the first version. Everything in Phase 2/3 should be acknowledged in the UI (e.g. a disabled button or "coming soon" tag) but not functionally built yet. This keeps the demo focused and prevents scope creep.
-
----
-
-## MVP — Build Now (v1.0)
-
-| # | Feature | Priority | Notes |
-|---|---|---|---|
-| 1 | Doctor login/auth | Must-have | Single doctor account to start |
-| 2 | Dashboard (today's stats) | Must-have | Patients today, fees today, low stock alert count |
-| 3 | Patient list + search (name/phone) | Must-have | Core value proposition of the whole product |
-| 4 | Patient profile page (visit history timeline) | Must-have | Shows all past visits chronologically |
-| 5 | Add new patient | Must-have | Simple form: name, phone, age, gender |
-| 6 | Add new visit / prescription entry | Must-have | Symptoms, diagnosis, medicines, dosage, follow-up date, fee |
-| 7 | Printable prescription view | Must-have | Clinic name/logo header, patient info, medicine list |
-| 8 | Fees overview (daily/weekly/monthly totals) | Must-have | Simple report/chart |
-| 9 | Medical store — inventory list | Should-have | Medicine name, stock qty, price |
-| 10 | Medical store — sales log | Should-have | Record a sale, reduce stock |
-| 11 | Low-stock alert | Should-have | Flag items below threshold |
-| 12 | Receptionist role (limited access) | Should-have | Can add patients + collect fees, cannot edit prescriptions |
-
-## Phase 2 — After MVP validated with real doctor(s)
-
-- WhatsApp follow-up reminders (patient gets reminded of follow-up date)
-- Appointment/token queue system for walk-ins
-- Data export (CSV/PDF) for patient records and monthly reports
-- Analytics: common diagnoses, patient retention rate, seasonal trends
-- Multi-doctor support within one clinic (shared patient pool, separate dashboards)
-
-## Phase 3 — Scale-up features
-
-- Multi-branch / multi-clinic support (for doctors with more than one clinic)
-- Offline-first mode with background sync (for low-connectivity areas)
-- Inventory auto-deduction directly linked to prescription (dispense from Rx)
-- SMS/WhatsApp based online booking for patients
-- Subscription billing system (if selling as SaaS to multiple clinics)
+> **System Phase:** Production Release (v5.0) — All core modules, desktop sync engines, and cashbooks are fully built, tested (140/140 tests passing), and deployed to the Hostinger VPS.
 
 ---
 
-## Feature Prioritization Logic
+## 1. Active Modules Overview
 
-Ranked by: **(a) how directly it solves the core problem — lost patient history — and (b) how demo-able it is to a doctor in under 5 minutes.**
+### 🩺 OPD Consultation & Token Queue
+- **Live Doctor Queue:** Walk-ins are assigned a sequential token number.
+- **Consultation Entry:** Vitals (BP, Pulse, Temp), clinical notes, and brand-specific remedies.
+- **Doctor Queue Isolation:** Ensures privacy between chambers (e.g. Doctor 1 vs Doctor 2).
+- **Printable OPD Token:** 80mm ESC/POS thermal tokens.
 
-1. Search + patient history timeline is the single most important feature — it IS the product's core value.
-2. Prescription entry + printable view comes second — doctors need to see themselves *using* it in their real workflow.
-3. Fees tracking is the "sells itself" feature — doctors instantly see business value.
-4. Medical store is a strong differentiator but secondary — only relevant to doctors who have a store, so it's modular, not mandatory.
+### 💊 Counter POS (Pharmacy & Retail Store)
+- **Direct Sale Checkout:** Real-time stock checking, automatic unit pricing, and overall discounts.
+- **B2B Wholesale Mode:** Custom party accounts, credit balance tracking, and ledger postings.
+- **Void Invoice Authorization:** void-sale audits require manager approval with secure PIN.
 
-## MVP Demo Goal
+### 📦 4-Level Stock Ledger & Logistics
+- **Purchase GRN (Goods Received Note):** Tracks supplier invoice numbers, carrier details, and logistics billing.
+- **Stock Movement Ledger:** Reconciles SKU counts across Godowns, Warehouses, Counter, and In-Transit.
 
-A working demo should let someone:
-1. Log in and land on Dashboard.
-2. Search an existing mock patient → see their visit history.
-3. Add a new visit with a prescription → see it appear in history immediately.
-4. View the printable prescription.
-5. Check the Fees tab → see totals update.
-6. Peek at the Medical Store tab → see inventory and a mock low-stock alert.
+### 📊 CashBook & Z-Reports
+- **Double-Entry Cashbook Ledger:** Chronological debit/credit postings.
+- **Automated Z-Report (Day Closing):** Aggregates daily inflows, outflows, variance logs, and dispatches Z-Reports to WhatsApp.
 
-If all 6 steps work smoothly with mock data, the MVP demo is considered successful.
+### 🔒 Granular Access & Tab Security
+- **Super Admin Portal:** Access locked via Master Passcode (`KB2026`).
+- **Tab Locks:** Restricts sensitive developer panels, database backups, and software licensing.

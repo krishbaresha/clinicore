@@ -2,7 +2,7 @@
 
 > **Context File:** `context/15_Multi_Warehouse_Operator_Architecture_and_Future_Roadmap.md`  
 > **Status:** Specification Freeze & Active Implementation Blueprint  
-> **Target System:** Dr. Muhammad Kashif Khan Clinic & Wholesale Homoeopathic Store (Hyderabad & Interior Sindh)  
+> **Target System:** Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Homoeopathic Store (Hyderabad & Interior Sindh)  
 > **Core Principle:** Single-Login Multi-Operator Workflow (Zero Logout Overhead) + Real-time Accountability + Inter-Godown Safety.
 
 ---
@@ -48,7 +48,7 @@ The counter/terminal PC logs in **once at the start of the business day**. Indiv
 5. **80mm Thermal Receipt Header/Footer:**
    ```text
    ================================================
-   Dr. Muhammad Kashif Khan Clinic & Homoeo Store
+    Dr. Muhammad Asif Ashraf Khan Clinic & Homoeo Store
    Lajpat Road, Hyderabad | Phone: 0300-1234567
    ================================================
    Invoice #: POS-7861      Date: 24/08/2026 05:15 PM

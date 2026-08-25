@@ -1,82 +1,42 @@
-# ClinicFlow — Product Requirements Document (PRD)
+# CliniCore — Product Requirements Document (PRD)
 
-> **Note for AI tools (Antigravity / Stitch / other):** This is the master product definition. Every screen, feature, and data model built for this product must align with what's described here. Product name is **ClinicFlow** — use this name consistently in UI headers, page titles, and file/component names. Do not rename it to something else mid-build.
+> **Core System Name:** CliniCore (Web App + Desktop Hybrid Engine)
+> **Active Principal Doctor / Owner:** Dr. Muhammad Asif Ashraf Khan (Hyderabad & Interior Sindh)
 
 ---
 
-## 1. Problem Statement
+## 1. Vision & Core Promise
+CliniCore is a high-performance, medical-grade hybrid software designed for clinics and wholesale/retail homeopathic medicine stores. It provides:
+1. **Universal Real-time Synchronization:** Ensures data entered in any browser worldwide instantly syncs to the Hostinger VPS MySQL database.
+2. **Offline-First Resilience:** In-memory client caching with background sync queue allows clinic and counter POS operations to continue even during internet outages.
+3. **Medical Store & Wholesale POS:** Tracks retail sales, supplier GRNs, double-entry cashbooks, and a 4-level stock ledger.
+4. **Isolated Doctor Queues:** Direct patient assignments with isolated queues per doctor chamber.
 
-Doctors running small-to-medium private clinics in Pakistan currently rely on **paper prescriptions and manual memory** to track patient history. This creates recurring problems:
+---
 
-- Patients lose their physical prescriptions, so when they return (sometimes months or years later), the doctor has no record of past diagnosis, medicines given, or dosage.
-- Doctors cannot quickly answer "when did this patient last visit, and what did I prescribe?"
-- Clinic fee collection is tracked informally (notebook/memory), making daily/monthly revenue unclear.
-- If the doctor also runs a small in-clinic medical store (pharmacy), stock and sales are tracked separately (or not at all), disconnected from patient visits.
+## 2. Target Users
+* **Principal Doctor (Dr. Muhammad Asif Ashraf Khan):** Full system owner with master permissions to access financial reports, adjust licenses, and manage granular tab security.
+* **Associate Doctors:** Manage their assigned patient queues and record consultation notes without seeing other chambers' collections.
+* **Counter Sales Staff / Cashiers:** Process POS sales, manage counter-specific cash drawers, and void sales with manager authorization.
+* **Warehouse / Godown Incharges:** Receive supplier purchases, track inventory transfers, and reconcile batch stock.
 
-## 2. Product Vision
+---
 
-ClinicFlow is a web application that gives doctors a **permanent, searchable digital record** of every patient they've ever treated — even if the patient loses their own copy — plus simple financial tracking for consultations and an optional in-house medical store module.
+## 3. Product Scope & Core Modules
 
-The core promise: **"Search a patient's name, see their entire history — even from 2 years ago."**
+### 🩺 OPD Consultation & Token Queue
+- **Isolated Queues:** Patients registered at reception are assigned to specific doctors. Doctors only see their assigned patients.
+- **Consultation Cards:** Doctors log vitals, clinical symptoms, diagnoses, brand-specific homeopathic remedies, and follow-up dates.
 
-## 3. Target Users
+### 💊 Counter POS & Pharmacy Sales
+- **Wholesale Party Code Auto-Fill:** Typing/selecting a B2B Party Code instantly populates customer details and credit balances.
+- **Brand Tags for Medicine Search:** Displays manufacturing company labels (`[BM Pvt LTD]`, `[Paul Brooks]`, etc.) to prevent brand selection confusion.
+- **Overall Bill-level Discounts:** Supports percentage and flat trade discounts on POS checkouts.
 
-| Persona | Description | Primary Need |
-|---|---|---|
-| **Solo Doctor** | Runs a private clinic, sees patients daily, may or may not have a receptionist | Fast patient lookup, prescription entry, fee tracking |
-| **Clinic Receptionist** | Handles patient check-in, fee collection, basic data entry | Simple, error-proof entry screens (not full medical editing rights) |
-| **Doctor with Medical Store** | Same as solo doctor, but also sells medicines directly from clinic | Needs inventory + sales tracking connected to patient visits |
+### 📦 4-Level Stock Ledger & GRNs
+- **GRN/Challan Tracking:** Reconciles supplier purchases, logistics billing, and carrier bilty numbers.
+- **Stock Ledger Timeline:** Reconciles SKU status across 4 distinct levels: Counter, Warehouse, Godowns, and In-Transit.
 
-## 4. Goals
-
-- Give doctors permanent, never-lost patient history.
-- Make patient search instant, by name or phone number.
-- Track consultation fees per visit and generate simple revenue reports.
-- Optionally track medical store inventory and sales, linked to prescriptions.
-- Be usable on tablet/mobile at the reception desk, not just desktop.
-- Feel trustworthy and "professional medical software," not a generic template.
-
-## 5. Non-Goals (Out of Scope for now)
-
-- Not a hospital-grade Electronic Health Record (EHR) system with lab integrations, imaging, insurance claims, etc.
-- Not a telemedicine/video consultation platform.
-- Not a full accounting/tax system — only clinic-level fee and store revenue tracking.
-- Not initially multi-branch (single clinic location per account, expandable later).
-
-## 6. Core Features (MVP)
-
-1. **Patient Records** — create, search, and view patient profiles with full visit history.
-2. **Visit / Prescription Entry** — log a new visit with symptoms, diagnosis, prescribed medicines, dosage, follow-up date.
-3. **Printable Prescription** — clean, clinic-branded prescription output.
-4. **Fee Tracking** — record fee per visit; view daily/weekly/monthly totals.
-5. **Medical Store Module** — inventory list, stock levels, sales log, low-stock alerts.
-6. **Dashboard** — daily snapshot: patients seen today, fees collected today, low-stock alerts, new vs repeat patients.
-7. **Authentication** — doctor login; optional receptionist role with limited permissions.
-
-## 7. Phase 2 Features (Explicitly planned, not built in MVP)
-
-- WhatsApp follow-up reminders to patients.
-- Multi-doctor / multi-branch support.
-- Appointment/token queue system.
-- Analytics: most common diagnoses, seasonal disease trends.
-- Data export (CSV/PDF) of patient records and financial reports.
-- Offline-first mode with sync (for low-internet areas).
-
-## 8. Success Metrics (how we know it's working)
-
-- A doctor can find any past patient's record in under 10 seconds via search.
-- Zero "lost" patient history — every visit ever entered stays retrievable.
-- Doctor can see today's total fee collection without manual calculation.
-- Medical store stock count stays accurate after each sale.
-
-## 9. Key User Stories
-
-- *As a doctor*, I want to search a patient by name so I can see everything I've prescribed them, even from years ago.
-- *As a doctor*, I want to add a new visit quickly during a busy consultation, without slowing down.
-- *As a receptionist*, I want to register a new patient and collect fee without touching medical/prescription fields.
-- *As a doctor with a medical store*, I want to see how much stock I have left and how much I sold today.
-- *As a doctor*, I want a simple report at the end of the month showing total patients and total earnings.
-
-## 10. Design Tone
-
-Professional medical trust + modern SaaS feel. Reference aesthetic: **glassmorphism, bento-grid dashboard layout, teal/medical-blue color palette**, clean sans-serif typography. Should feel like something a doctor would proudly show a colleague — not a generic admin panel template.
+### 💰 CashBook & Z-Reports
+- **Double-Entry Ledger:** Tracks cash receipt inflows and payment outflows.
+- **Automated Z-Reports:** Reconciles opening cash float, total daily inflows, and physical counts with automated WhatsApp/Email dispatch.
