@@ -247,7 +247,7 @@ export default function LoginScreen() {
 
       {/* Bottom Footer */}
       <footer className="w-full max-w-md mx-auto text-center py-3 text-xs text-gray-400 font-medium relative z-20">
-        <span>© 2026 ClinicFlow Hybrid OS • </span>
+        <span>© 2026 CliniCore Hybrid OS • </span>
         <button
           type="button"
           onClick={() => navigate("/live-queue")}

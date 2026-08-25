@@ -72,7 +72,7 @@ export default function LicenseBanner() {
       <div className="flex items-center gap-2 shrink-0 ml-3">
         <a
           href={`https://wa.me/923142291356?text=${encodeURIComponent(
-            `Salam K.B Software, I am contacting regarding software subscription payment for ${lic.monthly_fee ? `Rs. ${lic.monthly_fee}` : "ClinicFlow"}.`
+            `Salam K.B Software, I am contacting regarding software subscription payment for ${lic.monthly_fee ? `Rs. ${lic.monthly_fee}` : "CliniCore"}.`
           )}`}
           target="_blank"
           rel="noreferrer"

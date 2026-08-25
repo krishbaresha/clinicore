@@ -1055,7 +1055,7 @@ export function printProductStockCard(item, transactions = [], summary = {}, cli
  * 80mm ESC/POS Thermal & Standard Print: Inventory Stock List (DrCreate & Access Format)
  */
 export function printInventoryListReceipt(items = [], categoryName = "All Categories", clinic = null) {
-  const cName = clinic?.name || "ClinicFlow Pharmacy & Clinic";
+  const cName = clinic?.name || "CliniCore Pharmacy & Clinic";
   const dateStr = new Date().toLocaleString("en-PK", { dateStyle: "short", timeStyle: "short" });
 
   const rowsHtml = (items || []).map((item) => {
@@ -2084,7 +2084,7 @@ export function printExecutiveAuditDocument(auditData, clinicData = null) {
         </div>
 
         <div style="text-align: center; font-size: 10px; color: #94a3b8; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
-          ClinicFlow Master Hybrid OS · System Verified Report · Confidential Internal Audit Statement
+          CliniCore Master Hybrid OS · System Verified Report · Confidential Internal Audit Statement
         </div>
       </body>
     </html>

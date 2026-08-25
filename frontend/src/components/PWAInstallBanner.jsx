@@ -24,7 +24,7 @@ export default function PWAInstallBanner() {
       setIsInstalled(true);
       setShowBanner(false);
       setDeferredPrompt(null);
-      console.log("✅ ClinicFlow PWA successfully installed!");
+      console.log("✅ CliniCore PWA successfully installed!");
     });
 
     return () => window.removeEventListener("beforeinstallprompt", handler);
@@ -50,7 +50,7 @@ export default function PWAInstallBanner() {
           <span className="material-symbols-outlined text-2xl">install_desktop</span>
         </div>
         <div>
-          <h4 className="font-headline font-bold text-xs text-white">Install ClinicFlow App</h4>
+          <h4 className="font-headline font-bold text-xs text-white">Install CliniCore App</h4>
           <p className="text-[11px] text-emerald-100/80">Install for lightning-fast 100% offline access</p>
         </div>
       </div>

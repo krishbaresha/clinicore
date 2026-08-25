@@ -111,7 +111,7 @@ export default function SidebarLayout({ children }) {
       setDeferredPrompt(null);
     } else {
       alert(
-        "📱 To install ClinicFlow as a Native Desktop / Mobile App:\n\n" +
+        "📱 To install CliniCore as a Native Desktop / Mobile App:\n\n" +
         "1. Chrome / Edge Desktop: Click the Install icon in your address bar (top-right).\n" +
         "2. Android Chrome: Tap Menu (⋮) ➔ 'Install App' or 'Add to Home Screen'.\n" +
         "3. Apple iOS Safari: Tap Share (📤) ➔ 'Add to Home Screen'."
@@ -153,13 +153,13 @@ export default function SidebarLayout({ children }) {
 
           const base64Content = btoa(unescape(encodeURIComponent(backupStr)));
           const resendPayload = {
-            from: "ClinicFlow Backup <onboarding@resend.dev>",
+            from: "CliniCore Backup <onboarding@resend.dev>",
             to: targetEmails,
-            subject: `🏥 ClinicFlow Auto Backup - ${c.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
+            subject: `🏥 CliniCore Auto Backup - ${c.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
             html: `
               <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #ccfbf1;">
                 <h2 style="color: #0f766e; margin-top: 0;">🏥 Automated Clinic Backup (Every ${intervalHours} Hours)</h2>
-                <p><strong>Clinic:</strong> ${c.name || "ClinicFlow Clinic"}</p>
+                <p><strong>Clinic:</strong> ${c.name || "CliniCore Clinic"}</p>
                 <p><strong>Triggered At:</strong> ${new Date().toLocaleString("en-PK")}</p>
                 <p><strong>Summary:</strong> Patients: ${backup.data.patients?.length || 0} | Sales: ${backup.data.sales?.length || 0} | Purchases: ${backup.data.purchases?.length || 0}</p>
                 <p style="background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; font-weight: bold;">
@@ -167,7 +167,7 @@ export default function SidebarLayout({ children }) {
                 </p>
               </div>
             `,
-            attachments: [{ filename: `ClinicFlow_AutoBackup_${new Date().toISOString().split("T")[0]}.json`, content: base64Content }]
+            attachments: [{ filename: `CliniCore_AutoBackup_${new Date().toISOString().split("T")[0]}.json`, content: base64Content }]
           };
 
           let res;
@@ -407,16 +407,16 @@ export default function SidebarLayout({ children }) {
                 {/* Install App Trigger Button in Sidebar */}
                 <button
                   onClick={handleInstallPWA}
-                  className="w-full flex items-center justify-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-2xl transition-all text-xs font-bold shadow-xs cursor-pointer"
-                  title="Install ClinicFlow App"
+                  className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 rounded-2xl transition-all text-xs font-bold shadow-xs cursor-pointer active:scale-98"
+                  title="Install CliniCore App"
                 >
                   <span className="material-symbols-outlined text-base text-emerald-700">install_desktop</span>
                   <span>Install Desktop App</span>
                 </button>
 
                 <div className="flex items-center justify-between w-full px-2 pt-1">
-                  <div className="text-[11px] font-bold text-slate-500">
-                    {clinic?.name?.split(" ")[0] || "ClinicFlow"} OS
+                  <div className="text-[11px] font-bold text-slate-600">
+                    {clinic?.name?.split(" ")[0] || "CliniCore"} OS
                   </div>
                   <button
                     onClick={() => setSidebarOpen(false)}
@@ -431,8 +431,8 @@ export default function SidebarLayout({ children }) {
               <div className="flex flex-col items-center gap-2">
                 <button
                   onClick={handleInstallPWA}
-                  className="w-full p-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-colors flex items-center justify-center cursor-pointer border border-emerald-200"
-                  title="Install Desktop App"
+                  className="w-full p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 transition-colors flex items-center justify-center cursor-pointer border border-emerald-300 active:scale-95"
+                  title="Install CliniCore App"
                 >
                   <span className="material-symbols-outlined text-base text-emerald-700">install_desktop</span>
                 </button>
@@ -468,7 +468,7 @@ export default function SidebarLayout({ children }) {
                     </span>
                   </div>
                   <div>
-                    <h2 className="font-black text-sm text-teal-950 tracking-tight">ClinicFlow</h2>
+                    <h2 className="font-black text-sm text-teal-950 tracking-tight">CliniCore</h2>
                     <p className="text-[10px] text-slate-500 font-medium truncate max-w-[160px]">
                       {clinic?.name || "Clinic"}
                     </p>

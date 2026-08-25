@@ -210,7 +210,7 @@ export default function PullToRefresh({ children, onRefresh, enabled = true }) {
                 <span className="material-symbols-outlined text-teal-700 animate-spin text-lg">
                   progress_activity
                 </span>
-                <span className="text-teal-900 font-extrabold tracking-wide">Refreshing ClinicFlow...</span>
+                <span className="text-teal-900 font-extrabold tracking-wide">Refreshing CliniCore...</span>
               </>
             ) : (
               <>

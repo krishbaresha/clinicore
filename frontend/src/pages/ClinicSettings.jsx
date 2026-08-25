@@ -182,7 +182,7 @@ export default function ClinicSettings() {
       ) : (
         <section className="glass-card p-md flex items-center justify-between bg-teal-50/50 border border-teal-100">
           <div>
-            <div className="font-bold text-gray-900 text-sm">{clinicForm.name || "ClinicFlow"}</div>
+            <div className="font-bold text-gray-900 text-sm">{clinicForm.name || "CliniCore"}</div>
             <div className="text-xs text-gray-500">{clinicForm.address}</div>
           </div>
           <span className="text-xs font-bold text-teal-800 bg-teal-100 px-3 py-1 rounded-full">
@@ -942,7 +942,7 @@ export default function ClinicSettings() {
                       const a = document.createElement("a");
                       a.href = url;
                       const dateStr = new Date().toISOString().split("T")[0];
-                      a.download = `ClinicFlow_Encrypted_Backup_${dateStr}.cfbak`;
+                      a.download = `CliniCore_Encrypted_Backup_${dateStr}.cfbak`;
                       document.body.appendChild(a);
                       a.click();
                       document.body.removeChild(a);
@@ -955,22 +955,22 @@ export default function ClinicSettings() {
                         try {
                           const base64Content = btoa(unescape(encodeURIComponent(encryptedBackupStr)));
                           const resendPayload = {
-                            from: "ClinicFlow Backup <onboarding@resend.dev>",
+                            from: "CliniCore Backup <onboarding@resend.dev>",
                             to: targetEmails,
-                            subject: `🏥 ClinicFlow Encrypted Vault Backup - ${clinicForm.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
+                            subject: `🏥 CliniCore Encrypted Vault Backup - ${clinicForm.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
                             html: `
                               <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #ccfbf1;">
-                                <h2 style="color: #0f766e; margin-top: 0;">🏥 ClinicFlow Encrypted Database Backup</h2>
-                                <p><strong>Clinic:</strong> ${clinicForm.name || "ClinicFlow Clinic"}</p>
+                                <h2 style="color: #0f766e; margin-top: 0;">🏥 CliniCore Encrypted Database Backup</h2>
+                                <p><strong>Clinic:</strong> ${clinicForm.name || "CliniCore Clinic"}</p>
                                 <p><strong>Date & Time:</strong> ${new Date().toLocaleString("en-PK")}</p>
                                 <p style="background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; font-weight: bold;">
-                                  🔒 Your full encrypted database vault is attached as a secure <code>.cfbak</code> file! Only ClinicFlow Software can restore this file.
+                                  🔒 Your full encrypted database vault is attached as a secure <code>.cfbak</code> file! Only CliniCore Software can restore this file.
                                 </p>
                               </div>
                             `,
                             attachments: [
                               {
-                                filename: `ClinicFlow_Encrypted_Backup_${dateStr}.cfbak`,
+                                filename: `CliniCore_Encrypted_Backup_${dateStr}.cfbak`,
                                 content: base64Content
                               }
                             ]
@@ -1075,7 +1075,7 @@ export default function ClinicSettings() {
                   Restore / Import Backup File (.cfbak / .json)
                 </h4>
                 <p className="text-xs text-amber-800/80 mt-1">
-                  Restore all database records from a previously saved ClinicFlow <strong>.cfbak</strong> encrypted backup file.
+                  Restore all database records from a previously saved CliniCore <strong>.cfbak</strong> encrypted backup file.
                 </p>
               </div>
               <label className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center">

@@ -63,7 +63,7 @@ export default class ErrorBoundary extends React.Component {
                 className="w-full min-h-[46px] bg-teal-700 hover:bg-teal-800 text-white font-black text-xs py-3 rounded-2xl shadow-md shadow-teal-900/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
               >
                 <span className="material-symbols-outlined text-base">cached</span>
-                <span>Reload ClinicFlow</span>
+                <span>Reload CliniCore</span>
               </button>
 
               <button

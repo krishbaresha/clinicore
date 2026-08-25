@@ -883,13 +883,14 @@ export default function MedicalStorePOS() {
                     </div>
 
                     {/* Bottom Controls Row: Qty + Disc% + Remove */}
-                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-200/50">
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
                       {/* Quantity Input Box & Controls */}
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => updateQty(item.inventory_id, -1)}
-                          className="w-6 h-6 bg-white border border-gray-300 hover:bg-gray-100 rounded-md text-gray-700 font-black text-xs flex items-center justify-center transition-colors shadow-2xs"
+                          className="w-8 h-8 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-slate-800 font-black text-sm flex items-center justify-center transition-all shadow-xs active:scale-95 cursor-pointer"
+                          title="Decrease Quantity"
                         >
                           -
                         </button>
@@ -898,21 +899,22 @@ export default function MedicalStorePOS() {
                           min="1"
                           value={item.quantity}
                           onChange={(e) => setExactQty(item.inventory_id, e.target.value)}
-                          className="w-10 bg-white border border-gray-300 rounded-md py-0.5 text-center text-xs font-black text-gray-900 focus:outline-none focus:border-teal-600"
+                          className="w-12 bg-white border border-slate-300 rounded-lg py-1 text-center text-xs font-black text-slate-950 focus:outline-none focus:ring-2 focus:ring-teal-500"
                           title="Quantity"
                         />
                         <button
                           type="button"
                           onClick={() => updateQty(item.inventory_id, 1)}
-                          className="w-6 h-6 bg-white border border-gray-300 hover:bg-gray-100 rounded-md text-gray-700 font-black text-xs flex items-center justify-center transition-colors shadow-2xs"
+                          className="w-8 h-8 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-slate-800 font-black text-sm flex items-center justify-center transition-all shadow-xs active:scale-95 cursor-pointer"
+                          title="Increase Quantity"
                         >
                           +
                         </button>
                       </div>
 
                       {/* Percentage Discount Field */}
-                      <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                        <label className="text-[10px] text-amber-900 font-bold uppercase tracking-tight">Disc%:</label>
+                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-amber-300 shadow-2xs">
+                        <label className="text-[10px] text-amber-950 font-black uppercase tracking-tight">Disc%:</label>
                         <input
                           type="number"
                           min="0"
@@ -929,9 +931,10 @@ export default function MedicalStorePOS() {
                       <button
                         type="button"
                         onClick={() => removeFromCart(item.inventory_id)}
-                        className="text-[11px] text-rose-600 hover:text-rose-800 hover:underline font-bold"
+                        className="px-2.5 py-1.5 text-xs text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 rounded-xl font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                        title="Remove item"
                       >
-                        Remove
+                        <span className="material-symbols-outlined text-sm">delete</span>
                       </button>
                     </div>
                   </div>

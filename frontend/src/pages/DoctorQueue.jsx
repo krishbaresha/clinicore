@@ -255,10 +255,21 @@ export default function DoctorQueue() {
 
       {/* Queue List */}
       {queue.length === 0 ? (
-        <div className="text-center py-16">
-          <span className="material-symbols-outlined text-6xl text-gray-200 block mb-3">event_available</span>
-          <div className="text-gray-500 font-medium">No patients in today's queue yet</div>
-          <div className="text-sm text-gray-400 mt-1">Patients will appear here after registration</div>
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-3xl border-2 border-dashed border-teal-200/80 shadow-xs">
+          <div className="w-16 h-16 rounded-3xl bg-teal-50 text-teal-700 flex items-center justify-center mb-4 shadow-inner">
+            <span className="material-symbols-outlined text-4xl">event_available</span>
+          </div>
+          <h3 className="font-bold text-slate-800 text-base">No Patients in Today&apos;s Queue</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm">
+            The doctor&apos;s OPD waiting list is clear. New patients registered at the reception counter will appear here in real-time.
+          </p>
+          <button
+            onClick={() => navigate("/reception/register")}
+            className="mt-5 px-5 py-2.5 bg-teal-800 hover:bg-teal-900 text-white rounded-2xl text-xs font-bold flex items-center gap-2 shadow-md shadow-teal-800/20 transition-all cursor-pointer active:scale-95"
+          >
+            <span className="material-symbols-outlined text-base">how_to_reg</span>
+            <span>Register Walk-in Patient</span>
+          </button>
         </div>
       ) : (
         <div className="space-y-3">

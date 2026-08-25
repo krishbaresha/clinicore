@@ -459,13 +459,13 @@ export default function DeveloperAdminPanel() {
       const dateStr = new Date().toISOString().split("T")[0];
 
       const resendPayload = {
-        from: "ClinicFlow Super Admin <onboarding@resend.dev>",
+        from: "CliniCore Super Admin <onboarding@resend.dev>",
         to: [targetEmail],
-        subject: `🏥 ClinicFlow Encrypted System Audit & Vault Backup (${dateStr})`,
+        subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 24px; background: #f8fafc; border-radius: 16px; border: 1px solid #ccfbf1; max-width: 600px; color: #0f172a;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-              <h2 style="color: #0f766e; margin: 0;">🏥 ClinicFlow Super Admin Report</h2>
+              <h2 style="color: #0f766e; margin: 0;">🏥 CliniCore Super Admin Report</h2>
             </div>
             <p style="font-size: 14px; line-height: 1.6;">
               Automated system audit and encrypted database vault snapshot from <strong>${clinicForm.name || "Medical Clinic & Pharmacy"}</strong>.
@@ -480,16 +480,16 @@ export default function DeveloperAdminPanel() {
               </ul>
             </div>
             <div style="background: #e0f2fe; color: #0369a1; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: bold;">
-              🔒 Encrypted Database Backup is attached as: <code>ClinicFlow_Encrypted_Backup_${dateStr}.cfbak</code>
+              🔒 Encrypted Database Backup is attached as: <code>CliniCore_Encrypted_Backup_${dateStr}.cfbak</code>
             </div>
             <p style="font-size: 11px; color: #94a3b8; margin-top: 20px;">
-              This file is protected against plain-text tampering and can only be restored via ClinicFlow Command Center.
+              This file is protected against plain-text tampering and can only be restored via CliniCore Command Center.
             </p>
           </div>
         `,
         attachments: [
           {
-            filename: `ClinicFlow_Encrypted_Backup_${dateStr}.cfbak`,
+            filename: `CliniCore_Encrypted_Backup_${dateStr}.cfbak`,
             content: base64Content,
           },
         ],
@@ -757,7 +757,7 @@ export default function DeveloperAdminPanel() {
 
         {/* Bottom Footer */}
         <footer className="w-full max-w-md mx-auto text-center py-3 text-xs text-gray-400 font-medium relative z-20">
-          <span>© 2026 ClinicFlow • Master Developer Portal</span>
+          <span>© 2026 CliniCore • Master Developer Portal</span>
         </footer>
       </div>
     );
@@ -1102,7 +1102,7 @@ export default function DeveloperAdminPanel() {
                     <a
                       href={`https://wa.me/923473100304?text=${encodeURIComponent(
                         `*📋 SOFTWARE MONTHLY INVOICE / REMINDER*\n` +
-                        `*🏥 ${activeClinic?.name || "ClinicFlow Client"}*\n\n` +
+                        `*🏥 ${activeClinic?.name || "CliniCore Client"}*\n\n` +
                         `• Monthly Subscription Fee: Rs. ${licenseForm.monthly_fee?.toLocaleString("en-PK") || "5,000"}\n` +
                         `• Due Date: ${licenseForm.next_due_date || "1st of Month"}\n` +
                         `• Grace Period: 1st to ${licenseForm.grace_days || 10}th of Month\n` +

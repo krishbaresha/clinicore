@@ -80,7 +80,7 @@ export default function LicenseGuard({ children }) {
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <a
               href={`https://wa.me/923142291356?text=${encodeURIComponent(
-                `Salam K.B Software, our ClinicFlow software access is locked. We want to clear our monthly subscription of Rs. ${lic.monthly_fee || 5000}. Please verify and restore access.`
+                `Salam K.B Software, our CliniCore software access is locked. We want to clear our monthly subscription of Rs. ${lic.monthly_fee || 5000}. Please verify and restore access.`
               )}`}
               target="_blank"
               rel="noreferrer"
