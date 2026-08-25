@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients } from "../api/db.js";
