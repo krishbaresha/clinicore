@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { dbSuppliers, dbPurchases, dbInventory, dbClinic, dbSupplierLedger, dbAccounts, dbGrnMetadata } from "../api/db.js";
+import { verifyAdminPasscode } from "../api/auth.js";
 import { printSupplierPurchaseReceipt, printPurchaseGRNReceipt } from "../utils/thermalPrinter.js";
 
 /**
@@ -305,6 +306,12 @@ export default function SupplierPurchases() {
   const [newSupContact, setNewSupContact] = useState("");
   const [newSupPhone, setNewSupPhone] = useState("");
   const [newSupAddress, setNewSupAddress] = useState("");
+
+  // Admin Protected Supplier Edit & Passcode States
+  const [adminAuthPrompt, setAdminAuthPrompt] = useState(null); // { targetSupplier: sup, action: "edit" }
+  const [adminPasscodeEntry, setAdminPasscodeEntry] = useState("");
+  const [adminAuthError, setAdminAuthError] = useState("");
+  const [editSupplierModal, setEditSupplierModal] = useState(null); // supplier object being edited
 
   // Supplier Code Quick Auto-Fill state
   const [grnSupplierCode, setGrnSupplierCode] = useState("");
@@ -773,6 +780,81 @@ export default function SupplierPurchases() {
     setNewSupPhone("");
     setNewSupAddress("");
     setShowAddSupplier(false);
+    refreshData();
+  };
+
+  const handleRequestEditSupplier = (sup) => {
+    setAdminAuthPrompt({ targetSupplier: sup, action: "edit" });
+    setAdminPasscodeEntry("");
+    setAdminAuthError("");
+  };
+
+  const handleVerifyAdminPasscode = (e) => {
+    e.preventDefault();
+    if (!verifyAdminPasscode(adminPasscodeEntry)) {
+      setAdminAuthError("❌ Incorrect Admin Master Passcode! Access Denied.");
+      return;
+    }
+    const target = adminAuthPrompt?.targetSupplier;
+    setAdminAuthPrompt(null);
+    setAdminPasscodeEntry("");
+    setAdminAuthError("");
+
+    if (target) {
+      setEditSupplierModal({
+        id: target.id,
+        supplier_code: target.supplier_code || target.id,
+        name: target.name || "",
+        contact_person: target.contact_person || "",
+        phone: target.phone || "",
+        city: target.city || "",
+        address: target.address || "",
+        current_balance: String(target.current_balance || target.balance_due || 0),
+      });
+    }
+  };
+
+  const handleSaveSupplierEdits = (e) => {
+    e.preventDefault();
+    if (!editSupplierModal || !editSupplierModal.name.trim()) return;
+
+    const oldSup = dbSuppliers.getById(editSupplierModal.id);
+    const updated = dbSuppliers.update(editSupplierModal.id, {
+      supplier_code: editSupplierModal.supplier_code.trim() || oldSup?.supplier_code || editSupplierModal.id,
+      name: editSupplierModal.name.trim(),
+      contact_person: editSupplierModal.contact_person.trim(),
+      phone: editSupplierModal.phone.trim(),
+      city: editSupplierModal.city.trim(),
+      address: editSupplierModal.address.trim(),
+      current_balance: Number(editSupplierModal.current_balance) || 0,
+      balance_due: Number(editSupplierModal.current_balance) || 0,
+    });
+
+    // Also sync with Chart of Accounts if matching account exists
+    if (oldSup?.name) {
+      const acc = dbAccounts.getAll().find((a) => a.account_name.toLowerCase() === oldSup.name.toLowerCase());
+      if (acc) {
+        dbAccounts.update(acc.id, {
+          account_name: updated.name,
+          city: updated.city || acc.city,
+          phone: updated.phone || acc.phone,
+        });
+      }
+    }
+
+    alert(`✅ Distributor "${updated.name}" updated successfully!`);
+    setEditSupplierModal(null);
+    refreshData();
+  };
+
+  const handleDeleteSupplier = (id, name) => {
+    const confirmDel = confirm(
+      `⚠️ ADMIN CONFIRMATION: Are you sure you want to permanently delete supplier "${name}"?\n\nThis will remove their profile from active directory.`
+    );
+    if (!confirmDel) return;
+    dbSuppliers.delete(id);
+    alert(`🗑️ Supplier "${name}" deleted.`);
+    setEditSupplierModal(null);
     refreshData();
   };
 
@@ -1556,11 +1638,19 @@ export default function SupplierPurchases() {
                         }));
                         setGrnSupplierCode(sup.supplier_code || sup.id);
                       }}
-                      className="bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 px-3 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
+                      className="bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 px-2.5 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
                       title="Create GRN with this Supplier"
                     >
                       <span className="material-symbols-outlined text-sm">receipt</span>
                       New GRN
+                    </button>
+                    <button
+                      onClick={() => handleRequestEditSupplier(sup)}
+                      className="bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 px-2.5 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
+                      title="Admin Security Passcode Required to Edit Company & Code"
+                    >
+                      <span className="material-symbols-outlined text-sm text-amber-700">edit_note</span>
+                      Edit
                     </button>
                     <button
                       onClick={() => {
@@ -2384,6 +2474,204 @@ export default function SupplierPurchases() {
           </form>
         </div>
       )}
+
+      {/* MODAL: Admin Security Passcode Verification */}
+      {adminAuthPrompt && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={handleVerifyAdminPasscode} className="bg-white max-w-sm w-full rounded-3xl p-6 border border-amber-300 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black text-2xl shrink-0">
+                <span className="material-symbols-outlined text-2xl">lock</span>
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-sm">Admin Passcode Required</h3>
+                <p className="text-[11px] text-gray-500">
+                  Editing <strong>{adminAuthPrompt.targetSupplier?.name}</strong> requires administrator authorization.
+                </p>
+              </div>
+            </div>
+
+            {adminAuthError && (
+              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm">error</span>
+                {adminAuthError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Admin Master Passcode</label>
+              <input
+                type="password"
+                placeholder="Enter Admin Passcode..."
+                value={adminPasscodeEntry}
+                onChange={(e) => {
+                  setAdminPasscodeEntry(e.target.value);
+                  setAdminAuthError("");
+                }}
+                autoFocus
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-black tracking-widest text-gray-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                required
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminAuthPrompt(null);
+                  setAdminPasscodeEntry("");
+                  setAdminAuthError("");
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl text-xs hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-amber-200 flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">vpn_key</span>
+                Verify &amp; Unlock
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL: Edit Supplier Profile */}
+      {editSupplierModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={handleSaveSupplierEdits} className="bg-white max-w-md w-full rounded-3xl p-6 border border-gray-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
+                  <span className="material-symbols-outlined text-xl">edit_note</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-sm">Edit Distributor Company Profile</h3>
+                  <p className="text-[10.5px] text-gray-400">Admin Locked Editing Engine</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditSupplierModal(null)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs font-semibold">
+              {/* Supplier Short Code */}
+              <div>
+                <label className="block text-gray-700 mb-1">Supplier Short Code *</label>
+                <input
+                  type="text"
+                  value={editSupplierModal.supplier_code}
+                  onChange={(e) => setEditSupplierModal({ ...editSupplierModal, supplier_code: e.target.value })}
+                  className="w-full border border-amber-300 bg-amber-50/50 rounded-xl px-3 py-2 text-xs font-mono font-black uppercase text-amber-950 focus:bg-white focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              {/* Company / Distributor Name */}
+              <div>
+                <label className="block text-gray-700 mb-1">Company / Distributor Name *</label>
+                <input
+                  type="text"
+                  value={editSupplierModal.name}
+                  onChange={(e) => setEditSupplierModal({ ...editSupplierModal, name: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-900"
+                  required
+                />
+              </div>
+
+              {/* Sales Rep / Contact Person */}
+              <div>
+                <label className="block text-gray-700 mb-1">Sales Rep / Contact Person</label>
+                <input
+                  type="text"
+                  value={editSupplierModal.contact_person}
+                  onChange={(e) => setEditSupplierModal({ ...editSupplierModal, contact_person: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs"
+                />
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className="block text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={editSupplierModal.phone}
+                  onChange={(e) => setEditSupplierModal({ ...editSupplierModal, phone: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-mono font-bold"
+                />
+              </div>
+
+              {/* City */}
+              <div>
+                <label className="block text-gray-700 mb-1">City</label>
+                <input
+                  type="text"
+                  value={editSupplierModal.city}
+                  onChange={(e) => setEditSupplierModal({ ...editSupplierModal, city: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs"
+                />
+              </div>
+
+              {/* Office Address */}
+              <div>
+                <label className="block text-gray-700 mb-1">Office / Warehouse Address</label>
+                <input
+                  type="text"
+                  value={editSupplierModal.address}
+                  onChange={(e) => setEditSupplierModal({ ...editSupplierModal, address: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs"
+                />
+              </div>
+
+              {/* Current Balance / Udhaar Due */}
+              <div>
+                <label className="block text-gray-700 mb-1">Current Payable / Udhaar Balance (Rs.)</label>
+                <input
+                  type="number"
+                  value={editSupplierModal.current_balance}
+                  onChange={(e) => setEditSupplierModal({ ...editSupplierModal, current_balance: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-rose-800"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => handleDeleteSupplier(editSupplierModal.id, editSupplierModal.name)}
+                className="px-3 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">delete</span>
+                Delete
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditSupplierModal(null)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-4 py-2 rounded-xl text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-xl text-xs shadow-md shadow-emerald-200 flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">save</span>
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* MODAL: Supplier Ledger Transaction History Drawer */}
       {ledgerDrawerSupplier && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-end p-4">

@@ -539,7 +539,7 @@ export default function SidebarLayout({ children }) {
         {/* ── Main Content Area with Dynamic Desktop Margin & Natural Scrolling ── */}
         <main
           className={`
-            flex-1 min-h-[calc(100vh-4rem)] p-3 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full min-w-0 pb-24 md:pb-12 overflow-x-hidden
+            flex-1 min-h-[calc(100vh-4rem)] p-3 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full min-w-0 pb-24 md:pb-12 overflow-x-auto
             transition-all duration-300 ease-in-out
             ${sidebarOpen ? "md:ml-[280px]" : "md:ml-[80px]"}
           `}

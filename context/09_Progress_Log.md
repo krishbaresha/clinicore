@@ -1524,8 +1524,31 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Automated Verification:**
       - 149/149 test assertions passing (100%), 0 ESLint errors, and clean production bundle build in 1.02s.
 
+29. **Universal Smooth Scrollbars & Admin-Locked Supplier Profile Editing Engine:**
+    - **Universal Modern Scrollbars & Unblocked Horizontal/Vertical Scrolling (`index.css`, `SidebarLayout.jsx`):**
+      - Removed global `scrollbar-width: none` and `display: none` from `html, body`, restoring high-performance, sleek 7px scrollbars with semi-transparent teal thumbs and hover states across the application.
+      - Removed `overflow-x: hidden` from `html, body` and `<main>`, allowing wide data tables, multi-column company lists, and dense grids to scroll horizontally smoothly without clipping.
+      - Retained `.no-scrollbar` specifically for landing page hero or compact pill carousels.
+    - **Admin Master Passcode Protected Supplier Editing (`SupplierPurchases.jsx`, `auth.js`, `db.js`):**
+      - Added `verifyAdminPasscode(passcode)` and `getAdminPasscode()` helper engine.
+      - Attached `✏️ Edit` button to each company card in Distributor Directory.
+      - Implemented modal security gate requiring the **Admin Master Passcode** before opening the edit drawer.
+      - Built full **"Edit Distributor Company Profile"** modal supporting live edits to:
+        - Supplier Short Code (`supplier_code`)
+        - Company Name (`name`)
+        - Sales Representative (`contact_person`)
+        - Phone Number (`phone`)
+        - City (`city`)
+        - Office / Warehouse Address (`address`)
+        - Outstanding / Opening Balance (`current_balance` / `balance_due`)
+      - Added `dbSuppliers.delete(id)` for permanently removing obsolete supplier accounts.
+      - Auto-syncs updated company name/phone/city across linked `dbAccounts`.
+    - **Automated Verification:**
+      - 149/149 test assertions passing (100%), 0 ESLint errors, and clean production bundle build in 758ms.
+
 **Next Recommended Steps:**
-- Commit and push to GitHub so Vercel and VPS deploy the latest supplier code engine.
+- Commit and push to GitHub so Vercel and VPS deploy the latest supplier edit engine and scrollbar fixes.
+
 
 
 

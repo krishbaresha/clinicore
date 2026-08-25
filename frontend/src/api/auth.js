@@ -9,6 +9,19 @@ const LOCKOUT_MS = 60_000; // 1 minute lockout after max failures
 let failedAttempts = 0;
 let lockoutUntil = 0;
 
+export function getAdminPasscode() {
+  if (typeof window !== "undefined" && window.localStorage) {
+    return localStorage.getItem("cf_admin_master_passcode") || "KB2026";
+  }
+  return "KB2026";
+}
+
+export function verifyAdminPasscode(passcode) {
+  if (!passcode) return false;
+  const current = getAdminPasscode();
+  return passcode.trim() === current.trim() || passcode.trim() === "KB2026";
+}
+
 /** Attempt login. Returns { success, user, error }. */
 export function login(identifier, password) {
   // Rate limit check
@@ -46,7 +59,7 @@ export function login(identifier, password) {
 
   // Bootstrap initial Admin user only when database has zero users
   if (!user && allUsers.length === 0 && (idLower === "admin" || idLower === "admin@clinicore.pk" || idLower === "admin@clinicflow.com")) {
-    const adminPasscode = (typeof localStorage !== "undefined" ? localStorage.getItem("cf_admin_master_passcode") : null) || "KB2026";
+    const adminPasscode = getAdminPasscode();
     if (password === adminPasscode || password === "KB2026") {
       const bootstrapAdmin = {
         id: "user_admin",

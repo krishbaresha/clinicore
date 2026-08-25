@@ -489,45 +489,64 @@
 html {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  overscroll-behavior-y: contain;
-  overflow-x: hidden;
   width: 100%;
   max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13, 148, 136, 0.4) rgba(0, 0, 0, 0.04);
 }
 
 body {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  overscroll-behavior-y: contain;
-  overflow-x: hidden;
   width: 100%;
   max-width: 100%;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13, 148, 136, 0.4) rgba(0, 0, 0, 0.04);
 }
 
 #root {
-  overflow-x: hidden;
   width: 100%;
   max-width: 100%;
   min-height: 100vh;
 }
 
-/* Zero-Scrollbar Utility for Landing Page & Immersive Viewports */
-html,
-body,
-.no-scrollbar {
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE & Edge */
+/* Universal Clean Modern Scrollbars (Horizontal & Vertical) */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
 }
 
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(13, 148, 136, 0.35);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 148, 136, 0.75);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Specific Zero-Scrollbar Utility for Landing Page Hero / Sliders */
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none !important;
   width: 0px !important;
   height: 0px !important;
-  background: transparent !important;
 }
 
 /* Touch friendly mobile scroll container utility */

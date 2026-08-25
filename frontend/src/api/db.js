@@ -2074,6 +2074,11 @@ export const dbSuppliers = {
     const updated = list.map((s) => (s.id === supplierId ? { ...s, current_balance: Math.max(0, (Number(s.current_balance) || 0) - Number(amount)) } : s));
     setCollection(KEYS.SUPPLIERS, updated);
   },
+  delete: (id) => {
+    const list = dbSuppliers.getAll();
+    setCollection(KEYS.SUPPLIERS, list.filter((s) => s.id !== id));
+    return true;
+  },
 };
 
 
