@@ -149,9 +149,21 @@ export default function SidebarLayout({ children }) {
 
       if (!targetEmail || !resendKey || frequency === "manual") return;
 
-      const now = new Date();
-      const todayDateStr = now.toLocaleDateString("en-CA"); // YYYY-MM-DD
-      const currentHour = now.getHours(); // 0-23, 21 = 9:00 PM
+      const getPKTDate = () => {
+        const d = new Date();
+        const utc = d.getTime() + d.getTimezoneOffset() * 60 * 1000;
+        return new Date(utc + 5 * 60 * 60 * 1000);
+      };
+      const getPKTDateStr = (pktDate) => {
+        const y = pktDate.getFullYear();
+        const m = String(pktDate.getMonth() + 1).padStart(2, "0");
+        const d = String(pktDate.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      };
+
+      const now = getPKTDate();
+      const todayDateStr = getPKTDateStr(now); // Strict Pakistan YYYY-MM-DD
+      const currentHour = now.getHours(); // Pakistan 0-23
       const lastDailyReportDate = c.last_daily_report_date || localStorage.getItem("cf_last_daily_report_date");
       const lastBackupMs = c.last_email_backup ? new Date(c.last_email_backup).getTime() : 0;
       const nowMs = now.getTime();
@@ -359,11 +371,23 @@ export default function SidebarLayout({ children }) {
         return;
       }
 
-      const now = new Date();
+      const getPKTDate = () => {
+        const d = new Date();
+        const utc = d.getTime() + d.getTimezoneOffset() * 60 * 1000;
+        return new Date(utc + 5 * 60 * 60 * 1000);
+      };
+      const getPKTDateStr = (pktDate) => {
+        const y = pktDate.getFullYear();
+        const m = String(pktDate.getMonth() + 1).padStart(2, "0");
+        const d = String(pktDate.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      };
+
+      const now = getPKTDate();
       const nowMs = now.getTime();
       const lastBackupMs = c.last_email_backup ? new Date(c.last_email_backup).getTime() : 0;
       const lastDailyReportDate = c.last_daily_report_date || localStorage.getItem("cf_last_daily_report_date");
-      const todayDateStr = now.toLocaleDateString("en-CA");
+      const todayDateStr = getPKTDateStr(now);
       const currentHour = now.getHours();
 
       let secondsLeft = 0;
