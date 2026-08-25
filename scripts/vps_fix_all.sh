@@ -170,13 +170,6 @@ server {
 
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
-    add_header Access-Control-Allow-Origin "*" always;
-    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
-    add_header Access-Control-Allow-Headers "Authorization, Content-Type, Accept, Origin, X-Requested-With" always;
-
-    if (\$request_method = 'OPTIONS') {
-        return 204;
-    }
 
     # Route ALL /api/* requests to PHP gateway
     location ~ ^/api(/.*)?$ {
