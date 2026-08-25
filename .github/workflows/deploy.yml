@@ -1,0 +1,27 @@
+name: Auto Deploy to Hostinger VPS
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Hostinger VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 77.37.45.233
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          script: |
+            cd /var/www/clinicore
+            git config --global --add safe.directory /var/www/clinicore
+            git fetch origin main
+            git reset --hard origin/main
+            bash /var/www/clinicore/scripts/vps_fix_all.sh
+            echo "Deployment to VPS completed successfully!"

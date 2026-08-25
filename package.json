@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
-    "start": "npm --prefix frontend run preview"
+    "start": "npm --prefix frontend run preview",
+    "deploy": "python scripts/deploy_vps.py"
   }
 }
