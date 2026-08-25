@@ -552,6 +552,7 @@ export default function DeveloperAdminPanel() {
     }
 
     const frequencyLabels = {
+      every_1m: "🧪 Testing Mode: Every 1 Minute (Live Automation Test)",
       daily_9pm: "Daily at 9:00 PM (Shift End Closure)",
       daily_10pm: "Daily at 10:00 PM (Late Night Closure)",
       daily_8pm: "Daily at 8:00 PM (Evening Shift Closure)",
@@ -2525,6 +2526,7 @@ export default function DeveloperAdminPanel() {
                       }}
                       className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 cursor-pointer shadow-inner"
                     >
+                      <option value="every_1m" className="text-amber-700 font-bold bg-amber-50">🧪 Testing Mode: Every 1 Minute (Live Automation Verification)</option>
                       <option value="daily_9pm">🌙 Daily at 9:00 PM (Shift End Closure - Recommended)</option>
                       <option value="daily_10pm">🌙 Daily at 10:00 PM (Late Night Closure)</option>
                       <option value="daily_8pm">🌙 Daily at 8:00 PM (Evening Shift Closure)</option>
@@ -2540,7 +2542,9 @@ export default function DeveloperAdminPanel() {
                       <span>
                         Status:{" "}
                         <strong className="font-bold text-teal-950">
-                          {clinicForm.report_frequency === "daily_9pm"
+                          {clinicForm.report_frequency === "every_1m"
+                            ? "🧪 Testing Mode: Every 1 Minute Automation Active"
+                            : clinicForm.report_frequency === "daily_9pm"
                             ? "Daily 9:00 PM Shift-End Closure"
                             : clinicForm.report_frequency === "daily_10pm"
                             ? "Daily 10:00 PM Late Night Closure"

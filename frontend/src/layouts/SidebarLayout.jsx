@@ -159,7 +159,13 @@ export default function SidebarLayout({ children }) {
       let shouldTrigger = false;
       let triggerReason = "";
 
-      if (frequency === "daily_9pm" || frequency === "daily") {
+      if (frequency === "every_1m" || frequency === "test_1min") {
+        const intervalMs = 60 * 1000;
+        if (nowMs - lastBackupMs >= intervalMs) {
+          shouldTrigger = true;
+          triggerReason = "🧪 1-Minute Live Automation Verification";
+        }
+      } else if (frequency === "daily_9pm" || frequency === "daily") {
         if (currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
           shouldTrigger = true;
           triggerReason = "Daily 9:00 PM Shift End Closure";
@@ -310,9 +316,9 @@ export default function SidebarLayout({ children }) {
       }
     }
 
-    // Check immediately on mount, and then every 60 seconds
+    // Check immediately on mount, and then every 15 seconds
     checkAndRunAutoBackup();
-    const timer = setInterval(checkAndRunAutoBackup, 60 * 1000);
+    const timer = setInterval(checkAndRunAutoBackup, 15 * 1000);
     return () => clearInterval(timer);
   }, []);
 
