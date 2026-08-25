@@ -3275,6 +3275,43 @@ export function importFullDatabase(backupInput) {
   }
 }
 
+/**
+ * Returns a complete key-value dictionary of all collections for VPS MySQL cloud sync
+ */
+export function getAllCollectionsSnapshot() {
+  const snapshot = {};
+  Object.entries(KEYS).forEach(([_, storageKey]) => {
+    snapshot[storageKey] = getCollection(storageKey);
+  });
+  return snapshot;
+}
+
+/**
+ * Hydrates local memory cache & localStorage from authoritative VPS MySQL snapshot
+ */
+export function hydrateCollectionsFromSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") return;
+  _COLLECTION_CACHE.clear();
+  _ID_MAP_CACHE.clear();
+
+  Object.entries(snapshot).forEach(([key, val]) => {
+    if (val !== undefined && val !== null) {
+      const parsed = typeof val === "string" ? (() => { try { return JSON.parse(val); } catch { return val; } })() : val;
+      _COLLECTION_CACHE.set(key, parsed);
+      if (typeof localStorage !== "undefined") {
+        try {
+          localStorage.setItem(key, typeof parsed === "string" ? parsed : JSON.stringify(parsed));
+        } catch {}
+      }
+    }
+  });
+
+  try {
+    window.dispatchEvent(new Event("clinicflow_status_update"));
+    window.dispatchEvent(new Event("clinicflow_data_synced"));
+  } catch {}
+}
+
 // ---------- Software License & Subscription Governance Engine ----------
 export const dbLicense = {
   get: () => {

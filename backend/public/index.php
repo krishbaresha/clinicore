@@ -135,7 +135,7 @@ try {
         (new StorageController())->serve();
     }
 
-    // 10. Automated Notifications, Centralized Config & Security
+    // 10. Automated Notifications, Centralized Config, Security & 1-Click Backup Downloads
     elseif ($uri === '/api/v1/system/send-email' && $method === 'POST') {
         (new SystemController())->sendEmail();
     } elseif ($uri === '/api/v1/system/config' && $method === 'GET') {
@@ -144,6 +144,14 @@ try {
         (new SystemController())->saveConfig();
     } elseif ($uri === '/api/v1/system/verify-passcode' && $method === 'POST') {
         (new SystemController())->verifyPasscode();
+    } elseif ($uri === '/api/v1/system/prepare-backup' && $method === 'POST') {
+        (new SystemController())->prepareBackup();
+    } elseif ($uri === '/api/v1/system/download-backup' && $method === 'GET') {
+        (new SystemController())->downloadBackup();
+    } elseif ($uri === '/api/v1/system/sync-state' && $method === 'GET') {
+        (new SystemController())->getSyncState();
+    } elseif ($uri === '/api/v1/system/sync-state' && $method === 'POST') {
+        (new SystemController())->saveSyncState();
     }
 
     // Unmatched Route Fallback

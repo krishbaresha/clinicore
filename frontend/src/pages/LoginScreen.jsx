@@ -1,31 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSignIn, SignInButton } from "@clerk/clerk-react";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbUsers, dbClinic } from "../api/db.js";
-
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-// Dedicated sub-component that safely consumes Clerk's useSignIn hook only when ClerkProvider is active
-function ClerkSignInBridge({ onReady }) {
-  const { isLoaded, signIn, setActive } = useSignIn();
-  useEffect(() => {
-    if (isLoaded && signIn && setActive) {
-      onReady({ isLoaded, signIn, setActive });
-    }
-  }, [isLoaded, signIn, setActive, onReady]);
-  return null;
-}
+import { dbClinic } from "../api/db.js";
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  
-  // Safe Clerk state passed from bridge
-  const [clerkAuth, setClerkAuth] = useState(null);
-  const isClerkLoaded = Boolean(clerkAuth?.isLoaded);
-  const signIn = clerkAuth?.signIn || null;
-  const setActive = clerkAuth?.setActive || null;
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -46,31 +26,6 @@ export default function LoginScreen() {
     }
     setLoading(true);
 
-    // 1. If Clerk is configured and user typed an email, attempt Clerk verification first
-    if (CLERK_PUBLISHABLE_KEY && isClerkLoaded && identifier.includes("@")) {
-      try {
-        const result = await signIn.create({
-          identifier: identifier.trim(),
-          password: password,
-        });
-
-        if (result.status === "complete") {
-          await setActive({ session: result.createdSessionId });
-          // Link local session mirror
-          const localMatch = dbUsers.findByEmail(identifier.trim());
-          if (localMatch) {
-            login(identifier, password);
-          }
-          navigate("/dashboard", { replace: true });
-          setLoading(false);
-          return;
-        }
-      } catch (clerkErr) {
-        console.warn("Clerk auth failed, attempting fallback local verification:", clerkErr);
-      }
-    }
-
-    // 2. Local SHA-256 Auth & Offline Verification Fallback
     const result = login(identifier, password);
     setLoading(false);
     if (result.success) {
@@ -82,126 +37,95 @@ export default function LoginScreen() {
 
   return (
     <div className="min-h-screen bg-[#f8faf9] flex flex-col justify-between p-4 sm:p-6 selection:bg-teal-600 selection:text-white relative overflow-hidden font-sans">
-      {CLERK_PUBLISHABLE_KEY && <ClerkSignInBridge onReady={setClerkAuth} />}
       {/* Decorative Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-96 bg-gradient-to-b from-teal-100/70 via-emerald-50/40 to-transparent blur-3xl -z-10 pointer-events-none" />
 
       {/* Top Floating Navigation Bar */}
       <header className="w-full max-w-4xl mx-auto flex items-center justify-between py-2 px-1 relative z-20">
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="px-3.5 py-2 rounded-2xl bg-white/80 hover:bg-white border border-teal-100 text-teal-950 font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:border-teal-300 cursor-pointer active:scale-95"
-        >
-          <span className="material-symbols-outlined text-base text-teal-700">arrow_back</span>
-          <span>Back to Home</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-teal-800 flex items-center justify-center text-white shadow-md shadow-teal-900/20 font-black text-sm">
+            C+
+          </div>
+          <div>
+            <h1 className="text-base font-black tracking-tight text-teal-950 leading-tight">CliniCore</h1>
+            <p className="text-[10px] text-teal-700 font-bold uppercase tracking-wider">Clinical OS</p>
+          </div>
+        </div>
 
         <button
-          type="button"
-          onClick={() => navigate("/admin")}
-          className="px-4 py-2 rounded-2xl bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-700 hover:from-teal-900 hover:to-emerald-800 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-teal-900/20 transition-all cursor-pointer active:scale-95 border border-teal-500/30"
-          title="Switch to Super Admin Command Center & Remote Licensing"
+          onClick={() => navigate("/public-queue")}
+          className="text-xs font-bold text-teal-800 hover:text-teal-950 bg-white hover:bg-teal-50/80 border border-teal-200/80 px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
         >
-          <span className="material-symbols-outlined text-base text-teal-200">admin_panel_settings</span>
-          <span>Super Admin Login</span>
+          <span className="material-symbols-outlined text-sm text-teal-600">live_tv</span>
+          <span>Live Queue Display</span>
         </button>
       </header>
 
-      <main className="w-full max-w-md mx-auto my-auto relative z-10 py-4" aria-label="Staff Login">
-        {/* Glassmorphism Card */}
-        <div className="bg-white/90 backdrop-blur-xl border border-teal-100/90 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-teal-900/5 flex flex-col items-center">
+      {/* Main Login Card */}
+      <main className="w-full max-w-md mx-auto my-auto py-6 relative z-20">
+        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl shadow-teal-950/5 border border-teal-100/80">
           
-          {/* Brand Logo */}
-          <div className="flex flex-col items-center gap-2 mb-6 text-center">
-            <div className="p-3.5 rounded-3xl bg-white border border-teal-100 shadow-md flex items-center justify-center">
-              <img
-                src="/favicon.svg"
-                alt="CliniCore Logo"
-                className="h-16 w-16 sm:h-20 sm:w-20 object-contain drop-shadow-md transition-transform hover:scale-105"
-              />
+          {/* Clinic Branding */}
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 mx-auto flex items-center justify-center text-teal-800 mb-3 shadow-inner">
+              <span className="material-symbols-outlined text-3xl">local_hospital</span>
             </div>
-            <div>
-              <div className="flex items-center justify-center gap-1.5 mt-1">
-                <span className="text-2xl font-black tracking-tight text-teal-950">CliniCore</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                  Staff Portal
-                </span>
-              </div>
-              <p className="text-xs font-semibold text-gray-500 truncate max-w-[280px] mt-0.5">
-                {clinicData?.name || "Medical Clinic & Pharmacy"}
-              </p>
-            </div>
-          </div>
-
-          {/* Welcome Text */}
-          <div className="text-center mb-6 w-full">
-            <h2 className="text-xl font-black text-teal-950 tracking-tight">Staff Portal Login</h2>
-            <p className="text-xs text-gray-500 mt-1 font-medium">
-              Enter your doctor or staff credentials to access your terminal.
+            <h2 className="text-xl font-black text-teal-950 tracking-tight">
+              {clinicData?.name || "Dr. Muhammad Kashif Khan Clinic"}
+            </h2>
+            <p className="text-xs text-teal-700/80 font-medium mt-1">
+              Staff &amp; Doctor Terminal Login
             </p>
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="w-full space-y-4" noValidate>
-            {/* Email / Phone */}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="identifier" className="block text-xs font-bold text-gray-700 mb-1.5">
-                Email or Phone
+              <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                Staff ID / Email / Phone
               </label>
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg select-none">
-                  person
-                </span>
                 <input
-                  id="identifier"
-                  name="identifier"
                   type="text"
-                  inputMode="email"
-                  enterKeyHint="next"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  autoComplete="username email"
-                  placeholder="Enter email or phone"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3.5 text-sm text-gray-900 focus:outline-none transition-all shadow-2xs"
+                  placeholder="e.g. dr.kashif or 03473100304"
+                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-teal-950 transition-all outline-none"
+                  autoFocus
                 />
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-teal-600 text-lg">
+                  person
+                </span>
               </div>
             </div>
 
-            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-xs font-bold text-gray-700 mb-1.5">
+              <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg select-none">
-                  lock
-                </span>
                 <input
-                  id="password"
-                  name="password"
                   type="password"
-                  enterKeyHint="go"
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3.5 text-sm text-gray-900 focus:outline-none transition-all shadow-2xs"
+                  placeholder="••••••••"
+                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-teal-950 transition-all outline-none"
                 />
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-teal-600 text-lg">
+                  lock
+                </span>
               </div>
             </div>
 
-            {/* Error message */}
             {error && (
-              <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center animate-shake">
-                {error}
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined text-base shrink-0">error</span>
+                <span>{error}</span>
               </div>
             )}
 
             {/* Actions */}
-            <div className="pt-2 space-y-2.5">
+            <div className="pt-2">
               <button
                 id="login-btn"
                 type="submit"
@@ -211,20 +135,6 @@ export default function LoginScreen() {
                 {loading ? "Authenticating..." : "Login to Terminal"}
                 {!loading && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
               </button>
-
-              {CLERK_PUBLISHABLE_KEY && (
-                <SignInButton mode="modal">
-                  <button
-                    type="button"
-                    className="w-full min-h-[44px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold py-2.5 rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-2xs cursor-pointer active:scale-[0.99]"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" />
-                    </svg>
-                    <span>Sign In with Clerk SSO</span>
-                  </button>
-                </SignInButton>
-              )}
             </div>
           </form>
 
@@ -247,14 +157,7 @@ export default function LoginScreen() {
 
       {/* Bottom Footer */}
       <footer className="w-full max-w-md mx-auto text-center py-3 text-xs text-gray-400 font-medium relative z-20">
-        <span>© 2026 CliniCore Hybrid OS • </span>
-        <button
-          type="button"
-          onClick={() => navigate("/live-queue")}
-          className="text-teal-700 hover:underline font-bold cursor-pointer"
-        >
-          Live OPD Waiting Queue
-        </button>
+        <span>© 2026 CliniCore Hybrid OS • Engineered by K.B Software</span>
       </footer>
     </div>
   );

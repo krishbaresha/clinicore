@@ -71,6 +71,7 @@ export function generateCliniCoreEmailTemplate({
   patientsCount = 0,
   backupFilename = "CliniCore_Encrypted_Backup.cfbak",
   backupSizeBytes = 0,
+  downloadUrl = "https://api.clinicore.me/api/v1/system/download-backup?file=CliniCore_Encrypted_Backup.cfbak",
   frequencyLabel = "Manual On-Demand Backup",
   isTestPing = false,
 }) {
@@ -145,27 +146,25 @@ export function generateCliniCoreEmailTemplate({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CliniCore Encrypted System Audit & Vault Backup</title>
+  <title>CliniCore Encrypted Database Vault &amp; Audit Report</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f1f5f9; padding: 32px 12px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f1f5f9; padding: 40px 12px;">
     <tr>
       <td align="center">
-        <!-- Main Card Container -->
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 12px 30px -8px rgba(15, 118, 110, 0.1);">
+        <!-- Main Email Container -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 12px 30px -8px rgba(15, 118, 110, 0.12);">
           
-          <!-- Header Banner (Signature CliniCore Dark Teal & Emerald) -->
+          <!-- Header Banner -->
           <tr>
             <td style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 100%); padding: 36px 32px; text-align: left;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td>
-                    <!-- Security Badge -->
-                    <span style="display: inline-block; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 999px; padding: 4px 12px; font-size: 10px; font-weight: 800; color: #a7f3d0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
+                    <span style="display: inline-block; background: rgba(52, 211, 153, 0.2); border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 800; color: #a7f3d0; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
                       🔒 Encrypted System Backup
                     </span>
-                    <!-- Logo / Brand Title -->
-                    <h1 style="margin: 8px 0 4px 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">
+                    <h1 style="margin: 6px 0 2px 0; color: #ffffff; font-size: 26px; font-weight: 900; letter-spacing: -0.5px;">
                       CliniCore <span style="color: #34d399; font-weight: 300;">Hybrid OS</span>
                     </h1>
                     <p style="margin: 0; color: #ccfbf1; font-size: 13px; font-weight: 500;">
@@ -177,14 +176,14 @@ export function generateCliniCoreEmailTemplate({
             </td>
           </tr>
 
-          <!-- Clinic & Timestamp Sub-Header -->
+          <!-- Clinic & Exact Timestamp Sub-Header -->
           <tr>
             <td style="background-color: #f8fafc; padding: 16px 32px; border-bottom: 1px solid #e2e8f0;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="font-size: 12px; color: #475569;">
                     <strong style="color: #0f172a; font-size: 13px;">${clinicName}</strong><br>
-                    <span style="color: #64748b;">Dispatched: ${timestampStr}</span>
+                    <span style="color: #047857; font-weight: 700;">📅 Backup Timestamp: ${timestampStr}</span>
                   </td>
                   <td align="right" style="font-size: 11px; font-weight: 700; color: #0f766e;">
                     <span style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 8px;">
@@ -201,7 +200,7 @@ export function generateCliniCoreEmailTemplate({
             <td style="padding: 32px;">
               <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #334155;">
                 Hello Super Admin,<br>
-                Your encrypted database vault snapshot and executive audit statement have been compiled and attached. Below is your facility summary:
+                Your encrypted database vault snapshot taken on <strong>${timestampStr}</strong> has been compiled and is ready for download. Below is your facility summary:
               </p>
 
               <!-- Financial & Operational 2x2 Metric Grid -->
@@ -243,7 +242,7 @@ export function generateCliniCoreEmailTemplate({
                 </tr>
               </table>
 
-              <!-- Encrypted Attachment Callout Card -->
+              <!-- Encrypted Attachment & Direct Download CTA Card -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%); border: 1.5px solid #6ee7b7; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
                 <tr>
                   <td>
@@ -251,7 +250,7 @@ export function generateCliniCoreEmailTemplate({
                       <tr>
                         <td width="44" style="vertical-align: top;">
                           <div style="width: 40px; height: 40px; background-color: #0f766e; border-radius: 12px; text-align: center; line-height: 40px; color: #ffffff; font-size: 20px;">
-                            📎
+                            🔒
                           </div>
                         </td>
                         <td style="padding-left: 12px; vertical-align: top;">
@@ -264,12 +263,27 @@ export function generateCliniCoreEmailTemplate({
                           <div style="font-size: 12px; color: #047857; margin-top: 3px;">
                             Size: <strong>${sizeKb}</strong> &bull; Cipher: <strong>AES-XOR 0x5a</strong> &bull; Status: <strong>Verified Intact</strong>
                           </div>
-                          <div style="margin-top: 10px; padding: 8px 12px; background: rgba(16, 185, 129, 0.12); border-radius: 8px; border: 1px dashed #10b981; font-size: 11.5px; color: #065f46; line-height: 1.5;">
-                            📥 <strong>How to download:</strong> Look for the <strong>${backupFilename}</strong> attachment card at the bottom of this email in Gmail, or at the top in Outlook / Apple Mail, and click the download icon to save it locally.
+                          <div style="font-size: 11.5px; color: #065f46; margin-top: 4px;">
+                            Snapshot Time: <strong>${timestampStr}</strong>
                           </div>
                         </td>
                       </tr>
                     </table>
+
+                    <!-- 1-CLICK DIRECT DOWNLOAD BUTTON -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 18px;">
+                      <tr>
+                        <td align="center">
+                          <a href="${downloadUrl}" target="_blank" rel="noopener noreferrer" style="display: block; background: linear-gradient(135deg, #059669 0%, #0d9488 100%); color: #ffffff; font-size: 14px; font-weight: 800; text-align: center; text-decoration: none; padding: 15px 24px; border-radius: 12px; box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);">
+                            📥 Download .cfbak Backup File Directly (1-Click)
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <div style="margin-top: 12px; padding: 8px 12px; background: rgba(16, 185, 129, 0.12); border-radius: 8px; border: 1px dashed #10b981; font-size: 11px; color: #065f46; line-height: 1.5; text-align: center;">
+                      💡 You can also download the attached <strong>${backupFilename}</strong> file directly from your email attachments section below.
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -796,31 +810,57 @@ export default function DeveloperAdminPanel() {
     }
 
     setIsDispatchingBackup(true);
-    showToast("🔐 Encrypting full database vault & compiling .cfbak attachment...");
+    showToast("🔐 Encrypting full database vault & staging 1-click download...");
 
     try {
       const encryptedBackupStr = exportFullDatabase(true);
       const base64Content = btoa(unescape(encodeURIComponent(encryptedBackupStr)));
-      const dateStr = new Date().toISOString().split("T")[0];
-      const filename = `CliniCore_Encrypted_Backup_${dateStr}.cfbak`;
+      const now = new Date();
+      const dateStr = now.toISOString().split("T")[0];
+      const timeTag = now.toTimeString().split(" ")[0].replace(/:/g, "");
+      const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
       const sizeBytes = new Blob([encryptedBackupStr]).size;
+      const timestampStr = now.toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" });
 
+      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+
+      // 1. Stage backup on server to create authoritative 1-click download link
+      let downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
+      try {
+        const prepRes = await fetch(`${apiUrl}/api/v1/system/prepare-backup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename,
+            content: base64Content,
+          }),
+        });
+        const prepData = await prepRes.json();
+        if (prepData?.success && prepData?.data?.download_url) {
+          downloadUrl = prepData.data.download_url;
+        }
+      } catch (prepErr) {
+        console.warn("Could not pre-stage backup file on VPS:", prepErr);
+      }
+
+      // 2. Generate email template with 1-click download CTA button and timestamp
       const emailHtml = generateCliniCoreEmailTemplate({
         clinicName: clinicForm.name || "Medical Clinic & Pharmacy",
         targetEmail,
         dateStr,
-        timestampStr: new Date().toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" }),
+        timestampStr,
         totalInflows: auditMetrics.totalInflows || 0,
         totalStockValuation: auditMetrics.totalStockValuation || 0,
         staffCount: usersList.length || 0,
         patientsCount: patientsList.length || 0,
         backupFilename: filename,
         backupSizeBytes: sizeBytes,
+        downloadUrl,
         frequencyLabel: "Manual On-Demand Backup",
         isTestPing: false,
       });
 
-      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      // 3. Dispatch via Resend API Relay with both 1-click Download Button AND .cfbak attachment!
       const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
         method: "POST",
         headers: {
@@ -844,7 +884,7 @@ export default function DeveloperAdminPanel() {
 
       if (res.ok && data?.success) {
         showToast("✅ Full encrypted .cfbak backup delivered to " + targetEmail);
-        alert(`✅ Backup Email Successfully Delivered!\n\nEncrypted database vault (.cfbak) and executive performance audit delivered to:\n${targetEmail}\n\nBackup Size: ${(sizeBytes / 1024).toFixed(1)} KB`);
+        alert(`✅ Backup Email Successfully Delivered!\n\nEncrypted database vault (.cfbak) and executive audit delivered to:\n${targetEmail}\n\nBackup Time: ${timestampStr}\nSize: ${(sizeBytes / 1024).toFixed(1)} KB\n\nRecipient can either click the 1-Click Download button inside the email or download the attached file!`);
         if (showEmailPreviewModal) setShowEmailPreviewModal(false);
       } else {
         const rawError = data?.error?.message || data?.message || data?.error || JSON.stringify(data || {});
@@ -864,8 +904,12 @@ export default function DeveloperAdminPanel() {
 
   const handleOpenEmailPreview = () => {
     const targetEmail = clinicForm.notification_email?.trim() || "admin@clinicore.pk";
-    const dateStr = new Date().toISOString().split("T")[0];
-    const filename = `CliniCore_Encrypted_Backup_${dateStr}.cfbak`;
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeTag = now.toTimeString().split(" ")[0].replace(/:/g, "");
+    const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
+    const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+    const downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
     
     let sizeBytes = 145000;
     try {
@@ -877,13 +921,14 @@ export default function DeveloperAdminPanel() {
       clinicName: clinicForm.name || "Medical Clinic & Pharmacy",
       targetEmail,
       dateStr,
-      timestampStr: new Date().toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" }),
+      timestampStr: now.toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" }),
       totalInflows: auditMetrics.totalInflows || 0,
       totalStockValuation: auditMetrics.totalStockValuation || 0,
       staffCount: usersList.length || 0,
       patientsCount: patientsList.length || 0,
       backupFilename: filename,
       backupSizeBytes: sizeBytes,
+      downloadUrl,
       frequencyLabel: "Live Template Preview",
       isTestPing: false,
     });

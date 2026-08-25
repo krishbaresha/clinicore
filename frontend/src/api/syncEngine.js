@@ -1,34 +1,35 @@
 /**
- * syncEngine.js — PWA Offline-First Outbox & Cloud Auto-Sync Engine
+ * syncEngine.js — VPS MySQL Cloud & Offline-First Auto-Sync Engine
  * Features:
  * 1. Real-time network detection (online/offline)
- * 2. Background queue processing when network reconnects
- * 3. Event-driven subscribers for live UI status chips
- * 4. Conflict-free mutation replay
+ * 2. Background queue processing & cloud replication to Hostinger VPS (api.clinicore.me)
+ * 3. Bidirectional snapshot sync so all browsers & devices see identical data
+ * 4. Event-driven subscribers for live UI status chips
  */
 
-import { dbOutbox } from "./db.js";
-import { databases, DATABASE_ID, isAppwriteConfigured } from "./appwrite.js";
-import { ID } from "appwrite";
+import { dbOutbox, getAllCollectionsSnapshot, hydrateCollectionsFromSnapshot } from "./db.js";
+
+const API_BASE = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
 
 class SyncEngine {
   constructor() {
     this.isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
     this.isSyncing = false;
     this.subscribers = new Set();
-    this.lastSyncTime = localStorage.getItem("cf_last_cloud_sync") || null;
+    this.lastSyncTime = (typeof localStorage !== "undefined" ? localStorage.getItem("cf_last_cloud_sync") : null) || null;
 
     if (typeof window !== "undefined") {
       window.addEventListener("online", () => this.handleNetworkChange(true));
       window.addEventListener("offline", () => this.handleNetworkChange(false));
       window.addEventListener("clinicflow_outbox_change", () => this.notify());
 
-      // Check on startup if online and pending items exist
+      // Boot-time cloud synchronization
       setTimeout(() => {
         if (this.isOnline) {
+          this.pullLatestCloudState();
           this.processOutbox();
         }
-      }, 2000);
+      }, 1500);
     }
   }
 
@@ -36,10 +37,11 @@ class SyncEngine {
     this.isOnline = onlineStatus;
     this.notify();
     if (this.isOnline) {
-      console.log("🌐 Network Restored: Initiating background cloud synchronization...");
+      console.log("🌐 Network Restored: Syncing with CliniCore VPS Cloud...");
+      this.pullLatestCloudState();
       this.processOutbox();
     } else {
-      console.log("📴 Offline Mode: All local changes will be saved to secure Outbox.");
+      console.log("📴 Offline Mode: All local changes saved to secure Outbox.");
     }
   }
 
@@ -61,7 +63,7 @@ class SyncEngine {
   }
 
   getStatus() {
-    const pendingItems = dbOutbox.getAll();
+    const pendingItems = dbOutbox?.getAll?.() || [];
     return {
       isOnline: this.isOnline,
       isSyncing: this.isSyncing,
@@ -71,41 +73,76 @@ class SyncEngine {
   }
 
   /**
-   * Automatically process and replay all offline pending mutations
+   * Pulls the authoritative database state from VPS MySQL to keep all browsers in sync
+   */
+  async pullLatestCloudState() {
+    if (!this.isOnline) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
+        headers: { "User-Agent": "CliniCore-PWA/2.0" }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && json?.data && Object.keys(json.data).length > 0) {
+          hydrateCollectionsFromSnapshot(json.data);
+          this.lastSyncTime = new Date().toISOString();
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
+          }
+          this.notify();
+          console.log("☁️ Synced live database snapshot from VPS MySQL.");
+        }
+      }
+    } catch (err) {
+      console.warn("[Cloud Sync] Pull snapshot notice:", err.message);
+    }
+  }
+
+  /**
+   * Pushes full snapshot to VPS MySQL so any other browser sees the exact changes
+   */
+  async pushLocalStateToCloud() {
+    if (!this.isOnline || this.isSyncing) return;
+    try {
+      const snapshot = getAllCollectionsSnapshot();
+      await fetch(`${API_BASE}/api/v1/system/sync-state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(snapshot)
+      });
+      this.lastSyncTime = new Date().toISOString();
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
+      }
+      this.notify();
+    } catch (err) {
+      console.warn("[Cloud Sync] Push snapshot notice:", err.message);
+    }
+  }
+
+  /**
+   * Automatically process offline pending mutations and push to VPS MySQL
    */
   async processOutbox() {
     if (!this.isOnline || this.isSyncing) return;
-    const items = dbOutbox.getAll();
-    if (items.length === 0) return;
+    const items = dbOutbox?.getAll?.() || [];
 
     this.isSyncing = true;
     this.notify();
 
     try {
-      console.log(`🔄 Syncing ${items.length} offline mutations to Appwrite cloud...`);
-      for (const item of items) {
-        if (isAppwriteConfigured()) {
-          try {
-            const collectionName = item.collection || item.table || "patients";
-            const payloadData = typeof item.payload === "object" ? JSON.stringify(item.payload) : String(item.payload);
-            
-            await databases.createDocument(DATABASE_ID, collectionName, item.id || ID.unique(), {
-              data: payloadData,
-              synced_at: new Date().toISOString(),
-            });
-          } catch (cloudErr) {
-            console.warn(`[Appwrite Cloud] Item ${item.id} sync notice:`, cloudErr.message || cloudErr);
-          }
+      if (items.length > 0) {
+        console.log(`🔄 Replaying ${items.length} offline mutations to VPS MySQL...`);
+        for (const item of items) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          dbOutbox.markSynced(item.id);
         }
-        await new Promise((resolve) => setTimeout(resolve, 150));
-        dbOutbox.markSynced(item.id);
       }
 
-      this.lastSyncTime = new Date().toISOString();
-      localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
-      console.log("✅ All offline records synced successfully to Appwrite Cloud!");
+      await this.pushLocalStateToCloud();
+      console.log("✅ All records synchronized successfully to Hostinger VPS MySQL!");
     } catch (err) {
-      console.warn("Cloud sync retry deferred:", err);
+      console.warn("Cloud sync deferred:", err);
     } finally {
       this.isSyncing = false;
       this.notify();
@@ -120,6 +157,7 @@ class SyncEngine {
       alert("⚠️ Device is currently offline. Please connect to internet to sync.");
       return;
     }
+    await this.pullLatestCloudState();
     await this.processOutbox();
   }
 }

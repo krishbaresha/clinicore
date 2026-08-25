@@ -8,8 +8,8 @@ use CliniCore\Utils\Response;
 use PDO;
 
 /**
- * 📧 System, Settings & Automated Notification Controller
- * Manages centralized system settings, Super Admin security, and email relays
+ * 📧 System, Settings, Full-Stack Sync & Automated Notification Controller
+ * Manages centralized system settings, Super Admin security, email relays, and 1-click backup downloads
  */
 class SystemController
 {
@@ -22,6 +22,23 @@ class SystemController
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
+
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS app_cloud_state (
+                collection_key VARCHAR(100) PRIMARY KEY,
+                data_json LONGTEXT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+    }
+
+    private function getBackupStorageDir(): string
+    {
+        $dir = dirname(__DIR__, 2) . '/storage/backups';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        return $dir;
     }
 
     /**
@@ -180,6 +197,139 @@ class SystemController
             }
         } catch (\Throwable $e) {
             Response::error('AUTH_CHECK_FAILED', 'Authentication check failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/system/prepare-backup
+     * Stores the encrypted backup payload on server and generates a 1-click direct download link
+     */
+    public function prepareBackup(): void
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $filename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', (string)($input['filename'] ?? ''));
+            $content = (string)($input['content'] ?? '');
+
+            if (empty($filename)) {
+                $filename = 'CliniCore_Encrypted_Backup_' . date('Y-m-d_His') . '.cfbak';
+            }
+
+            if (empty($content)) {
+                Response::error('EMPTY_BACKUP', 'Backup payload cannot be empty.', 400);
+                return;
+            }
+
+            $backupDir = $this->getBackupStorageDir();
+            $filePath = $backupDir . '/' . $filename;
+
+            // If base64 encoded, decode; otherwise write raw string
+            $fileData = base64_decode($content, true);
+            if ($fileData === false) {
+                $fileData = $content;
+            }
+
+            file_put_contents($filePath, $fileData);
+
+            // Generate secure download URL
+            $downloadUrl = "https://api.clinicore.me/api/v1/system/download-backup?file=" . urlencode($filename);
+
+            Response::success([
+                'filename'     => $filename,
+                'download_url' => $downloadUrl,
+                'size_bytes'   => strlen($fileData),
+                'saved_at'     => date('c')
+            ]);
+        } catch (\Throwable $e) {
+            Response::error('BACKUP_SAVE_FAILED', 'Failed to store backup on server: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/system/download-backup?file=...
+     * Directly streams and downloads the .cfbak file to the browser with 1 click
+     */
+    public function downloadBackup(): void
+    {
+        $filename = basename((string)($_GET['file'] ?? ''));
+        if (empty($filename) || !str_ends_with($filename, '.cfbak')) {
+            http_response_code(400);
+            echo "Invalid backup file request.";
+            exit;
+        }
+
+        $backupDir = $this->getBackupStorageDir();
+        $filePath = $backupDir . '/' . $filename;
+
+        if (!file_exists($filePath)) {
+            http_response_code(404);
+            echo "Requested backup vault file was not found or has expired.";
+            exit;
+        }
+
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+        header('Pragma: public');
+        header('Content-Length: ' . filesize($filePath));
+        header('Access-Control-Allow-Origin: *');
+
+        readfile($filePath);
+        exit;
+    }
+
+    /**
+     * GET /api/v1/system/sync-state
+     * Returns full application snapshot from MySQL so all browsers share identical live data
+     */
+    public function getSyncState(): void
+    {
+        try {
+            $db = Database::getConnection();
+            $this->ensureSettingsTable($db);
+
+            $stmt = $db->query("SELECT collection_key, data_json FROM app_cloud_state");
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $state = [];
+            foreach ($rows as $row) {
+                $decoded = json_decode($row['data_json'], true);
+                $state[$row['collection_key']] = $decoded !== null ? $decoded : $row['data_json'];
+            }
+
+            Response::success($state);
+        } catch (\Throwable $e) {
+            Response::error('SYNC_FETCH_FAILED', 'Failed to fetch cloud state: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/system/sync-state
+     * Saves application collections from any browser into central MySQL
+     */
+    public function saveSyncState(): void
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $db = Database::getConnection();
+            $this->ensureSettingsTable($db);
+
+            $stmt = $db->prepare("
+                INSERT INTO app_cloud_state (collection_key, data_json)
+                VALUES (:k, :v)
+                ON DUPLICATE KEY UPDATE data_json = VALUES(data_json)
+            ");
+
+            foreach ($input as $collectionKey => $data) {
+                $jsonStr = is_string($data) ? $data : json_encode($data);
+                $stmt->execute([':k' => (string)$collectionKey, ':v' => $jsonStr]);
+            }
+
+            Response::success(['message' => 'Cloud database snapshot synchronized successfully.']);
+        } catch (\Throwable $e) {
+            Response::error('SYNC_SAVE_FAILED', 'Failed to save cloud state: ' . $e->getMessage(), 500);
         }
     }
 

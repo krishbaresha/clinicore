@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, lazy, Suspense } from "react";
-import { ClerkProvider } from "@clerk/clerk-react";
 import { initDB, dbPatients } from "./api/db.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
@@ -185,8 +184,6 @@ function AppRoutes() {
   );
 }
 
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
 export default function App() {
   // Seed DB and run automated retention lifecycle check (purge patients inactive > 24 months)
   useEffect(() => {
@@ -199,7 +196,7 @@ export default function App() {
     }
   }, []);
 
-  const content = (
+  return (
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
@@ -208,15 +205,5 @@ export default function App() {
       </BrowserRouter>
     </ErrorBoundary>
   );
-
-  if (CLERK_PUBLISHABLE_KEY) {
-    return (
-      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/login">
-        {content}
-      </ClerkProvider>
-    );
-  }
-
-  return content;
 }
 
