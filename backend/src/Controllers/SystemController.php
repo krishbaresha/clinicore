@@ -264,6 +264,22 @@ class SystemController
         $backupDir = $this->getBackupStorageDir();
         $filePath = $backupDir . '/' . $filename;
 
+        // Search alternate storage paths if not found in primary
+        if (!file_exists($filePath)) {
+            $candidates = [
+                dirname(__DIR__, 2) . '/storage/backups/' . $filename,
+                dirname(__DIR__, 3) . '/storage/backups/' . $filename,
+                '/var/www/clinicore/backend/storage/backups/' . $filename,
+                '/var/www/clinicore/storage/backups/' . $filename,
+            ];
+            foreach ($candidates as $cand) {
+                if (file_exists($cand)) {
+                    $filePath = $cand;
+                    break;
+                }
+            }
+        }
+
         if (!file_exists($filePath)) {
             http_response_code(404);
             echo "Requested backup vault file was not found or has expired.";

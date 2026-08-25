@@ -89,9 +89,9 @@ try {
     } catch (\Throwable $e) {}
 
     // 3. Generate Database Dump Snapshot
-    $backupDir = __DIR__ . '/../storage/backups';
+    $backupDir = __DIR__ . '/storage/backups';
     if (!is_dir($backupDir)) {
-        mkdir($backupDir, 0755, true);
+        @mkdir($backupDir, 0775, true);
     }
 
     $dateStr = date('Y-m-d');
