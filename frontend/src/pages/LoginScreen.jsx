@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSignIn } from "@clerk/clerk-react";
+import { useSignIn, SignInButton } from "@clerk/clerk-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbUsers, dbClinic } from "../api/db.js";
 
@@ -201,7 +201,7 @@ export default function LoginScreen() {
             )}
 
             {/* Actions */}
-            <div className="pt-2">
+            <div className="pt-2 space-y-2.5">
               <button
                 id="login-btn"
                 type="submit"
@@ -211,6 +211,20 @@ export default function LoginScreen() {
                 {loading ? "Authenticating..." : "Login to Terminal"}
                 {!loading && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
               </button>
+
+              {CLERK_PUBLISHABLE_KEY && (
+                <SignInButton mode="modal">
+                  <button
+                    type="button"
+                    className="w-full min-h-[44px] bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold py-2.5 rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-2xs cursor-pointer active:scale-[0.99]"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" />
+                    </svg>
+                    <span>Sign In with Clerk SSO</span>
+                  </button>
+                </SignInButton>
+              )}
             </div>
           </form>
 

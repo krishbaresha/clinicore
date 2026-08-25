@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { dbClinic, dbUsers, dbVisits, dbClinicServices } from "../api/db.js";
 import LanguageSwitcher from "../components/LanguageSwitcher.jsx";
+import ClerkAuthControls from "../components/ClerkAuthControls.jsx";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -302,15 +303,8 @@ export default function LandingPage() {
               <span>{t("landing.nav.whatsapp")}</span>
             </a>
 
-            {/* Staff Portal Link */}
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 transition-all cursor-pointer whitespace-nowrap"
-              title="Staff &amp; Doctor Login"
-            >
-              <span className="material-symbols-outlined text-base text-slate-600">badge</span>
-              <span className="hidden md:inline">{t("landing.nav.staffLogin")}</span>
-            </Link>
+            {/* Clerk & Staff Auth Controls */}
+            <ClerkAuthControls />
 
             {/* Super Admin Command Center Link */}
             <Link
