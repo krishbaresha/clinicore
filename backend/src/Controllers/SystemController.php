@@ -364,8 +364,13 @@ class SystemController
             $to = array_filter(array_map('trim', explode(',', $to)));
         }
 
+        $from = trim($input['from'] ?? '');
+        if (empty($from)) {
+            $from = 'CliniCore System <onboarding@resend.dev>';
+        }
+
         $payload = [
-            'from' => 'CliniCore System <onboarding@resend.dev>',
+            'from' => $from,
             'to' => array_values($to),
             'subject' => $subject,
             'html' => $html,

@@ -312,9 +312,9 @@ EOF
 
 chmod +x "$BACKUP_SCRIPT"
 
-# Register daily 03:00 AM PKT (22:00 UTC) cron job
-(crontab -l 2>/dev/null | grep -v "clinicore-backup.sh" ; echo "0 22 * * * /usr/local/bin/clinicore-backup.sh >/dev/null 2>&1") | crontab -
-echo -e "${GREEN}✓ Daily automated database backup cron registered.${NC}"
+# Register daily 03:00 AM PKT (22:00 UTC) raw MySQL backup & daily 09:00 PM PKT (16:00 UTC) email backup
+(crontab -l 2>/dev/null | grep -v "clinicore-backup.sh" | grep -v "cron_daily_backup.php" ; echo "0 22 * * * /usr/local/bin/clinicore-backup.sh >/dev/null 2>&1" ; echo "0 16 * * * php /var/www/clinicore/backend/cron_daily_backup.php >> /var/log/clinicore_daily_backup.log 2>&1") | crontab -
+echo -e "${GREEN}✓ Daily automated database backup and 9:00 PM email dispatches registered in crontab.${NC}"
 
 # ------------------------------------------------------------------------------
 # SUMMARY & CREDENTIALS VAULT

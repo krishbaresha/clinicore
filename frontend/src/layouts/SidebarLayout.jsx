@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { getInitials } from "../utils/formatters.js";
-import { dbClinic, exportFullDatabase } from "../api/db.js";
+import { dbClinic, dbPatients, dbSales, dbInventory, dbUsers, exportFullDatabase } from "../api/db.js";
+import { generateCliniCoreEmailTemplate } from "../utils/emailTemplate.js";
 import PullToRefresh from "../components/PullToRefresh.jsx";
 import LanguageSwitcher from "../components/LanguageSwitcher.jsx";
 import LicenseBanner from "../components/LicenseBanner.jsx";
@@ -134,68 +135,156 @@ export default function SidebarLayout({ children }) {
     setMobileDrawerOpen(false);
   }, [location.pathname]);
 
-  // Background Automated Backup Timer — runs silently across Doctor/Cashier/Reception desks
+  // Background Automated Backup & 9:00 PM Shift-End Scheduler Engine
   useEffect(() => {
+    let isExecuting = false;
+
     async function checkAndRunAutoBackup() {
-      const c = dbClinic.get();
-      if (!c || !c.backup_email || c.backup_frequency === "manual") return;
+      if (isExecuting) return;
 
-      const intervalHours = Number(c.backup_interval_hours) || (c.backup_frequency === "daily" ? 24 : c.backup_frequency === "weekly" ? 168 : 720);
-      const intervalMs = intervalHours * 60 * 60 * 1000;
+      const c = dbClinic.get() || {};
+      const targetEmail = (c.notification_email || c.backup_email || localStorage.getItem("cf_notification_email") || "").trim();
+      const resendKey = (c.resend_api_key || localStorage.getItem("cf_resend_api_key") || "").trim();
+      const frequency = c.report_frequency || c.backup_frequency || localStorage.getItem("cf_report_frequency") || "daily_9pm";
+
+      if (!targetEmail || !resendKey || frequency === "manual") return;
+
+      const now = new Date();
+      const todayDateStr = now.toLocaleDateString("en-CA"); // YYYY-MM-DD
+      const currentHour = now.getHours(); // 0-23, 21 = 9:00 PM
+      const lastDailyReportDate = c.last_daily_report_date || localStorage.getItem("cf_last_daily_report_date");
       const lastBackupMs = c.last_email_backup ? new Date(c.last_email_backup).getTime() : 0;
-      const nowMs = Date.now();
+      const nowMs = now.getTime();
 
-      if (nowMs - lastBackupMs >= intervalMs) {
-        try {
-          const backup = exportFullDatabase();
-          const backupStr = JSON.stringify(backup, null, 2);
-          const targetEmails = c.backup_email.split(",").map((e) => e.trim()).filter(Boolean);
-          const resendKey = c.resend_api_key;
-          if (!resendKey) return; // No API key configured — skip email backup silently
+      let shouldTrigger = false;
+      let triggerReason = "";
 
-          const base64Content = btoa(unescape(encodeURIComponent(backupStr)));
-          const resendPayload = {
-            from: "CliniCore Backup <onboarding@resend.dev>",
-            to: targetEmails,
-            subject: `🏥 CliniCore Auto Backup - ${c.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
-            html: `
-              <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #ccfbf1;">
-                <h2 style="color: #0f766e; margin-top: 0;">🏥 Automated Clinic Backup (Every ${intervalHours} Hours)</h2>
-                <p><strong>Clinic:</strong> ${c.name || "CliniCore Clinic"}</p>
-                <p><strong>Triggered At:</strong> ${new Date().toLocaleString("en-PK")}</p>
-                <p><strong>Summary:</strong> Patients: ${backup.data.patients?.length || 0} | Sales: ${backup.data.sales?.length || 0} | Purchases: ${backup.data.purchases?.length || 0}</p>
-                <p style="background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; font-weight: bold;">
-                  📎 Your automated clinic database backup is attached as a <code>.json</code> file!
-                </p>
-              </div>
-            `,
-            attachments: [{ filename: `CliniCore_AutoBackup_${new Date().toISOString().split("T")[0]}.json`, content: base64Content }]
-          };
-
-          let res;
-          try {
-            res = await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify(resendPayload)
-            });
-          } catch (fetchErr) {
-            console.warn("Backup email send failed (CORS or network):", fetchErr.message);
-            return;
-          }
-
-          if (res.ok) {
-            dbClinic.update({ last_email_backup: new Date().toISOString() });
-          }
-        } catch (err) {
-          console.warn("Background auto-backup failed silently:", err);
+      if (frequency === "daily_9pm" || frequency === "daily") {
+        // Trigger if current local clock >= 21:00 (9:00 PM) AND today's report hasn't been sent yet
+        if (currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
+          shouldTrigger = true;
+          triggerReason = "Daily 9:00 PM Shift End Closure";
         }
+      } else if (frequency === "weekly_saturday") {
+        if (now.getDay() === 6 && currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
+          shouldTrigger = true;
+          triggerReason = "Weekly Saturday Summary";
+        }
+      } else if (frequency === "monthly") {
+        const isEndOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() === now.getDate();
+        if (isEndOfMonth && currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
+          shouldTrigger = true;
+          triggerReason = "Monthly Executive Closure";
+        }
+      } else {
+        const intervalHours = Number(c.backup_interval_hours) || 24;
+        const intervalMs = intervalHours * 60 * 60 * 1000;
+        if (nowMs - lastBackupMs >= intervalMs) {
+          shouldTrigger = true;
+          triggerReason = `Every ${intervalHours} Hours Backup`;
+        }
+      }
+
+      if (!shouldTrigger) return;
+
+      isExecuting = true;
+      console.log(`[AutoBackup] Triggering automated background backup dispatch: ${triggerReason}...`);
+
+      try {
+        const encryptedBackupStr = exportFullDatabase(true);
+        const base64Content = btoa(unescape(encodeURIComponent(encryptedBackupStr)));
+        const dateStr = todayDateStr;
+        const timeTag = now.toTimeString().split(" ")[0].replace(/:/g, "");
+        const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
+        const sizeBytes = new Blob([encryptedBackupStr]).size;
+        const timestampStr = now.toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" });
+
+        const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+
+        // 1. Stage backup on server to create authoritative 1-click download link
+        let downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
+        try {
+          const prepRes = await fetch(`${apiUrl}/api/v1/system/prepare-backup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename, content: base64Content }),
+          });
+          const prepData = await prepRes.json().catch(() => null);
+          if (prepData?.success && prepData?.data?.download_url) {
+            downloadUrl = prepData.data.download_url;
+          }
+        } catch (prepErr) {
+          console.warn("[AutoBackup] VPS staging warning:", prepErr.message);
+        }
+
+        // 2. Fetch live metrics
+        const allPatients = dbPatients.getAll() || [];
+        const allSales = dbSales.getAll() || [];
+        const allInventory = dbInventory.getAll() || [];
+        const allUsers = dbUsers.getAll() || [];
+
+        const totalInflows = allSales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+        const totalStockValuation = allInventory.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.sale_price) || 0)), 0);
+
+        // 3. Generate HTML email template
+        const emailHtml = generateCliniCoreEmailTemplate({
+          clinicName: c.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale",
+          targetEmail,
+          dateStr,
+          timestampStr,
+          totalInflows,
+          totalStockValuation,
+          staffCount: allUsers.length,
+          patientsCount: allPatients.length,
+          backupFilename: filename,
+          backupSizeBytes: sizeBytes,
+          downloadUrl,
+          frequencyLabel: triggerReason,
+          isTestPing: false,
+        });
+
+        // 4. Relay securely through VPS backend to bypass browser CORS
+        const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_key: resendKey,
+            to: [targetEmail],
+            subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
+            html: emailHtml,
+            attachments: [
+              {
+                filename,
+                content: base64Content,
+              },
+            ],
+          }),
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data?.success) {
+          console.log(`✅ [AutoBackup] Success! Scheduled backup delivered to ${targetEmail}`);
+          dbClinic.update({
+            last_daily_report_date: todayDateStr,
+            last_email_backup: now.toISOString(),
+          });
+          try {
+            localStorage.setItem("cf_last_daily_report_date", todayDateStr);
+          } catch {}
+        } else {
+          console.warn("[AutoBackup] Resend Dispatch Response:", data);
+        }
+      } catch (err) {
+        console.warn("[AutoBackup] Background automated backup encountered error:", err.message);
+      } finally {
+        isExecuting = false;
       }
     }
 
-    // Check every 3 minutes
+    // Check immediately on mount, and then every 60 seconds
     checkAndRunAutoBackup();
-    const timer = setInterval(checkAndRunAutoBackup, 3 * 60 * 1000);
+    const timer = setInterval(checkAndRunAutoBackup, 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 
