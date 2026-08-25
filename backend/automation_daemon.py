@@ -31,13 +31,16 @@ def run_backup_check(force=False):
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         output = res.stdout.strip()
         if output:
-            print(output)
+            print(output, flush=True)
         if res.returncode != 0 and res.stderr:
             logging.error(f"Execution error: {res.stderr.strip()}")
+            sys.stdout.flush()
     except subprocess.TimeoutExpired:
         logging.warning("Backup execution timed out (60s).")
+        sys.stdout.flush()
     except Exception as e:
         logging.error(f"Daemon exception: {str(e)}")
+        sys.stdout.flush()
 
 def main():
     logging.info("Starting CliniCore Python 3 24/7 Automation Daemon...")
