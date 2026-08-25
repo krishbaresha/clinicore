@@ -33,10 +33,33 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Production Deployment & Live Verification on Hostinger KVM 1 VPS
-- **Last worked on:** Renamed entire application & repository to **CliniCore**, configured Hostinger MCP integration, deployed full-stack (PHP 8.3 REST API + MySQL 8.0 with 26 tables & staff seeds + React/Vite SPA `dist/`), resolved Windows UTF-8 BOM encoding fatal errors in PHP, and verified live API & Web routes (100% 200 OK).
+- **Phase:** Production Domain, Automated CI/CD, Cockpit/RDP GUIs & UI/UX Pro Max Polish
+- **Last worked on:** Configured DNS and Let's Encrypt SSL on `https://api.clinicore.me`, connected Vercel frontend on `https://www.clinicore.me`, set up automated GitHub Actions CI/CD and `npm run deploy`, installed Cockpit & Xrdp GUI environments, installed `ui-ux-pro-max` and `namecheap` agent skills, and applied comprehensive UI/UX polish across navigation, empty states, touch targets, and CliniCore branding consistency.
 - **Currently blocked on:** None.
-- **Overall completion estimate:** 100% (Full-Stack Production Live).
+- **Overall completion estimate:** 100% (Enterprise Production Ready & DevOps Enabled).
+
+### Session: 2026-08-25 (Part 31) — Domain SSL, CI/CD Auto-Deploy, Cockpit/RDP GUIs & UI/UX Pro Max Polish
+
+**Task worked on:**
+1. **Domain & Automated Let's Encrypt SSL Provisioning:**
+   - Configured `api.clinicore.me` (`77.37.45.233`) with auto-renewing Let's Encrypt SSL certificate via Certbot.
+   - Configured CORS and Nginx reverse proxy for secure communication between Vercel frontend and VPS backend.
+   - Connected `clinicore.me` and `www.clinicore.me` on Vercel Edge CDN with SSL.
+2. **DevOps & CI/CD Pipeline:**
+   - Created `.github/workflows/deploy.yml` for automated GitHub Actions deployment on `git push origin main`.
+   - Added `npm run deploy` CLI command (`scripts/deploy_vps.py`) for 1-click 10s local-to-VPS synchronization.
+   - Initialized Git tracking repository on VPS `/var/www/clinicore`.
+3. **VPS GUI Environments:**
+   - Installed and unblocked **Cockpit Web Management Console** on `https://77.37.45.233:9090` (real-time metrics, logs, services, web terminal).
+   - Installed **XFCE4 Desktop + Xrdp Remote Desktop** on `77.37.45.233:3389` (Windows `mstsc.exe` connection).
+4. **Customization Skills Installed:**
+   - Installed `ui-ux-pro-max` design intelligence skill (79 styles, 192 palettes, 119 UX guidelines).
+   - Installed `namecheap` CLI (`v1.0.0`) and agent skill.
+5. **UI/UX Pro Max Polish & Bug Fixes:**
+   - Standardized all remaining brand strings from `ClinicFlow` to `CliniCore` across 15 files.
+   - Upgraded empty list states in Patients Directory and Doctor Queue with illustrated cards and direct primary CTAs.
+   - Enforced 36–44px ergonomic touch targets on counter POS Qty steppers and table action buttons.
+   - Upgraded metadata contrast ratios to WCAG AA 4.5:1 standards.
 
 ### Session: 2026-08-25 (Part 30) — Full App CliniCore Rename, Full-Stack SFTP Deployment & Live Verification
 
