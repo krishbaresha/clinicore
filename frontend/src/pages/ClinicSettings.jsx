@@ -1002,8 +1002,9 @@ export default function ClinicSettings() {
                           if (res.ok && data?.success) {
                             alert(`✅ Resend API Success! Encrypted Database Backup (.cfbak) delivered to inbox (${targetEmails.join(", ")}).`);
                           } else {
-                            const errTxt = data?.message || data?.error || JSON.stringify(data);
-                            if (errTxt.includes("You can only send testing emails to your own email address") || errTxt.includes("only send testing emails")) {
+                            const rawError = data?.error?.message || data?.message || data?.error || JSON.stringify(data || {});
+                            const errTxt = typeof rawError === "string" ? rawError : JSON.stringify(rawError);
+                            if (errTxt.includes("You can only send testing emails to your own email address") || errTxt.includes("only send testing emails") || errTxt.includes("testing emails")) {
                               alert(`💡 Resend Testing Mode Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to ${clinicForm.backup_email}, verify your domain on https://resend.com/domains!\n\nLocal encrypted .cfbak backup was downloaded to your computer.`);
                             } else {
                               alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local encrypted .cfbak backup was downloaded.`);

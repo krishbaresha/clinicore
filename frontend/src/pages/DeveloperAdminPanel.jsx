@@ -783,8 +783,9 @@ export default function DeveloperAdminPanel() {
         alert(`✅ Backup Email Successfully Delivered!\n\nEncrypted database vault (.cfbak) and executive performance audit delivered to:\n${targetEmail}\n\nBackup Size: ${(sizeBytes / 1024).toFixed(1)} KB`);
         if (showEmailPreviewModal) setShowEmailPreviewModal(false);
       } else {
-        const errorMsg = data?.message || data?.error || JSON.stringify(data);
-        if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails")) {
+        const rawError = data?.error?.message || data?.message || data?.error || JSON.stringify(data || {});
+        const errorMsg = typeof rawError === "string" ? rawError : JSON.stringify(rawError);
+        if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails") || errorMsg.includes("testing emails")) {
           alert(`💡 Resend Sandbox Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to any custom recipient (${targetEmail}), verify your domain on https://resend.com/domains!\n\nEncrypted database backup was generated and validated.`);
         } else {
           alert(`⚠️ Email Dispatch Error:\n${errorMsg}`);
@@ -871,8 +872,9 @@ export default function DeveloperAdminPanel() {
         showToast("✅ Resend Connectivity Test Ping Verified!");
         alert(`✅ Resend Gateway Live!\n\nTest verification ping successfully delivered to:\n${targetEmail}`);
       } else {
-        const errorMsg = data?.message || data?.error || JSON.stringify(data);
-        if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails")) {
+        const rawError = data?.error?.message || data?.message || data?.error || JSON.stringify(data || {});
+        const errorMsg = typeof rawError === "string" ? rawError : JSON.stringify(rawError);
+        if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails") || errorMsg.includes("testing emails")) {
           alert(`💡 Resend Sandbox Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to any external address (${targetEmail}), verify your domain on https://resend.com/domains!`);
         } else {
           alert(`⚠️ Resend Ping Response:\n${errorMsg}`);
