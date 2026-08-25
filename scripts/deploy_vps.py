@@ -11,7 +11,7 @@ USER = "root"
 PASS = "Keru@11998844"
 
 print("=" * 60)
-print("🚀 Deploying CliniCore to Hostinger VPS (77.37.45.233)...")
+print("[DEPLOY] Deploying CliniCore to Hostinger VPS (77.37.45.233)...")
 print("=" * 60)
 
 try:
@@ -36,11 +36,11 @@ try:
 
     client.close()
     print("\n" + "=" * 60)
-    print("✅ DEPLOYMENT SUCCESSFUL! All services updated & live.")
+    print("[SUCCESS] DEPLOYMENT SUCCESSFUL! All services updated & live.")
     print("Web: https://www.clinicore.me/")
     print("API: https://api.clinicore.me/api/health")
     print("=" * 60)
 
 except Exception as e:
-    print(f"\n❌ Deployment error: {e}")
+    print(f"\n[ERROR] Deployment error: {e}")
     sys.exit(1)
