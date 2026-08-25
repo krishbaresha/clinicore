@@ -33,10 +33,34 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Production Backend & Database Architecture on Hostinger KVM 1 VPS
-- **Last worked on:** Production Backend & Database Architecture on Hostinger KVM 1 VPS (Ubuntu 24.04 LTS). Created full normalized 26-table MySQL 8 schema (`production_schema.sql`), initial seed (`production_seed.sql`), automated 1-click VPS setup script (`deploy_vps_setup.sh`), and complete PHP 8.3 REST API gateway (`backend/`).
+- **Phase:** Production Deployment & Live Verification on Hostinger KVM 1 VPS
+- **Last worked on:** Renamed entire application & repository to **CliniCore**, configured Hostinger MCP integration, deployed full-stack (PHP 8.3 REST API + MySQL 8.0 with 26 tables & staff seeds + React/Vite SPA `dist/`), resolved Windows UTF-8 BOM encoding fatal errors in PHP, and verified live API & Web routes (100% 200 OK).
 - **Currently blocked on:** None.
-- **Overall completion estimate:** 100% (Backend & Database Architecture Deployed).
+- **Overall completion estimate:** 100% (Full-Stack Production Live).
+
+### Session: 2026-08-25 (Part 30) — Full App CliniCore Rename, Full-Stack SFTP Deployment & Live Verification
+
+**Task worked on:**
+1. **Global App & Repository Rename to CliniCore:**
+   - Updated GitHub repository remote URL to `https://github.com/krishbaresha/clinicore.git`.
+   - Renamed PHP namespace across all classes to `CliniCore\` (`CliniCore\Config`, `CliniCore\Controllers`, `CliniCore\Middleware`, `CliniCore\Services`, `CliniCore\Utils`).
+   - Renamed database identifier across configs and schema to `clinicore`.
+   - Updated Nginx virtual host paths to `/var/www/clinicore`.
+2. **Hostinger MCP Integration (`mcp_config.json`):**
+   - Configured all 7 Hostinger MCP servers (`hostinger-vps`, `hostinger-hosting`, `hostinger-domains`, `hostinger-dns`, `hostinger-billing`, `hostinger-reach`, `hostinger-ecommerce`) with authenticated API access token.
+3. **Full-Stack SFTP Deployment Pipeline (`scratch/vps_deploy.py`):**
+   - Uploaded complete backend codebase, database schemas/seeds, automated scripts, and pre-compiled production frontend bundle (`frontend/dist`) directly to `/var/www/clinicore/`.
+4. **BOM & PHP 8.3 Fatal Error Resolution:**
+   - Diagnosed and fixed PHP 8.3 fatal error `strict_types declaration must be the very first statement in the script` caused by PowerShell adding UTF-8 BOM (`\xef\xbb\xbf`) to PHP files.
+   - Cleaned all BOM headers locally and on the VPS.
+5. **Database Seed & Authentication Verification (`scratch/vps_test_auth.py`):**
+   - Successfully verified 26 relational tables in MySQL `clinicore`.
+   - Verified default staff logins (`admin@clinicore.pk`, `drkashif@clinicore.pk`, `drasif@clinicore.pk`, `waheed@clinicore.pk`, etc.) with default password `password123`.
+   - Verified JWT issuance and authenticated protected endpoints (`/api/v1/patients`, `/api/v1/inventory`, `/api/v1/b2b/parties`).
+6. **Live Endpoints Confirmed:**
+   - **Frontend App:** `http://77.37.45.233/` -> **200 OK**
+   - **API Health:** `http://77.37.45.233/api/health` -> **200 OK**
+   - **Auth Gateway:** `http://77.37.45.233/api/v1/auth/login` -> **200 OK**
 
 ### Session: 2026-08-24 (Part 29) — Production Backend & Database Architecture (Hostinger KVM 1 VPS)
 
