@@ -158,17 +158,20 @@ export default function DeveloperAdminPanel() {
   });
 
   // Clinic Identity Form
-  const [clinicForm, setClinicForm] = useState({
-    name: "",
-    address: "",
-    phone: "",
-    default_consultation_fee: 0,
-    clinic_status: "open",
-    public_notice: "",
-    resend_api_key: "",
-    notification_email: "",
-    report_frequency: "daily_9pm",
-    whatsapp_gateway_no: "",
+  const [clinicForm, setClinicForm] = useState(() => {
+    const c = dbClinic.get() || {};
+    return {
+      name: c.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale",
+      address: c.address || "Lajpat Road, Hyderabad, Sindh",
+      phone: c.phone || "03473100304",
+      default_consultation_fee: Number(c.default_consultation_fee) || 300,
+      clinic_status: c.clinic_status || "open",
+      public_notice: c.public_notice || "",
+      resend_api_key: c.resend_api_key || (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") || "" : ""),
+      notification_email: c.notification_email || c.backup_email || (typeof window !== "undefined" ? localStorage.getItem("cf_notification_email") || "drasifhosting@gmail.com" : "drasifhosting@gmail.com"),
+      report_frequency: c.report_frequency || c.backup_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "daily_9pm" : "daily_9pm"),
+      whatsapp_gateway_no: c.whatsapp_gateway_no || (typeof window !== "undefined" ? localStorage.getItem("cf_whatsapp_gateway_no") || "03473100304" : "03473100304"),
+    };
   });
 
   // Software Licensing & Remote Control State
@@ -176,9 +179,7 @@ export default function DeveloperAdminPanel() {
   const [outboxItems, setOutboxItems] = useState(() => dbOutbox.getAll());
   const [syncState, setSyncState] = useState(() => syncEngine.getStatus());
 
-
-
-  const loadData = async () => {
+  const loadData = async (preserveForm = false) => {
     // 1. Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
     try {
       const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
@@ -187,22 +188,25 @@ export default function DeveloperAdminPanel() {
         const json = await res.json();
         if (json?.success && json?.data?.clinic) {
           const sClinic = json.data.clinic;
-          dbClinic.update(sClinic);
           setActiveClinic(sClinic);
-          setClinicForm({
-            name: sClinic.name || "",
-            address: sClinic.address || "",
-            phone: sClinic.phone || "",
-            default_consultation_fee: Number(sClinic.default_consultation_fee) || 0,
-            clinic_status: sClinic.clinic_status || "open",
-            public_notice: sClinic.public_notice || "",
-            resend_api_key: sClinic.resend_api_key || "",
-            notification_email: sClinic.notification_email || "",
-            report_frequency: sClinic.report_frequency || "daily_9pm",
-            whatsapp_gateway_no: sClinic.whatsapp_gateway_no || "",
-          });
+          if (!preserveForm) {
+            setClinicForm((prev) => ({
+              ...prev,
+              name: sClinic.name || prev.name,
+              address: sClinic.address || prev.address,
+              phone: sClinic.phone || prev.phone,
+              default_consultation_fee: Number(sClinic.default_consultation_fee) || prev.default_consultation_fee,
+              clinic_status: sClinic.clinic_status || prev.clinic_status,
+              public_notice: sClinic.public_notice || prev.public_notice,
+              resend_api_key: sClinic.resend_api_key || prev.resend_api_key,
+              notification_email: sClinic.notification_email || prev.notification_email,
+              report_frequency: sClinic.report_frequency || prev.report_frequency,
+              whatsapp_gateway_no: sClinic.whatsapp_gateway_no || prev.whatsapp_gateway_no,
+            }));
+          }
           if (sClinic.resend_api_key) localStorage.setItem("cf_resend_api_key", sClinic.resend_api_key);
           if (sClinic.notification_email) localStorage.setItem("cf_notification_email", sClinic.notification_email);
+          if (sClinic.report_frequency) localStorage.setItem("cf_report_frequency", sClinic.report_frequency);
           if (sClinic.admin_master_passcode) setAdminPasscode(sClinic.admin_master_passcode);
           if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
 
@@ -527,11 +531,11 @@ export default function DeveloperAdminPanel() {
   // ---------------------------------------------------------------------------
   const handleSaveClinicSettings = async (e) => {
     e?.preventDefault?.();
-    dbClinic.update(clinicForm);
-    if (clinicForm.resend_api_key) localStorage.setItem("cf_resend_api_key", clinicForm.resend_api_key);
-    if (clinicForm.notification_email) localStorage.setItem("cf_notification_email", clinicForm.notification_email);
+    const updated = dbClinic.update(clinicForm);
+    if (clinicForm.resend_api_key) localStorage.setItem("cf_resend_api_key", clinicForm.resend_api_key.trim());
+    if (clinicForm.notification_email) localStorage.setItem("cf_notification_email", clinicForm.notification_email.trim());
     if (clinicForm.report_frequency) localStorage.setItem("cf_report_frequency", clinicForm.report_frequency);
-    if (clinicForm.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", clinicForm.whatsapp_gateway_no);
+    if (clinicForm.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", clinicForm.whatsapp_gateway_no.trim());
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
@@ -546,8 +550,21 @@ export default function DeveloperAdminPanel() {
       console.warn("Could not sync config to remote MySQL:", e);
     }
 
-    showToast("✅ Clinic Identity, Resend API, and Automated Reporting Saved to Cloud & Local Storage!");
-    loadData();
+    const frequencyLabels = {
+      daily_9pm: "Daily at 9:00 PM (Shift End Closure)",
+      daily_10pm: "Daily at 10:00 PM (Late Night Closure)",
+      daily_8pm: "Daily at 8:00 PM (Evening Shift Closure)",
+      every_12h: "Every 12 Hours (Twice Daily Audit)",
+      every_6h: "Every 6 Hours (High Volume Audit)",
+      hourly: "Hourly (Real-Time Background Sync)",
+      weekly_saturday: "Weekly on Saturday",
+      monthly: "Monthly Executive Report",
+      manual: "Manual On-Demand Only",
+    };
+
+    const freqName = frequencyLabels[clinicForm.report_frequency] || clinicForm.report_frequency;
+    showToast(`✅ Saved! Frequency updated to: ${freqName}`);
+    loadData(true);
   };
 
   const handleManualBackupEmailDispatch = async () => {
@@ -2486,18 +2503,56 @@ export default function DeveloperAdminPanel() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                      Automated Report Frequency
+                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Automated Report Frequency</span>
+                      <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Live Active</span>
                     </label>
                     <select
                       value={clinicForm.report_frequency}
-                      onChange={(e) => setClinicForm({ ...clinicForm, report_frequency: e.target.value })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                      onChange={(e) => {
+                        const newFreq = e.target.value;
+                        setClinicForm({ ...clinicForm, report_frequency: newFreq });
+                        try {
+                          localStorage.setItem("cf_report_frequency", newFreq);
+                        } catch {}
+                      }}
+                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 cursor-pointer shadow-inner"
                     >
-                      <option value="daily_9pm">Daily at 9:00 PM (Shift End Closure)</option>
-                      <option value="weekly_saturday">Weekly on Saturday (Weekly Summary)</option>
-                      <option value="monthly">Monthly Executive Report</option>
+                      <option value="daily_9pm">🌙 Daily at 9:00 PM (Shift End Closure - Recommended)</option>
+                      <option value="daily_10pm">🌙 Daily at 10:00 PM (Late Night Closure)</option>
+                      <option value="daily_8pm">🌙 Daily at 8:00 PM (Evening Shift Closure)</option>
+                      <option value="every_12h">⏱️ Every 12 Hours (Twice Daily Audit)</option>
+                      <option value="every_6h">⏱️ Every 6 Hours (High Volume Audit)</option>
+                      <option value="hourly">⚡ Every 1 Hour (Real-Time Background Sync)</option>
+                      <option value="weekly_saturday">📅 Weekly on Saturday (Weekly Summary)</option>
+                      <option value="monthly">📊 Monthly Executive Report</option>
+                      <option value="manual">🚫 Manual On-Demand Only (Off)</option>
                     </select>
+                    <div className="mt-1.5 px-3 py-1.5 bg-teal-50/80 border border-teal-100 rounded-xl flex items-center gap-1.5 text-[11px] font-medium text-teal-900">
+                      <span className="material-symbols-outlined text-xs text-teal-700">schedule</span>
+                      <span>
+                        Status:{" "}
+                        <strong className="font-bold text-teal-950">
+                          {clinicForm.report_frequency === "daily_9pm"
+                            ? "Daily 9:00 PM Shift-End Closure"
+                            : clinicForm.report_frequency === "daily_10pm"
+                            ? "Daily 10:00 PM Late Night Closure"
+                            : clinicForm.report_frequency === "daily_8pm"
+                            ? "Daily 8:00 PM Evening Shift Closure"
+                            : clinicForm.report_frequency === "every_12h"
+                            ? "Every 12 Hours Audit"
+                            : clinicForm.report_frequency === "every_6h"
+                            ? "Every 6 Hours Audit"
+                            : clinicForm.report_frequency === "hourly"
+                            ? "Hourly Real-Time Audit"
+                            : clinicForm.report_frequency === "weekly_saturday"
+                            ? "Weekly Saturday Summary"
+                            : clinicForm.report_frequency === "monthly"
+                            ? "Monthly Executive Closure"
+                            : "Manual On-Demand Only"}
+                        </strong>
+                      </span>
+                    </div>
                   </div>
                 </div>
 

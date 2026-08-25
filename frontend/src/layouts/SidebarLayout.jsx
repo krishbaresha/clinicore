@@ -160,10 +160,37 @@ export default function SidebarLayout({ children }) {
       let triggerReason = "";
 
       if (frequency === "daily_9pm" || frequency === "daily") {
-        // Trigger if current local clock >= 21:00 (9:00 PM) AND today's report hasn't been sent yet
         if (currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
           shouldTrigger = true;
           triggerReason = "Daily 9:00 PM Shift End Closure";
+        }
+      } else if (frequency === "daily_10pm") {
+        if (currentHour >= 22 && lastDailyReportDate !== todayDateStr) {
+          shouldTrigger = true;
+          triggerReason = "Daily 10:00 PM Late Night Closure";
+        }
+      } else if (frequency === "daily_8pm") {
+        if (currentHour >= 20 && lastDailyReportDate !== todayDateStr) {
+          shouldTrigger = true;
+          triggerReason = "Daily 8:00 PM Evening Shift Closure";
+        }
+      } else if (frequency === "every_12h") {
+        const intervalMs = 12 * 60 * 60 * 1000;
+        if (nowMs - lastBackupMs >= intervalMs) {
+          shouldTrigger = true;
+          triggerReason = "Every 12 Hours Audit";
+        }
+      } else if (frequency === "every_6h") {
+        const intervalMs = 6 * 60 * 60 * 1000;
+        if (nowMs - lastBackupMs >= intervalMs) {
+          shouldTrigger = true;
+          triggerReason = "Every 6 Hours High Volume Audit";
+        }
+      } else if (frequency === "hourly") {
+        const intervalMs = 1 * 60 * 60 * 1000;
+        if (nowMs - lastBackupMs >= intervalMs) {
+          shouldTrigger = true;
+          triggerReason = "Hourly Real-Time System Audit";
         }
       } else if (frequency === "weekly_saturday") {
         if (now.getDay() === 6 && currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
