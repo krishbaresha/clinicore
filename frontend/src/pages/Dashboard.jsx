@@ -38,6 +38,14 @@ export default function Dashboard() {
 
   // Doctor ke liye strict data isolation: sirf apna OPD data dikhe
   const isDoctor = user?.role === "doctor";
+  const [, setSyncTick] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setSyncTick((t) => t + 1);
+    window.addEventListener("clinicflow_status_update", handleSync);
+    return () => window.removeEventListener("clinicflow_status_update", handleSync);
+  }, []);
+
   const canViewFinancials =
     !isDoctor &&
     (user?.is_owner || user?.can_view_financials ||

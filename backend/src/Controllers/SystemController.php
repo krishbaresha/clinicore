@@ -80,6 +80,7 @@ class SystemController
                     'whatsapp_gateway_no'   => $settings['whatsapp_gateway_no'] ?? '03473100304',
                     'report_frequency'      => $settings['report_frequency'] ?? 'daily_9pm',
                     'tab_pin'               => $settings['tab_pin'] ?? '7860',
+                    'admin_master_passcode' => $settings['admin_master_passcode'] ?? 'KB2026',
                 ]),
                 'has_custom_passcode' => !empty($settings['admin_master_passcode']),
                 'server_time'         => date('c')

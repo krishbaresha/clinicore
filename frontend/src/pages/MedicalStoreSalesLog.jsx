@@ -59,7 +59,11 @@ export default function MedicalStoreSalesLog() {
     if (er.success) setExpenses([...er.data].sort((a, b) => new Date(b.date) - new Date(a.date)));
   }
 
-  useEffect(loadAllData, []);
+  useEffect(() => {
+    loadAllData();
+    window.addEventListener("clinicflow_status_update", loadAllData);
+    return () => window.removeEventListener("clinicflow_status_update", loadAllData);
+  }, []);
 
   const cashierOptions = Array.from(new Set(sales.map((s) => s.cashier_name || "Store Staff").filter(Boolean)));
 

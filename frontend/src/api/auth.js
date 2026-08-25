@@ -45,7 +45,7 @@ export function login(identifier, password) {
   };
 
   // Bootstrap initial Admin user only when database has zero users
-  if (!user && allUsers.length === 0 && (idLower === "admin" || idLower === "admin@clinicflow.com")) {
+  if (!user && allUsers.length === 0 && (idLower === "admin" || idLower === "admin@clinicore.pk" || idLower === "admin@clinicflow.com")) {
     const adminPasscode = (typeof localStorage !== "undefined" ? localStorage.getItem("cf_admin_master_passcode") : null) || "KB2026";
     if (password === adminPasscode || password === "KB2026") {
       const bootstrapAdmin = {
@@ -55,7 +55,7 @@ export function login(identifier, password) {
         role: "admin",
         is_owner: true,
         can_view_financials: true,
-        email: "admin@clinicflow.com",
+        email: "admin@clinicore.pk",
         phone: "",
         status: "active",
         password: hashPassword(password),

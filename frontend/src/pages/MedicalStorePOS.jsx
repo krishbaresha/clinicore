@@ -253,7 +253,11 @@ export default function MedicalStorePOS() {
   }, [selectedInventoryIndex]);
 
   useEffect(() => {
-    setInventoryResults(dbInventory.getAll());
+    const refreshData = () => {
+      setInventoryResults(dbInventory.getAll());
+    };
+    refreshData();
+    window.addEventListener("clinicflow_status_update", refreshData);
 
     function handleKeyDown(e) {
       if (e.key === "F2") {
@@ -286,7 +290,10 @@ export default function MedicalStorePOS() {
     }
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("clinicflow_status_update", refreshData);
+    };
   }, []);
 
   function searchInventory(q) {

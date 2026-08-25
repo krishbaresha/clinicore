@@ -27,7 +27,7 @@ function todayAt(hour, minute = 0) {
 const SEED_DATA = {
   clinic: {
     id: "clinic_001",
-    name: "Medical Clinic & Pharmacy",
+    name: "",
     logo_url: "",
     address: "",
     phone: "",
@@ -36,7 +36,7 @@ const SEED_DATA = {
     clinic_status_note: "",
     public_notice: "",
     resend_api_key: "",
-    created_at: "2026-01-01T09:00:00Z",
+    created_at: new Date().toISOString(),
   },
   clinic_services: [],
   users: [],
@@ -54,60 +54,14 @@ const SEED_DATA = {
   returns: [],
   shift_closings: [],
   documents: [],
-  tenants: [
-    { id: "tenant_001", name: "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store", address: "Lajpat Road, Hyderabad", phone: "03473100304", fee: 300, status: "active", plan: "enterprise" }
-  ],
-  // Multi-Warehouse / Multi-Godown Master Data
-  warehouses: [
-    {
-      id: "wh_001",
-      clinic_id: "clinic_001",
-      code: "GDW-01",
-      name: "Main Godown (Lajpat Road)",
-      location: "Lajpat Road, Hyderabad",
-      incharge_name: "Raza",
-      phone: "03009998877",
-      is_default: true,
-      is_store_counter: false,
-      status: "active",
-      notes: "Primary wholesale storage godown",
-      created_at: "2024-01-01T00:00:00Z"
-    },
-    {
-      id: "wh_002",
-      clinic_id: "clinic_001",
-      code: "GDW-02",
-      name: "Secondary Godown (Site Area)",
-      location: "Site Area, Hyderabad",
-      incharge_name: "Usama",
-      phone: "03221234567",
-      is_default: false,
-      is_store_counter: false,
-      status: "active",
-      notes: "Overflow and bulk dry storage",
-      created_at: "2024-06-01T00:00:00Z"
-    },
-    {
-      id: "wh_str",
-      clinic_id: "clinic_001",
-      code: "STR-01",
-      name: "Medical Store Counter (POS)",
-      location: "Lajpat Road, Main Counter",
-      incharge_name: "Clinic & Pharmacy Counter",
-      phone: "03111234567",
-      is_default: false,
-      is_store_counter: true,
-      status: "active",
-      notes: "Retail counter and POS dispensing",
-      created_at: "2024-01-01T00:00:00Z"
-    }
-  ],
+  tenants: [],
+  warehouses: [],
   supplier_ledger: []
 };
 
 // ---------- Storage Keys ----------
 const KEYS = {
-  SEEDED:           "cf_seeded_v14_absolute_ground_zero_wipe",
+  SEEDED:           "cf_seeded_v15_absolute_ground_zero_clean_sync",
   CLINIC:           "cf_clinic_v5",
   SERVICES:         "cf_services_v5",
   USERS:            "cf_users_v5",
@@ -141,6 +95,11 @@ const KEYS = {
 // High-performance In-Memory Memoization Cache for Zero-Lag Operations
 const _COLLECTION_CACHE = new Map();
 const _ID_MAP_CACHE = new Map();
+let _collectionChangeHook = null;
+
+export function registerCollectionChangeHook(cb) {
+  _collectionChangeHook = cb;
+}
 
 /**
  * Returns local Pakistan Standard Time (UTC+5) date string as YYYY-MM-DD.
@@ -204,6 +163,18 @@ function setCollection(key, data) {
     }
 
     localStorage.setItem(key, raw);
+
+    try {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+    } catch {}
+
+    if (typeof _collectionChangeHook === "function") {
+      try {
+        _collectionChangeHook(key, data);
+      } catch (hookErr) {
+        console.warn("Collection change hook warning:", hookErr);
+      }
+    }
   } catch (e) {
     console.error("Failed to save collection to localStorage:", key, e);
   }
@@ -378,6 +349,14 @@ export const dbClinic = {
     const current = dbClinic.get();
     const updated = { ...current, ...data };
     localStorage.setItem(KEYS.CLINIC, JSON.stringify(updated));
+    try {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+    } catch {}
+    if (typeof _collectionChangeHook === "function") {
+      try {
+        _collectionChangeHook(KEYS.CLINIC, updated);
+      } catch {}
+    }
     return updated;
   },
   updateClinicStatus: (status, note) => {
@@ -3356,7 +3335,13 @@ export const dbLicense = {
     localStorage.setItem(KEYS.LICENSE, JSON.stringify(merged));
     try {
       window.dispatchEvent(new CustomEvent("clinicflow_license_update", { detail: merged }));
+      window.dispatchEvent(new Event("clinicflow_status_update"));
     } catch {}
+    if (typeof _collectionChangeHook === "function") {
+      try {
+        _collectionChangeHook(KEYS.LICENSE, merged);
+      } catch {}
+    }
     return merged;
   },
 

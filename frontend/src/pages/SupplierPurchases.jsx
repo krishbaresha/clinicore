@@ -409,6 +409,8 @@ export default function SupplierPurchases() {
 
   useEffect(() => {
     refreshData();
+    window.addEventListener("clinicflow_status_update", refreshData);
+    return () => window.removeEventListener("clinicflow_status_update", refreshData);
   }, []);
 
 

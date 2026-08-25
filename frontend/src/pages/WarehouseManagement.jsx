@@ -391,6 +391,8 @@ export default function WarehouseManagement() {
 
   useEffect(() => {
     refreshData();
+    window.addEventListener("clinicflow_status_update", refreshData);
+    return () => window.removeEventListener("clinicflow_status_update", refreshData);
   }, []);
 
 

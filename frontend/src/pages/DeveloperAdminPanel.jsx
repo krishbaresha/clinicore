@@ -439,13 +439,13 @@ export default function DeveloperAdminPanel() {
     name: "",
     address: "",
     phone: "",
-    default_consultation_fee: 300,
+    default_consultation_fee: 0,
     clinic_status: "open",
     public_notice: "",
     resend_api_key: "",
-    notification_email: "admin@drkashifclinic.com",
+    notification_email: "",
     report_frequency: "daily_9pm",
-    whatsapp_gateway_no: "03473100304",
+    whatsapp_gateway_no: "",
   });
 
   // Software Licensing & Remote Control State
@@ -456,20 +456,40 @@ export default function DeveloperAdminPanel() {
 
 
   const loadData = async () => {
+    // 1. Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const res = await fetch(`${apiUrl}/api/v1/system/config`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && json?.data?.clinic) {
+          const sClinic = json.data.clinic;
+          dbClinic.update(sClinic);
+          setActiveClinic(sClinic);
+          setClinicForm({
+            name: sClinic.name || "",
+            address: sClinic.address || "",
+            phone: sClinic.phone || "",
+            default_consultation_fee: Number(sClinic.default_consultation_fee) || 0,
+            clinic_status: sClinic.clinic_status || "open",
+            public_notice: sClinic.public_notice || "",
+            resend_api_key: sClinic.resend_api_key || "",
+            notification_email: sClinic.notification_email || "",
+            report_frequency: sClinic.report_frequency || "daily_9pm",
+            whatsapp_gateway_no: sClinic.whatsapp_gateway_no || "",
+          });
+          if (sClinic.resend_api_key) localStorage.setItem("cf_resend_api_key", sClinic.resend_api_key);
+          if (sClinic.notification_email) localStorage.setItem("cf_notification_email", sClinic.notification_email);
+          if (sClinic.admin_master_passcode) setAdminPasscode(sClinic.admin_master_passcode);
+          if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
+        }
+      }
+    } catch (syncErr) {
+      console.warn("[Cloud Sync] Using local storage config fallback:", syncErr);
+    }
+
     const curr = dbClinic.get() || {};
     setActiveClinic(curr);
-    setClinicForm({
-      name: curr.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store",
-      address: curr.address || "Lajpat Road / Main Market, Hyderabad",
-      phone: curr.phone || "03473100304",
-      default_consultation_fee: curr.default_consultation_fee || 300,
-      clinic_status: curr.clinic_status || "open",
-      public_notice: curr.public_notice || "",
-      resend_api_key: curr.resend_api_key || localStorage.getItem("cf_resend_api_key") || "",
-      notification_email: curr.notification_email || localStorage.getItem("cf_notification_email") || "reports@drkashifclinic.com",
-      report_frequency: curr.report_frequency || localStorage.getItem("cf_report_frequency") || "daily_9pm",
-      whatsapp_gateway_no: curr.whatsapp_gateway_no || "03473100304",
-    });
     setUsersList(dbUsers.getAll() || []);
     setWarehousesList(dbWarehouses.getAll() || []);
     setInventoryList(dbInventory.getAll() || []);
@@ -482,44 +502,13 @@ export default function DeveloperAdminPanel() {
     setCashBookList(dbCashBook.getAll() || []);
     setLicenseForm(dbLicense.get());
     setOutboxItems(dbOutbox.getAll() || []);
-
-    // Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
-      const res = await fetch(`${apiUrl}/api/v1/system/config`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.success && json?.data?.clinic) {
-          const sClinic = json.data.clinic;
-          dbClinic.update(sClinic);
-          setActiveClinic(sClinic);
-          setClinicForm((prev) => ({
-            ...prev,
-            name: sClinic.name || prev.name,
-            address: sClinic.address || prev.address,
-            phone: sClinic.phone || prev.phone,
-            default_consultation_fee: sClinic.default_consultation_fee || prev.default_consultation_fee,
-            clinic_status: sClinic.clinic_status || prev.clinic_status,
-            public_notice: sClinic.public_notice || prev.public_notice,
-            resend_api_key: sClinic.resend_api_key || prev.resend_api_key,
-            notification_email: sClinic.notification_email || prev.notification_email,
-            report_frequency: sClinic.report_frequency || prev.report_frequency,
-            whatsapp_gateway_no: sClinic.whatsapp_gateway_no || prev.whatsapp_gateway_no,
-          }));
-          if (sClinic.resend_api_key) localStorage.setItem("cf_resend_api_key", sClinic.resend_api_key);
-          if (sClinic.notification_email) localStorage.setItem("cf_notification_email", sClinic.notification_email);
-          if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
-        }
-      }
-    } catch (syncErr) {
-      console.warn("[Cloud Sync] Using local storage config fallback:", syncErr);
-    }
   };
 
   useEffect(() => {
+    // Eagerly pre-load authoritative data & cloud state on mount
+    loadData();
     if (sessionStorage.getItem("cf_dev_auth") === "true") {
       setIsAuthenticated(true);
-      loadData();
     }
     const unsub = syncEngine.subscribe(setSyncState);
     return unsub;
@@ -550,9 +539,13 @@ export default function DeveloperAdminPanel() {
         setAuthError("");
         loadData();
         return;
+      } else {
+        // If server rejected the passcode, stop here immediately!
+        setAuthError(data?.error?.message || "Incorrect Super Admin master passcode. Access denied.");
+        return;
       }
     } catch (netErr) {
-      // 2. Offline Fallback (Strict Case-Sensitive Match)
+      // 2. Offline Fallback ONLY (Strict Case-Sensitive Match against stored custom passcode)
       const currentAdminPasscode = (getAdminPasscode() || DEFAULT_ADMIN_PASSCODE).trim();
       if (input === currentAdminPasscode) {
         sessionStorage.setItem("cf_dev_auth", "true");
@@ -779,9 +772,10 @@ export default function DeveloperAdminPanel() {
   const handleSaveClinicSettings = async (e) => {
     e?.preventDefault?.();
     dbClinic.update(clinicForm);
-    localStorage.setItem("cf_resend_api_key", clinicForm.resend_api_key || "");
-    localStorage.setItem("cf_notification_email", clinicForm.notification_email || "");
-    localStorage.setItem("cf_report_frequency", clinicForm.report_frequency || "daily_9pm");
+    if (clinicForm.resend_api_key) localStorage.setItem("cf_resend_api_key", clinicForm.resend_api_key);
+    if (clinicForm.notification_email) localStorage.setItem("cf_notification_email", clinicForm.notification_email);
+    if (clinicForm.report_frequency) localStorage.setItem("cf_report_frequency", clinicForm.report_frequency);
+    if (clinicForm.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", clinicForm.whatsapp_gateway_no);
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
@@ -790,6 +784,8 @@ export default function DeveloperAdminPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(clinicForm),
       });
+      // Also broadcast and push full database snapshot to VPS MySQL
+      await syncEngine.pushLocalStateToCloud();
     } catch (e) {
       console.warn("Could not sync config to remote MySQL:", e);
     }

@@ -1,48 +1,17 @@
 {
-  "_note_for_ai": "This is the canonical mock dataset for CliniCore. UPDATED 13-Aug-2026 to reflect the real clinic workflow: token/queue system, relation-name-based patient search, photo-based prescriptions (no typed medicine list), and a pharmacist role. Use these exact field names and shapes in all generated code.",
-
+  "_note_for_ai": "CliniCore Ground-Zero Clean Master Dataset. All entities are initialized empty. Master records, clinic configuration, users, and inventory are created by real users from scratch.",
   "clinic": {
     "id": "clinic_001",
-    "name": "Dr. Asif Ashraf's Clinic",
+    "name": "",
     "logo_url": "",
-    "address": "Lajpat Road, Hyderabad",
-    "created_at": "2023-01-10T09:00:00Z"
+    "address": "",
+    "phone": "",
+    "default_consultation_fee": 0,
+    "created_at": ""
   },
-
-  "users": [
-    { "id": "user_001", "clinic_id": "clinic_001", "name": "Dr. Asif Ashraf", "role": "doctor", "phone": "03001234567", "email": "dr.asif@example.com" },
-    { "id": "user_002", "clinic_id": "clinic_001", "name": "Sana Malik", "role": "receptionist", "phone": "03111234567", "email": "sana.reception@example.com" },
-    { "id": "user_003", "clinic_id": "clinic_001", "name": "Kamran Iqbal", "role": "pharmacist", "phone": "03221234567", "email": "kamran.store@example.com" },
-    { "id": "user_004", "clinic_id": "clinic_001", "name": "Dr. Fatima Khan", "role": "doctor", "phone": "03009998877", "email": "dr.fatima@example.com" }
-  ],
-
-  "patients": [
-    { "id": "pat_001", "clinic_id": "clinic_001", "full_name": "Muhammad Bilal", "relation_name": "Abdul Rasheed", "relation_type": "father", "phone": "03211112233", "cnic": "41304-1234567-1", "age": 34, "gender": "male", "created_at": "2023-03-15T10:00:00Z" },
-    { "id": "pat_002", "clinic_id": "clinic_001", "full_name": "Ayesha Siddiqui", "relation_name": "Farhan Siddiqui", "relation_type": "husband", "phone": "03451112244", "cnic": "41306-7654321-2", "age": 27, "gender": "female", "created_at": "2024-06-01T11:30:00Z" },
-    { "id": "pat_003", "clinic_id": "clinic_001", "full_name": "Abdul Ghani", "relation_name": "Karim Bakhsh", "relation_type": "father", "phone": "03007779988", "cnic": "", "age": 58, "gender": "male", "created_at": "2022-11-20T09:15:00Z" },
-    { "id": "pat_004", "clinic_id": "clinic_001", "full_name": "Muhammad Bilal", "relation_name": "Ashfaq Hussain", "relation_type": "father", "phone": "03339990011", "cnic": "41304-9876543-3", "age": 22, "gender": "male", "created_at": "2025-02-10T10:00:00Z" },
-    { "id": "pat_005", "clinic_id": "clinic_001", "full_name": "Krish Baresha", "relation_name": "Ravi Baresha", "relation_type": "father", "phone": "03338887766", "cnic": "41304-5554433-2", "age": 25, "gender": "male", "created_at": "2025-02-10T10:00:00Z" }
-  ],
-
-  "_note_pat_004": "pat_001 and pat_004 share the exact same full_name ('Muhammad Bilal') on purpose — this is the critical duplicate-name test case. Search must use full_name + relation_name + phone together to tell them apart; searching 'Bilal' alone must show both as distinct results, not merge or randomly pick one.",
-
-  "visits": [
-    { "id": "visit_001", "patient_id": "pat_001", "clinic_id": "clinic_001", "doctor_id": "user_001", "token_number": 4, "visit_type": "new", "status": "completed", "visit_date": "2023-03-15T10:05:00Z", "fee_amount": 800, "prescription_image_url": "/mock-images/rx_visit_001.jpg", "report_image_urls": [], "follow_up_date": "2023-03-22", "notes": "" },
-    { "id": "visit_002", "patient_id": "pat_001", "clinic_id": "clinic_001", "doctor_id": "user_001", "token_number": 9, "visit_type": "follow_up", "status": "completed", "visit_date": "2025-07-10T16:20:00Z", "fee_amount": 1000, "prescription_image_url": "/mock-images/rx_visit_002.jpg", "report_image_urls": ["/mock-images/report_visit_002_1.jpg"], "follow_up_date": "2025-07-20", "notes": "Patient returned after 2 years — history retrieved successfully" },
-    { "id": "visit_003", "patient_id": "pat_002", "clinic_id": "clinic_001", "doctor_id": "user_004", "token_number": 2, "visit_type": "new", "status": "completed", "visit_date": "2024-06-01T11:35:00Z", "fee_amount": 900, "prescription_image_url": "/mock-images/rx_visit_003.jpg", "report_image_urls": [], "follow_up_date": null, "notes": "" },
-    { "id": "visit_004", "patient_id": "pat_003", "clinic_id": "clinic_001", "doctor_id": "user_001", "token_number": 1, "visit_type": "new", "status": "completed", "visit_date": "2022-11-20T09:20:00Z", "fee_amount": 1200, "prescription_image_url": "/mock-images/rx_visit_004.jpg", "report_image_urls": ["/mock-images/report_visit_004_1.jpg"], "follow_up_date": "2022-12-05", "notes": "Referred for X-ray" },
-    { "id": "visit_005", "patient_id": "pat_004", "clinic_id": "clinic_001", "doctor_id": "user_001", "token_number": 10, "visit_type": "new", "status": "waiting", "visit_date": "2026-08-15T14:00:00Z", "fee_amount": 800, "prescription_image_url": null, "report_image_urls": [], "follow_up_date": null, "notes": "Currently in today's queue — good test case for the live queue screen" },
-    { "id": "visit_008", "patient_id": "pat_005", "clinic_id": "clinic_001", "doctor_id": "user_004", "token_number": 11, "visit_type": "new", "status": "waiting", "visit_date": "2026-08-15T14:15:00Z", "fee_amount": 800, "prescription_image_url": null, "report_image_urls": [], "follow_up_date": null, "notes": "Assigned to Dr. Fatima Khan — token #11" }
-  ],
-
-  "store_inventory": [
-    { "id": "inv_001", "clinic_id": "clinic_001", "medicine_name": "Panadol", "stock_qty": 120, "unit_price": 8, "low_stock_threshold": 20 },
-    { "id": "inv_002", "clinic_id": "clinic_001", "medicine_name": "Amoxicillin 500mg", "stock_qty": 15, "unit_price": 25, "low_stock_threshold": 20 },
-    { "id": "inv_003", "clinic_id": "clinic_001", "medicine_name": "Ascoril Syrup", "stock_qty": 40, "unit_price": 180, "low_stock_threshold": 10 },
-    { "id": "inv_004", "clinic_id": "clinic_001", "medicine_name": "Ferrous Sulphate", "stock_qty": 8, "unit_price": 12, "low_stock_threshold": 15 }
-  ],
-
-  "store_sales": [
-    { "id": "sale_001", "clinic_id": "clinic_001", "visit_id": "visit_002", "items": [ { "inventory_id": "inv_003", "medicine_name": "Ascoril Syrup", "quantity": 1, "unit_price": 180, "line_total": 180 }, { "inventory_id": "inv_001", "medicine_name": "Panadol", "quantity": 2, "unit_price": 8, "line_total": 16 } ], "total_amount": 196, "sale_date": "2025-08-11T14:30:00Z" }
-  ]
+  "users": [],
+  "patients": [],
+  "visits": [],
+  "store_inventory": [],
+  "store_sales": []
 }

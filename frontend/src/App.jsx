@@ -34,6 +34,8 @@ const ClinicPublicPage      = lazyWithRetry(() => import("./pages/ClinicPublicPa
 const DeveloperAdminPanel   = lazyWithRetry(() => import("./pages/DeveloperAdminPanel.jsx"));
 const ReceiptStudio         = lazyWithRetry(() => import("./pages/ReceiptStudio.jsx"));
 
+import { syncEngine } from "./api/syncEngine.js";
+
 function PageLoadingFallback() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-teal-700">
@@ -188,6 +190,7 @@ export default function App() {
   // Seed DB and run automated retention lifecycle check (purge patients inactive > 24 months)
   useEffect(() => {
     initDB();
+    syncEngine.pullLatestCloudState();
     try {
       // Auto-purge patient profiles with 0 visits in the last 2 years (24 months)
       dbPatients.autoPurgeExpiredPatients(24);

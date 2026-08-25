@@ -28,31 +28,36 @@ export default function ClinicSettings() {
   const [transferSuccessMsg, setTransferSuccessMsg] = useState("");
 
   useEffect(() => {
-    const c = dbClinic.get();
-    if (c) {
-      setClinicForm({
-        name: c.name || "",
-        address: c.address || "",
-        logo_url: c.logo_url || "",
-        default_consultation_fee: c.default_consultation_fee?.toString() || "800",
-        backup_email: c.backup_email || "",
-        backup_frequency: c.backup_frequency || "daily",
-        resend_api_key: c.resend_api_key || "",
-        emailjs_service_id: c.emailjs_service_id || "",
-        emailjs_template_id: c.emailjs_template_id || "",
-        emailjs_public_key: c.emailjs_public_key || "",
-      });
-    }
-    setStaff(dbUsers.getAll());
-    setServices(dbClinicServices.getAll());
-    
-    // Load current user details
-    if (user) {
-      const activeUser = dbUsers.getById(user.userId);
-      if (activeUser) {
-        setProfileForm({ name: activeUser.name || "", email: activeUser.email || "" });
+    const loadSettings = () => {
+      const c = dbClinic.get();
+      if (c) {
+        setClinicForm({
+          name: c.name || "",
+          address: c.address || "",
+          logo_url: c.logo_url || "",
+          default_consultation_fee: c.default_consultation_fee?.toString() || "800",
+          backup_email: c.backup_email || "",
+          backup_frequency: c.backup_frequency || "daily",
+          resend_api_key: c.resend_api_key || "",
+          emailjs_service_id: c.emailjs_service_id || "",
+          emailjs_template_id: c.emailjs_template_id || "",
+          emailjs_public_key: c.emailjs_public_key || "",
+        });
       }
-    }
+      setStaff(dbUsers.getAll());
+      setServices(dbClinicServices.getAll());
+      
+      // Load current user details
+      if (user) {
+        const activeUser = dbUsers.getById(user.userId);
+        if (activeUser) {
+          setProfileForm({ name: activeUser.name || "", email: activeUser.email || "" });
+        }
+      }
+    };
+    loadSettings();
+    window.addEventListener("clinicflow_status_update", loadSettings);
+    return () => window.removeEventListener("clinicflow_status_update", loadSettings);
   }, [user]);
 
   function handleClinicChange(e) {

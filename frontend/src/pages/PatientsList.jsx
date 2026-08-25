@@ -11,13 +11,17 @@ export default function PatientsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 30;
 
-  // Load/filter patients whenever query changes
+  // Load/filter patients whenever query changes or data syncs
   useEffect(() => {
-    const result = searchPatients(query);
-    if (result.success) {
-      setPatients(result.data);
-      setCurrentPage(1);
-    }
+    const fetchPatients = () => {
+      const result = searchPatients(query);
+      if (result.success) {
+        setPatients(result.data);
+      }
+    };
+    fetchPatients();
+    window.addEventListener("clinicflow_status_update", fetchPatients);
+    return () => window.removeEventListener("clinicflow_status_update", fetchPatients);
   }, [query]);
 
   // Pre-index visit metadata in O(M) once instead of O(N*M) on each row

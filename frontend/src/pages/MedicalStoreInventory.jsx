@@ -107,6 +107,8 @@ export default function MedicalStoreInventory() {
 
   useEffect(() => {
     load();
+    window.addEventListener("clinicflow_status_update", load);
+    return () => window.removeEventListener("clinicflow_status_update", load);
   }, []);
 
   // Lock background body scroll when any modal popup is open
