@@ -244,25 +244,28 @@ export function generateCliniCoreEmailTemplate({
               </table>
 
               <!-- Encrypted Attachment Callout Card -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%); border: 1.5px solid #6ee7b7; border-radius: 16px; padding: 18px; margin-bottom: 24px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%); border: 1.5px solid #6ee7b7; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
                 <tr>
                   <td>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td width="40" style="vertical-align: middle;">
-                          <div style="width: 36px; height: 36px; background-color: #0f766e; border-radius: 10px; text-align: center; line-height: 36px; color: #ffffff; font-size: 18px;">
-                            🔒
+                        <td width="44" style="vertical-align: top;">
+                          <div style="width: 40px; height: 40px; background-color: #0f766e; border-radius: 12px; text-align: center; line-height: 40px; color: #ffffff; font-size: 20px;">
+                            📎
                           </div>
                         </td>
-                        <td style="padding-left: 12px; vertical-align: middle;">
-                          <div style="font-size: 12px; font-weight: 800; color: #065f46; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <td style="padding-left: 12px; vertical-align: top;">
+                          <div style="font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase; letter-spacing: 0.8px;">
                             Encrypted Database Vault Attached
                           </div>
-                          <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px; font-family: monospace;">
+                          <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-top: 3px; font-family: monospace;">
                             ${backupFilename}
                           </div>
-                          <div style="font-size: 11px; color: #047857; margin-top: 2px;">
-                            Size: ${sizeKb} &bull; Cipher: AES-XOR 0x5a &bull; Status: Verified Intact
+                          <div style="font-size: 12px; color: #047857; margin-top: 3px;">
+                            Size: <strong>${sizeKb}</strong> &bull; Cipher: <strong>AES-XOR 0x5a</strong> &bull; Status: <strong>Verified Intact</strong>
+                          </div>
+                          <div style="margin-top: 10px; padding: 8px 12px; background: rgba(16, 185, 129, 0.12); border-radius: 8px; border: 1px dashed #10b981; font-size: 11.5px; color: #065f46; line-height: 1.5;">
+                            📥 <strong>How to download:</strong> Look for the <strong>${backupFilename}</strong> attachment card at the bottom of this email in Gmail, or at the top in Outlook / Apple Mail, and click the download icon to save it locally.
                           </div>
                         </td>
                       </tr>
@@ -2661,6 +2664,20 @@ export default function DeveloperAdminPanel() {
                     )}
                   </button>
 
+                  {/* Direct Local Download Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      exportFullDatabase(false);
+                      showToast("💾 CliniCore Encrypted .cfbak file downloaded to your computer!");
+                    }}
+                    className="px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                    title="Download a local encrypted copy directly to your Downloads folder"
+                  >
+                    <span className="material-symbols-outlined text-base text-emerald-700">download</span>
+                    <span>Download .cfbak Locally</span>
+                  </button>
+
                   {/* Preview Template Modal Trigger */}
                   <button
                     type="button"
@@ -3405,6 +3422,18 @@ export default function DeveloperAdminPanel() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportFullDatabase(false);
+                    showToast("💾 .cfbak file downloaded to your Downloads folder!");
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-950 border border-emerald-300 hover:bg-emerald-100 flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Download copy directly"
+                >
+                  <span className="material-symbols-outlined text-sm text-emerald-700">download</span>
+                  <span>Download .cfbak</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowEmailPreviewModal(false)}
