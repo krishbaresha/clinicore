@@ -486,30 +486,48 @@
 }
 
 /* Global Mobile Touch & Smooth Inertia Scroll Rules */
-html, body {
+html {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   overscroll-behavior-y: contain;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
-/* Custom Sleek Scrollbars for Touch & Desktop */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+body {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 999px;
+#root {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(15, 118, 110, 0.25);
-  border-radius: 999px;
+/* Zero-Scrollbar Utility for Landing Page & Immersive Viewports */
+html,
+body,
+.no-scrollbar {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE & Edge */
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 118, 110, 0.5);
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+  background: transparent !important;
 }
 
 /* Touch friendly mobile scroll container utility */

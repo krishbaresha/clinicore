@@ -171,6 +171,12 @@ function setCollection(key, data) {
       window.dispatchEvent(new Event("clinicflow_status_update"));
     } catch {}
 
+    if (_syncChannel) {
+      try {
+        _syncChannel.postMessage({ type: "SYNC_COLLECTION", key, timestamp: Date.now() });
+      } catch {}
+    }
+
     if (typeof _collectionChangeHook === "function") {
       try {
         _collectionChangeHook(key, data);
@@ -183,15 +189,41 @@ function setCollection(key, data) {
   }
 }
 
-// Cross-Tab Cache Invalidation: When another browser tab writes to localStorage,
-// automatically evict stale cache entries so the next read fetches fresh data.
+// Instant Cross-Tab Real-Time Live Sync Engine via BroadcastChannel & Storage Events
+let _syncChannel = null;
 try {
-  window.addEventListener("storage", (e) => {
-    if (e.key && e.storageArea === localStorage) {
-      _COLLECTION_CACHE.delete(e.key);
-      _ID_MAP_CACHE.delete(e.key);
-    }
-  });
+  if (typeof BroadcastChannel !== "undefined") {
+    _syncChannel = new BroadcastChannel("clinicflow_realtime_sync");
+    _syncChannel.onmessage = (event) => {
+      if (event?.data?.key) {
+        _COLLECTION_CACHE.delete(event.data.key);
+        _ID_MAP_CACHE.delete(event.data.key);
+      } else {
+        _COLLECTION_CACHE.clear();
+        _ID_MAP_CACHE.clear();
+      }
+      try {
+        window.dispatchEvent(new Event("clinicflow_status_update"));
+      } catch {}
+    };
+  }
+} catch (bcErr) {
+  console.warn("BroadcastChannel not supported:", bcErr);
+}
+
+// Cross-Tab Cache Invalidation & Instant Reactive UI Dispatch
+try {
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", (e) => {
+      if (e.key && e.storageArea === localStorage) {
+        _COLLECTION_CACHE.delete(e.key);
+        _ID_MAP_CACHE.delete(e.key);
+        try {
+          window.dispatchEvent(new Event("clinicflow_status_update"));
+        } catch {}
+      }
+    });
+  }
 } catch {}
 
 function generateId(prefix = "id") {
@@ -3289,6 +3321,9 @@ export function hydrateCollectionsFromSnapshot(snapshot) {
   });
 
   try {
+    if (_syncChannel) {
+      _syncChannel.postMessage({ type: "HYDRATE_ALL", timestamp: Date.now() });
+    }
     window.dispatchEvent(new Event("clinicflow_status_update"));
     window.dispatchEvent(new Event("clinicflow_data_synced"));
   } catch {}

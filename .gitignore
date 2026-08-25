@@ -36,4 +36,6 @@ storage/backups/
 storage/uploads/
 Tech-Bill/
 backend/.env
+graphify-out/
+
 

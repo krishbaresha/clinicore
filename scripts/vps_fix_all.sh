@@ -122,45 +122,37 @@ echo "  .env written."
 # STEP 7: Fix Nginx configuration
 # ─────────────────────────────────────────────────────────
 echo ""
+# ─────────────────────────────────────────────────────────
+# STEP 6.5: Build Frontend Production SPA Bundle
+# ─────────────────────────────────────────────────────────
+echo ""
+echo "[6.5/8] Building Frontend Production SPA Bundle..."
+if [ -d "$FRONTEND_DIR" ]; then
+    cd "$FRONTEND_DIR"
+    if command -v npm &> /dev/null; then
+        npm install --no-audit --no-fund
+        npm run build
+        echo "  Frontend built successfully to dist/."
+    else
+        echo "  WARNING: npm is not installed on VPS. Installing Node.js & npm..."
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y nodejs
+        npm install --no-audit --no-fund
+        npm run build
+        echo "  Node.js installed and Frontend built."
+    fi
+    cd "$CLINICORE_DIR"
+fi
+
+# ─────────────────────────────────────────────────────────
+# STEP 7: Fix Nginx configuration
+# ─────────────────────────────────────────────────────────
+echo ""
 echo "[7/8] Writing Nginx configuration..."
 
 PHP_SOCKET=$(find /run/php/ -name "php*-fpm.sock" 2>/dev/null | head -1)
 [ -z "$PHP_SOCKET" ] && PHP_SOCKET="/run/php/php8.3-fpm.sock"
 echo "  PHP-FPM socket: $PHP_SOCKET"
-
-# Create frontend placeholder
-mkdir -p "$FRONTEND_DIR/dist"
-if [ ! -f "$FRONTEND_DIR/dist/index.html" ]; then
-cat > "$FRONTEND_DIR/dist/index.html" <<'HTML_EOF'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CliniCore Enterprise</title>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Segoe UI',sans-serif}
-        .card{background:#1e293b;border-radius:16px;padding:48px;text-align:center;border:1px solid #334155;max-width:420px}
-        h1{color:#f8fafc;font-size:28px;margin:16px 0 8px}
-        p{color:#94a3b8;font-size:15px;margin-bottom:24px}
-        .badge{background:#10b981;color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600}
-        a{display:block;margin-top:20px;color:#60a5fa;font-size:13px}
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div style="font-size:64px">🏥</div>
-        <h1>CliniCore Enterprise</h1>
-        <p>Backend API is running. Frontend deployment pending.</p>
-        <span class="badge">✓ API Online</span>
-        <a href="/api/health">View API Health →</a>
-    </div>
-</body>
-</html>
-HTML_EOF
-echo "  Frontend placeholder created."
-fi
 
 cat > /etc/nginx/sites-available/clinicore <<NGINX_EOF
 server {
@@ -181,16 +173,33 @@ server {
         fastcgi_read_timeout 120;
     }
 
-    # Frontend SPA
+    # Frontend SPA Root
     location / {
         root $FRONTEND_DIR/dist;
         index index.html;
         try_files \$uri \$uri/ /index.html;
+    }
 
-        location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
+    # PWA Service Worker, Manifest, Version & Entrypoint: NEVER CACHE
+    location ~* ^/(sw\.js|manifest\.json|version\.json|index\.html)$ {
+        root $FRONTEND_DIR/dist;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        expires 0;
+    }
+
+    # Content-Hashed Vite Assets: Aggressively Cache for 1 Year
+    location /assets/ {
+        root $FRONTEND_DIR/dist;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    # Static Media & Web Fonts
+    location ~* \.(png|jpg|jpeg|gif|svg|ico|woff|woff2)$ {
+        root $FRONTEND_DIR/dist;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
     }
 
     # Block access to sensitive backend files

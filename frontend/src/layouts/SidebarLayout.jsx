@@ -73,9 +73,11 @@ export default function SidebarLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Desktop Collapsible Sidebar State
+  // Desktop Collapsible Sidebar State (Default compact on tablet 768-1199px to prevent horizontal scroll)
   const [sidebarOpen, setSidebarOpen] = useState(() => {
-    return localStorage.getItem("cf_sidebar_expanded") !== "false";
+    const saved = localStorage.getItem("cf_sidebar_expanded");
+    if (saved !== null) return saved === "true";
+    return typeof window !== "undefined" ? window.innerWidth >= 1200 : true;
   });
   
   // Mobile Slide-over Drawer State
@@ -354,7 +356,7 @@ export default function SidebarLayout({ children }) {
             </span>
           </button>
 
-          <LanguageSwitcher />
+          <LanguageSwitcher compact={true} />
 
 
 
@@ -537,7 +539,7 @@ export default function SidebarLayout({ children }) {
         {/* ── Main Content Area with Dynamic Desktop Margin & Natural Scrolling ── */}
         <main
           className={`
-            flex-1 min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 pb-24 md:pb-12
+            flex-1 min-h-[calc(100vh-4rem)] p-3 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full min-w-0 pb-24 md:pb-12 overflow-x-hidden
             transition-all duration-300 ease-in-out
             ${sidebarOpen ? "md:ml-[280px]" : "md:ml-[80px]"}
           `}

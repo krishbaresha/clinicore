@@ -218,19 +218,25 @@ export default function ConsultationScreen() {
   const [services, setServices] = useState([]);
 
   useEffect(() => {
-    const v = dbVisits.getById(visitId);
-    if (!v) return;
-    setVisit(v);
-    const p = dbPatients.getById(v.patient_id);
-    setPatient(p);
-    if (p) {
-      const pv = dbVisits.getByPatient(p.id);
-      setPriorVisitCount(pv.filter((pv2) => pv2.id !== visitId).length);
+    function loadData() {
+      const v = dbVisits.getById(visitId);
+      if (!v) return;
+      setVisit(v);
+      const p = dbPatients.getById(v.patient_id);
+      setPatient(p);
+      if (p) {
+        const pv = dbVisits.getByPatient(p.id);
+        setPriorVisitCount(pv.filter((pv2) => pv2.id !== visitId).length);
+      }
+      // Restore any existing photos
+      if (v.prescription_image_url) setPrescriptionPhoto(v.prescription_image_url);
+      if (v.report_image_urls?.length) setReportPhotos(v.report_image_urls);
+      setServices(dbClinicServices.getAll());
     }
-    // Restore any existing photos
-    if (v.prescription_image_url) setPrescriptionPhoto(v.prescription_image_url);
-    if (v.report_image_urls?.length) setReportPhotos(v.report_image_urls);
-    setServices(dbClinicServices.getAll());
+
+    loadData();
+    window.addEventListener("clinicflow_status_update", loadData);
+    return () => window.removeEventListener("clinicflow_status_update", loadData);
   }, [visitId]);
 
   function addReportPhoto(src) {

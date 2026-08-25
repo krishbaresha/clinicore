@@ -341,7 +341,7 @@ export default function DeveloperAdminPanel() {
   const [authError, setAuthError] = useState("");
   const [activeTab, setActiveTab] = useState("audits"); // "audits" | "staff" | "clinic" | "apis" | "tenants" | "backups"
   const [toastMsg, setToastMsg] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window !== "undefined" ? window.innerWidth >= 1200 : true));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Resend Backup Dispatch & Preview States
@@ -540,7 +540,11 @@ export default function DeveloperAdminPanel() {
       setIsAuthenticated(true);
     }
     const unsub = syncEngine.subscribe(setSyncState);
-    return unsub;
+    window.addEventListener("clinicflow_status_update", loadData);
+    return () => {
+      unsub();
+      window.removeEventListener("clinicflow_status_update", loadData);
+    };
   }, []);
 
   const handleLogin = async (e) => {

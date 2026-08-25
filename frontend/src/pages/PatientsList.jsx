@@ -144,7 +144,7 @@ export default function PatientsList() {
       </header>
 
       {/* Main Content Area */}
-      <div className="p-3 md:p-lg flex flex-col gap-md">
+      <div className="py-3 flex flex-col gap-md w-full min-w-0 overflow-x-hidden">
         {/* Table Header with Select All */}
         <div className="grid grid-cols-12 px-4 py-2.5 bg-slate-100/80 rounded-xl text-xs font-black text-slate-600 uppercase tracking-wider items-center">
           <div className="col-span-1 flex items-center">

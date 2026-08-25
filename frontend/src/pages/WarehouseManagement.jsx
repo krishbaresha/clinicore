@@ -642,7 +642,7 @@ export default function WarehouseManagement() {
   const totalPartyReceivables = parties.reduce((sum, p) => sum + (Number(p.balance_due) || 0), 0);
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn pb-24">
+    <div className="w-full max-w-full min-w-0 space-y-6 animate-fadeIn pb-24 overflow-x-hidden">
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-teal-100 shadow-sm">

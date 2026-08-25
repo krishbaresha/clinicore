@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, Suspense } from "react";
 import { initDB, dbPatients } from "./api/db.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import SidebarLayout from "./layouts/SidebarLayout.jsx";
 import LicenseGuard from "./components/LicenseGuard.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import PWAUpdateBanner from "./components/PWAUpdateBanner.jsx";
 
 import { lazyWithRetry } from "./utils/lazyWithRetry.js";
 
@@ -204,6 +205,7 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <AppRoutes />
+          <PWAUpdateBanner />
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

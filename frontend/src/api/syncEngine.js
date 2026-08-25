@@ -56,7 +56,7 @@ class SyncEngine {
         this.processOutbox();
       });
 
-      // Active Multi-Device Background Sync Poller (every 6 seconds when tab is active)
+      // Active Multi-Device Background Sync Poller (every 3 seconds when tab is active)
       this.startBackgroundPoller();
     }
   }
@@ -73,7 +73,7 @@ class SyncEngine {
       ) {
         this.pullLatestCloudState();
       }
-    }, 6000);
+    }, 3000);
   }
 
   handleNetworkChange(onlineStatus) {
@@ -119,7 +119,7 @@ class SyncEngine {
    * Schedules a debounced snapshot push to VPS MySQL whenever local data changes.
    * Batches rapid UI changes (e.g. typing, multi-item checkouts) into a single atomic sync.
    */
-  schedulePush(delayMs = 400) {
+  schedulePush(delayMs = 250) {
     if (this.pushTimer) clearTimeout(this.pushTimer);
     this.pushTimer = setTimeout(() => {
       this.pushTimer = null;

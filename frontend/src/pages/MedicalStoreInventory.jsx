@@ -461,7 +461,7 @@ export default function MedicalStoreInventory() {
   }, [quickForm.cost_price, quickForm.sale_price]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 animate-in fade-in duration-300">
+    <div className="w-full max-w-full min-w-0 space-y-6 animate-in fade-in duration-300 overflow-x-hidden">
       {/* Toast Alert */}
       {toastMsg && (
         <div className="fixed top-6 right-6 z-50 bg-emerald-900/95 text-white font-bold text-xs px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-500/40 backdrop-blur-md flex items-center gap-3 animate-in slide-in-from-top-4">

@@ -104,7 +104,7 @@ export default function Dashboard() {
   const myInRoomVisit = myTodayVisits.find((v) => v.status === "in_consultation");
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 flex flex-col gap-6 w-full max-w-full overflow-x-hidden">
+    <div className="flex flex-col gap-6 w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>

@@ -523,7 +523,7 @@ export default function MedicalStorePOS() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-24 font-sans">
+    <div className="w-full max-w-full min-w-0 space-y-6 pb-24 font-sans overflow-x-hidden">
       {/* Top Banner */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
         <div>

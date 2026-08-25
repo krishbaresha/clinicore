@@ -211,7 +211,7 @@ export default function LandingPage() {
   const clinicStatus = clinicData.clinic_status || "open";
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] text-slate-800 font-sans selection:bg-teal-700 selection:text-white flex flex-col antialiased">
+    <div className="min-h-screen bg-[#f8faf9] text-slate-800 font-sans selection:bg-teal-700 selection:text-white flex flex-col antialiased w-full max-w-full overflow-x-hidden no-scrollbar relative">
 
       {/* ─── PUBLIC TOP NOTICE BANNER ─── */}
       {clinicData.public_notice && (
@@ -222,35 +222,35 @@ export default function LandingPage() {
       )}
 
       {/* ─── TOP HEADER NAVBAR (FULLY RESPONSIVE & SLEEK) ──────────── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-100 shadow-[0_2px_15px_rgba(0,0,0,0.03)] transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-100 shadow-[0_2px_15px_rgba(0,0,0,0.03)] transition-all w-full">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
 
           {/* Brand Logo & Name */}
-          <Link to="/" className="flex items-center gap-2.5 sm:gap-3.5 group shrink-0 min-w-0">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0 max-w-[50%] xs:max-w-[60%] sm:max-w-none">
             <img
               src="/favicon.svg"
               alt="CliniCore Logo"
-              className="h-10 sm:h-12 w-10 sm:w-12 object-contain drop-shadow-md group-hover:scale-105 transition-transform shrink-0 rounded-2xl"
+              className="h-9 sm:h-11 w-9 sm:w-11 object-contain drop-shadow-md group-hover:scale-105 transition-transform shrink-0 rounded-2xl"
             />
 
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-sm sm:text-base md:text-lg font-black tracking-tight text-slate-900 truncate max-w-[150px] xs:max-w-[200px] sm:max-w-xs md:max-w-sm">
+                <span className="text-xs xs:text-sm sm:text-base md:text-lg font-black tracking-tight text-slate-900 truncate">
                   {clinicName}
                 </span>
-                <span className="hidden xl:inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+                <span className="hidden 2xl:inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
                   <span className={`w-1.5 h-1.5 rounded-full ${clinicStatus === "open" ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
                   {clinicStatus === "open" ? t("landing.nav.opdOpen") : t("landing.nav.closed")}
                 </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 hidden sm:block truncate max-w-xs">
+              <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 hidden sm:block truncate max-w-xs md:max-w-sm">
                 {clinicTagline}
               </p>
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1.5 xl:gap-2">
+          {/* Desktop Navigation Links (Visible on Wide XL screens 1280px+) */}
+          <nav className="hidden xl:flex items-center gap-1 2xl:gap-2 shrink-0">
             {displayDoctors.length > 0 && (
               <a
                 href="#doctors"
@@ -287,15 +287,15 @@ export default function LandingPage() {
           </nav>
 
           {/* Action CTAs & Language Switcher */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <LanguageSwitcher compact={true} />
 
-            {/* Direct WhatsApp (Desktop only) */}
+            {/* Direct WhatsApp (Desktop only 2xl+) */}
             <a
               href={`https://wa.me/${clinicWhatsapp}?text=Assalam-o-Alaikum%20Clinic,%20I%20would%20like%20to%20inquire%20about%20OPD%20consultation.`}
               target="_blank"
               rel="noreferrer"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm shadow-emerald-700/20 cursor-pointer whitespace-nowrap"
+              className="hidden 2xl:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm shadow-emerald-700/20 cursor-pointer whitespace-nowrap"
               title="Message Clinic Helpdesk on WhatsApp"
             >
               <span className="material-symbols-outlined text-base">chat</span>
@@ -305,26 +305,27 @@ export default function LandingPage() {
             {/* Staff Login Link */}
             <Link
               to="/login"
-              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold bg-teal-800 hover:bg-teal-900 text-white transition-all shadow-md shadow-teal-900/20 whitespace-nowrap cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-800 hover:bg-teal-900 text-white transition-all shadow-md shadow-teal-900/20 whitespace-nowrap cursor-pointer"
+              title="Staff Login"
             >
               <span className="material-symbols-outlined text-base">login</span>
-              <span>Staff Login</span>
+              <span className="hidden xs:inline">Staff Login</span>
             </Link>
 
-            {/* Super Admin Command Center Link */}
+            {/* Super Admin Command Center Link (visible on sm+) */}
             <Link
               to="/admin"
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-950 border border-teal-200 transition-all cursor-pointer whitespace-nowrap shadow-2xs"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-950 border border-teal-200 transition-all cursor-pointer whitespace-nowrap shadow-2xs"
               title="Super Admin Command Center"
             >
               <span className="material-symbols-outlined text-base text-teal-700">admin_panel_settings</span>
-              <span className="hidden xl:inline">Admin Portal</span>
+              <span className="hidden 2xl:inline">Admin</span>
             </Link>
 
-            {/* Mobile Hamburger Button */}
+            {/* Mobile / Tablet Menu Drawer Trigger (visible on < xl) */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 flex items-center justify-center cursor-pointer min-h-[40px] min-w-[40px]"
+              className="xl:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 flex items-center justify-center cursor-pointer min-h-[40px] min-w-[40px] shrink-0"
               aria-label="Open Navigation Drawer"
             >
               <span className="material-symbols-outlined text-xl">
@@ -354,7 +355,7 @@ export default function LandingPage() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="fixed top-0 bottom-0 right-0 w-[85%] max-w-[340px] bg-white z-50 shadow-2xl p-5 sm:p-6 flex flex-col justify-between overflow-y-auto"
+              className="fixed top-0 bottom-0 right-0 w-[85%] max-w-[340px] bg-white z-50 shadow-2xl p-5 sm:p-6 flex flex-col justify-between overflow-y-auto no-scrollbar"
             >
               {/* Drawer Top Header */}
               <div className="space-y-4">
@@ -473,12 +474,12 @@ export default function LandingPage() {
       </AnimatePresence>
 
       {/* ─── HERO & LIVE TELEMETRY 2-COLUMN SECTION ────────────────── */}
-      <section className="relative pt-8 pb-12 sm:pt-16 sm:pb-20 overflow-hidden">
+      <section className="relative pt-8 pb-12 sm:pt-16 sm:pb-20 overflow-hidden w-full">
         {/* Soft Medical Gradient Glows */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[480px] bg-gradient-to-b from-teal-100/60 via-emerald-50/30 to-transparent blur-3xl -z-10 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 mx-auto max-w-7xl h-[480px] bg-gradient-to-b from-teal-100/60 via-emerald-50/30 to-transparent blur-3xl -z-10 pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center min-w-0">
 
             {/* Left Column: Hero Narrative */}
             <div className="lg:col-span-7 text-center lg:text-left space-y-5 sm:space-y-6">
@@ -688,8 +689,8 @@ export default function LandingPage() {
       </section>
 
       {/* ─── CLINICAL TRUST 4-COLUMN BENTO BAR ────────────────────── */}
-      <section className="py-6 sm:py-8 bg-white border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-6 sm:py-8 bg-white border-y border-slate-100 w-full">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-slate-50/70 border border-slate-100 p-4 sm:p-5 rounded-2xl text-left shadow-xs">
               <div className="w-9 h-9 rounded-xl bg-teal-100/70 text-teal-800 flex items-center justify-center mb-2.5">
@@ -728,8 +729,8 @@ export default function LandingPage() {
 
       {/* ─── OUR DOCTORS & CONSULTING SPECIALISTS SECTION (Only shown when doctors registered) ─── */}
       {displayDoctors.length > 0 && (
-        <section id="doctors" className="py-12 sm:py-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
+        <section id="doctors" className="py-12 sm:py-20 w-full">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
 
             <div className="text-center space-y-2.5 max-w-3xl mx-auto">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
@@ -818,8 +819,8 @@ export default function LandingPage() {
       )}
 
       {/* ─── CLINICAL SERVICES & TREATMENTS SECTION ───────────────── */}
-      <section id="services" className="py-12 sm:py-20 bg-white border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
+      <section id="services" className="py-12 sm:py-20 bg-white border-t border-slate-100 w-full">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
 
           <div className="text-center space-y-2.5 max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
@@ -863,8 +864,8 @@ export default function LandingPage() {
       </section>
 
       {/* ─── WHOLESALE & RETAIL PHARMACY SECTION ───────────────────── */}
-      <section id="pharmacy" className="py-12 sm:py-20 bg-[#fcfdfd]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="pharmacy" className="py-12 sm:py-20 bg-[#fcfdfd] w-full">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-10 shadow-sm relative overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-center">
@@ -940,8 +941,8 @@ export default function LandingPage() {
       </section>
 
       {/* ─── PATIENT TESTIMONIALS SECTION ─────────────────────────── */}
-      <section className="py-12 sm:py-20 bg-white border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
+      <section className="py-12 sm:py-20 bg-white border-t border-slate-100 w-full">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-12">
 
           <div className="text-center space-y-2.5 max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
@@ -976,8 +977,8 @@ export default function LandingPage() {
       </section>
 
       {/* ─── FREQUENTLY ASKED QUESTIONS (ACCORDION) ───────────────── */}
-      <section className="py-12 sm:py-20 bg-[#fcfdfd] border-t border-slate-100">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <section className="py-12 sm:py-20 bg-[#fcfdfd] border-t border-slate-100 w-full">
+        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
           <div className="text-center space-y-2.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-black">
@@ -1021,8 +1022,8 @@ export default function LandingPage() {
       </section>
 
       {/* ─── LOCATION, TIMINGS & CONTACT FOOTER ─────────────────────── */}
-      <footer id="contact" className="bg-white border-t border-slate-100 pt-12 sm:pt-16 pb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+      <footer id="contact" className="bg-white border-t border-slate-100 pt-12 sm:pt-16 pb-8 w-full">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
 

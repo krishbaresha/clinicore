@@ -539,7 +539,7 @@ export default function FeesReports() {
   const clinic = dbClinic.get();
 
   return (
-    <div className="p-3 sm:p-5 md:p-8 flex flex-col gap-6 max-w-6xl mx-auto w-full">
+    <div className="w-full max-w-full min-w-0 flex flex-col gap-6 overflow-x-hidden">
       {/* Toast Banner */}
       {toastMsg && (
         <div className="fixed top-5 right-5 z-[9999] bg-slate-900 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-2xl border border-teal-500/40 flex items-center gap-2 animate-in slide-in-from-top duration-200">

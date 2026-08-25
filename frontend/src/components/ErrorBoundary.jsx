@@ -32,8 +32,16 @@ export default class ErrorBoundary extends React.Component {
     window.location.reload();
   };
 
-  handleResetStorage = () => {
+  handleResetStorage = async () => {
     try {
+      if (typeof window !== "undefined" && "caches" in window) {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((k) => window.caches.delete(k)));
+      }
+      if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
       sessionStorage.clear();
       window.location.href = "/login";
     } catch {

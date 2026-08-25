@@ -897,11 +897,43 @@ async function runTests() {
     assert(Array.isArray(manifestJson.icons) && manifestJson.icons.length >= 2, "PWA manifest defines high-res icons");
     assert(Array.isArray(manifestJson.shortcuts) && manifestJson.shortcuts.length >= 3, "PWA manifest defines desktop/mobile shortcuts");
 
-    // 3. Verify Offline Service Worker exists
+    // 3. Verify Offline Service Worker exists and handles Network-First navigation and IPC messages
     const swPath = path.resolve("./public/sw.js");
     assert(fs.existsSync(swPath), "Offline Service Worker (public/sw.js) exists");
     const swContent = fs.readFileSync(swPath, "utf8");
     assert(swContent.includes("CACHE_NAME") && swContent.includes("skipWaiting"), "Service Worker includes offline caching & activation logic");
+    assert(swContent.includes("navigate") && swContent.includes("fetch(request)"), "Service Worker implements Network-First SPA navigation with offline fallback");
+    assert(swContent.includes("SKIP_WAITING"), "Service Worker handles SKIP_WAITING IPC message for hot updates");
+
+    // 4. Verify Vite PWA Dynamic Build Injection
+    const distSwPath = path.resolve("./dist/sw.js");
+    if (fs.existsSync(distSwPath)) {
+      const distSwContent = fs.readFileSync(distSwPath, "utf8");
+      assert(distSwContent.includes("BUILD_VERSION = 'v2.1.") || distSwContent.includes("v2.1."), "Production dist/sw.js has dynamically injected cache version");
+      assert(!distSwContent.includes("__SW_CACHE_VERSION__"), "Placeholders successfully replaced in production sw.js");
+    }
+
+    const distVerPath = path.resolve("./dist/version.json");
+    if (fs.existsSync(distVerPath)) {
+      const verJson = JSON.parse(fs.readFileSync(distVerPath, "utf8"));
+      assert(verJson.version && verJson.builtAt, "dist/version.json generated with valid version and build timestamp");
+    }
+
+    // 5. Verify Vercel & Nginx Zero-Stale-Cache Headers
+    const vercelJsonPath = path.resolve("../vercel.json");
+    if (fs.existsSync(vercelJsonPath)) {
+      const vercelConfig = JSON.parse(fs.readFileSync(vercelJsonPath, "utf8"));
+      assert(Array.isArray(vercelConfig.headers) && vercelConfig.headers.length >= 4, "Vercel config enforces explicit cache-control headers");
+      const swHeader = vercelConfig.headers.find(h => h.source === "/sw.js");
+      assert(swHeader && swHeader.headers.some(hdr => hdr.value.includes("no-cache")), "Vercel guarantees /sw.js is never cached by CDN");
+    }
+
+    const vpsScriptPath = path.resolve("../scripts/vps_fix_all.sh");
+    if (fs.existsSync(vpsScriptPath)) {
+      const vpsScript = fs.readFileSync(vpsScriptPath, "utf8");
+      assert(vpsScript.includes("npm run build"), "VPS deployment script compiles production frontend bundle");
+      assert((vpsScript.includes("sw.js") || vpsScript.includes("sw\\.js")) && vpsScript.includes("no-cache"), "VPS Nginx configuration enforces no-cache headers for sw.js");
+    }
   });
 
   // =========================================================================

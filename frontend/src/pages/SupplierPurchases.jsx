@@ -782,7 +782,7 @@ export default function SupplierPurchases() {
   });
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="w-full max-w-full min-w-0 space-y-6 overflow-x-hidden">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-teal-100 shadow-sm">
         <div>
