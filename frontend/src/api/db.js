@@ -90,6 +90,9 @@ const KEYS = {
   MAIN_AC:          "cf_main_ac_v6",
   LICENSE:          "cf_license_config_v1",
   OUTBOX:           "cf_sync_outbox_v1",
+  ADMIN_MASTER_PASSCODE: "cf_admin_master_passcode",
+  ADMIN_TAB_PIN:         "cf_admin_tab_pin",
+  ADMIN_TAB_SECURITY:    "cf_admin_tab_security",
 };
 
 // High-performance In-Memory Memoization Cache for Zero-Lag Operations

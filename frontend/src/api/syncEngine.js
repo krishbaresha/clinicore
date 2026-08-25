@@ -158,6 +158,13 @@ class SyncEngine {
               if (sClinic.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", sClinic.whatsapp_gateway_no);
               if (sClinic.admin_master_passcode) localStorage.setItem("cf_admin_master_passcode", sClinic.admin_master_passcode);
               if (sClinic.tab_pin) localStorage.setItem("cf_admin_tab_pin", sClinic.tab_pin);
+              if (sClinic.tab_security_json) {
+                try {
+                  const tabs = typeof sClinic.tab_security_json === "string" ? JSON.parse(sClinic.tab_security_json) : sClinic.tab_security_json;
+                  const existing = JSON.parse(localStorage.getItem("cf_admin_tab_security") || "{}");
+                  localStorage.setItem("cf_admin_tab_security", JSON.stringify({ ...existing, tabs, admin_passcode: sClinic.admin_master_passcode || existing.admin_passcode, tab_pin: sClinic.tab_pin || existing.tab_pin }));
+                } catch {}
+              }
             }
           }
         }

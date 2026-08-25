@@ -482,6 +482,35 @@ export default function DeveloperAdminPanel() {
           if (sClinic.notification_email) localStorage.setItem("cf_notification_email", sClinic.notification_email);
           if (sClinic.admin_master_passcode) setAdminPasscode(sClinic.admin_master_passcode);
           if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
+
+          let loadedTabs = null;
+          if (sClinic.tab_security_json) {
+            try {
+              loadedTabs = typeof sClinic.tab_security_json === "string" ? JSON.parse(sClinic.tab_security_json) : sClinic.tab_security_json;
+            } catch {}
+          }
+          const savedSecurity = (() => {
+            try {
+              return JSON.parse(localStorage.getItem("cf_admin_tab_security") || "{}");
+            } catch {
+              return {};
+            }
+          })();
+          const mergedSecurity = {
+            ...savedSecurity,
+            admin_passcode: sClinic.admin_master_passcode || getAdminPasscode(),
+            tab_pin: sClinic.tab_pin || getTabPin(),
+            tabs: loadedTabs || savedSecurity.tabs || {
+              licensing: { locked: true, hidden: false },
+              audits: { locked: false, hidden: false },
+              staff: { locked: false, hidden: false },
+              clinic: { locked: false, hidden: false },
+              apis: { locked: true, hidden: false },
+              backups: { locked: true, hidden: false },
+            }
+          };
+          setTabSecurity(mergedSecurity);
+          localStorage.setItem("cf_admin_tab_security", JSON.stringify(mergedSecurity));
         }
       }
     } catch (syncErr) {
@@ -1089,24 +1118,29 @@ export default function DeveloperAdminPanel() {
     e?.preventDefault?.();
     if (!tempSecurityConfig) return;
     
-    // 1. Save Admin Passcode if changed
-    if (tempSecurityConfig.admin_passcode?.trim()) {
-      setAdminPasscode(tempSecurityConfig.admin_passcode.trim());
-    }
+    const newAdminPass = (tempSecurityConfig.admin_passcode || "").trim() || getAdminPasscode();
+    const newTabPin = (tempSecurityConfig.tab_pin || "").trim() || getTabPin();
 
-    // 2. Save Sub-Tab Security PIN if changed
-    if (tempSecurityConfig.tab_pin?.trim()) {
-      setTabPin(tempSecurityConfig.tab_pin.trim());
-    }
+    // 1. Save Admin Passcode
+    setAdminPasscode(newAdminPass);
+
+    // 2. Save Sub-Tab Security PIN
+    setTabPin(newTabPin);
 
     const finalConfig = {
       ...tempSecurityConfig,
-      admin_passcode: getAdminPasscode(),
-      tab_pin: getTabPin(),
+      admin_passcode: newAdminPass,
+      tab_pin: newTabPin,
     };
 
     setTabSecurity(finalConfig);
     localStorage.setItem("cf_admin_tab_security", JSON.stringify(finalConfig));
+
+    // Update clinic store
+    dbClinic.update({
+      admin_master_passcode: newAdminPass,
+      tab_pin: newTabPin,
+    });
 
     // Persist to VPS MySQL database so all devices and browsers sync automatically
     try {
@@ -1115,16 +1149,19 @@ export default function DeveloperAdminPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_master_passcode: tempSecurityConfig.admin_passcode?.trim() || getAdminPasscode(),
-          tab_pin: tempSecurityConfig.tab_pin?.trim() || getTabPin(),
+          admin_master_passcode: newAdminPass,
+          tab_pin: newTabPin,
+          tab_security_json: JSON.stringify(finalConfig.tabs || {}),
         }),
       });
+      await syncEngine.pushLocalStateToCloud();
     } catch (err) {
       console.warn("Could not sync security config to remote MySQL:", err);
     }
 
     setShowTabSecurityModal(false);
     showToast("🛡️ Admin Master Passcode, Tab PIN & Permissions saved to Cloud & Local Storage!");
+    loadData();
   };
 
   const NAV_ITEMS = [

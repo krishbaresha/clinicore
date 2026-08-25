@@ -76,11 +76,12 @@ class SystemController
             $response = [
                 'clinic' => array_merge($clinic, [
                     'resend_api_key'        => $settings['resend_api_key'] ?? '',
-                    'notification_email'    => $settings['notification_email'] ?? 'reports@drkashifclinic.com',
-                    'whatsapp_gateway_no'   => $settings['whatsapp_gateway_no'] ?? '03473100304',
+                    'notification_email'    => $settings['notification_email'] ?? '',
+                    'whatsapp_gateway_no'   => $settings['whatsapp_gateway_no'] ?? '',
                     'report_frequency'      => $settings['report_frequency'] ?? 'daily_9pm',
                     'tab_pin'               => $settings['tab_pin'] ?? '7860',
                     'admin_master_passcode' => $settings['admin_master_passcode'] ?? 'KB2026',
+                    'tab_security_json'     => $settings['tab_security_json'] ?? '',
                 ]),
                 'has_custom_passcode' => !empty($settings['admin_master_passcode']),
                 'server_time'         => date('c')
@@ -143,7 +144,8 @@ class SystemController
                 'whatsapp_gateway_no',
                 'report_frequency',
                 'tab_pin',
-                'admin_master_passcode'
+                'admin_master_passcode',
+                'tab_security_json'
             ];
 
             $upsert = $db->prepare("
