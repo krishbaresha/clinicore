@@ -84,8 +84,9 @@ export default function MedicalStoreSalesLog() {
   function handleConfirmVoid(e) {
     e.preventDefault();
     if (!voidModalSale) return;
-    if (adminPin !== "7860" && adminPin !== "1234") {
-      setVoidError("Invalid Admin PIN. Only Dr. Kashif or authorized manager can void sales.");
+    const currentTabPin = typeof localStorage !== "undefined" ? localStorage.getItem("cf_admin_tab_pin") || "7860" : "7860";
+    if (adminPin !== currentTabPin && adminPin !== "7860" && adminPin !== "1234") {
+      setVoidError("Invalid Admin PIN. Only the principal doctor or authorized manager can void sales.");
       return;
     }
     if (!voidReason.trim()) {

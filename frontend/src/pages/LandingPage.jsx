@@ -183,7 +183,7 @@ export default function LandingPage() {
     {
       name: "Muhammad Rizwan",
       city: "Latifabad, Hyderabad",
-      text: "Dr. Kashif's treatment resolved my 2-year-old chronic gastric and allergy issue within 6 weeks. The token system made my clinic visit quick and organized without long waiting.",
+      text: "The doctor's treatment resolved my 2-year-old chronic gastric and allergy issue within 6 weeks. The token system made my clinic visit quick and organized without long waiting.",
       rating: 5,
     },
     {

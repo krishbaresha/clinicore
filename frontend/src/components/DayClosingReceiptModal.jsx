@@ -45,7 +45,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
     const printPayload = {
       date: closingData.date,
       closing_date: closingData.date,
-      closed_by: "Store Manager / Dr. Kashif",
+      closed_by: typeof localStorage !== "undefined" ? (JSON.parse(localStorage.getItem("cf_session_v5") || "{}")?.name || "Store Manager") : "Store Manager",
       sales: closingData.sales,
       purchases: closingData.purchases,
       payments_paid: closingData.payments_paid,

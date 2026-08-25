@@ -3008,7 +3008,7 @@ export default function DeveloperAdminPanel() {
                 required
                 value={newPasswordInput}
                 onChange={(e) => setNewPasswordInput(e.target.value)}
-                placeholder="e.g. 123456 or kashif2026"
+                placeholder="e.g. 123456 or admin2026"
                 className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-mono font-bold text-teal-950"
                 autoFocus
               />

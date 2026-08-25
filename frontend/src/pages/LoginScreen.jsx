@@ -89,7 +89,7 @@ export default function LoginScreen() {
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="e.g. dr.kashif or 03473100304"
+                  placeholder="e.g. admin or 03473100304"
                   className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-teal-950 transition-all outline-none"
                   autoFocus
                 />
