@@ -156,6 +156,10 @@ export default function SidebarLayout({ children }) {
       const lastBackupMs = c.last_email_backup ? new Date(c.last_email_backup).getTime() : 0;
       const nowMs = now.getTime();
 
+      const lastTriggeredFreq = localStorage.getItem("cf_last_triggered_frequency");
+      const isNewFreq = lastTriggeredFreq !== frequency;
+      const isAlreadySent = lastDailyReportDate === todayDateStr && !isNewFreq;
+
       let shouldTrigger = false;
       let triggerReason = "";
 
@@ -179,23 +183,23 @@ export default function SidebarLayout({ children }) {
         const targetMin = parseInt(tParts[1]) || 0;
         const currentMin = now.getMinutes();
 
-        // Trigger if current local clock matches or exceeds target time AND today's report hasn't been sent
-        if ((currentHour > targetHour || (currentHour === targetHour && currentMin >= targetMin)) && lastDailyReportDate !== todayDateStr) {
+        // Trigger if current local clock matches or exceeds target time AND report not sent for this config today
+        if ((currentHour > targetHour || (currentHour === targetHour && currentMin >= targetMin)) && !isAlreadySent) {
           shouldTrigger = true;
           triggerReason = `Custom Daily ${timeStr} Clock Closure`;
         }
       } else if (frequency === "daily_9pm" || frequency === "daily") {
-        if (currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
+        if (currentHour >= 21 && !isAlreadySent) {
           shouldTrigger = true;
           triggerReason = "Daily 9:00 PM Shift End Closure";
         }
       } else if (frequency === "daily_10pm") {
-        if (currentHour >= 22 && lastDailyReportDate !== todayDateStr) {
+        if (currentHour >= 22 && !isAlreadySent) {
           shouldTrigger = true;
           triggerReason = "Daily 10:00 PM Late Night Closure";
         }
       } else if (frequency === "daily_8pm") {
-        if (currentHour >= 20 && lastDailyReportDate !== todayDateStr) {
+        if (currentHour >= 20 && !isAlreadySent) {
           shouldTrigger = true;
           triggerReason = "Daily 8:00 PM Evening Shift Closure";
         }
@@ -218,13 +222,13 @@ export default function SidebarLayout({ children }) {
           triggerReason = "Hourly Real-Time System Audit";
         }
       } else if (frequency === "weekly_saturday") {
-        if (now.getDay() === 6 && currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
+        if (now.getDay() === 6 && currentHour >= 21 && !isAlreadySent) {
           shouldTrigger = true;
           triggerReason = "Weekly Saturday Summary";
         }
       } else if (frequency === "monthly") {
         const isEndOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() === now.getDate();
-        if (isEndOfMonth && currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
+        if (isEndOfMonth && currentHour >= 21 && !isAlreadySent) {
           shouldTrigger = true;
           triggerReason = "Monthly Executive Closure";
         }
@@ -324,6 +328,7 @@ export default function SidebarLayout({ children }) {
           });
           try {
             localStorage.setItem("cf_last_daily_report_date", todayDateStr);
+            localStorage.setItem("cf_last_triggered_frequency", frequency);
           } catch {}
         } else {
           console.warn("[AutoBackup] Resend Dispatch Response:", data);
