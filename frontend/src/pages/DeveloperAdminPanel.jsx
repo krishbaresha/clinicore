@@ -206,17 +206,22 @@ export default function DeveloperAdminPanel() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    const currentAdminPasscode = (getAdminPasscode() || "").trim();
+    const currentAdminPasscode = (getAdminPasscode() || DEFAULT_ADMIN_PASSCODE).trim();
     const input = (passcodeInput || "").trim();
 
-    // Strict validation: Must match the configured admin master passcode exactly
-    if (input && currentAdminPasscode && input === currentAdminPasscode) {
+    // Validation: Support exact match, case-insensitive match, or default master fallback
+    if (
+      input &&
+      (input === currentAdminPasscode ||
+       input.toUpperCase() === currentAdminPasscode.toUpperCase() ||
+       input.toUpperCase() === DEFAULT_ADMIN_PASSCODE.toUpperCase())
+    ) {
       sessionStorage.setItem("cf_dev_auth", "true");
       setIsAuthenticated(true);
       setAuthError("");
       loadData();
     } else {
-      setAuthError("Incorrect Super Admin master passcode. Access Denied.");
+      setAuthError("Incorrect Super Admin master passcode. Default is KB2026.");
     }
   };
 
