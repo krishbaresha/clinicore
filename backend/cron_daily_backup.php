@@ -67,7 +67,18 @@ try {
     $frequency = (string)($settings['report_frequency'] ?? 'daily_9pm');
     $lastDailyReportDate = (string)($settings['last_daily_report_date'] ?? '');
     $lastEmailBackup = (string)($settings['last_email_backup'] ?? '');
-    $lastBackupTimestamp = !empty($lastEmailBackup) ? strtotime($lastEmailBackup) : 0;
+    
+    // Parse last backup timestamp safely
+    $lastBackupTimestamp = 0;
+    if (!empty($lastEmailBackup)) {
+        if (is_numeric($lastEmailBackup)) {
+            $lastBackupTimestamp = (int)$lastEmailBackup;
+        } else {
+            $tzSuffix = (strpos($lastEmailBackup, '+') === false && strpos($lastEmailBackup, 'Z') === false) ? ' Asia/Karachi' : '';
+            $parsed = strtotime($lastEmailBackup . $tzSuffix);
+            $lastBackupTimestamp = $parsed !== false ? $parsed : 0;
+        }
+    }
     $nowTimestamp = time();
 
     // Pakistan Standard Time (PKT, UTC+5)
@@ -349,13 +360,14 @@ HTML;
         $resendId = $result['id'] ?? 'OK';
         echo "✅ SUCCESS: Automated backup delivered to {$targetEmail}! (Resend ID: {$resendId})\n";
 
-        // Update timestamps in MySQL
+        // Update timestamps in MySQL (ISO 8601 with explicit PKT timezone offset)
+        $nowIso = $pktNow->format('c');
         $upStmt = $db->prepare("
             INSERT INTO system_settings (setting_key, setting_value)
-            VALUES ('last_email_backup', NOW()), ('last_daily_report_date', :d)
+            VALUES ('last_email_backup', :iso), ('last_daily_report_date', :d)
             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
         ");
-        $upStmt->execute([':d' => $todayPktDate]);
+        $upStmt->execute([':iso' => $nowIso, ':d' => $todayPktDate]);
 
     } else {
         echo "⚠️ Resend API Rejected: " . json_encode($result) . "\n";
