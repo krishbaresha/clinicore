@@ -56,7 +56,8 @@ export function setTabPin(pin) {
   } catch {}
 }
 
-export { generateCliniCoreEmailTemplate } from "../utils/emailTemplate.js";
+import { generateCliniCoreEmailTemplate } from "../utils/emailTemplate.js";
+export { generateCliniCoreEmailTemplate };
 
 export default function DeveloperAdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
