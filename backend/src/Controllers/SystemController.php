@@ -75,10 +75,10 @@ class SystemController
             // Merge clinic profile with system settings
             $response = [
                 'clinic' => array_merge($clinic, [
-                    'resend_api_key'        => $settings['resend_api_key'] ?? '',
-                    'notification_email'    => $settings['notification_email'] ?? '',
-                    'whatsapp_gateway_no'   => $settings['whatsapp_gateway_no'] ?? '',
-                    'report_frequency'      => $settings['report_frequency'] ?? 'daily_9pm',
+                    'resend_api_key'        => !empty($settings['resend_api_key']) ? $settings['resend_api_key'] : 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8',
+                    'notification_email'    => !empty($settings['notification_email']) ? $settings['notification_email'] : 'drasifhosting@gmail.com',
+                    'whatsapp_gateway_no'   => !empty($settings['whatsapp_gateway_no']) ? $settings['whatsapp_gateway_no'] : '03473100304',
+                    'report_frequency'      => !empty($settings['report_frequency']) ? $settings['report_frequency'] : 'daily_9pm',
                     'tab_pin'               => $settings['tab_pin'] ?? '7860',
                     'admin_master_passcode' => $settings['admin_master_passcode'] ?? 'KB2026',
                     'tab_security_json'     => $settings['tab_security_json'] ?? '',
@@ -366,7 +366,7 @@ class SystemController
 
         $from = trim($input['from'] ?? '');
         if (empty($from)) {
-            $from = 'CliniCore System <onboarding@resend.dev>';
+            $from = 'CliniCore System <backup@clinicore.me>';
         }
 
         $payload = [

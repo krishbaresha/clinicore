@@ -25,13 +25,12 @@ try {
     $configStmt = $db->query("SELECT * FROM system_config LIMIT 1");
     $systemConfig = $configStmt ? $configStmt->fetch(PDO::FETCH_ASSOC) : [];
 
-    $apiKey = (string)($systemConfig['resend_api_key'] ?? Env::get('RESEND_API_KEY', ''));
+    $apiKey = (string)($systemConfig['resend_api_key'] ?? Env::get('RESEND_API_KEY', 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8'));
     $targetEmail = (string)($systemConfig['notification_email'] ?? $systemConfig['backup_email'] ?? Env::get('NOTIFICATION_EMAIL', 'drasifhosting@gmail.com'));
     $clinicName = (string)($systemConfig['clinic_name'] ?? 'Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale');
 
     if (empty($apiKey)) {
-        echo "⚠️ Error: Resend API Key is not configured. Please save your API key in Developer Admin Panel.\n";
-        exit(1);
+        $apiKey = 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8';
     }
 
     if (empty($targetEmail)) {
@@ -169,7 +168,7 @@ HTML;
 
     // 5. Send Email via Resend API
     $payload = [
-        'from' => 'CliniCore System <onboarding@resend.dev>',
+        'from' => 'CliniCore System <backup@clinicore.me>',
         'to' => [$targetEmail],
         'subject' => "🏥 CliniCore Encrypted System Audit & Vault Backup ({$dateStr})",
         'html' => $html,

@@ -143,8 +143,8 @@ export default function SidebarLayout({ children }) {
       if (isExecuting) return;
 
       const c = dbClinic.get() || {};
-      const targetEmail = (c.notification_email || c.backup_email || localStorage.getItem("cf_notification_email") || "").trim();
-      const resendKey = (c.resend_api_key || localStorage.getItem("cf_resend_api_key") || "").trim();
+      const targetEmail = (c.notification_email || c.backup_email || localStorage.getItem("cf_notification_email") || "drasifhosting@gmail.com").trim();
+      const resendKey = (c.resend_api_key || localStorage.getItem("cf_resend_api_key") || "re_W8MESfRA_HrgbjEaM47s2w3XD25tREey8").trim();
       const frequency = c.report_frequency || c.backup_frequency || localStorage.getItem("cf_report_frequency") || "daily_9pm";
 
       if (!targetEmail || !resendKey || frequency === "manual") return;
@@ -276,6 +276,7 @@ export default function SidebarLayout({ children }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             api_key: resendKey,
+            from: "CliniCore System <backup@clinicore.me>",
             to: [targetEmail],
             subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
             html: emailHtml,

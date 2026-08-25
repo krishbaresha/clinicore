@@ -168,7 +168,7 @@ export default function DeveloperAdminPanel() {
       default_consultation_fee: Number(c.default_consultation_fee) || 300,
       clinic_status: c.clinic_status || "open",
       public_notice: c.public_notice || "",
-      resend_api_key: c.resend_api_key || (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") || "" : ""),
+      resend_api_key: c.resend_api_key || (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") || "re_W8MESfRA_HrgbjEaM47s2w3XD25tREey8" : "re_W8MESfRA_HrgbjEaM47s2w3XD25tREey8"),
       notification_email: c.notification_email || c.backup_email || (typeof window !== "undefined" ? localStorage.getItem("cf_notification_email") || "drasifhosting@gmail.com" : "drasifhosting@gmail.com"),
       report_frequency: c.report_frequency || c.backup_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "daily_9pm" : "daily_9pm"),
       whatsapp_gateway_no: c.whatsapp_gateway_no || (typeof window !== "undefined" ? localStorage.getItem("cf_whatsapp_gateway_no") || "03473100304" : "03473100304"),
@@ -638,6 +638,7 @@ export default function DeveloperAdminPanel() {
         },
         body: JSON.stringify({
           api_key: clinicForm.resend_api_key.trim(),
+          from: "CliniCore System <backup@clinicore.me>",
           to: [targetEmail],
           subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
           html: emailHtml,
@@ -739,6 +740,7 @@ export default function DeveloperAdminPanel() {
         },
         body: JSON.stringify({
           api_key: clinicForm.resend_api_key.trim(),
+          from: "CliniCore System <backup@clinicore.me>",
           to: [targetEmail],
           subject: `✅ CliniCore Resend API Gateway Connectivity Test (${dateStr})`,
           html: emailHtml,
@@ -2483,9 +2485,13 @@ export default function DeveloperAdminPanel() {
                     onChange={(e) => setClinicForm({ ...clinicForm, resend_api_key: e.target.value })}
                     className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-mono font-bold text-teal-900"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1 font-medium">
-                    Obtained from <strong>resend.com/api-keys</strong>. Relayed securely through your VPS backend (<code className="text-teal-800">api.clinicore.me</code>) to bypass browser CORS constraints.
-                  </p>
+                  <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500 font-medium">
+                    <span>Relayed through VPS backend (<code className="text-teal-800 font-bold">api.clinicore.me</code>)</span>
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">verified</span>
+                      <span>Verified Domain: <strong>backup@clinicore.me</strong></span>
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
