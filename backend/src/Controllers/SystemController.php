@@ -73,7 +73,7 @@ class SystemController
         $result = json_decode((string)$response, true);
 
         if ($httpCode >= 200 && $httpCode < 300) {
-            Response::success($result, 'Email dispatched successfully via Resend API.');
+            Response::success($result, 200, ['message' => 'Email dispatched successfully via Resend API.']);
         } else {
             $msg = $result['message'] ?? $result['error'] ?? (string)$response;
             Response::error('RESEND_DISPATCH_FAILED', (string)$msg, $httpCode, $result);

@@ -23,32 +23,16 @@ echo "======================================================"
 echo ""
 echo "[1/8] Fixing PHP namespace folder casing (Linux case-sensitive)..."
 
-cd "$BACKEND_DIR/src"
-
-if [ -d "config" ] && [ ! -d "Config" ]; then
-    mv config Config_tmp && mv Config_tmp Config
-    echo "  config -> Config"
-fi
-if [ -d "controllers" ] && [ ! -d "Controllers" ]; then
-    mv controllers Controllers_tmp && mv Controllers_tmp Controllers
-    echo "  controllers -> Controllers"
-fi
-if [ -d "middleware" ] && [ ! -d "Middleware" ]; then
-    mv middleware Middleware_tmp && mv Middleware_tmp Middleware
-    echo "  middleware -> Middleware"
-fi
-if [ -d "models" ] && [ ! -d "Models" ]; then
-    mv models Models_tmp && mv Models_tmp Models
-    echo "  models -> Models"
-fi
-if [ -d "routes" ] && [ ! -d "Routes" ]; then
-    mv routes Routes_tmp && mv Routes_tmp Routes
-    echo "  routes -> Routes"
-fi
-if [ -d "utils" ] && [ ! -d "Utils" ]; then
-    mv utils Utils_tmp && mv Utils_tmp Utils
-    echo "  utils -> Utils"
-fi
+for folder in config:Config controllers:Controllers middleware:Middleware models:Models routes:Routes utils:Utils; do
+    src="${folder%%:*}"
+    dst="${folder##*:}"
+    if [ -d "$src" ]; then
+        mkdir -p "$dst"
+        cp -rn "$src"/* "$dst"/ 2>/dev/null || true
+        rm -rf "$src"
+        echo "  $src -> $dst (merged & cleaned)"
+    fi
+done
 
 echo "  DONE: Namespace folders fixed."
 
