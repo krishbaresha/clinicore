@@ -98,8 +98,8 @@ export default function LandingPage() {
 
   const defaultDoctors = [
     {
-      id: "doc_kashif",
-      name: "Dr. Muhammad Kashif Khan",
+      id: "doc_asif",
+      name: "Dr. Muhammad Asif Ashraf Khan",
       specialization: "Principal Consultant & Homeopath (D.H.M.S, R.H.M.P)",
       room_number: "Main Chamber 1",
       consultation_fee: 500,
@@ -200,7 +200,7 @@ export default function LandingPage() {
     },
   ];
 
-  const clinicName = clinicData.name || "Dr. Muhammad Kashif Khan Clinic & Wholesale Store";
+  const clinicName = clinicData.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Store";
   const clinicTagline = clinicData.tagline || "Specialized Homeopathic Healthcare & Certified Medicine Distribution";
   const heroTitle = clinicData.hero_title || t("landing.hero.defaultTitle");
   const heroDesc = clinicData.hero_description || t("landing.hero.defaultDesc");

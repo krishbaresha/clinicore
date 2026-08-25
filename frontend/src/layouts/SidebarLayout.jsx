@@ -304,7 +304,7 @@ export default function SidebarLayout({ children }) {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium truncate max-w-[160px] sm:max-w-xs">
-                {clinic?.name || "Dr. Muhammad Kashif Khan Clinic"}
+                {clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"}
               </p>
             </div>
           </div>

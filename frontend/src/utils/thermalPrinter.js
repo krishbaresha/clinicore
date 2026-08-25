@@ -15,7 +15,7 @@ export function getCustomReceiptConfig() {
     if (raw) return JSON.parse(raw);
   } catch {}
   return {
-    clinic_name: "Dr. Muhammad Kashif Khan Clinic & Wholesale Homoeo Store",
+    clinic_name: "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Homoeo Store",
     tagline: "Homoeopathic Consultant & Bulk Distributors (Interior Sindh)",
     address: "Near Gul Center / Lajpat Road, Hyderabad, Sindh",
     phone: "0300-1234567 / 022-2780000",
@@ -138,7 +138,7 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
 export function printThermalReceipt(sale, clinicData = null) {
   if (!sale) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store");
   const subtotal = Number(sale.subtotal_amount) || Number(sale.total_amount) || 0;
   const discount = Number(sale.discount_amount) || 0;
   const netTotal = Number(sale.total_amount) || subtotal;
@@ -302,7 +302,7 @@ export function printThermalReceipt(sale, clinicData = null) {
 export function printDayEndClosingReceipt(closing, clinicData = null) {
   if (!closing) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store");
   const rawDate = closing.date || closing.closing_date ? new Date(closing.date || closing.closing_date) : new Date();
   const dateStr = rawDate.toISOString().split("T")[0];
   const dateTimeStr = rawDate.toLocaleString("en-PK", {
@@ -520,7 +520,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
 export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicData = null) {
   if (!purchase) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan's Homeopathic Clinic & Store");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store");
   const supplierName = escapeHtml(supplier?.company_name || purchase.supplier_name || "Company Distributor");
   const totalAmount = Number(purchase.total_amount) || 0;
   const paidAmount = Number(purchase.paid_amount) || 0;
@@ -794,7 +794,7 @@ export function printCashVoucherReceipt(entry, clinicData = null) {
 export function printOPDTokenReceipt(receipt, clinicData = null) {
   if (!receipt) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan's Clinic");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic");
   const tokenNo = escapeHtml(String(receipt.token || receipt.token_number || "01").padStart(2, "0"));
   const patientName = escapeHtml(receipt.patient?.full_name || receipt.patient_name || "Patient");
   const relLabel = { father: "S/O", husband: "W/O", wife: "H/O", mother: "D/O" }[receipt.patient?.relation_type] || "S/O";
@@ -927,7 +927,7 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
 export function printProductStockCard(item, transactions = [], summary = {}, clinicData = null) {
   if (!item) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan Clinic");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic");
   const clinicAddress = escapeHtml(clinicData?.address || "Lajpat Road, Hyderabad");
   const clinicPhone = escapeHtml(clinicData?.phone || "0300-1234567");
   const rawDate = new Date();
@@ -1217,7 +1217,7 @@ export function printProductPricingListReceipt(items = [], categoryName = "All C
  * 80mm ESC/POS Thermal Print for Chart Of Accounts (DrCreate & Access Form Format)
  */
 export function printChartOfAccountsReceipt(accounts = [], filterType = "All", clinic = null) {
-  const clinicName = clinic?.name || "Dr. Muhammad Kashif Khan Clinic & Wholesale";
+  const clinicName = clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale";
   const dateStr = new Date().toLocaleDateString("en-GB");
 
   const rowsHtml = accounts
@@ -1627,7 +1627,7 @@ export function printSaleInvoiceReceipt(sale, clinic) {
 export function printExecutiveAuditReceipt(auditData, clinicData = null) {
   if (!auditData) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan Clinic & Wholesale Pharmacy");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy");
   const clinicAddress = escapeHtml(clinicData?.address || "Hyderabad, Sindh");
   const clinicPhone = escapeHtml(clinicData?.phone || "03473100304");
 
@@ -1824,7 +1824,7 @@ export function printExecutiveAuditReceipt(auditData, clinicData = null) {
 export function printExecutiveAuditDocument(auditData, clinicData = null) {
   if (!auditData) return;
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Kashif Khan Clinic & Wholesale Pharmacy");
+  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy");
   const clinicAddress = escapeHtml(clinicData?.address || "Hyderabad, Sindh");
   const clinicPhone = escapeHtml(clinicData?.phone || "03473100304");
 

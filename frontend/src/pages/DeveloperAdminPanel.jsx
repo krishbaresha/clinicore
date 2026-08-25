@@ -61,7 +61,7 @@ export function setTabPin(pin) {
  * Responsive, compatible with all modern email clients & webmail
  */
 export function generateCliniCoreEmailTemplate({
-  clinicName = "Dr. Muhammad Kashif Khan Clinic & Wholesale",
+  clinicName = "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale",
   targetEmail = "admin@clinicore.pk",
   dateStr = new Date().toISOString().split("T")[0],
   timestampStr = new Date().toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" }),
@@ -1331,7 +1331,7 @@ export default function DeveloperAdminPanel() {
               </span>
             </div>
             <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate hidden md:block">
-              Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "Dr. Muhammad Kashif Khan Clinic"}</strong>
+              Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"}</strong>
             </p>
           </div>
         </div>
@@ -2018,7 +2018,7 @@ export default function DeveloperAdminPanel() {
                             </head>
                             <body>
                               <table>
-                                <tr><td colspan="6" class="title-row">${activeClinic?.name || "Dr. Muhammad Kashif Khan Clinic"} - Executive Audit Statement</td></tr>
+                                <tr><td colspan="6" class="title-row">${activeClinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"} - Executive Audit Statement</td></tr>
                                 <tr><td colspan="6" style="color: #475569;">Period: ${periodLabel} (${auditDates.startDateStr} to ${auditDates.endDateStr}) | Godown Scope: ${godownScopeName}</td></tr>
                                 <tr><td colspan="6">Generated On: ${new Date().toLocaleString("en-PK")}</td></tr>
                                 <tr><td colspan="6"></td></tr>

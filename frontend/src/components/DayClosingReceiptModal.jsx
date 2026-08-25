@@ -97,7 +97,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                 </span>
               </div>
               <p className="text-xs text-emerald-100 font-semibold mt-0.5">
-                Dr. Muhammad Kashif Khan Clinic &amp; Store • Day-End Financial Reconciliation
+                {dbClinic.get()?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"} • Day-End Financial Reconciliation
               </p>
             </div>
           </div>

@@ -55,7 +55,7 @@ class SystemController
             $stmt = $db->query("SELECT * FROM clinics LIMIT 1");
             $clinic = $stmt->fetch(PDO::FETCH_ASSOC) ?: [
                 'id' => 'clinic_001',
-                'name' => 'Dr. Muhammad Kashif Khan Clinic',
+                'name' => 'Dr. Muhammad Asif Ashraf Khan Clinic',
                 'address' => 'Lajpat Road, Hyderabad, Sindh',
                 'phone' => '03473100304',
                 'default_consultation_fee' => 300,

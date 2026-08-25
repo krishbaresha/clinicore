@@ -3118,7 +3118,7 @@ export const dbDayClosing = {
 
     // 6. Generate WhatsApp Message Text
     const clinic = dbClinic.get();
-    const clinicName = clinic?.name || "Dr. Muhammad Kashif Khan Clinic";
+    const clinicName = clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic";
     const waText = `*📋 DAY CLOSING RECEIPT — ${targetDate}*\n` +
       `*🏥 ${clinicName}*\n\n` +
       `*💰 SALE:*\n` +
@@ -3196,7 +3196,7 @@ export function exportFullDatabase(returnEncryptedString = false) {
     version: "5.0.0",
     app: "CliniCore Desktop & Web Suite",
     export_date: new Date().toISOString(),
-    clinic_name: dbClinic.get()?.name || "Dr. Muhammad Kashif Khan Clinic",
+    clinic_name: dbClinic.get()?.name || "Dr. Muhammad Asif Ashraf Khan Clinic",
     data: {},
   };
   Object.entries(KEYS).forEach(([_, storageKey]) => {

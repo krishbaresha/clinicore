@@ -42,7 +42,7 @@ export default function ReceiptStudio() {
       if (saved) return JSON.parse(saved);
     } catch {}
     return {
-      clinic_name: "Dr. Muhammad Kashif Khan Clinic & Wholesale Homoeo Store",
+      clinic_name: "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Homoeo Store",
       tagline: "Homoeopathic Consultant & Bulk Distributors (Interior Sindh)",
       address: "Near Gul Center / Lajpat Road, Hyderabad, Sindh",
       phone: "0300-1234567 / 022-2780000",
@@ -52,7 +52,7 @@ export default function ReceiptStudio() {
       font_family: "monospace",
       urdu_footer_text: "نوٹ: خریدی ہوئی ادویات 3 دن میں تبدیل ہو سکتی ہیں۔ بغیر بل کے واپسی ممکن نہیں۔",
       custom_policy_note: "Thanks for visiting! Get well soon.",
-      doctor_name: "Dr. Muhammad Kashif Khan",
+      doctor_name: "Dr. Muhammad Asif Ashraf Khan",
       doctor_qualifications: "D.H.M.S, R.H.M.P, Consultant Homoeopath",
       doctor_room: "Room # 1",
     };
@@ -93,7 +93,7 @@ export default function ReceiptStudio() {
     mr_no: "MR-1042",
     fee_amount: 500,
     fee_status: "Paid",
-    doctor_name: "Dr. Muhammad Kashif Khan",
+    doctor_name: "Dr. Muhammad Asif Ashraf Khan",
     room: "Room # 1",
     date: new Date().toISOString(),
   });
