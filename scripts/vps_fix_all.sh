@@ -182,10 +182,17 @@ cat > /etc/nginx/sites-available/clinicore <<NGINX_EOF
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
-    server_name _;
+    server_name api.clinicore.me clinicore.me www.clinicore.me _;
 
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
+    add_header Access-Control-Allow-Headers "Authorization, Content-Type, Accept, Origin, X-Requested-With" always;
+
+    if (\$request_method = 'OPTIONS') {
+        return 204;
+    }
 
     # Route ALL /api/* requests to PHP gateway
     location ~ ^/api(/.*)?$ {
@@ -222,6 +229,11 @@ ln -sf /etc/nginx/sites-available/clinicore /etc/nginx/sites-enabled/clinicore
 [ -f /etc/nginx/sites-enabled/default ] && rm /etc/nginx/sites-enabled/default && echo "  Removed default site."
 
 nginx -t && echo "  Nginx config: VALID" || { echo "  ERROR: Nginx config invalid!"; nginx -t; }
+
+# Automatically provision or re-deploy Certbot SSL for api.clinicore.me
+if command -v certbot &> /dev/null; then
+    certbot --nginx -d api.clinicore.me --non-interactive --agree-tos -m admin@clinicore.me --redirect 2>/dev/null || true
+fi
 
 # ─────────────────────────────────────────────────────────
 # STEP 8: Permissions and service restart
