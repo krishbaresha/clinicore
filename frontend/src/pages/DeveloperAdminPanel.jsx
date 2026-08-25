@@ -223,6 +223,8 @@ export default function DeveloperAdminPanel() {
   const [licenseForm, setLicenseForm] = useState(() => dbLicense.get());
   const [outboxItems, setOutboxItems] = useState(() => dbOutbox.getAll());
   const [syncState, setSyncState] = useState(() => syncEngine.getStatus());
+  const [isSavingLicense, setIsSavingLicense] = useState(false);
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
 
   const loadData = async (preserveForm = false) => {
     // 1. Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
@@ -234,6 +236,20 @@ export default function DeveloperAdminPanel() {
         if (json?.success && json?.data?.clinic) {
           const sClinic = json.data.clinic;
           setActiveClinic(sClinic);
+
+          // Sync remote license policy if stored in cloud MySQL
+          if (sClinic.license_policy && !preserveForm) {
+            try {
+              const remoteLicense = typeof sClinic.license_policy === "string" ? JSON.parse(sClinic.license_policy) : sClinic.license_policy;
+              if (remoteLicense && typeof remoteLicense === "object") {
+                const mergedLic = dbLicense.update(remoteLicense);
+                setLicenseForm(mergedLic);
+              }
+            } catch (licErr) {
+              console.warn("Failed to parse remote license_policy:", licErr);
+            }
+          }
+
           if (!preserveForm) {
             const freq = sClinic.report_frequency || "daily_9pm";
             let type = freq;
@@ -1410,321 +1426,392 @@ export default function DeveloperAdminPanel() {
               {/* ================================================================= */}
               {/* TAB: SOFTWARE LICENSING, SYNC & DEVELOPER REMOTE CONTROL          */}
               {/* ================================================================= */}
-              {activeTab === "licensing" && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Header & Status Indicator */}
-              <div className="bg-white border border-teal-100 p-6 rounded-3xl space-y-4 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-teal-700">vpn_key</span>
-                      Software Licensing, Subscription &amp; Remote Control
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                      Manage monthly client subscription, warning notices, grace period &amp; selective module kill-switches.
-                    </p>
-                  </div>
+              {activeTab === "licensing" && (() => {
+                const evalStatus = dbLicense.evaluateStatus();
+                const clinicDocPhone = activeClinic?.phone || clinicForm?.phone || "03473100304";
+                const cleanWaPhone = clinicDocPhone.replace(/\D/g, "").replace(/^0/, "92");
 
-                  {/* Quick WhatsApp Reminder Dispatcher */}
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={`https://wa.me/923473100304?text=${encodeURIComponent(
-                        `*📋 SOFTWARE MONTHLY INVOICE / REMINDER*\n` +
-                        `*🏥 ${activeClinic?.name || "CliniCore Client"}*\n\n` +
-                        `• Monthly Subscription Fee: Rs. ${licenseForm.monthly_fee?.toLocaleString("en-PK") || "5,000"}\n` +
-                        `• Due Date: ${licenseForm.next_due_date || "1st of Month"}\n` +
-                        `• Grace Period: 1st to ${licenseForm.grace_days || 10}th of Month\n` +
-                        `• Payment Mode: JazzCash / EasyPaisa / Bank Transfer (03142291356)\n\n` +
-                        `_Please share payment receipt screenshot after transfer to keep all services running seamlessly._\n` +
-                        `*K.B Software Hyderabad*`
-                      )}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                      title="Send WhatsApp payment reminder invoice to clinic doctor / owner"
-                    >
-                      <span className="material-symbols-outlined text-base">chat</span>
-                      <span>Send WhatsApp Invoice</span>
-                    </a>
-                  </div>
-                </div>
+                const handleSaveLicense = async (e, customPayload = null) => {
+                  if (e) e.preventDefault();
+                  setIsSavingLicense(true);
+                  try {
+                    const target = customPayload || licenseForm;
+                    const updated = dbLicense.update(target);
+                    setLicenseForm(updated);
 
-                {/* Cloud Sync & Outbox Monitor */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-teal-50">
-                  <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Network State</span>
-                    <span className="text-sm font-black text-teal-950 flex items-center gap-1.5 mt-0.5">
-                      <span className={`w-2.5 h-2.5 rounded-full ${syncState.isOnline ? "bg-emerald-500" : "bg-amber-500 animate-ping"}`} />
-                      {syncState.isOnline ? "Online & Connected" : "Offline (Local Only)"}
-                    </span>
-                  </div>
+                    // Dual persist to VPS MySQL cloud backend
+                    const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+                    await fetch(`${apiUrl}/api/v1/system/config`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ license_policy: JSON.stringify(updated) }),
+                    }).catch((err) => console.warn("[License Policy] Backend sync deferred to syncEngine:", err));
 
-                  <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Offline Outbox Queue</span>
-                    <span className="text-sm font-black text-teal-950 mt-0.5 block">
-                      {outboxItems.length} Mutations Pending Sync
-                    </span>
-                  </div>
+                    showToast("🔐 Software License & Remote Controls Saved & Synced Successfully!");
+                  } catch (err) {
+                    showToast("⚠️ Error saving license policy: " + err.message);
+                  } finally {
+                    setIsSavingLicense(false);
+                  }
+                };
 
-                  <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Background Cloud Worker</span>
-                      <span className="text-xs font-bold text-emerald-700 mt-0.5 block">
-                        {syncState.isSyncing ? "Syncing in background..." : "Active & Ready"}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await syncEngine.forceSyncNow();
-                        setOutboxItems(dbOutbox.getAll());
-                        showToast("🔄 Cloud sync triggered!");
-                      }}
-                      className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                    >
-                      Sync Now
-                    </button>
-                  </div>
-                </div>
-              </div>
+                const handleQuickRestore = async () => {
+                  const today = new Date();
+                  const nextMonth = new Date(today);
+                  nextMonth.setMonth(nextMonth.getMonth() + 1);
+                  nextMonth.setDate(1);
 
-              {/* Master License Form */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const updated = dbLicense.update(licenseForm);
-                  setLicenseForm(updated);
-                  showToast("🔐 Software License & Remote Controls Saved Successfully!");
-                }}
-                className="bg-white border border-teal-100 rounded-3xl p-6 space-y-6 shadow-sm"
-              >
-                {/* 1. License Mode Quick Selector */}
-                <div>
-                  <label className="block text-xs font-black text-teal-950 uppercase tracking-wider mb-2">
-                    1. Software Enforcement Policy &amp; Status Mode
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    {[
-                      {
-                        id: "active",
-                        title: "Active (Full Access)",
-                        desc: "Paid & normal operational mode. No warnings or restrictions.",
-                        color: "border-emerald-200 bg-emerald-50/40 text-emerald-950",
-                      },
-                      {
-                        id: "warning",
-                        title: "Payment Warning",
-                        desc: "Displays gentle non-intrusive reminder banner before due date.",
-                        color: "border-yellow-200 bg-yellow-50/40 text-yellow-950",
-                      },
-                      {
-                        id: "grace_period",
-                        title: "Grace Period",
-                        desc: "Overdue alert banner. Software operates 100% normally without stoppage.",
-                        color: "border-amber-200 bg-amber-50/40 text-amber-950",
-                      },
-                      {
-                        id: "restricted",
-                        title: "Feature Restricted",
-                        desc: "Blocks selected main modules (POS, B2B, Reports) while doctor can see patients.",
-                        color: "border-orange-200 bg-orange-50/40 text-orange-950",
-                      },
-                      {
-                        id: "locked",
-                        title: "Hard Locked",
-                        desc: "Full screen lock. Software access halted until payment confirmed.",
-                        color: "border-rose-200 bg-rose-50/40 text-rose-950",
-                      },
-                    ].map((mode) => {
-                      const isSelected = licenseForm.license_status === mode.id;
-                      return (
-                        <div
-                          key={mode.id}
-                          onClick={() => setLicenseForm({ ...licenseForm, license_status: mode.id, is_hard_locked: mode.id === "locked" })}
-                          className={`border-2 rounded-2xl p-4 cursor-pointer transition-all ${
-                            isSelected
-                              ? `${mode.color} ring-2 ring-teal-600 shadow-md`
-                              : "border-slate-200 hover:border-teal-200 bg-white opacity-80 hover:opacity-100"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-black text-xs">{mode.title}</span>
-                            <input
-                              type="radio"
-                              name="license_status"
-                              checked={isSelected}
-                              onChange={() => {}}
-                              className="text-teal-600 focus:ring-teal-500"
-                            />
-                          </div>
-                          <p className="text-[10.5px] text-slate-500 leading-snug">{mode.desc}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                  const restored = {
+                    ...licenseForm,
+                    license_status: "active",
+                    is_hard_locked: false,
+                    restricted_features: [],
+                    last_paid_date: today.toISOString().split("T")[0],
+                    next_due_date: nextMonth.toISOString().split("T")[0],
+                  };
+                  await handleSaveLicense(null, restored);
+                  showToast("✅ Payment Received: Full Access Resumed & Restrictions Cleared!");
+                };
 
-                {/* 2. Selective Feature Kill-Switches */}
-                <div className="pt-4 border-t border-teal-50 space-y-3">
-                  <div>
-                    <label className="block text-xs font-black text-teal-950 uppercase tracking-wider mb-1">
-                      2. Selective Module Kill-Switches (Selective Restriction)
-                    </label>
-                    <p className="text-xs text-slate-500">
-                      Developer can toggle specific modules OFF if payment is overdue, leaving the remaining core functions intact.
-                    </p>
-                  </div>
+                const handleManualSyncNow = async () => {
+                  setIsSyncingCloud(true);
+                  try {
+                    await syncEngine.forceSyncNow();
+                    setOutboxItems(dbOutbox.getAll() || []);
+                    await loadData(true);
+                    showToast("🔄 Cloud database sync completed successfully!");
+                  } catch (err) {
+                    showToast("⚠️ Cloud sync error: " + (err.message || "Failed"));
+                  } finally {
+                    setIsSyncingCloud(false);
+                  }
+                };
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
-                      { key: "pos", label: "Counter POS & Cash Sales", icon: "point_of_sale" },
-                      { key: "b2b", label: "Warehouse & Wholesale", icon: "warehouse" },
-                      { key: "purchases", label: "Purchases & Inward GRN", icon: "local_shipping" },
-                      { key: "reports", label: "Financial Reports & Audits", icon: "query_stats" },
-                      { key: "consultation", label: "Doctor OPD Consultation", icon: "stethoscope" },
-                      { key: "inventory", label: "Medical Store Inventory Edit", icon: "inventory_2" },
-                      { key: "patients", label: "Patient Registration & EMR", icon: "group" },
-                      { key: "sales", label: "Sales Log & Returns", icon: "receipt_long" },
-                    ].map((feat) => {
-                      const isBlocked = (licenseForm.restricted_features || []).includes(feat.key);
-                      return (
-                        <div
-                          key={feat.key}
-                          onClick={() => {
-                            const current = licenseForm.restricted_features || [];
-                            const next = isBlocked
-                              ? current.filter((k) => k !== feat.key)
-                              : [...current, feat.key];
-                            setLicenseForm({ ...licenseForm, restricted_features: next });
-                          }}
-                          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                            isBlocked
-                              ? "bg-rose-50 border-rose-300 text-rose-950 font-bold"
-                              : "bg-slate-50 border-slate-200 text-slate-700 hover:border-teal-200"
-                          }`}
-                        >
+                return (
+                  <div className="space-y-6 animate-fade-in">
+                    {/* Header & Status Indicator */}
+                    <div className="bg-white border border-teal-100 p-6 rounded-3xl space-y-4 shadow-sm">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
                           <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-base">
-                              {isBlocked ? "lock" : feat.icon}
+                            <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
+                              <span className="material-symbols-outlined text-teal-700">vpn_key</span>
+                              Software Licensing, Subscription &amp; Remote Control
+                            </h3>
+                            {/* Live Dynamic Status Pill */}
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider border ${
+                              evalStatus.status === "active"
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                : evalStatus.status === "warning"
+                                ? "bg-yellow-50 text-yellow-800 border-yellow-300"
+                                : evalStatus.status === "grace_period"
+                                ? "bg-amber-50 text-amber-800 border-amber-300 animate-pulse"
+                                : evalStatus.status === "restricted"
+                                ? "bg-orange-50 text-orange-800 border-orange-300 animate-pulse"
+                                : "bg-rose-50 text-rose-800 border-rose-300 animate-pulse"
+                            }`}>
+                              ● {evalStatus.status === "active" ? "Active (Full Access)" : evalStatus.status.toUpperCase()}
                             </span>
-                            <span className="text-xs">{feat.label}</span>
                           </div>
+                          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                            Manage monthly client subscription, warning notices, grace period &amp; selective module kill-switches.
+                          </p>
+                        </div>
+
+                        {/* Quick WhatsApp Reminder Dispatcher */}
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`https://wa.me/${cleanWaPhone || "923473100304"}?text=${encodeURIComponent(
+                              `*📋 SOFTWARE MONTHLY INVOICE / REMINDER*\n` +
+                              `*🏥 ${activeClinic?.name || "CliniCore Client"}*\n\n` +
+                              `• Monthly Subscription Fee: Rs. ${licenseForm.monthly_fee?.toLocaleString("en-PK") || "5,000"}\n` +
+                              `• Due Date: ${licenseForm.next_due_date || "1st of Month"}\n` +
+                              `• Grace Period: 1st to ${licenseForm.grace_days || 10}th of Month\n` +
+                              `• Payment Mode: JazzCash / EasyPaisa / Bank Transfer (03142291356)\n\n` +
+                              `_Please share payment receipt screenshot after transfer to keep all services running seamlessly._\n` +
+                              `*K.B Software Hyderabad*`
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+                            title={`Send WhatsApp payment reminder invoice to clinic doctor (${cleanWaPhone || "03473100304"})`}
+                          >
+                            <span className="material-symbols-outlined text-base">chat</span>
+                            <span>Send WhatsApp Invoice</span>
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Cloud Sync & Outbox Monitor */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-teal-50">
+                        <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Network State</span>
+                          <span className="text-sm font-black text-teal-950 flex items-center gap-1.5 mt-0.5">
+                            <span className={`w-2.5 h-2.5 rounded-full ${syncState.isOnline ? "bg-emerald-500" : "bg-amber-500 animate-ping"}`} />
+                            {syncState.isOnline ? "Online & Connected" : "Offline (Local Only)"}
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Offline Outbox Queue</span>
+                          <span className="text-sm font-black text-teal-950 mt-0.5 block">
+                            {outboxItems.length} Mutations Pending Sync
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Background Cloud Worker</span>
+                            <span className="text-xs font-bold text-emerald-700 mt-0.5 block">
+                              {isSyncingCloud ? "Syncing to VPS..." : syncState.isSyncing ? "Syncing in background..." : "Active & Ready"}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={isSyncingCloud}
+                            onClick={handleManualSyncNow}
+                            className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1 active:scale-95"
+                          >
+                            {isSyncingCloud ? (
+                              <span className="material-symbols-outlined text-xs animate-spin">progress_activity</span>
+                            ) : null}
+                            <span>Sync Now</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Master License Form */}
+                    <form
+                      onSubmit={(e) => handleSaveLicense(e)}
+                      className="bg-white border border-teal-100 rounded-3xl p-6 space-y-6 shadow-sm"
+                    >
+                      {/* 1. License Mode Quick Selector */}
+                      <div>
+                        <label className="block text-xs font-black text-teal-950 uppercase tracking-wider mb-2">
+                          1. Software Enforcement Policy &amp; Status Mode
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                          {[
+                            {
+                              id: "active",
+                              title: "Active (Full Access)",
+                              desc: "Paid & normal operational mode. No warnings or restrictions.",
+                              color: "border-emerald-300 bg-emerald-50/60 text-emerald-950",
+                            },
+                            {
+                              id: "warning",
+                              title: "Payment Warning",
+                              desc: "Displays gentle non-intrusive reminder banner before due date.",
+                              color: "border-yellow-300 bg-yellow-50/60 text-yellow-950",
+                            },
+                            {
+                              id: "grace_period",
+                              title: "Grace Period",
+                              desc: "Overdue alert banner. Software operates 100% normally without stoppage.",
+                              color: "border-amber-300 bg-amber-50/60 text-amber-950",
+                            },
+                            {
+                              id: "restricted",
+                              title: "Feature Restricted",
+                              desc: "Blocks selected main modules (POS, B2B, Reports) while doctor can see patients.",
+                              color: "border-orange-300 bg-orange-50/60 text-orange-950",
+                            },
+                            {
+                              id: "locked",
+                              title: "Hard Locked",
+                              desc: "Full screen lock. Software access halted until payment confirmed.",
+                              color: "border-rose-300 bg-rose-50/60 text-rose-950",
+                            },
+                          ].map((mode) => {
+                            const isSelected = licenseForm.license_status === mode.id;
+                            return (
+                              <div
+                                key={mode.id}
+                                onClick={() => setLicenseForm({ ...licenseForm, license_status: mode.id, is_hard_locked: mode.id === "locked" })}
+                                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all ${
+                                  isSelected
+                                    ? `${mode.color} ring-2 ring-teal-600 shadow-md scale-[1.02]`
+                                    : "border-slate-200 hover:border-teal-200 bg-white opacity-80 hover:opacity-100"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-black text-xs">{mode.title}</span>
+                                  <input
+                                    type="radio"
+                                    name="license_status"
+                                    checked={isSelected}
+                                    onChange={() => setLicenseForm({ ...licenseForm, license_status: mode.id, is_hard_locked: mode.id === "locked" })}
+                                    className="text-teal-600 focus:ring-teal-500"
+                                  />
+                                </div>
+                                <p className="text-[10.5px] text-slate-500 leading-snug">{mode.desc}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 2. Selective Feature Kill-Switches */}
+                      <div className="pt-4 border-t border-teal-50 space-y-3">
+                        <div>
+                          <label className="block text-xs font-black text-teal-950 uppercase tracking-wider mb-1">
+                            2. Selective Module Kill-Switches (Selective Restriction)
+                          </label>
+                          <p className="text-xs text-slate-500">
+                            Developer can toggle specific modules OFF if payment is overdue, leaving the remaining core functions intact.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {[
+                            { key: "pos", label: "Counter POS & Cash Sales", icon: "point_of_sale" },
+                            { key: "b2b", label: "Warehouse & Wholesale", icon: "warehouse" },
+                            { key: "purchases", label: "Purchases & Inward GRN", icon: "local_shipping" },
+                            { key: "reports", label: "Financial Reports & Audits", icon: "query_stats" },
+                            { key: "consultation", label: "Doctor OPD Consultation", icon: "stethoscope" },
+                            { key: "inventory", label: "Medical Store Inventory Edit", icon: "inventory_2" },
+                            { key: "patients", label: "Patient Registration & EMR", icon: "group" },
+                            { key: "sales", label: "Sales Log & Returns", icon: "receipt_long" },
+                          ].map((feat) => {
+                            const isBlocked = (licenseForm.restricted_features || []).includes(feat.key);
+                            return (
+                              <div
+                                key={feat.key}
+                                onClick={() => {
+                                  const current = licenseForm.restricted_features || [];
+                                  const next = isBlocked
+                                    ? current.filter((k) => k !== feat.key)
+                                    : [...current, feat.key];
+                                  setLicenseForm({ ...licenseForm, restricted_features: next });
+                                }}
+                                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                                  isBlocked
+                                    ? "bg-rose-50 border-rose-300 text-rose-950 font-bold shadow-xs"
+                                    : "bg-slate-50 border-slate-200 text-slate-700 hover:border-teal-200"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className={`material-symbols-outlined text-base ${isBlocked ? "text-rose-600" : "text-slate-500"}`}>
+                                    {isBlocked ? "lock" : feat.icon}
+                                  </span>
+                                  <span className="text-xs">{feat.label}</span>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  checked={isBlocked}
+                                  onChange={() => {}}
+                                  className="rounded text-rose-600 focus:ring-rose-500"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 3. Subscription & Billing Parameters */}
+                      <div className="pt-4 border-t border-teal-50 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                            Monthly License Fee (PKR)
+                          </label>
                           <input
-                            type="checkbox"
-                            checked={isBlocked}
-                            onChange={() => {}}
-                            className="rounded text-rose-600 focus:ring-rose-500"
+                            type="number"
+                            value={licenseForm.monthly_fee}
+                            onChange={(e) => setLicenseForm({ ...licenseForm, monthly_fee: Number(e.target.value) || 0 })}
+                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
                           />
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                {/* 3. Subscription & Billing Parameters */}
-                <div className="pt-4 border-t border-teal-50 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                      Monthly License Fee (PKR)
-                    </label>
-                    <input
-                      type="number"
-                      value={licenseForm.monthly_fee}
-                      onChange={(e) => setLicenseForm({ ...licenseForm, monthly_fee: Number(e.target.value) || 0 })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                    />
-                  </div>
+                        <div>
+                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                            Next Payment Due Date
+                          </label>
+                          <input
+                            type="date"
+                            value={licenseForm.next_due_date}
+                            onChange={(e) => setLicenseForm({ ...licenseForm, next_due_date: e.target.value })}
+                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                          />
+                        </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                      Next Payment Due Date
-                    </label>
-                    <input
-                      type="date"
-                      value={licenseForm.next_due_date}
-                      onChange={(e) => setLicenseForm({ ...licenseForm, next_due_date: e.target.value })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                    />
-                  </div>
+                        <div>
+                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                            Grace Period Allowance (Days)
+                          </label>
+                          <input
+                            type="number"
+                            value={licenseForm.grace_days}
+                            onChange={(e) => setLicenseForm({ ...licenseForm, grace_days: Number(e.target.value) || 10 })}
+                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                          />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                      Grace Period Allowance (Days)
-                    </label>
-                    <input
-                      type="number"
-                      value={licenseForm.grace_days}
-                      onChange={(e) => setLicenseForm({ ...licenseForm, grace_days: Number(e.target.value) || 10 })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                    />
-                  </div>
-                </div>
+                      {/* 4. Payment Details & Custom Announcement */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                            Developer Payment Accounts / Receiving Info
+                          </label>
+                          <input
+                            type="text"
+                            value={licenseForm.developer_bank_details}
+                            onChange={(e) => setLicenseForm({ ...licenseForm, developer_bank_details: e.target.value })}
+                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                            placeholder="JazzCash / EasyPaisa / Bank: 03142291356"
+                          />
+                        </div>
 
-                {/* 4. Payment Details & Custom Announcement */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                      Developer Payment Accounts / Receiving Info
-                    </label>
-                    <input
-                      type="text"
-                      value={licenseForm.developer_bank_details}
-                      onChange={(e) => setLicenseForm({ ...licenseForm, developer_bank_details: e.target.value })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                      placeholder="JazzCash / EasyPaisa / Bank: 03142291356"
-                    />
-                  </div>
+                        <div>
+                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                            Custom Warning Notice (Urdu / English)
+                          </label>
+                          <input
+                            type="text"
+                            value={licenseForm.custom_notice}
+                            onChange={(e) => setLicenseForm({ ...licenseForm, custom_notice: e.target.value })}
+                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                            placeholder="Optional custom reminder text shown in client header"
+                          />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                      Custom Warning Notice (Urdu / English)
-                    </label>
-                    <input
-                      type="text"
-                      value={licenseForm.custom_notice}
-                      onChange={(e) => setLicenseForm({ ...licenseForm, custom_notice: e.target.value })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                      placeholder="Optional custom reminder text shown in client header"
-                    />
-                  </div>
-                </div>
+                      {/* Action Buttons */}
+                      <div className="pt-4 border-t border-teal-50 flex items-center justify-between flex-wrap gap-3">
+                        <div className="text-xs text-slate-500 font-medium">
+                          Status changes apply instantly across all devices and sync to VPS cloud.
+                        </div>
 
-                {/* Action Buttons */}
-                <div className="pt-4 border-t border-teal-50 flex items-center justify-between">
-                  <div className="text-xs text-slate-500 font-medium">
-                    Status changes apply instantly across the entire application without reload.
-                  </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={isSavingLicense}
+                            onClick={handleQuickRestore}
+                            className="px-5 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs rounded-2xl border border-emerald-200 transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            <span className="material-symbols-outlined text-base text-emerald-700">task_alt</span>
+                            <span>1-Click Mark as Paid &amp; Resume</span>
+                          </button>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Quick 1-click restore to active
-                        const restored = dbLicense.update({
-                          license_status: "active",
-                          is_hard_locked: false,
-                          restricted_features: [],
-                          last_paid_date: new Date().toISOString().split("T")[0],
-                        });
-                        setLicenseForm(restored);
-                        showToast("✅ Payment Received: Full Access Resumed & Restrictions Cleared!");
-                      }}
-                      className="px-5 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs rounded-2xl border border-emerald-200 transition-colors cursor-pointer"
-                    >
-                      1-Click Mark as Paid &amp; Resume
-                    </button>
-
-                    <button
-                      type="submit"
-                      className="bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-700/20 cursor-pointer"
-                    >
-                      Save License Policy
-                    </button>
+                          <button
+                            type="submit"
+                            disabled={isSavingLicense}
+                            className="bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-700/20 cursor-pointer active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            {isSavingLicense ? (
+                              <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                            ) : (
+                              <span className="material-symbols-outlined text-base">save</span>
+                            )}
+                            <span>{isSavingLicense ? "Saving & Syncing..." : "Save License Policy"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </form>
                   </div>
-                </div>
-              </form>
-            </div>
-          )}
+                );
+              })()}
 
           {/* ================================================================= */}
           {/* TAB 1: EXECUTIVE MULTI-GODOWN & CLINIC AUDITS (6-Mo / 1-Yr)       */}

@@ -33,10 +33,28 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Universal Real-Time Cloud Synchronization, Mock Data Removal & Production Zero-Data Foundation
-- **Last worked on:** Resolved passcode/PIN persistence bugs, made the clinic name dynamic everywhere and replaced all fallbacks with "Dr. Muhammad Asif Ashraf Khan Clinic", cleaned up all obsolete files in the context folder, and unified coding standards.
+- **Phase:** Enterprise 24/7 Server Daemon Automation, Software Licensing Governance & AI Harness Engineering
+- **Last worked on:** Deployed autonomous 24/7 Linux systemd daemon (`clinicore-automation.service`) & 1-minute Crontab on Hostinger VPS, fixed ISO 8601 PKT timezone offset evaluations, made Software Licensing & Remote Control tab fully functional with dual-persistence (Cloud MySQL + LocalStorage), dynamic doctor WhatsApp invoicing, interactive status badges, and hardcoded Principal Senior Engineer role & mistake prevention knowledge base in AI rules.
 - **Currently blocked on:** None.
-- **Overall completion estimate:** 100% (Enterprise Production Ready, Cloud Synced, and Documented).
+- **Overall completion estimate:** 100% (Enterprise Production Ready, Cloud Synced, 24/7 Autonomous Daemon & Remote Controlled).
+
+### Session: 2026-08-26 (Part 34) — 24/7 Autonomous VPS Server Daemon, Software Licensing & AI Harness Engineering
+
+**Task worked on:**
+1. **Autonomous 24/7 Server-Side Automation Engine (`backend/automation_daemon.py` & `backend/cron_daily_backup.php`):**
+   - Eliminated browser tab sleep/throttling failure modes by moving all scheduled audit evaluations and `.cfbak` database backup dispatches entirely to the Hostinger Linux VPS (`77.37.45.233`).
+   - Registered and enabled `clinicore-automation.service` native Linux systemd service running continuously under root with unbuffered logging to `/var/log/clinicore_automation.log`.
+   - Configured 1-minute crontab runner (`* * * * * php /var/www/clinicore/backend/cron_daily_backup.php`) as dual redundancy.
+   - Fixed timezone discrepancy between MySQL `NOW()` and PHP `time()` by strictly standardizing on ISO 8601 with explicit PKT (+05:00) timezone offsets.
+2. **Software Licensing, Subscription & Remote Control Tab (`DeveloperAdminPanel.jsx`, `db.js`, `SystemController.php`):**
+   - **Dual-Persistence:** Integrated `license_policy` saving into MySQL `system_settings` table and local `dbLicense.update()` so policy changes sync instantly across all devices and the VPS cloud.
+   - **Dynamic WhatsApp Invoicing:** Replaced hardcoded phone with dynamic clinic doctor number (`activeClinic.phone` -> E.164 `923XXXXXXXXX`) with formatted breakdown of subscription fee, due date, grace period, and payment channels.
+   - **Interactive Live Status Pill:** Added dynamic badge in header evaluating real-time status (`Active`, `Payment Warning`, `Grace Period`, `Feature Restricted`, `Hard Locked`).
+   - **1-Click Mark as Paid & Resume:** Clears all restrictions, updates `last_paid_date`, advances `next_due_date` by 1 month, and saves to both local storage and VPS MySQL.
+   - **Cloud Sync Now:** Connected directly to `syncEngine.forceSyncNow()` with visual loading spinners and toast notifications.
+3. **Hardcoded AI Rules, Role & Harness Engineering (`context/08_AI_Rules_and_Constraints.md` & `.agents/rules/AGENTS.md`):**
+   - Hardcoded Principal Senior AI / Cloud Systems & Full-Stack Software Engineer persona.
+   - Established mandatory Rule 0 (Context-First Protocol), zero-regression rule, and mistake/gotcha prevention knowledge base.
 
 ### Session: 2026-08-25 (Part 33) — Master Security Pin Persistence & Context Document Alignment
 

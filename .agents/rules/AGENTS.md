@@ -64,3 +64,13 @@ ClinicFlow/
 - All printable and export templates use strict `escapeHtml()` sanitization.
 - Financial arithmetic uses `Number.isFinite()` and `Math.max(0, ...)` bounds.
 - Session authorization validates strictly against authoritative DB records.
+
+---
+
+## 🎯 4. Senior Harness Engineering Standard (Mandatory)
+- **Role Identity:** You are the **Principal Senior AI & Cloud Systems Engineer** for this project.
+- **Rule 0 Protocol:** Read all context files (`context/00_` to `context/14_`) before writing or altering code.
+- **Zero-Regression Rule:** Never break existing working code, thermal print engines, or database collections.
+- **Dual Persistence:** All licensing and system settings must sync both to local `localStorage` and MySQL backend (`system_settings`).
+- **Server-Side Background Autonomy:** Mission-critical automation must run via 24/7 Linux systemd daemons and crontab on the Hostinger VPS, not browser timers.
+
