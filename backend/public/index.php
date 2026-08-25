@@ -152,6 +152,8 @@ try {
         (new SystemController())->getSyncState();
     } elseif ($uri === '/api/v1/system/sync-state' && $method === 'POST') {
         (new SystemController())->saveSyncState();
+    } elseif ($uri === '/api/v1/system/trigger-scheduled-backup' && ($method === 'GET' || $method === 'POST')) {
+        (new SystemController())->triggerScheduledBackup();
     }
 
     // Unmatched Route Fallback

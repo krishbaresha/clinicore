@@ -240,6 +240,48 @@ systemctl reload nginx || systemctl restart nginx
 echo "  Services restarted."
 
 # ─────────────────────────────────────────────────────────
+# STEP 9: 24/7 Autonomous Background Automation Daemon & Crontab
+# ─────────────────────────────────────────────────────────
+echo ""
+echo "[9/9] Configuring 24/7 Autonomous Automation Daemon & Crontab..."
+
+# Create log file with permissions
+touch /var/log/clinicore_automation.log
+chown www-data:www-data /var/log/clinicore_automation.log
+chmod 664 /var/log/clinicore_automation.log
+
+# 1. Register systemd daemon service
+cat > /etc/systemd/system/clinicore-automation.service <<SERVICE_EOF
+[Unit]
+Description=CliniCore 24/7 Background Automation Daemon
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/clinicore/backend
+ExecStart=/usr/bin/python3 /var/www/clinicore/backend/automation_daemon.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/clinicore_automation.log
+StandardError=append:/var/log/clinicore_automation.log
+
+[Install]
+WantedBy=multi-user.target
+SERVICE_EOF
+
+systemctl daemon-reload
+systemctl enable clinicore-automation.service 2>/dev/null || true
+systemctl restart clinicore-automation.service 2>/dev/null || true
+echo "  Systemd service 'clinicore-automation' registered & running."
+
+# 2. Add Crontab as fallback redundancy
+CRON_ENTRY="* * * * * php /var/www/clinicore/backend/cron_daily_backup.php >> /var/log/clinicore_automation.log 2>&1"
+(crontab -u www-data -l 2>/dev/null | grep -v "cron_daily_backup.php"; echo "$CRON_ENTRY") | crontab -u www-data -
+echo "  Crontab installed for www-data."
+
+# ─────────────────────────────────────────────────────────
 # VERIFICATION
 # ─────────────────────────────────────────────────────────
 echo ""

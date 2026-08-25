@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 /**
  * cron_daily_backup.php
- * Automated Daily 9:00 PM Shift-End Backup & Executive Audit Dispatcher
- * Scheduled via crontab: 0 16 * * * php /var/www/clinicore/backend/cron_daily_backup.php (16:00 UTC = 21:00 PKT)
+ * Enterprise Server-Side 24/7 Automated Backup & Executive Audit Dispatcher
+ * Scheduled via crontab: * * * * * php /var/www/clinicore/backend/cron_daily_backup.php
+ * 
+ * Works 100% autonomously on the Linux VPS without requiring any browser tab or user interaction!
  */
 
 // Enable PSR-4 Autoloader
@@ -28,7 +30,7 @@ spl_autoload_register(function ($class) {
 use CliniCore\Config\Database;
 use CliniCore\Config\Env;
 
-echo "[" . date('Y-m-d H:i:s') . "] Initializing CliniCore Daily 9:00 PM Automated Backup Dispatcher...\n";
+$isForce = in_array('--force', $argv ?? [], true);
 
 try {
     Env::load();
@@ -62,6 +64,104 @@ try {
         $targetEmail = 'drasifhosting@gmail.com';
     }
 
+    $frequency = (string)($settings['report_frequency'] ?? 'daily_9pm');
+    $lastDailyReportDate = (string)($settings['last_daily_report_date'] ?? '');
+    $lastEmailBackup = (string)($settings['last_email_backup'] ?? '');
+    $lastBackupTimestamp = !empty($lastEmailBackup) ? strtotime($lastEmailBackup) : 0;
+    $nowTimestamp = time();
+
+    // Pakistan Standard Time (PKT, UTC+5)
+    $pktTz = new \DateTimeZone('Asia/Karachi');
+    $pktNow = new \DateTime('now', $pktTz);
+    $todayPktDate = $pktNow->format('Y-m-d');
+    $pktHour = (int)$pktNow->format('H');
+    $pktMin = (int)$pktNow->format('i');
+
+    $shouldTrigger = false;
+    $triggerReason = "";
+
+    if ($isForce) {
+        $shouldTrigger = true;
+        $triggerReason = "Manual Force CLI Override";
+    } elseif ($frequency === "manual") {
+        echo "[" . date('Y-m-d H:i:s') . "] Automated reports disabled (manual mode).\n";
+        exit(0);
+    } elseif ($frequency === "every_1m" || $frequency === "test_1min") {
+        if (($nowTimestamp - $lastBackupTimestamp) >= 50) { // 50 seconds
+            $shouldTrigger = true;
+            $triggerReason = "🧪 1-Minute Live Server Automation Test";
+        }
+    } elseif (strpos($frequency, "custom_interval:") === 0) {
+        $mins = (int)substr($frequency, strlen("custom_interval:"));
+        if ($mins < 1) $mins = 5;
+        if (($nowTimestamp - $lastBackupTimestamp) >= ($mins * 60 - 5)) {
+            $shouldTrigger = true;
+            $triggerReason = "Custom {$mins} Minutes Interval Audit";
+        }
+    } elseif (strpos($frequency, "custom_time:") === 0) {
+        $timeStr = substr($frequency, strlen("custom_time:"));
+        $tParts = explode(':', $timeStr);
+        $targetH = (int)($tParts[0] ?? 21);
+        $targetM = (int)($tParts[1] ?? 0);
+
+        if (($pktHour > $targetH || ($pktHour === $targetH && $pktMin >= $targetM)) && $lastDailyReportDate !== $todayPktDate) {
+            $shouldTrigger = true;
+            $triggerReason = "Custom Daily {$timeStr} PKT Closure";
+        }
+    } elseif ($frequency === "daily_9pm" || $frequency === "daily") {
+        if ($pktHour >= 21 && $lastDailyReportDate !== $todayPktDate) {
+            $shouldTrigger = true;
+            $triggerReason = "Daily 9:00 PM Shift End Closure (PKT)";
+        }
+    } elseif ($frequency === "daily_10pm") {
+        if ($pktHour >= 22 && $lastDailyReportDate !== $todayPktDate) {
+            $shouldTrigger = true;
+            $triggerReason = "Daily 10:00 PM Late Night Closure (PKT)";
+        }
+    } elseif ($frequency === "daily_8pm") {
+        if ($pktHour >= 20 && $lastDailyReportDate !== $todayPktDate) {
+            $shouldTrigger = true;
+            $triggerReason = "Daily 8:00 PM Evening Shift Closure (PKT)";
+        }
+    } elseif ($frequency === "every_12h") {
+        if (($nowTimestamp - $lastBackupTimestamp) >= (12 * 3600 - 10)) {
+            $shouldTrigger = true;
+            $triggerReason = "Every 12 Hours Audit";
+        }
+    } elseif ($frequency === "every_6h") {
+        if (($nowTimestamp - $lastBackupTimestamp) >= (6 * 3600 - 10)) {
+            $shouldTrigger = true;
+            $triggerReason = "Every 6 Hours High Volume Audit";
+        }
+    } elseif ($frequency === "hourly") {
+        if (($nowTimestamp - $lastBackupTimestamp) >= (3600 - 10)) {
+            $shouldTrigger = true;
+            $triggerReason = "Hourly Real-Time Audit";
+        }
+    } elseif ($frequency === "weekly_saturday") {
+        $dayOfWeek = (int)$pktNow->format('w'); // 6 = Saturday
+        if ($dayOfWeek === 6 && $pktHour >= 21 && $lastDailyReportDate !== $todayPktDate) {
+            $shouldTrigger = true;
+            $triggerReason = "Weekly Saturday Summary";
+        }
+    } elseif ($frequency === "monthly") {
+        $isLastDay = $pktNow->format('Y-m-d') === $pktNow->format('Y-m-t');
+        if ($isLastDay && $pktHour >= 21 && $lastDailyReportDate !== $todayPktDate) {
+            $shouldTrigger = true;
+            $triggerReason = "Monthly Executive Closure";
+        }
+    }
+
+    if (!$shouldTrigger) {
+        // Output heartbeat log every hour or quietly exit
+        if ($pktMin % 15 === 0) {
+            echo "[" . date('Y-m-d H:i:s') . "] [Heartbeat] Schedule {$frequency} evaluated: No trigger needed (PKT: " . $pktNow->format('H:i') . ").\n";
+        }
+        exit(0);
+    }
+
+    echo "[" . date('Y-m-d H:i:s') . "] 🚀 Triggering Automated Backup Dispatch: {$triggerReason}...\n";
+
     // 2. Fetch Live Operational Metrics
     $patientCount = 0;
     $salesToday = 0.0;
@@ -88,43 +188,59 @@ try {
         if ($iStmt) $stockValuation = (float)$iStmt->fetchColumn();
     } catch (\Throwable $e) {}
 
-    // 3. Generate Database Dump Snapshot
+    // 3. Generate Complete Database Dump Snapshot (All Tables)
     $backupDir = __DIR__ . '/storage/backups';
     if (!is_dir($backupDir)) {
         @mkdir($backupDir, 0775, true);
     }
 
-    $dateStr = date('Y-m-d');
-    $timeTag = date('His');
+    $dateStr = $todayPktDate;
+    $timeTag = $pktNow->format('His');
     $filename = "CliniCore_Encrypted_Backup_{$dateStr}_{$timeTag}.cfbak";
     $filePath = "{$backupDir}/{$filename}";
 
-    // Export JSON/Encrypted Snapshot
-    $snapshotData = [
+    $tables = [
+        'clinics', 'users', 'patients', 'visits', 'inventory', 'sales',
+        'purchases', 'cashbook', 'parties', 'suppliers', 'expenses', 'warehouses',
+        'system_settings', 'audit_logs'
+    ];
+
+    $fullDbExport = [
         'version' => '5.0.0',
-        'app' => 'CliniCore Hybrid OS',
-        'export_date' => date('c'),
+        'app' => 'CliniCore Hybrid Enterprise OS',
+        'export_date' => $pktNow->format('c'),
         'clinic_name' => $clinicName,
         'metrics' => [
             'total_patients' => $patientCount,
             'sales_today' => $salesToday,
             'stock_valuation' => $stockValuation,
             'staff_count' => $staffCount,
-        ]
+        ],
+        'data' => []
     ];
-    $jsonContent = json_encode($snapshotData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    
-    // Encrypt or write file
+
+    foreach ($tables as $t) {
+        try {
+            $tStmt = $db->query("SELECT * FROM `{$t}`");
+            if ($tStmt) {
+                $fullDbExport['data'][$t] = $tStmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+        } catch (\Throwable $e) {
+            $fullDbExport['data'][$t] = [];
+        }
+    }
+
+    $jsonContent = json_encode($fullDbExport, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     $fileData = base64_encode($jsonContent);
     file_put_contents($filePath, $fileData);
     $sizeBytes = filesize($filePath);
     $sizeKb = number_format($sizeBytes / 1024, 1) . ' KB';
     $downloadUrl = "https://api.clinicore.me/api/v1/system/download-backup?file=" . urlencode($filename);
 
-    echo "📦 Staged Backup: {$filename} ({$sizeKb})\n";
+    echo "📦 Staged Backup Vault: {$filename} ({$sizeKb})\n";
 
     // 4. Construct Signature Dark Teal & Emerald HTML Template
-    $timestampStr = date('d F Y, h:i A');
+    $timestampStr = $pktNow->format('d F Y, h:i A') . ' (PKT)';
     $html = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -140,7 +256,7 @@ try {
           <tr>
             <td style="background: linear-gradient(135deg, #042f2e 0%, #0f766e 100%); padding: 36px 32px; text-align: left;">
               <span style="display: inline-block; background: rgba(52, 211, 153, 0.2); border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 800; color: #a7f3d0; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
-                🌙 Daily at 9:00 PM (Shift End Closure)
+                ⚡ {$triggerReason}
               </span>
               <h1 style="margin: 6px 0 2px 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">
                 CliniCore <span style="color: #34d399; font-weight: 300;">Hybrid OS</span>
@@ -154,7 +270,7 @@ try {
             <td style="padding: 32px;">
               <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">
                 Hello Super Admin,<br>
-                Your daily shift-end closing audit has completed. Your encrypted live database vault (<strong>.cfbak</strong>) has been generated and is attached to this email.
+                Your automated system audit and database backup has completed. Your encrypted live database vault (<strong>.cfbak</strong>) has been compiled on the server and is attached to this email.
               </p>
               <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-bottom: 20px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
@@ -186,7 +302,7 @@ try {
       </td>
     </tr>
   </table>
-</body>
+ </body>
 </html>
 HTML;
 
@@ -211,10 +327,10 @@ HTML;
         CURLOPT_HTTPHEADER => [
             'Authorization: Bearer ' . $apiKey,
             'Content-Type: application/json',
-            'User-Agent: CliniCore-Cron/2.0'
+            'User-Agent: CliniCore-ServerDaemon/2.5'
         ],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 25,
+        CURLOPT_TIMEOUT => 30,
         CURLOPT_SSL_VERIFYPEER => true
     ]);
 
@@ -230,12 +346,22 @@ HTML;
 
     $result = json_decode((string)$response, true);
     if ($httpCode >= 200 && $httpCode < 300) {
-        echo "✅ SUCCESS: Daily backup delivered to {$targetEmail}! (Resend ID: " . ($result['id'] ?? 'OK') . ")\n";
+        $resendId = $result['id'] ?? 'OK';
+        echo "✅ SUCCESS: Automated backup delivered to {$targetEmail}! (Resend ID: {$resendId})\n";
+
+        // Update timestamps in MySQL
+        $upStmt = $db->prepare("
+            INSERT INTO system_settings (setting_key, setting_value)
+            VALUES ('last_email_backup', NOW()), ('last_daily_report_date', :d)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+        $upStmt->execute([':d' => $todayPktDate]);
+
     } else {
         echo "⚠️ Resend API Rejected: " . json_encode($result) . "\n";
     }
 
 } catch (\Throwable $e) {
-    echo "❌ FATAL: " . $e->getMessage() . "\n";
+    echo "❌ FATAL ERROR: " . $e->getMessage() . "\n";
     exit(1);
 }

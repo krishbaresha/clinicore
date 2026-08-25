@@ -429,4 +429,27 @@ class SystemController
             Response::error('RESEND_DISPATCH_FAILED', (string)$msg, $httpCode, $result);
         }
     }
+
+    /**
+     * POST|GET /api/v1/system/trigger-scheduled-backup
+     * Triggers server-side cron evaluation and backup generation
+     */
+    public function triggerScheduledBackup(): void
+    {
+        $script = dirname(__DIR__, 2) . '/cron_daily_backup.php';
+        if (!file_exists($script)) {
+            Response::error('SCRIPT_NOT_FOUND', 'Cron runner script not found.', 500);
+            return;
+        }
+
+        $force = (isset($_GET['force']) && $_GET['force'] === '1') || (isset($_POST['force']) && $_POST['force'] === '1');
+        $cmd = 'php ' . escapeshellarg($script) . ($force ? ' --force' : '') . ' 2>&1';
+        $output = shell_exec($cmd);
+
+        Response::success([
+            'output' => trim((string)$output),
+            'force' => $force,
+            'timestamp' => date('c')
+        ], 200, ['message' => 'Scheduled backup runner executed on VPS.']);
+    }
 }
