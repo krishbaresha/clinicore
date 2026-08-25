@@ -160,10 +160,10 @@ export default function SidebarLayout({ children }) {
       let triggerReason = "";
 
       if (frequency === "every_1m" || frequency === "test_1min") {
-        const intervalMs = 60 * 1000;
+        const intervalMs = 10 * 1000; // 10 seconds for instant verification
         if (nowMs - lastBackupMs >= intervalMs) {
           shouldTrigger = true;
-          triggerReason = "🧪 1-Minute Live Automation Verification";
+          triggerReason = "🧪 Live Automation Verification Test";
         }
       } else if (frequency === "daily_9pm" || frequency === "daily") {
         if (currentHour >= 21 && lastDailyReportDate !== todayDateStr) {
