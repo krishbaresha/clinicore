@@ -7,13 +7,26 @@ declare(strict_types=1);
  * Scheduled via crontab: 0 16 * * * php /var/www/clinicore/backend/cron_daily_backup.php (16:00 UTC = 21:00 PKT)
  */
 
-namespace CliniCore;
+// Enable PSR-4 Autoloader
+spl_autoload_register(function ($class) {
+    $prefix = 'CliniCore\\';
+    $baseDir = __DIR__ . '/src/';
 
-require_once __DIR__ . '/vendor/autoload.php';
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        return;
+    }
+
+    $relativeClass = substr($class, $len);
+    $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+
+    if (file_exists($file)) {
+        require_once $file;
+    }
+});
 
 use CliniCore\Config\Database;
 use CliniCore\Config\Env;
-use PDO;
 
 echo "[" . date('Y-m-d H:i:s') . "] Initializing CliniCore Daily 9:00 PM Automated Backup Dispatcher...\n";
 
@@ -22,20 +35,31 @@ try {
     $db = Database::getConnection();
 
     // 1. Fetch Clinic & System Configuration
-    $configStmt = $db->query("SELECT * FROM system_config LIMIT 1");
-    $systemConfig = $configStmt ? $configStmt->fetch(PDO::FETCH_ASSOC) : [];
+    $clinicStmt = $db->query("SELECT * FROM clinics LIMIT 1");
+    $clinicRow = $clinicStmt ? $clinicStmt->fetch(\PDO::FETCH_ASSOC) : [];
+    $clinicName = (string)($clinicRow['name'] ?? 'Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale');
 
-    $apiKey = (string)($systemConfig['resend_api_key'] ?? Env::get('RESEND_API_KEY', 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8'));
-    $targetEmail = (string)($systemConfig['notification_email'] ?? $systemConfig['backup_email'] ?? Env::get('NOTIFICATION_EMAIL', 'drasifhosting@gmail.com'));
-    $clinicName = (string)($systemConfig['clinic_name'] ?? 'Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale');
+    $settingsRows = [];
+    try {
+        $sStmt = $db->query("SELECT setting_key, setting_value FROM system_settings");
+        if ($sStmt) {
+            $settingsRows = $sStmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+        }
+    } catch (\Throwable $e) {}
 
+    $settings = [];
+    foreach ($settingsRows as $r) {
+        $settings[$r['setting_key']] = $r['setting_value'];
+    }
+
+    $apiKey = (string)($settings['resend_api_key'] ?? Env::get('RESEND_API_KEY', 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8'));
     if (empty($apiKey)) {
         $apiKey = 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8';
     }
 
+    $targetEmail = (string)($settings['notification_email'] ?? Env::get('NOTIFICATION_EMAIL', 'drasifhosting@gmail.com'));
     if (empty($targetEmail)) {
-        echo "⚠️ Error: Notification Recipient Email is not configured.\n";
-        exit(1);
+        $targetEmail = 'drasifhosting@gmail.com';
     }
 
     // 2. Fetch Live Operational Metrics
