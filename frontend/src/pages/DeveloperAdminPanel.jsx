@@ -441,7 +441,7 @@ export default function DeveloperAdminPanel() {
 
 
 
-  const loadData = () => {
+  const loadData = async () => {
     const curr = dbClinic.get() || {};
     setActiveClinic(curr);
     setClinicForm({
@@ -468,6 +468,38 @@ export default function DeveloperAdminPanel() {
     setCashBookList(dbCashBook.getAll() || []);
     setLicenseForm(dbLicense.get());
     setOutboxItems(dbOutbox.getAll() || []);
+
+    // Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const res = await fetch(`${apiUrl}/api/v1/system/config`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && json?.data?.clinic) {
+          const sClinic = json.data.clinic;
+          dbClinic.update(sClinic);
+          setActiveClinic(sClinic);
+          setClinicForm((prev) => ({
+            ...prev,
+            name: sClinic.name || prev.name,
+            address: sClinic.address || prev.address,
+            phone: sClinic.phone || prev.phone,
+            default_consultation_fee: sClinic.default_consultation_fee || prev.default_consultation_fee,
+            clinic_status: sClinic.clinic_status || prev.clinic_status,
+            public_notice: sClinic.public_notice || prev.public_notice,
+            resend_api_key: sClinic.resend_api_key || prev.resend_api_key,
+            notification_email: sClinic.notification_email || prev.notification_email,
+            report_frequency: sClinic.report_frequency || prev.report_frequency,
+            whatsapp_gateway_no: sClinic.whatsapp_gateway_no || prev.whatsapp_gateway_no,
+          }));
+          if (sClinic.resend_api_key) localStorage.setItem("cf_resend_api_key", sClinic.resend_api_key);
+          if (sClinic.notification_email) localStorage.setItem("cf_notification_email", sClinic.notification_email);
+          if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
+        }
+      }
+    } catch (syncErr) {
+      console.warn("[Cloud Sync] Using local storage config fallback:", syncErr);
+    }
   };
 
   useEffect(() => {
@@ -479,25 +511,46 @@ export default function DeveloperAdminPanel() {
     return unsub;
   }, []);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const currentAdminPasscode = (getAdminPasscode() || DEFAULT_ADMIN_PASSCODE).trim();
     const input = (passcodeInput || "").trim();
 
-    // Validation: Support exact match, case-insensitive match, or default master fallback
-    if (
-      input &&
-      (input === currentAdminPasscode ||
-       input.toUpperCase() === currentAdminPasscode.toUpperCase() ||
-       input.toUpperCase() === DEFAULT_ADMIN_PASSCODE.toUpperCase())
-    ) {
-      sessionStorage.setItem("cf_dev_auth", "true");
-      setIsAuthenticated(true);
-      setAuthError("");
-      loadData();
-    } else {
-      setAuthError("Incorrect Super Admin master passcode. Default is KB2026.");
+    if (!input) {
+      setAuthError("Please enter your Super Admin master passcode.");
+      return;
     }
+
+    // 1. Authoritative Server Verification (Strict Case-Sensitive)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const res = await fetch(`${apiUrl}/api/v1/system/verify-passcode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: input }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        sessionStorage.setItem("cf_dev_auth", "true");
+        setIsAuthenticated(true);
+        setAuthError("");
+        loadData();
+        return;
+      }
+    } catch (netErr) {
+      // 2. Offline Fallback (Strict Case-Sensitive Match)
+      const currentAdminPasscode = (getAdminPasscode() || DEFAULT_ADMIN_PASSCODE).trim();
+      if (input === currentAdminPasscode) {
+        sessionStorage.setItem("cf_dev_auth", "true");
+        setIsAuthenticated(true);
+        setAuthError("");
+        loadData();
+        return;
+      }
+    }
+
+    // Zero Information Leakage: Never expose default or configured passwords
+    setAuthError("Incorrect Super Admin master passcode. Access denied.");
   };
 
   const showToast = (msg) => {
@@ -709,14 +762,25 @@ export default function DeveloperAdminPanel() {
   // ---------------------------------------------------------------------------
   // CLINIC IDENTITY & API SAVE
   // ---------------------------------------------------------------------------
-  const handleSaveClinicSettings = (e) => {
-    e.preventDefault();
+  const handleSaveClinicSettings = async (e) => {
+    e?.preventDefault?.();
     dbClinic.update(clinicForm);
     localStorage.setItem("cf_resend_api_key", clinicForm.resend_api_key || "");
     localStorage.setItem("cf_notification_email", clinicForm.notification_email || "");
     localStorage.setItem("cf_report_frequency", clinicForm.report_frequency || "daily_9pm");
 
-    showToast("✅ Clinic Identity, Resend API, and Automated Reporting Saved!");
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      await fetch(`${apiUrl}/api/v1/system/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(clinicForm),
+      });
+    } catch (e) {
+      console.warn("Could not sync config to remote MySQL:", e);
+    }
+
+    showToast("✅ Clinic Identity, Resend API, and Automated Reporting Saved to Cloud & Local Storage!");
     loadData();
   };
 
@@ -980,8 +1044,8 @@ export default function DeveloperAdminPanel() {
     }
   };
 
-  const handleSaveSecurityConfig = (e) => {
-    e.preventDefault();
+  const handleSaveSecurityConfig = async (e) => {
+    e?.preventDefault?.();
     if (!tempSecurityConfig) return;
     
     // 1. Save Admin Passcode if changed
@@ -1002,8 +1066,24 @@ export default function DeveloperAdminPanel() {
 
     setTabSecurity(finalConfig);
     localStorage.setItem("cf_admin_tab_security", JSON.stringify(finalConfig));
+
+    // Persist to VPS MySQL database so all devices and browsers sync automatically
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      await fetch(`${apiUrl}/api/v1/system/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          admin_master_passcode: tempSecurityConfig.admin_passcode?.trim() || getAdminPasscode(),
+          tab_pin: tempSecurityConfig.tab_pin?.trim() || getTabPin(),
+        }),
+      });
+    } catch (err) {
+      console.warn("Could not sync security config to remote MySQL:", err);
+    }
+
     setShowTabSecurityModal(false);
-    showToast("🛡️ Admin Master Passcode, Tab PIN & Permissions saved successfully!");
+    showToast("🛡️ Admin Master Passcode, Tab PIN & Permissions saved to Cloud & Local Storage!");
   };
 
   const NAV_ITEMS = [

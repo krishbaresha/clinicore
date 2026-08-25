@@ -135,9 +135,15 @@ try {
         (new StorageController())->serve();
     }
 
-    // 10. Automated Notifications & Resend Email Dispatch
+    // 10. Automated Notifications, Centralized Config & Security
     elseif ($uri === '/api/v1/system/send-email' && $method === 'POST') {
         (new SystemController())->sendEmail();
+    } elseif ($uri === '/api/v1/system/config' && $method === 'GET') {
+        (new SystemController())->getConfig();
+    } elseif ($uri === '/api/v1/system/config' && $method === 'POST') {
+        (new SystemController())->saveConfig();
+    } elseif ($uri === '/api/v1/system/verify-passcode' && $method === 'POST') {
+        (new SystemController())->verifyPasscode();
     }
 
     // Unmatched Route Fallback
