@@ -1503,8 +1503,30 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Automated Verification:**
       - 149/149 test assertions passing (100%), 0 ESLint errors, and clean production bundle build in 713ms.
 
+28. **Pharma Supplier & Manufacturing Company Short Code & Instant Auto-Fill Engine:**
+    - **Dedicated `supplier_code` Data Model (`db.js`):**
+      - Enhanced `dbSuppliers` with auto-normalization for legacy records (`SUP-001`, `SUP-002`...).
+      - Implemented `dbSuppliers.getByCode(code)` supporting lookup by short code (`BM`, `PAUL`, `SUP-001`, `001`), ID, account number, or name.
+      - Implemented `dbSuppliers.getNextSupplierCode()` with auto-incrementing `SUP-xxx` sequential generation.
+      - Updated `dbSuppliers.add(supplier)` to store custom or auto-assigned `supplier_code`.
+    - **Instant Auto-Fill in Purchase GRN _Form (`SupplierPurchases.jsx`):**
+      - Added dedicated "⚡ Supplier Code" input with live auto-linking.
+      - Typing or pasting supplier short code (e.g., `001`, `SUP-001`, `BM`, `PAUL`) instantly auto-fills Account Name, Sales Representative, and filters products.
+      - Rendered real-time "Linked Supplier Capsule" displaying Supplier Code, Contact Phone, and live Payable / Udhaar balance.
+      - Selecting from the Searchable Combobox auto-populates the Supplier Code.
+    - **Instant Auto-Fill in Receive New Stock Entry (`SupplierPurchases.jsx`):**
+      - Added Supplier Code quick search input in Tab 3 which auto-selects the company and displays credit due.
+    - **Distributor Directory & Registration Enhancement (`SupplierPurchases.jsx`):**
+      - Added "Supplier Short Code (for Quick Auto-Fill)" with 1-click `Auto-Generate` in the "Add Distributor Company" modal.
+      - Displayed `#{supplier_code}` badges on all distributor cards with a direct `⚡ New GRN` quick launcher.
+    - **CashBook Multi-Entity Code Tagging (`CashBookModal.jsx`):**
+      - Updated account options to show `[#SUP-001]` and `[#PTY-001]` badges and live Payable / Udhaar balances.
+    - **Automated Verification:**
+      - 149/149 test assertions passing (100%), 0 ESLint errors, and clean production bundle build in 1.02s.
+
 **Next Recommended Steps:**
-- Push commits to GitHub to auto-deploy to Vercel and Hostinger VPS.
+- Commit and push to GitHub so Vercel and VPS deploy the latest supplier code engine.
+
 
 
 

@@ -215,15 +215,27 @@ export default function CashBookModal({ isOpen, onClose }) {
   // Prepare Account Options for Searchable Combobox
   const accountOptions = useMemo(() => {
     const parties = dbParties.getAll();
+    const sups = dbSuppliers.getAll();
     return accounts.map((acc) => {
       const matchedParty = parties.find((p) => p.name.toLowerCase() === acc.account_name.toLowerCase());
-      const extraDue = matchedParty && matchedParty.current_balance > 0
-        ? `Udhaar: Rs. ${matchedParty.current_balance.toLocaleString("en-PK")}`
-        : null;
+      const matchedSup = sups.find((s) => s.name.toLowerCase() === acc.account_name.toLowerCase());
+      
+      let extraDue = null;
+      let codePrefix = "";
+      if (matchedParty) {
+        if (matchedParty.party_code) codePrefix = `[#${matchedParty.party_code}] `;
+        if (matchedParty.current_balance > 0) extraDue = `Udhaar: Rs. ${matchedParty.current_balance.toLocaleString("en-PK")}`;
+      } else if (matchedSup) {
+        if (matchedSup.supplier_code) codePrefix = `[#${matchedSup.supplier_code}] `;
+        const supBal = Number(matchedSup.current_balance || matchedSup.balance_due || 0);
+        if (supBal > 0) extraDue = `Payable: Rs. ${supBal.toLocaleString("en-PK")}`;
+      } else if (acc.account_no) {
+        codePrefix = `[#${acc.account_no}] `;
+      }
 
       return {
         id: acc.id || acc.account_name,
-        label: acc.account_name,
+        label: `${codePrefix}${acc.account_name}`,
         badge: acc.account_type || "General",
         sublabel: acc.naration || "",
         extra: extraDue,

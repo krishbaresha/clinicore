@@ -300,10 +300,15 @@ export default function SupplierPurchases() {
 
   // New Supplier Modal
   const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [newSupCode, setNewSupCode] = useState("");
   const [newSupName, setNewSupName] = useState("");
   const [newSupContact, setNewSupContact] = useState("");
   const [newSupPhone, setNewSupPhone] = useState("");
   const [newSupAddress, setNewSupAddress] = useState("");
+
+  // Supplier Code Quick Auto-Fill state
+  const [grnSupplierCode, setGrnSupplierCode] = useState("");
+  const [newPurchaseCodeSearch, setNewPurchaseCodeSearch] = useState("");
 
   // Payment Settlement Modal
   const [paySupplierModal, setPaySupplierModal] = useState(null);
@@ -351,14 +356,53 @@ export default function SupplierPurchases() {
     setShowNewTransportInput(false);
   };
 
+  const handleSupplierCodeChange = (code) => {
+    setGrnSupplierCode(code);
+    if (!code || !code.trim()) return;
+    const clean = code.trim().toLowerCase();
+    
+    // 1. Direct match in dbSuppliers
+    const sup = dbSuppliers.getByCode(clean) || suppliers.find(
+      (s) =>
+        (s.supplier_code && s.supplier_code.toLowerCase() === clean) ||
+        (s.supplier_code && s.supplier_code.toLowerCase().startsWith(clean)) ||
+        (s.name && s.name.toLowerCase().startsWith(clean))
+    );
+
+    if (sup) {
+      setGrnForm((prev) => ({
+        ...prev,
+        account_name: sup.name,
+        reference: sup.contact_person || prev.reference,
+      }));
+      return;
+    }
+
+    // 2. Fallback match in Chart of Accounts
+    const acc = accountsList.find(
+      (a) =>
+        (a.account_no && String(a.account_no).toLowerCase() === clean) ||
+        (a.account_name && a.account_name.toLowerCase().startsWith(clean))
+    );
+    if (acc) {
+      setGrnForm((prev) => ({
+        ...prev,
+        account_name: acc.account_name,
+        naration: acc.naration || prev.naration,
+      }));
+    }
+  };
+
   const accountOptions = useMemo(() => {
     const list = [];
     suppliers.forEach((s) => {
       list.push({
         id: s.name,
         label: s.name,
-        sublabel: s.contact_person || "Pharma Supplier",
-        badge: "🏢 Supplier",
+        sublabel: `${s.supplier_code ? `[Code: ${s.supplier_code}] ` : ""}${s.contact_person || "Pharma Supplier"}${s.current_balance || s.balance_due ? ` • Udhaar: Rs. ${Number(s.current_balance || s.balance_due || 0).toLocaleString()}` : ""}`,
+        badge: s.supplier_code ? `🏢 ${s.supplier_code}` : "🏢 Supplier",
+        supplier_code: s.supplier_code || s.id,
+        raw: s,
       });
     });
     accountsList.forEach((a) => {
@@ -366,13 +410,21 @@ export default function SupplierPurchases() {
         list.push({
           id: a.account_name,
           label: a.account_name,
-          sublabel: a.city || a.phone || a.account_type,
-          badge: `📒 ${a.account_type || "Account"}`,
+          sublabel: `${a.account_no ? `[#${a.account_no}] ` : ""}${a.city || a.phone || a.account_type}`,
+          badge: a.account_no ? `📒 #${a.account_no}` : `📒 ${a.account_type || "Account"}`,
+          supplier_code: a.account_no ? String(a.account_no) : a.id,
+          raw: a,
         });
       }
     });
     return list;
   }, [suppliers, accountsList]);
+
+  const matchedGrnSupplier = useMemo(() => {
+    if (!grnForm.account_name) return null;
+    const lower = grnForm.account_name.toLowerCase().trim();
+    return suppliers.find((s) => s.name.toLowerCase().trim() === lower) || null;
+  }, [suppliers, grnForm.account_name]);
 
   const referenceOptions = useMemo(() => {
     return referencesList.map((r) => ({
@@ -707,13 +759,16 @@ export default function SupplierPurchases() {
   const handleCreateSupplier = (e) => {
     e.preventDefault();
     if (!newSupName.trim()) return;
-    dbSuppliers.add({
-      name: newSupName,
-      contact_person: newSupContact,
-      phone: newSupPhone,
-      address: newSupAddress,
+    const created = dbSuppliers.add({
+      supplier_code: newSupCode.trim() || dbSuppliers.getNextSupplierCode(),
+      name: newSupName.trim(),
+      contact_person: newSupContact.trim(),
+      phone: newSupPhone.trim(),
+      address: newSupAddress.trim(),
     });
+    alert(`✅ Distributor "${created.name}" registered successfully with Short Code #${created.supplier_code}!`);
     setNewSupName("");
+    setNewSupCode("");
     setNewSupContact("");
     setNewSupPhone("");
     setNewSupAddress("");
@@ -993,12 +1048,49 @@ export default function SupplierPurchases() {
                   )}
                 </div>
 
+                {/* Quick Supplier Code Auto-Fill */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-amber-900">
+                      <span className="material-symbols-outlined text-sm text-amber-600">bolt</span>
+                      Supplier Code
+                    </span>
+                    {grnSupplierCode && (
+                      <span className="text-[10px] text-emerald-700 font-bold">✓ Linked</span>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={grnSupplierCode}
+                      onChange={(e) => handleSupplierCodeChange(e.target.value)}
+                      placeholder="e.g. SUP-001, BM"
+                      className="w-full bg-amber-50/70 border border-amber-300 rounded-xl px-3 py-2 text-xs font-mono font-black text-amber-950 uppercase tracking-wider focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    />
+                    {grnSupplierCode && (
+                      <button
+                        type="button"
+                        onClick={() => handleSupplierCodeChange("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                        title="Clear Code"
+                      >
+                        <span className="material-symbols-outlined text-xs">close</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Account Name */}
                 <div className="sm:col-span-2">
                   <ExpandableCombobox
                     label="Account Name (Supplier / Company)"
                     value={grnForm.account_name}
-                    onChange={(val) => setGrnForm({ ...grnForm, account_name: val })}
+                    onChange={(val, opt) => {
+                      setGrnForm({ ...grnForm, account_name: val });
+                      if (opt?.supplier_code) {
+                        setGrnSupplierCode(opt.supplier_code);
+                      }
+                    }}
                     options={accountOptions}
                     placeholder="Select or Search Supplier / Account..."
                     searchPlaceholder="Search 260+ Suppliers & Accounts..."
@@ -1042,6 +1134,26 @@ export default function SupplierPurchases() {
                     </button>
                   </div>
                 </div>
+
+                {/* Linked Supplier Info Capsule */}
+                {matchedGrnSupplier && (
+                  <div className="col-span-1 sm:col-span-2 md:col-span-4 bg-emerald-100/80 border border-emerald-300 rounded-2xl p-3 flex flex-wrap items-center justify-between text-xs text-emerald-950 gap-2 shadow-xs animate-fadeIn">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg text-emerald-700">verified_user</span>
+                      <span className="font-bold">
+                        Linked Supplier: <strong className="font-mono bg-white px-2 py-0.5 rounded-lg border border-emerald-300 text-emerald-900">#{matchedGrnSupplier.supplier_code || matchedGrnSupplier.id}</strong> — {matchedGrnSupplier.name} ({matchedGrnSupplier.phone || "No Phone"})
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] font-bold text-slate-700">
+                        Current Udhaar / Balance: <strong className="text-rose-700 font-black">Rs. {Number(matchedGrnSupplier.current_balance || matchedGrnSupplier.balance_due || 0).toLocaleString()}</strong>
+                      </span>
+                      <span className="text-[10px] bg-emerald-700 text-white px-2.5 py-0.5 rounded-full font-black">
+                        ⚡ Details Auto-Filled
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Transport with + New */}
                 <div className="sm:col-span-2">
@@ -1388,9 +1500,14 @@ export default function SupplierPurchases() {
                           {sup.name.charAt(0)}
                         </div>
                         <div>
-                          <h3 className="font-bold text-gray-900 text-base leading-tight">
-                            {sup.name}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-gray-900 text-base leading-tight">
+                              {sup.name}
+                            </h3>
+                            <span className="font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[10.5px] font-black tracking-wider">
+                              #{sup.supplier_code || sup.id}
+                            </span>
+                          </div>
                           <div className="text-xs text-gray-500 font-medium mt-0.5">
                             {sup.contact_person || "Sales Representative"}
                           </div>
@@ -1406,6 +1523,12 @@ export default function SupplierPurchases() {
 
                     {/* Info Metadata */}
                     <div className="mt-4 space-y-1.5 text-xs text-gray-600 bg-gray-50 p-3 rounded-2xl border border-gray-100 font-medium">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">Supplier Code:</span>
+                        <span className="font-mono font-black text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
+                          {sup.supplier_code || sup.id}
+                        </span>
+                      </div>
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400">Phone:</span>
                         <span className="font-bold text-gray-800">{sup.phone || "—"}</span>
@@ -1425,13 +1548,29 @@ export default function SupplierPurchases() {
                   <div className="pt-2 border-t border-gray-100 flex items-center gap-2 flex-wrap">
                     <button
                       onClick={() => {
+                        setActiveTab("grn_form");
+                        setGrnForm((prev) => ({
+                          ...prev,
+                          account_name: sup.name,
+                          reference: sup.contact_person || prev.reference,
+                        }));
+                        setGrnSupplierCode(sup.supplier_code || sup.id);
+                      }}
+                      className="bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 px-3 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
+                      title="Create GRN with this Supplier"
+                    >
+                      <span className="material-symbols-outlined text-sm">receipt</span>
+                      New GRN
+                    </button>
+                    <button
+                      onClick={() => {
                         setSelectedSupplierDrawer(sup);
                         setSupplierDrawerSearch("");
                       }}
                       className="flex-1 bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
                     >
                       <span className="material-symbols-outlined text-base">receipt_long</span>
-                      View Invoices ({supBills.length})
+                      Invoices ({supBills.length})
                     </button>
                     <button
                       onClick={() => {
@@ -1564,19 +1703,45 @@ export default function SupplierPurchases() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Quick Supplier Code Auto-Fill */}
             <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs text-amber-600">bolt</span>
+                Supplier Code
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. SUP-001 or BM"
+                value={newPurchaseCodeSearch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewPurchaseCodeSearch(val);
+                  const matched = dbSuppliers.getByCode(val);
+                  if (matched) {
+                    setSelectedSupplierId(matched.id);
+                  }
+                }}
+                className="w-full border border-amber-300 bg-amber-50/50 rounded-xl px-3 py-2 text-xs font-mono font-black uppercase text-amber-950 focus:bg-white focus:border-amber-500"
+              />
+            </div>
+
+            <div className="md:col-span-1">
               <label className="block text-xs font-bold text-gray-600 mb-1">Select Company / Distributor *</label>
               <select
                 value={selectedSupplierId}
-                onChange={(e) => setSelectedSupplierId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedSupplierId(e.target.value);
+                  const sup = suppliers.find((s) => s.id === e.target.value);
+                  if (sup?.supplier_code) setNewPurchaseCodeSearch(sup.supplier_code);
+                }}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 bg-white"
                 required
               >
                 <option value="">-- Choose Distributor --</option>
                 {suppliers.map((s) => (
                   <option key={s.id} value={s.id}>
-                    🏢 {s.name} ({s.contact_person || "Rep"})
+                    🏢 {s.supplier_code ? `[Code: ${s.supplier_code}] ` : ""}{s.name} ({s.contact_person || "Rep"})
                   </option>
                 ))}
               </select>
@@ -2118,9 +2283,46 @@ export default function SupplierPurchases() {
       {showAddSupplier && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <form onSubmit={handleCreateSupplier} className="bg-white max-w-md w-full rounded-3xl p-6 border border-gray-200 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-gray-900 text-base">Add New Pharma Supplier / Distributor</h3>
+            <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+              <span className="material-symbols-outlined text-teal-600">domain_add</span>
+              Add New Pharma Supplier / Distributor
+            </h3>
             
             <div className="space-y-3 text-xs font-semibold">
+              {/* Supplier Short Code */}
+              <div>
+                <label className="block text-gray-700 mb-1 flex items-center justify-between">
+                  <span>Supplier Short Code (for Quick Auto-Fill) *</span>
+                  <button
+                    type="button"
+                    onClick={() => setNewSupCode(dbSuppliers.getNextSupplierCode())}
+                    className="text-[10px] text-teal-700 hover:text-teal-900 font-bold"
+                  >
+                    Auto-Generate
+                  </button>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. SUP-001, BM, PAUL, SCHW"
+                    value={newSupCode}
+                    onChange={(e) => setNewSupCode(e.target.value)}
+                    className="flex-1 border border-amber-300 bg-amber-50/50 rounded-xl px-3 py-2 text-xs font-mono font-black uppercase text-amber-950 focus:bg-white focus:border-amber-500"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setNewSupCode(dbSuppliers.getNextSupplierCode())}
+                    className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-[10px] font-black shrink-0 hover:bg-emerald-100"
+                  >
+                    Auto
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  Type this short code in Purchase GRN or invoices to instantly auto-fill this company.
+                </p>
+              </div>
+
               <div>
                 <label className="block text-gray-600 mb-1">Company / Distributor Name *</label>
                 <input

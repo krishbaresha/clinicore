@@ -2001,29 +2001,76 @@ export const dbParties = {
 
 // ---------- Suppliers ----------
 export const dbSuppliers = {
-  getAll: () => getCollection(KEYS.SUPPLIERS),
+  getAll: () => {
+    const list = getCollection(KEYS.SUPPLIERS) || [];
+    let changed = false;
+    const normalized = list.map((s, idx) => {
+      if (!s.supplier_code) {
+        changed = true;
+        const codeNum = String(idx + 1).padStart(3, "0");
+        return { ...s, supplier_code: `SUP-${codeNum}` };
+      }
+      return s;
+    });
+    if (changed) {
+      setCollection(KEYS.SUPPLIERS, normalized);
+    }
+    return normalized;
+  },
   getById: (id) => getFromCollectionById(KEYS.SUPPLIERS, id),
+  getByCode: (code) => {
+    if (!code) return null;
+    const clean = String(code).trim().toLowerCase();
+    const list = dbSuppliers.getAll();
+    return list.find(
+      (s) =>
+        (s.supplier_code && s.supplier_code.toLowerCase() === clean) ||
+        (s.code && s.code.toLowerCase() === clean) ||
+        (s.id && s.id.toLowerCase() === clean) ||
+        (s.account_no && String(s.account_no).toLowerCase() === clean) ||
+        (s.name && s.name.toLowerCase() === clean)
+    ) || null;
+  },
+  getNextSupplierCode: () => {
+    const list = getCollection(KEYS.SUPPLIERS) || [];
+    const maxNum = list.reduce((max, s) => {
+      const match = (s.supplier_code || "").match(/SUP-(\d+)/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        return n > max ? n : max;
+      }
+      return max;
+    }, 0);
+    return `SUP-${String(maxNum + 1).padStart(3, "0")}`;
+  },
   add: (supplier) => {
-    const list = getCollection(KEYS.SUPPLIERS);
-    const newS = { ...supplier, id: generateId("sup"), current_balance: Number(supplier.current_balance) || 0 };
+    const list = dbSuppliers.getAll();
+    const nextCode = supplier.supplier_code || supplier.code || dbSuppliers.getNextSupplierCode();
+    const newS = {
+      ...supplier,
+      id: generateId("sup"),
+      supplier_code: nextCode,
+      current_balance: Number(supplier.current_balance || supplier.balance_due || supplier.opening_balance) || 0,
+      created_at: supplier.created_at || new Date().toISOString(),
+    };
     setCollection(KEYS.SUPPLIERS, [...list, newS]);
     return newS;
   },
   update: (id, data) => {
-    const list = getCollection(KEYS.SUPPLIERS);
+    const list = dbSuppliers.getAll();
     const updated = list.map((s) => (s.id === id ? { ...s, ...data } : s));
     setCollection(KEYS.SUPPLIERS, updated);
     return updated.find((s) => s.id === id) || null;
   },
   updateBalance: (supplierId, delta) => {
-    const list = getCollection(KEYS.SUPPLIERS);
+    const list = dbSuppliers.getAll();
     const updated = list.map((s) =>
       s.id === supplierId ? { ...s, current_balance: Math.max(0, (Number(s.current_balance) || 0) + Number(delta)) } : s
     );
     setCollection(KEYS.SUPPLIERS, updated);
   },
   recordPayment: (supplierId, amount) => {
-    const list = getCollection(KEYS.SUPPLIERS);
+    const list = dbSuppliers.getAll();
     const updated = list.map((s) => (s.id === supplierId ? { ...s, current_balance: Math.max(0, (Number(s.current_balance) || 0) - Number(amount)) } : s));
     setCollection(KEYS.SUPPLIERS, updated);
   },
