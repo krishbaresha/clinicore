@@ -978,28 +978,33 @@ export default function ClinicSettings() {
 
                           let res;
                           try {
-                            // Direct call to Resend API
-                            res = await fetch("https://api.resend.com/emails", {
+                            const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+                            res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
                               method: "POST",
                               headers: {
-                                "Authorization": `Bearer ${clinicForm.resend_api_key.trim()}`,
                                 "Content-Type": "application/json"
                               },
-                              body: JSON.stringify(resendPayload)
+                              body: JSON.stringify({
+                                api_key: clinicForm.resend_api_key.trim(),
+                                to: targetEmails,
+                                subject: resendPayload.subject,
+                                html: resendPayload.html,
+                                attachments: resendPayload.attachments,
+                              })
                             });
                           } catch (fetchErr) {
-                            // Network/CORS error — do NOT proxy through third-party
-                            alert(`⚠️ Email send failed (network/CORS): ${fetchErr.message}. Local encrypted .cfbak file was downloaded.`);
+                            alert(`⚠️ Email send failed: ${fetchErr.message}. Local encrypted .cfbak file was downloaded.`);
                             if (refreshClinic) refreshClinic();
                             return;
                           }
 
-                          if (res.ok) {
+                          const data = await res.json().catch(() => null);
+                          if (res.ok && data?.success) {
                             alert(`✅ Resend API Success! Encrypted Database Backup (.cfbak) delivered to inbox (${targetEmails.join(", ")}).`);
                           } else {
-                            const errTxt = await res.text();
-                            if (errTxt.includes("You can only send testing emails to your own email address")) {
-                              alert(`💡 Resend Testing Mode Notice:\n\nResend Free Sandbox Key currently sends testing emails to your Resend account email (yoyobangali29@gmail.com).\n\nTo send to ${clinicForm.backup_email}, verify your domain at resend.com/domains!\n\nLocal encrypted .cfbak backup was downloaded to your computer.`);
+                            const errTxt = data?.message || data?.error || JSON.stringify(data);
+                            if (errTxt.includes("You can only send testing emails to your own email address") || errTxt.includes("only send testing emails")) {
+                              alert(`💡 Resend Testing Mode Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to ${clinicForm.backup_email}, verify your domain on https://resend.com/domains!\n\nLocal encrypted .cfbak backup was downloaded to your computer.`);
                             } else {
                               alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local encrypted .cfbak backup was downloaded.`);
                             }

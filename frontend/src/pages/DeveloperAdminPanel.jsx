@@ -500,24 +500,32 @@ export default function DeveloperAdminPanel() {
         ],
       };
 
-      const res = await fetch("https://api.resend.com/emails", {
+      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${clinicForm.resend_api_key.trim()}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(resendPayload),
+        body: JSON.stringify({
+          api_key: clinicForm.resend_api_key.trim(),
+          to: [targetEmail],
+          subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
+          html: resendPayload.html,
+          attachments: resendPayload.attachments,
+        }),
       });
 
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
         showToast("✅ Encrypted .cfbak report delivered to " + targetEmail);
         alert(`✅ Resend API Success!\n\nEncrypted .cfbak database vault & executive report successfully delivered to:\n${targetEmail}`);
       } else {
-        const errTxt = await res.text();
-        if (errTxt.includes("You can only send testing emails to your own email address")) {
-          alert(`💡 Resend Testing Mode Notice:\n\nResend Free Sandbox Key currently sends emails to your verified Resend account email (yoyobangali29@gmail.com).\n\nTo send to ${targetEmail}, verify your custom domain on resend.com/domains!\n\nPayload .cfbak was created & validated.`);
+        const errorMsg = data?.message || data?.error || JSON.stringify(data);
+        if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails")) {
+          alert(`💡 Resend Testing Mode Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to any custom inbox (like ${targetEmail}), add and verify your domain "clinicore.me" on https://resend.com/domains!\n\nEncrypted database backup was generated successfully.`);
         } else {
-          alert(`⚠️ Resend HTTP Error (${res.status}):\n${errTxt}`);
+          alert(`⚠️ Resend Dispatch Response:\n${errorMsg}`);
         }
       }
     } catch (err) {

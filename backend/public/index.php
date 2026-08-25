@@ -35,6 +35,7 @@ use CliniCore\Controllers\B2bSalesController;
 use CliniCore\Controllers\PurchaseController;
 use CliniCore\Controllers\FinanceController;
 use CliniCore\Controllers\StorageController;
+use CliniCore\Controllers\SystemController;
 
 // Handle CORS Pre-Flight Requests
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
@@ -129,6 +130,11 @@ try {
         (new StorageController())->upload();
     } elseif ($uri === '/api/v1/storage/file' && $method === 'GET') {
         (new StorageController())->serve();
+    }
+
+    // 10. Automated Notifications & Resend Email Dispatch
+    elseif ($uri === '/api/v1/system/send-email' && $method === 'POST') {
+        (new SystemController())->sendEmail();
     }
 
     // Unmatched Route Fallback
