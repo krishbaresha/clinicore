@@ -328,7 +328,9 @@ export default function DeveloperAdminPanel() {
     setVisitsList(dbVisits.getAll() || []);
     setPatientsList(dbPatients.getAll() || []);
     setCashBookList(dbCashBook.getAll() || []);
-    setLicenseForm(dbLicense.get());
+    if (!preserveForm) {
+      setLicenseForm(dbLicense.get());
+    }
     setOutboxItems(dbOutbox.getAll() || []);
   };
 
@@ -339,10 +341,11 @@ export default function DeveloperAdminPanel() {
       setIsAuthenticated(true);
     }
     const unsub = syncEngine.subscribe(setSyncState);
-    window.addEventListener("clinicflow_status_update", loadData);
+    const onStatusUpdate = () => loadData(true);
+    window.addEventListener("clinicflow_status_update", onStatusUpdate);
     return () => {
       unsub();
-      window.removeEventListener("clinicflow_status_update", loadData);
+      window.removeEventListener("clinicflow_status_update", onStatusUpdate);
     };
   }, []);
 
@@ -1458,8 +1461,7 @@ export default function DeveloperAdminPanel() {
                 const handleQuickRestore = async () => {
                   const today = new Date();
                   const nextMonth = new Date(today);
-                  nextMonth.setMonth(nextMonth.getMonth() + 1);
-                  nextMonth.setDate(1);
+                  nextMonth.setDate(today.getDate() + 30);
 
                   const restored = {
                     ...licenseForm,
@@ -1468,6 +1470,7 @@ export default function DeveloperAdminPanel() {
                     restricted_features: [],
                     last_paid_date: today.toISOString().split("T")[0],
                     next_due_date: nextMonth.toISOString().split("T")[0],
+                    custom_notice: "",
                   };
                   await handleSaveLicense(null, restored);
                   showToast("✅ Payment Received: Full Access Resumed & Restrictions Cleared!");

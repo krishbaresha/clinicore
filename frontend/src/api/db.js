@@ -3399,8 +3399,7 @@ export const dbLicense = {
           last_paid_date: new Date().toISOString().split("T")[0],
           next_due_date: (() => {
             const d = new Date();
-            d.setMonth(d.getMonth() + 1);
-            d.setDate(1);
+            d.setDate(d.getDate() + 30);
             return d.toISOString().split("T")[0];
           })(),
           is_hard_locked: false,
@@ -3471,57 +3470,56 @@ export const dbLicense = {
     }
 
     const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
     const dueDate = lic.next_due_date ? new Date(lic.next_due_date + "T00:00:00") : new Date();
     const diffMs = dueDate.getTime() - today.getTime();
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const graceDays = Number(lic.grace_days) || 10;
 
-    // 1. If today is within warning_days_before due date (e.g. 5 days before 1st)
-    const warningDays = Number(lic.warning_days_before) || 5;
-    if (daysLeft >= 0 && daysLeft <= warningDays) {
+    // 1. Explicit Warning Mode (Developer manually activated Warning or scheduled)
+    if (lic.license_status === "warning") {
       return {
         status: "warning",
         isLocked: false,
         isWarning: true,
         isGrace: false,
-        daysLeft,
+        daysLeft: Math.max(0, daysLeft),
         daysOverdue: 0,
-        message: `Monthly Software License is due in ${daysLeft === 0 ? "today" : `${daysLeft} days`} (${lic.next_due_date}). Please clear payment of Rs. ${lic.monthly_fee?.toLocaleString("en-PK") || "5,000"}.`,
+        message: lic.custom_notice || `Monthly Software License is due in ${daysLeft <= 0 ? "today" : `${daysLeft} days`} (${lic.next_due_date || "End of Month"}). Please clear payment of Rs. ${lic.monthly_fee?.toLocaleString("en-PK") || "5,000"}.`,
         isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
       };
     }
 
-    // 2. If past due date but within Grace Period (e.g. 1st to 10th of month)
-    const graceDays = Number(lic.grace_days) || 10;
-    if (daysLeft < 0) {
-      const daysOverdue = Math.abs(daysLeft);
-      if (daysOverdue <= graceDays) {
-        return {
-          status: "grace_period",
-          isLocked: false,
-          isWarning: true,
-          isGrace: true,
-          daysLeft: 0,
-          daysOverdue,
-          message: `Monthly Subscription payment is overdue (${daysOverdue} days). Grace period active till ${graceDays} days. System is running normally.`,
-          isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
-        };
-      } else {
-        // Beyond grace days without payment -> Auto soft warning or restriction
-        return {
-          status: "grace_period",
-          isLocked: false,
-          isWarning: true,
-          isGrace: true,
-          daysLeft: 0,
-          daysOverdue,
-          message: `Subscription past due (${daysOverdue} days). Please contact K.B Software for payment clearance.`,
-          isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
-        };
-      }
+    // 2. Explicit Grace Period Mode
+    if (lic.license_status === "grace_period") {
+      const daysOverdue = daysLeft < 0 ? Math.abs(daysLeft) : 1;
+      return {
+        status: "grace_period",
+        isLocked: false,
+        isWarning: true,
+        isGrace: true,
+        daysLeft: 0,
+        daysOverdue,
+        message: lic.custom_notice || `Monthly Subscription payment is overdue (${daysOverdue} days). Grace period active till ${graceDays} days. System is running normally.`,
+        isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
+      };
     }
 
-    // 3. Normal Active state
+    // 3. If past due date without manual override (overdue)
+    if (daysLeft < 0) {
+      const daysOverdue = Math.abs(daysLeft);
+      return {
+        status: "grace_period",
+        isLocked: false,
+        isWarning: true,
+        isGrace: true,
+        daysLeft: 0,
+        daysOverdue,
+        message: lic.custom_notice || `Monthly Subscription payment is overdue (${daysOverdue} days). Grace period active till ${graceDays} days. System is running normally.`,
+        isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
+      };
+    }
+
+    // 4. Normal Active state (Full Access, no warning notices)
     return {
       status: "active",
       isLocked: false,

@@ -10,17 +10,32 @@ import { dbLicense } from "../api/db.js";
  */
 export default function LicenseBanner() {
   const [licenseState, setLicenseState] = useState(() => dbLicense.evaluateStatus());
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem("cf_license_dismissed") === "true";
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     const update = () => setLicenseState(dbLicense.evaluateStatus());
     window.addEventListener("clinicflow_license_update", update);
-    const interval = setInterval(update, 60000); // refresh every minute
+    window.addEventListener("clinicflow_status_update", update);
+    const interval = setInterval(update, 30000); // refresh every 30s
     return () => {
       window.removeEventListener("clinicflow_license_update", update);
+      window.removeEventListener("clinicflow_status_update", update);
       clearInterval(interval);
     };
   }, []);
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      sessionStorage.setItem("cf_license_dismissed", "true");
+    } catch {}
+  };
 
   if (!licenseState.isWarning && !licenseState.isGrace && licenseState.status !== "restricted") {
     return null;
@@ -88,7 +103,7 @@ export default function LicenseBanner() {
 
         {!isRestricted && (
           <button
-            onClick={() => setDismissed(true)}
+            onClick={handleDismiss}
             className="p-1 rounded-lg hover:bg-black/10 transition-colors opacity-70 hover:opacity-100"
             title="Dismiss notice"
           >
