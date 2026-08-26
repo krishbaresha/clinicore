@@ -9,7 +9,7 @@
     "test_suite_status": "149/149 PASSED (0 failures)",
     "build_status": "Vite 8.2.1 Production Bundle Clean (Exit Code 0)",
     "git_branch": "main",
-    "last_commit": "d969d8c"
+    "last_commit": "841bdfd"
   },
   "completed_milestones": [
     "Milestone 30: Real-World Invoices Integration (GRN & B2B Wholesale)",
@@ -17,7 +17,8 @@
     "Milestone 32: 100% Pure Keyboard-Driven POS Control Deck (F1-F11 Hotkeys & 2D Arrow Keys)",
     "Milestone 33: Master User Manual in Hinglish (context/15_ClinicFlow_Complete_User_Manual_Hinglish.md)",
     "Milestone 34: Global CliniCore Official Logo Integration across Login, Public Queue, and Portals",
-    "Milestone 35: AI Autonomous Voice & WhatsApp Reminder Engine (Follow-up Scanner Blueprint)"
+    "Milestone 35: AI Autonomous Voice & WhatsApp Reminder Engine (Follow-up Scanner Blueprint)",
+    "Milestone 36: Automated Self-Updating Graphify Knowledge Graph Engine (Git Post-Commit Hook & update_knowledge_graph.py)"
   ],
   "active_features": {
     "pos_keyboard_navigation": {
