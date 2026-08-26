@@ -4,14 +4,26 @@ import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import PhotoLightbox from "../components/PhotoLightbox.jsx";
 
 // Company brand color config for badges
-const COMPANY_COLORS = {};
+const COMPANY_COLORS = {
+  "BM": { bg: "bg-blue-50", text: "text-blue-800", border: "border-blue-200", short: "BM" },
+  "PAUL BROOKS": { bg: "bg-emerald-50", text: "text-emerald-800", border: "border-emerald-200", short: "PAUL" },
+  "SCHWABE": { bg: "bg-purple-50", text: "text-purple-800", border: "border-purple-200", short: "SCHW" },
+  "MEKTUM": { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", short: "MEKT" },
+  "BLOSSOM": { bg: "bg-rose-50", text: "text-rose-800", border: "border-rose-200", short: "BLOS" },
+};
 
 function CompanyBadge({ companyName, small = false }) {
   if (!companyName) return null;
-  const cfg = COMPANY_COLORS[companyName] || { bg: "bg-teal-50", text: "text-teal-800", border: "border-teal-200", short: companyName.slice(0, 4).toUpperCase() };
+  const key = companyName.toUpperCase();
+  const cfg = COMPANY_COLORS[key] || {
+    bg: "bg-teal-50",
+    text: "text-teal-900",
+    border: "border-teal-200/80",
+    short: companyName.slice(0, 4).toUpperCase(),
+  };
   return (
-    <span className={`inline-flex items-center font-bold border rounded-full px-1.5 py-0.5 ${cfg.bg} ${cfg.text} ${cfg.border} ${small ? "text-[9px]" : "text-[10px]"}`}>
-      {small ? cfg.short : companyName}
+    <span className={`inline-flex items-center font-black border rounded-full px-2 py-0.5 shadow-2xs ${cfg.bg} ${cfg.text} ${cfg.border} ${small ? "text-[9.5px]" : "text-[11px]"}`}>
+      [{small ? cfg.short : companyName}]
     </span>
   );
 }
@@ -36,15 +48,15 @@ function ReceiptModal({ sale, onClose }) {
   const invoiceId = sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       <div className="max-w-md w-full my-6">
         {/* Receipt Voucher Window Container */}
-        <div className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-200 text-gray-800 text-xs font-sans space-y-4 relative">
+        <div className="glass-modal p-6 border border-slate-200/80 text-slate-800 text-xs font-sans space-y-4 relative">
           
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 p-1.5 rounded-full transition-colors print:hidden"
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition-colors print:hidden cursor-pointer"
           >
             <span className="material-symbols-outlined text-base">close</span>
           </button>
@@ -57,80 +69,80 @@ function ReceiptModal({ sale, onClose }) {
               className="h-10 w-auto object-contain mx-auto drop-shadow-xs mb-1"
               onError={(e) => { e.target.style.display = "none"; }}
             />
-            <div className="text-base font-black text-teal-900">
+            <div className="text-base font-black text-slate-900">
               {clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store"}
             </div>
-            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-0.5">
               Retail Medical Store Invoice
             </div>
           </div>
 
           {/* Dotted Line */}
-          <div className="border-t border-dotted border-gray-400 my-2" />
+          <div className="border-t border-dotted border-slate-300 my-2" />
 
           {/* Meta Details List */}
-          <div className="text-xs text-gray-800 font-semibold space-y-1 leading-relaxed">
-            <div><span className="text-gray-500 font-medium">Date &amp; Time :</span> {dateTimeStr}</div>
-            <div><span className="text-gray-500 font-medium">Cashier :</span> {cashierName}</div>
-            <div><span className="text-gray-500 font-medium">Customer :</span> {customerName}</div>
-            <div><span className="text-gray-500 font-medium">Invoice # :</span> {invoiceId}</div>
+          <div className="text-xs text-slate-800 font-semibold space-y-1 leading-relaxed">
+            <div><span className="text-slate-500 font-medium">Date &amp; Time :</span> {dateTimeStr}</div>
+            <div><span className="text-slate-500 font-medium">Cashier :</span> {cashierName}</div>
+            <div><span className="text-slate-500 font-medium">Customer :</span> {customerName}</div>
+            <div><span className="text-slate-500 font-medium">Invoice # :</span> {invoiceId}</div>
           </div>
 
           {/* Dotted Line */}
-          <div className="border-t border-dotted border-gray-400 my-2" />
+          <div className="border-t border-dotted border-slate-300 my-2" />
 
           {/* Purchased Items List */}
           <div className="space-y-2">
             {sale.items.map((item, i) => (
               <div key={i} className="text-xs space-y-0.5">
-                <div className="font-bold text-gray-900 flex items-center justify-between">
+                <div className="font-black text-slate-900 flex items-center justify-between">
                   <span>{item.medicine_name}</span>
                   {Number(item.disc_pct || item.discount_pct || 0) > 0 && (
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                    <span className="text-[10px] font-black text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                       {item.disc_pct || item.discount_pct}% OFF
                     </span>
                   )}
                 </div>
-                <div className="flex justify-between items-center text-gray-600 font-medium">
+                <div className="flex justify-between items-center text-slate-600 font-medium">
                   <span>{item.quantity || 1} {item.unit_label || "Unit"} × Rs. {Number(item.unit_price || 0).toFixed(2)}</span>
-                  <span className="font-extrabold text-gray-900">Rs. {Number(item.line_total || 0).toFixed(2)}</span>
+                  <span className="font-black text-slate-950 font-mono">Rs. {Number(item.line_total || 0).toFixed(2)}</span>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Dotted Line */}
-          <div className="border-t border-dotted border-gray-400 my-2" />
+          <div className="border-t border-dotted border-slate-300 my-2" />
 
           {/* Summary Breakdown */}
-          <div className="space-y-1 text-xs text-gray-700 font-semibold">
+          <div className="space-y-1 text-xs text-slate-700 font-semibold">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>Rs. {Number(subtotal).toFixed(2)}</span>
+              <span className="font-mono">Rs. {Number(subtotal).toFixed(2)}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-teal-700 font-bold">
                 <span>Discount</span>
-                <span>- Rs. {Number(discount).toFixed(2)}</span>
+                <span className="font-mono">- Rs. {Number(discount).toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm font-black text-gray-900 pt-1">
+            <div className="flex justify-between text-sm font-black text-slate-900 pt-1">
               <span>Grand Total</span>
-              <span>Rs. {Number(sale.total_amount || subtotal).toFixed(2)}</span>
+              <span className="font-mono">Rs. {Number(sale.total_amount || subtotal).toFixed(2)}</span>
             </div>
             {sale.payment_type === "cash" ? (
               <>
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-slate-600">
                   <span>Cash Paid</span>
-                  <span>Rs. {Number(cashTendered).toFixed(2)}</span>
+                  <span className="font-mono">Rs. {Number(cashTendered).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-teal-800 font-bold">
                   <span>Change Return</span>
-                  <span>Rs. {Number(changeDue).toFixed(2)}</span>
+                  <span className="font-mono">Rs. {Number(changeDue).toFixed(2)}</span>
                 </div>
               </>
             ) : (
-              <div className="flex justify-between text-amber-700 font-bold">
+              <div className="flex justify-between text-amber-800 font-bold">
                 <span>Payment Type</span>
                 <span>Credit / Udhaar (Added to Patient Ledger)</span>
               </div>
@@ -138,10 +150,10 @@ function ReceiptModal({ sale, onClose }) {
           </div>
 
           {/* Dotted Line */}
-          <div className="border-t border-dotted border-gray-400 my-2" />
+          <div className="border-t border-dotted border-slate-300 my-2" />
 
           {/* Centered Thank You Notice */}
-          <div className="text-center font-bold text-gray-900 text-xs py-1">
+          <div className="text-center font-bold text-slate-800 text-xs py-1">
             Thank You For Shopping With Us.<br />Please Visit Again
           </div>
 
@@ -149,10 +161,10 @@ function ReceiptModal({ sale, onClose }) {
           <div className="pt-2 flex justify-start print:hidden">
             <button
               onClick={() => printThermalReceipt(sale, clinic)}
-              className="border border-teal-500 text-teal-700 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+              className="border border-teal-500 text-teal-800 bg-teal-50 hover:bg-teal-100 min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <span className="material-symbols-outlined text-base">print</span>
-              Print Receipt (80mm)
+              <span>Print Receipt (80mm)</span>
             </button>
           </div>
 
@@ -372,7 +384,6 @@ export default function MedicalStorePOS() {
     }, 40);
   }
 
-
   function updateQty(inventoryId, delta) {
     setCart((prev) =>
       prev
@@ -523,32 +534,34 @@ export default function MedicalStorePOS() {
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-6 pb-24 font-sans overflow-x-hidden">
-      {/* Top Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+    <div className="w-full max-w-full min-w-0 space-y-5 pb-24 font-sans zero-horizontal-overflow">
+      {/* ── Top Header Banner & Operator Quick Controls ── */}
+      <div className="glass-card p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-600 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-teal-600 text-2xl sm:text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               point_of_sale
             </span>
-            Medical Store POS Counter
+            <span>Medical Store POS Counter</span>
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">Fast Walk-in &amp; OPD Prescription Dispensing Terminal</p>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+            Fast Walk-in Counter &amp; OPD Prescription Dispensing Terminal
+          </p>
         </div>
 
         {/* Right Controls: Operator Switcher + Reprint + Mode */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Active Cashier / Operator Quick Switcher */}
-          <div className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-xl shadow-xs">
-            <span className="material-symbols-outlined text-teal-700 text-sm">badge</span>
-            <span className="text-[11px] font-bold text-teal-900">Operator:</span>
+          <div className="flex items-center gap-2 bg-teal-50/80 border border-teal-200/80 px-3 py-1.5 rounded-xl shadow-2xs">
+            <span className="material-symbols-outlined text-teal-700 text-base">badge</span>
+            <span className="text-[11px] font-black text-teal-950 uppercase tracking-tight">Operator:</span>
             <select
               value={activeOperator.id}
               onChange={(e) => {
                 const found = availableOperators.find((op) => op.id === e.target.value);
                 if (found) handleOperatorChange(found);
               }}
-              className="bg-white text-teal-950 font-black text-xs px-2 py-1 rounded-lg border border-teal-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
+              className="bg-white text-teal-950 font-black text-xs px-2.5 py-1 rounded-lg border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
             >
               {availableOperators.map((op) => (
                 <option key={op.id} value={op.id}>
@@ -563,21 +576,21 @@ export default function MedicalStorePOS() {
             type="button"
             onClick={handleReprintLastReceipt}
             title="Instant reprint last printed receipt (Hotkey: F10)"
-            className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs"
+            className="touch-pill min-h-[40px] text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 shadow-2xs cursor-pointer active:scale-95"
           >
-            <span className="material-symbols-outlined text-sm text-amber-700">print</span>
-            Reprint (F10)
+            <span className="material-symbols-outlined text-base text-amber-700">print</span>
+            <span>Reprint (F10)</span>
           </button>
 
           {/* Customer Mode Switcher */}
-          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
+          <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/80">
             <button
               type="button"
               onClick={() => setCustomerMode("walkin")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 customerMode === "walkin"
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-teal-700 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Walk-In
@@ -585,10 +598,10 @@ export default function MedicalStorePOS() {
             <button
               type="button"
               onClick={() => setCustomerMode("link")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 customerMode === "link"
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-teal-700 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Link OPD (F4)
@@ -597,12 +610,12 @@ export default function MedicalStorePOS() {
         </div>
       </div>
 
-      {/* Linked Patient Bar (If linked mode is active) */}
+      {/* ── Linked Patient Bar (If linked mode is active) ── */}
       {customerMode === "link" && (
-        <div className="bg-teal-50/70 border border-teal-200 p-3.5 rounded-2xl space-y-2">
+        <div className="glass-card bg-teal-50/80 border-teal-200/80 p-4 rounded-2xl space-y-2.5">
           {!linkedPatient ? (
             <div>
-              <label className="block text-xs font-bold text-teal-900 mb-1.5">
+              <label className="block text-xs font-black text-teal-950 mb-1.5">
                 Search Today&apos;s OPD Queue Patient (By Name, Token # or Phone):
               </label>
               <input
@@ -610,10 +623,10 @@ export default function MedicalStorePOS() {
                 value={visitQuery}
                 onChange={(e) => searchVisits(e.target.value)}
                 placeholder="Type patient name or token #..."
-                className="w-full bg-white border border-teal-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full bg-white border border-teal-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
               />
               {visitSearchResults.length > 0 && (
-                <div className="mt-2 bg-white rounded-xl border border-gray-200 shadow-lg p-2 space-y-1 max-h-40 overflow-y-auto">
+                <div className="mt-2 bg-white rounded-xl border border-slate-200 shadow-xl p-2 space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
                   {visitSearchResults.map((v) => {
                     const p = dbPatients.getById(v.patient_id);
                     return (
@@ -621,10 +634,10 @@ export default function MedicalStorePOS() {
                         key={v.id}
                         type="button"
                         onClick={() => linkVisit(v)}
-                        className="w-full text-left p-2 hover:bg-teal-50 rounded-lg text-xs flex items-center justify-between"
+                        className="w-full text-left p-2 hover:bg-teal-50 rounded-lg text-xs flex items-center justify-between cursor-pointer"
                       >
-                        <span className="font-bold text-gray-900">Token #{v.token_number} — {p?.full_name}</span>
-                        <span className="text-gray-500">{p?.phone || "No phone"}</span>
+                        <span className="font-bold text-slate-900">Token #{v.token_number} — {p?.full_name}</span>
+                        <span className="text-slate-500 font-medium">{p?.phone || "No phone"}</span>
                       </button>
                     );
                   })}
@@ -632,21 +645,21 @@ export default function MedicalStorePOS() {
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="material-symbols-outlined text-teal-700">person</span>
-                <span className="font-black text-teal-950 text-sm">{linkedPatient.full_name}</span>
-                <span className="text-xs bg-teal-200/60 text-teal-900 font-bold px-2 py-0.5 rounded-full">
+                <span className="font-black text-slate-900 text-sm">{linkedPatient.full_name}</span>
+                <span className="text-xs bg-teal-200/70 text-teal-950 font-bold px-2.5 py-0.5 rounded-full">
                   Token #{linkedVisit.token_number}
                 </span>
                 {linkedVisit.prescription_image_url && (
                   <button
                     type="button"
                     onClick={() => setShowRxModal(true)}
-                    className="text-xs bg-white text-teal-800 border border-teal-300 px-2 py-0.5 rounded font-bold hover:bg-teal-100 flex items-center gap-1"
+                    className="text-xs bg-white text-teal-900 border border-teal-300 px-3 py-1 rounded-lg font-bold hover:bg-teal-100 flex items-center gap-1.5 shadow-2xs cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-xs">visibility</span>
-                    View Dr. Prescription
+                    <span className="material-symbols-outlined text-sm">visibility</span>
+                    <span>View Dr. Prescription</span>
                   </button>
                 )}
               </div>
@@ -656,29 +669,29 @@ export default function MedicalStorePOS() {
                   setLinkedPatient(null);
                   setLinkedVisit(null);
                 }}
-                className="text-xs text-rose-600 font-bold hover:underline"
+                className="text-xs text-rose-600 font-bold hover:underline cursor-pointer"
               >
-                Unlink
+                Unlink Patient
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Main Grid: Products on Left (7 cols), Cart on Right (5 cols) */}
+      {/* ── Main Split-Screen Layout: Medicine Matrix (Left 7 Cols) + Checkout Cart (Right 5 Cols) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Product Search & Inventory Table */}
+        {/* ── Left Column: Search & Inventory Matrix ── */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-            {/* ── Dual-Mode Search Toggle ── */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl">
+          <div className="glass-card p-4 sm:p-5 space-y-3.5">
+            {/* Dual-Mode Search Mode Switcher */}
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
                 <button
                   type="button"
                   onClick={() => { setSearchMode("company"); }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    searchMode === "company" ? "bg-teal-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
+                  className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    searchMode === "company" ? "bg-teal-700 text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   🏢 Company Mode
@@ -686,21 +699,23 @@ export default function MedicalStorePOS() {
                 <button
                   type="button"
                   onClick={() => { setSearchMode("global"); setPosCompanyCode("ALL"); setPosCompanyFilter(""); setInventoryResults(dbInventory.getAll()); }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    searchMode === "global" ? "bg-teal-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
+                  className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    searchMode === "global" ? "bg-teal-700 text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   🌐 Global Search
                 </button>
               </div>
-              <span className="text-[10px] text-gray-400 font-medium">F3 to toggle</span>
+              <span className="text-[11px] text-slate-400 font-mono font-bold">Hotkey: F3 to toggle</span>
             </div>
 
-            {/* ── Company Selector (only in Company Mode) ── */}
+            {/* Company Selector Dropdown (Company Mode) */}
             {searchMode === "company" && (
-              <div className="flex gap-2 mb-2">
+              <div className="flex gap-2.5 mb-2">
                 <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Company Code / Name</label>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                    Select Manufacturer / Company
+                  </label>
                   <select
                     value={posCompanyCode}
                     onChange={(e) => {
@@ -714,25 +729,25 @@ export default function MedicalStorePOS() {
                       setSelectedInventoryIndex(0);
                       setTimeout(() => searchInputRef.current?.focus(), 50);
                     }}
-                    className="w-full border border-teal-300 rounded-xl px-3 py-2 text-xs font-bold bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full min-h-[44px] border border-teal-300/90 rounded-xl px-3.5 py-2 text-xs font-bold bg-teal-50/70 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
                   >
-                    <option value="ALL">🌐 All Companies (Global)</option>
+                    <option value="ALL">🌐 All Companies (Global Inventory)</option>
                     {activeCompanyList.map((c) => (
                       <option key={c.name} value={c.name}>{c.name}</option>
                     ))}
                   </select>
                 </div>
                 {posCompanyFilter && (
-                  <div className="flex items-end pb-0.5">
+                  <div className="flex items-end pb-1">
                     <CompanyBadge companyName={posCompanyFilter} />
                   </div>
                 )}
               </div>
             )}
 
-            {/* Search Input */}
+            {/* Search Input with F2 shortcut */}
             <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xl">
                 search
               </span>
               <input
@@ -742,16 +757,16 @@ export default function MedicalStorePOS() {
                 onChange={(e) => searchInventory(e.target.value)}
                 onKeyDown={handleSearchInputKeyDown}
                 placeholder={searchMode === "company" && posCompanyFilter
-                  ? `Search within ${posCompanyFilter}... (↑↓ to navigate, Enter to add)`
+                  ? `Search inside ${posCompanyFilter}... (↑↓ to navigate, Enter to add)`
                   : "Search medicine by name or code (F2)... [↑ / ↓ to navigate, Enter to add]"}
-                className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-teal-600 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none transition-all"
+                className="w-full min-h-[46px] bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-600 rounded-xl pl-11 pr-4 py-2.5 text-sm font-medium focus:outline-none transition-all shadow-2xs"
               />
             </div>
 
-            {/* Inventory List */}
-            <div ref={inventoryListRef} className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto pr-1">
+            {/* Inventory Results Matrix */}
+            <div ref={inventoryListRef} className="divide-y divide-slate-100 max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
               {inventoryResults.length === 0 ? (
-                <div className="py-8 text-center text-xs text-gray-400">
+                <div className="py-12 text-center text-xs text-slate-400 font-medium">
                   No medicine matches &quot;{inventoryQuery}&quot;.
                 </div>
               ) : (
@@ -770,40 +785,40 @@ export default function MedicalStorePOS() {
                           setSelectedInventoryIndex(idx);
                           addToCart(item, 1);
                         }}
-                        className={`py-3 px-3 rounded-2xl flex items-center justify-between transition-all cursor-pointer ${
+                        className={`py-3 px-3.5 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
                           isHighlighted
-                            ? "bg-teal-50 border-2 border-teal-500 shadow-sm"
-                            : "hover:bg-gray-50 border border-transparent"
+                            ? "bg-teal-50/80 border-2 border-teal-500 shadow-xs"
+                            : "hover:bg-slate-50 border border-transparent"
                         }`}
                       >
                         <div className="flex-1 min-w-0 pr-3">
-                          <div className="font-bold text-sm text-gray-900 truncate flex items-center gap-2">
-                            {item.medicine_name}
-                            {/* Global mode: show company brand badge */}
-                            {searchMode === "global" && item.company_name && (
+                          <div className="font-bold text-sm text-slate-900 truncate flex items-center gap-2 flex-wrap">
+                            <span>{item.medicine_name}</span>
+                            {/* Global mode: show company brand tag */}
+                            {item.company_name && (
                               <CompanyBadge companyName={item.company_name} small />
                             )}
                             {isHighlighted && (
-                              <span className="text-[10px] bg-teal-600 text-white font-bold px-1.5 py-0.2 rounded font-mono">
+                              <span className="text-[10px] bg-teal-700 text-white font-black px-1.5 py-0.2 rounded font-mono">
                                 ↵ Enter
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
-                            <span className="font-bold text-teal-800">Rs. {price}</span>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 flex-wrap">
+                            <span className="font-black text-teal-800 font-mono">Rs. {price}</span>
                             <span>·</span>
-                            <span className={`font-semibold ${stock === 0 ? "text-rose-600 font-bold" : isLow ? "text-amber-700" : "text-gray-600"}`}>
+                            <span className={`font-bold ${stock === 0 ? "text-rose-600" : isLow ? "text-amber-700" : "text-slate-600"}`}>
                               Stock: {stock} {item.unit_label || "Units"}
                             </span>
                             {item.item_code && (
-                              <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-mono">
+                              <span className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">
                                 {item.item_code}
                               </span>
                             )}
                           </div>
                         </div>
 
-                        {/* Add Button */}
+                        {/* Add Button with 44px touch area */}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -811,20 +826,20 @@ export default function MedicalStorePOS() {
                             setSelectedInventoryIndex(idx);
                             addToCart(item, 1);
                           }}
-                          className={`font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1 shadow-sm transition-all shrink-0 ${
+                          className={`touch-target-44 min-h-[44px] min-w-[70px] font-black text-xs px-3.5 py-2 rounded-xl flex items-center justify-center gap-1 shadow-xs transition-all shrink-0 cursor-pointer active:scale-95 ${
                             isHighlighted
                               ? "bg-teal-700 text-white shadow-teal-700/20"
                               : "bg-teal-600 hover:bg-teal-700 text-white"
                           }`}
                         >
-                          <span className="material-symbols-outlined text-sm">add</span>
-                          Add
+                          <span className="material-symbols-outlined text-base">add</span>
+                          <span>Add</span>
                         </button>
                       </div>
                     );
                   })}
                   {inventoryResults.length > 40 && (
-                    <div className="py-2 text-center text-[11px] text-gray-400 font-medium bg-gray-50/50 rounded-lg my-1">
+                    <div className="py-2 text-center text-[11px] text-slate-400 font-medium bg-slate-50/50 rounded-lg my-1">
                       Showing top 40 of {inventoryResults.length} matching items. Type to narrow search.
                     </div>
                   )}
@@ -834,39 +849,38 @@ export default function MedicalStorePOS() {
           </div>
         </div>
 
-        {/* Right Column: Checkout Cart */}
+        {/* ── Right Column: Touch-Friendly Checkout Cart ── */}
         <div className="lg:col-span-5">
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm sticky top-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div className="font-black text-gray-900 flex items-center gap-1.5 text-base">
-                <span className="material-symbols-outlined text-teal-600">shopping_cart</span>
-                Checkout Cart
+          <div className="glass-card p-4 sm:p-5 sticky top-20 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+              <div className="font-black text-slate-900 flex items-center gap-2 text-base">
+                <span className="material-symbols-outlined text-teal-600 text-xl">shopping_cart</span>
+                <span>Checkout Cart</span>
               </div>
-              <span className="text-xs bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded-full border border-teal-200">
+              <span className="text-xs bg-teal-50 text-teal-900 font-black px-2.5 py-0.5 rounded-full border border-teal-200">
                 {cart.length} item{cart.length !== 1 ? "s" : ""}
               </span>
             </div>
 
             {/* Cart Items List */}
             {cart.length === 0 ? (
-              <div className="py-12 text-center text-gray-400 space-y-2">
-                <span className="material-symbols-outlined text-4xl text-gray-300">shopping_cart</span>
-                <p className="text-xs">Cart is empty. Click &quot;Add&quot; on any medicine.</p>
+              <div className="py-12 text-center text-slate-400 space-y-2">
+                <span className="material-symbols-outlined text-4xl text-slate-300">shopping_cart</span>
+                <p className="text-xs font-medium">Cart is empty. Tap &quot;Add&quot; on any medicine.</p>
               </div>
             ) : (
               <div ref={cartContainerRef} className="space-y-3 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
                 {cart.map((item) => (
-
                   <div
                     key={item.inventory_id}
-                    className="p-3 bg-gray-50 rounded-2xl border border-gray-200/80 flex flex-col gap-2.5 shadow-2xs hover:border-teal-300 transition-all"
+                    className="p-3 bg-white/80 rounded-xl border border-slate-200/80 flex flex-col gap-2.5 shadow-2xs hover:border-teal-300 transition-all"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-xs text-gray-900 truncate">
+                        <div className="font-black text-xs text-slate-900 truncate">
                           {item.medicine_name}
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium mt-0.5">
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium mt-0.5">
                           <span>Rs. {item.unit_price} / {item.unit_label || "unit"}</span>
                           {(item.disc_pct || 0) > 0 && (
                             <span className="text-[10px] font-black bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded border border-amber-300">
@@ -882,21 +896,21 @@ export default function MedicalStorePOS() {
                           Rs. {item.line_total}
                         </div>
                         {(item.disc_pct || 0) > 0 && (
-                          <div className="text-[10px] text-gray-400 line-through">
+                          <div className="text-[10px] text-slate-400 line-through font-mono">
                             Rs. {(item.unit_price * item.quantity).toFixed(2)}
                           </div>
                         )}
                       </div>
                     </div>
 
-                    {/* Bottom Controls Row: Qty + Disc% + Remove */}
+                    {/* Bottom Controls Row: 44px Touch Steppers + 44px Disc% + Remove */}
                     <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
-                      {/* Quantity Input Box & Controls */}
+                      {/* Quantity Stepper (+ / -) with 44px ergonomic touch bounds */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => updateQty(item.inventory_id, -1)}
-                          className="w-8 h-8 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-slate-800 font-black text-sm flex items-center justify-center transition-all shadow-xs active:scale-95 cursor-pointer"
+                          className="touch-target-44 w-10 h-10 min-h-[40px] min-w-[40px] bg-slate-100 hover:bg-slate-200 text-slate-900 font-black text-base rounded-xl flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer border border-slate-200"
                           title="Decrease Quantity"
                         >
                           -
@@ -906,21 +920,21 @@ export default function MedicalStorePOS() {
                           min="1"
                           value={item.quantity}
                           onChange={(e) => setExactQty(item.inventory_id, e.target.value)}
-                          className="w-12 bg-white border border-slate-300 rounded-lg py-1 text-center text-xs font-black text-slate-950 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-12 h-10 min-h-[40px] bg-white border border-slate-300 rounded-xl text-center text-xs font-black text-slate-950 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono"
                           title="Quantity"
                         />
                         <button
                           type="button"
                           onClick={() => updateQty(item.inventory_id, 1)}
-                          className="w-8 h-8 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-slate-800 font-black text-sm flex items-center justify-center transition-all shadow-xs active:scale-95 cursor-pointer"
+                          className="touch-target-44 w-10 h-10 min-h-[40px] min-w-[40px] bg-slate-100 hover:bg-slate-200 text-slate-900 font-black text-base rounded-xl flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer border border-slate-200"
                           title="Increase Quantity"
                         >
                           +
                         </button>
                       </div>
 
-                      {/* Percentage Discount Field */}
-                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-amber-300 shadow-2xs">
+                      {/* Percentage Discount Field (44px target) */}
+                      <div className="flex items-center gap-1.5 bg-amber-50/80 px-2.5 h-10 min-h-[40px] rounded-xl border border-amber-300 shadow-2xs">
                         <label className="text-[10px] text-amber-950 font-black uppercase tracking-tight">Disc%:</label>
                         <input
                           type="number"
@@ -929,19 +943,19 @@ export default function MedicalStorePOS() {
                           value={item.disc_pct === 0 ? "" : (item.disc_pct || "")}
                           placeholder="0%"
                           onChange={(e) => setItemDiscount(item.inventory_id, e.target.value)}
-                          className="w-10 text-center text-xs font-black text-amber-950 focus:outline-none bg-transparent"
+                          className="w-10 text-center text-xs font-black text-amber-950 focus:outline-none bg-transparent font-mono"
                           title="Medicine Discount Percentage (%)"
                         />
                       </div>
 
-                      {/* Remove Button */}
+                      {/* Remove Button with 44px target */}
                       <button
                         type="button"
                         onClick={() => removeFromCart(item.inventory_id)}
-                        className="px-2.5 py-1.5 text-xs text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 rounded-xl font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                        className="touch-target-44 w-10 h-10 min-h-[40px] min-w-[40px] text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200 rounded-xl font-bold transition-all cursor-pointer active:scale-95 flex items-center justify-center shadow-2xs"
                         title="Remove item"
                       >
-                        <span className="material-symbols-outlined text-sm">delete</span>
+                        <span className="material-symbols-outlined text-base">delete</span>
                       </button>
                     </div>
                   </div>
@@ -949,29 +963,29 @@ export default function MedicalStorePOS() {
               </div>
             )}
 
-            {/* Calculations & Payment Options */}
+            {/* Calculations & Payment Summary HUD */}
             {cart.length > 0 && (
-              <div className="border-t border-gray-100 pt-3 space-y-2.5 text-xs">
-                <div className="flex justify-between items-center text-gray-600">
+              <div className="border-t border-slate-200/60 pt-3 space-y-2.5 text-xs">
+                <div className="flex justify-between items-center text-slate-600 font-medium">
                   <span>Gross Items Total:</span>
-                  <span className="font-bold text-gray-900">Rs. {grossItemsSubtotal.toLocaleString()}</span>
+                  <span className="font-black text-slate-900 font-mono">Rs. {grossItemsSubtotal.toLocaleString()}</span>
                 </div>
 
                 {totalItemDiscounts > 0 && (
-                  <div className="flex justify-between items-center text-amber-700 font-bold">
+                  <div className="flex justify-between items-center text-amber-800 font-bold">
                     <span>Medicine Line Discounts:</span>
-                    <span>- Rs. {totalItemDiscounts.toFixed(2)}</span>
+                    <span className="font-mono">- Rs. {totalItemDiscounts.toFixed(2)}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between items-center text-gray-600">
+                <div className="flex justify-between items-center text-slate-600 font-medium">
                   <span>Items Subtotal:</span>
-                  <span className="font-bold text-gray-900">Rs. {subtotal.toLocaleString()}</span>
+                  <span className="font-black text-slate-900 font-mono">Rs. {subtotal.toLocaleString()}</span>
                 </div>
 
                 {/* Additional Overall Bill Discount */}
-                <div className="flex items-center justify-between gap-2 bg-amber-50/70 p-2 rounded-xl border border-amber-200">
-                  <span className="text-amber-900 font-bold">Additional Bill Discount (Rs):</span>
+                <div className="flex items-center justify-between gap-2 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
+                  <span className="text-amber-900 font-black text-xs">Additional Bill Discount (Rs):</span>
                   <input
                     type="number"
                     min="0"
@@ -979,28 +993,28 @@ export default function MedicalStorePOS() {
                     value={discountInput}
                     onChange={(e) => setDiscountInput(e.target.value)}
                     placeholder="0"
-                    className="w-24 bg-white border border-amber-300 rounded-lg px-2 py-1 text-right text-xs font-black text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs"
+                    className="w-24 bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 text-right text-xs font-black text-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono shadow-2xs"
                   />
                 </div>
 
-                {/* Grand Total */}
-                <div className="flex justify-between items-center bg-teal-50 p-3.5 rounded-2xl border border-teal-200">
+                {/* Grand Total Net Payable */}
+                <div className="flex justify-between items-center bg-gradient-to-r from-teal-50 to-emerald-50 p-3.5 rounded-2xl border border-teal-200/80 shadow-xs">
                   <div>
-                    <span className="font-bold text-teal-950 text-sm block">Net Payable:</span>
-                    <span className="text-[10px] text-teal-700 font-medium">Final total to collect</span>
+                    <span className="font-black text-teal-950 text-sm block">Net Payable:</span>
+                    <span className="text-[10px] text-teal-700 font-bold">Final amount to collect</span>
                   </div>
                   <span className="font-black text-teal-950 text-xl font-mono">Rs. {finalTotal.toLocaleString()}</span>
                 </div>
 
-                {/* Payment Method Switch */}
+                {/* Payment Method Switch Pills */}
                 <div className="flex gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => setPaymentType("cash")}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex-1 min-h-[44px] py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                       paymentType === "cash"
-                        ? "bg-teal-700 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        ? "bg-teal-700 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
                     💵 Cash Sale
@@ -1008,10 +1022,10 @@ export default function MedicalStorePOS() {
                   <button
                     type="button"
                     onClick={() => setPaymentType("credit")}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex-1 min-h-[44px] py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                       paymentType === "credit"
-                        ? "bg-amber-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        ? "bg-amber-600 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
                     📒 Udhaar / Credit
@@ -1020,9 +1034,9 @@ export default function MedicalStorePOS() {
 
                 {/* Cash Tendered & Change Return */}
                 {paymentType === "cash" ? (
-                  <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <div className="flex items-center justify-between gap-2">
-                      <label htmlFor="pos-cash-tendered-input" className="text-gray-700 font-bold">
+                      <label htmlFor="pos-cash-tendered-input" className="text-slate-700 font-bold">
                         Cash Given (F8):
                       </label>
                       <input
@@ -1032,34 +1046,34 @@ export default function MedicalStorePOS() {
                         value={cashTenderedInput}
                         onChange={(e) => setCashTenderedInput(e.target.value)}
                         placeholder={finalTotal.toString()}
-                        className="w-28 bg-white border border-gray-300 rounded-lg px-2.5 py-1 text-right text-sm font-black focus:outline-none focus:border-teal-600"
+                        className="w-28 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-right text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono"
                       />
                     </div>
                     {changeDueVal > 0 && (
-                      <div className="flex justify-between items-center text-teal-800 font-bold text-xs pt-1 border-t border-gray-200">
+                      <div className="flex justify-between items-center text-teal-800 font-bold text-xs pt-1.5 border-t border-slate-200">
                         <span>Change to Return:</span>
-                        <span className="text-sm font-black">Rs. {changeDueVal.toLocaleString()}</span>
+                        <span className="text-sm font-black font-mono">Rs. {changeDueVal.toLocaleString()}</span>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
-                    <div className="font-bold">Patient Credit / Udhaar Sale</div>
-                    <p className="text-[11px] text-amber-700">
+                    <div className="font-black">Patient Credit / Udhaar Sale</div>
+                    <p className="text-[11px] text-amber-700 font-medium">
                       Balance will be automatically posted to {linkedPatient ? linkedPatient.full_name : "Linked Patient"}&apos;s credit ledger.
                     </p>
                   </div>
                 )}
 
-                {/* Checkout Action */}
+                {/* Prominent Checkout Action with 44px+ hit area */}
                 <button
                   id="pos-checkout-btn"
                   type="button"
                   onClick={checkout}
-                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-teal-700/25 flex items-center justify-center gap-2"
+                  className="w-full min-h-[48px] bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black py-3 px-4 rounded-xl text-sm transition-all shadow-lg shadow-teal-700/20 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
                   <span className="material-symbols-outlined text-lg">receipt_long</span>
-                  Complete Sale &amp; Print (F9)
+                  <span>Complete Sale &amp; Print (F9)</span>
                 </button>
               </div>
             )}
@@ -1081,3 +1095,4 @@ export default function MedicalStorePOS() {
     </div>
   );
 }
+

@@ -474,7 +474,7 @@ export default function SidebarLayout({ children }) {
 
   const { t } = useTranslation();
 
-  // Shared Nav List Renderer
+  // Shared Nav List Renderer with 44px touch targets & glassmorphism
   function NavigationList({ isFullWidth = true, onItemClick }) {
     return (
       <ul className="space-y-1">
@@ -492,16 +492,16 @@ export default function SidebarLayout({ children }) {
           else if (item.path === "/settings") displayLabel = t("nav.settings", item.label);
 
           return (
-            <li key={item.path} className={item.spacer ? "mt-3 pt-3 border-t border-teal-50" : ""}>
+            <li key={item.path} className={item.spacer ? "mt-3 pt-3 border-t border-slate-200/60" : ""}>
               <NavLink
                 to={item.path}
                 end={item.path === "/store" || item.end}
                 onClick={onItemClick}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all duration-200 cursor-pointer ${
+                  `flex items-center gap-3 min-h-[44px] px-3.5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? "bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-md shadow-teal-700/20 font-bold"
-                      : "text-slate-600 hover:bg-teal-50 hover:text-teal-950 font-medium"
+                      ? "bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-sm shadow-teal-700/20 font-bold"
+                      : "text-slate-600 hover:bg-teal-50/80 hover:text-teal-950 font-medium"
                   } ${!isFullWidth ? "justify-center px-0" : ""}`
                 }
                 title={!isFullWidth ? displayLabel : undefined}
@@ -526,15 +526,15 @@ export default function SidebarLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col zero-horizontal-overflow">
       
       {/* ── Top License & Subscription Reminder Banner ── */}
       <LicenseBanner />
 
-      {/* ── Top Header Bar (Fixed & Consistent Across Devices) ── */}
-      <header className="border-b border-teal-100 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs h-16 flex items-center px-4 sm:px-6 justify-between flex-shrink-0">
+      {/* ── Top Header Bar (Translucent Glassmorphic Engine) ── */}
+      <header className="border-b border-slate-200/70 bg-white/80 backdrop-blur-md sticky top-0 z-40 shadow-xs h-16 flex items-center px-4 sm:px-6 justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          {/* Sidebar Open/Close Toggle Button */}
+          {/* Sidebar Open/Close Toggle Button with 44px ergonomic touch target */}
           <button
             onClick={() => {
               if (window.innerWidth < 768) {
@@ -543,7 +543,7 @@ export default function SidebarLayout({ children }) {
                 toggleSidebar();
               }
             }}
-            className="p-2 rounded-2xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors flex items-center justify-center cursor-pointer shadow-xs active:scale-95"
+            className="w-10 h-10 rounded-xl bg-teal-50/80 hover:bg-teal-100 text-teal-800 border border-teal-200/70 transition-all flex items-center justify-center cursor-pointer shadow-xs active:scale-95 touch-target-44"
             title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
             <span className="material-symbols-outlined text-xl">
@@ -556,12 +556,12 @@ export default function SidebarLayout({ children }) {
             <img
               src="/favicon.svg"
               alt="CliniCore Logo"
-              className="h-10 w-10 object-contain rounded-xl drop-shadow-xs"
+              className="h-9 w-9 object-contain rounded-xl drop-shadow-xs"
             />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-black text-base text-teal-950 tracking-tight">CliniCore</span>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800 border border-teal-200">
+                <span className="font-black text-base text-slate-900 tracking-tight">CliniCore</span>
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800 border border-teal-200/60">
                   HYBRID V2.5
                 </span>
               </div>
@@ -577,14 +577,14 @@ export default function SidebarLayout({ children }) {
           {/* PWA Cloud Sync Status Badge */}
           <button
             onClick={() => syncEngine.forceSyncNow()}
-            className={`px-2.5 py-1.5 rounded-2xl text-[11px] font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`min-h-[38px] px-3 py-1.5 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
               !syncState.isOnline
-                ? "bg-amber-50 text-amber-900 border-amber-200"
+                ? "bg-amber-50/90 text-amber-900 border-amber-200"
                 : syncState.isSyncing
-                ? "bg-teal-50 text-teal-800 border-teal-200 animate-pulse"
+                ? "bg-teal-50/90 text-teal-800 border-teal-200 animate-pulse"
                 : syncState.pendingCount > 0
-                ? "bg-blue-50 text-blue-900 border-blue-200"
-                : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                ? "bg-blue-50/90 text-blue-900 border-blue-200"
+                : "bg-emerald-50/90 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
             }`}
             title={
               !syncState.isOnline
@@ -618,21 +618,19 @@ export default function SidebarLayout({ children }) {
 
           <LanguageSwitcher compact={true} />
 
-
-
           {user && (
-            <div className="flex items-center gap-2 bg-teal-50/80 border border-teal-100 rounded-2xl px-2.5 sm:px-3 py-1.5 shadow-xs">
-              <div className="w-7 h-7 rounded-full bg-teal-700 text-white flex items-center justify-center font-black text-[11px] shadow-xs">
+            <div className="flex items-center gap-2 bg-white/80 border border-slate-200/70 rounded-xl px-2.5 sm:px-3 py-1 shadow-xs backdrop-blur-xs min-h-[38px]">
+              <div className="w-7 h-7 rounded-full bg-teal-700 text-white flex items-center justify-center font-black text-[11px] shadow-xs shrink-0">
                 {getInitials(user.name)}
               </div>
               <div className="hidden sm:block text-left min-w-0 pr-1">
-                <p className="font-bold text-xs text-teal-950 truncate max-w-[120px]">{user.name}</p>
+                <p className="font-bold text-xs text-slate-900 truncate max-w-[120px]">{user.name}</p>
                 <p className="text-[9.5px] font-bold text-teal-700 capitalize leading-none">{user.role}</p>
               </div>
               <button
                 onClick={handleLogout}
                 title="Sign Out / Exit Portal"
-                className="p-1 text-rose-600 hover:text-white hover:bg-rose-600 rounded-xl transition-all flex items-center justify-center border border-rose-200 cursor-pointer"
+                className="w-7 h-7 text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg transition-all flex items-center justify-center border border-rose-200 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">logout</span>
               </button>
@@ -644,17 +642,17 @@ export default function SidebarLayout({ children }) {
       {/* ── Main Body with Collapsible Desktop Sidebar ── */}
       <div className="flex flex-1 relative min-w-0">
 
-        {/* ── Desktop Left Sidebar Menu ── */}
+        {/* ── Desktop Left Sidebar Menu (Full on desktop >=1200px, 80px Compact on tablet 768-1199px) ── */}
         <aside
           className={`
             hidden md:flex flex-col justify-between
-            bg-white border-r border-teal-100 shadow-sm
+            bg-white/85 backdrop-blur-md border-r border-slate-200/70 shadow-xs
             transition-all duration-300 ease-in-out fixed top-16 bottom-0 left-0 z-30
             ${sidebarOpen ? "w-[280px]" : "w-[80px]"}
           `}
         >
           {/* Navigation Items */}
-          <div className="p-3.5 space-y-2 overflow-y-auto flex-1 touch-scroll">
+          <div className="p-3 space-y-2 overflow-y-auto flex-1 touch-scroll custom-scrollbar">
             <div className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400 ${!sidebarOpen ? "text-center" : ""}`}>
               {sidebarOpen ? "Clinic & Store Menu" : "•"}
             </div>
@@ -663,13 +661,13 @@ export default function SidebarLayout({ children }) {
           </div>
 
           {/* Bottom Sidebar Footer */}
-          <div className="p-3 border-t border-teal-50 flex flex-col gap-2 bg-slate-50/60">
+          <div className="p-3 border-t border-slate-200/60 flex flex-col gap-2 bg-slate-50/60 backdrop-blur-xs">
             {sidebarOpen ? (
               <>
                 {/* Install App Trigger Button in Sidebar */}
                 <button
                   onClick={handleInstallPWA}
-                  className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 rounded-2xl transition-all text-xs font-bold shadow-xs cursor-pointer active:scale-98"
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-950 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer active:scale-98"
                   title="Install CliniCore App"
                 >
                   <span className="material-symbols-outlined text-base text-emerald-700">install_desktop</span>
@@ -682,7 +680,7 @@ export default function SidebarLayout({ children }) {
                   </div>
                   <button
                     onClick={() => setSidebarOpen(false)}
-                    className="p-1.5 rounded-xl hover:bg-teal-100 text-teal-800 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg hover:bg-teal-100 text-teal-800 transition-colors cursor-pointer"
                     title="Collapse Sidebar"
                   >
                     <span className="material-symbols-outlined text-lg">chevron_left</span>
@@ -693,14 +691,14 @@ export default function SidebarLayout({ children }) {
               <div className="flex flex-col items-center gap-2">
                 <button
                   onClick={handleInstallPWA}
-                  className="w-full p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 transition-colors flex items-center justify-center cursor-pointer border border-emerald-300 active:scale-95"
+                  className="w-full h-11 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 text-emerald-900 transition-colors flex items-center justify-center cursor-pointer border border-emerald-200/80 active:scale-95"
                   title="Install CliniCore App"
                 >
                   <span className="material-symbols-outlined text-base text-emerald-700">install_desktop</span>
                 </button>
                 <button
                   onClick={() => setSidebarOpen(true)}
-                  className="w-full p-1.5 rounded-xl hover:bg-teal-100 text-teal-800 transition-colors flex items-center justify-center cursor-pointer"
+                  className="w-full p-1.5 rounded-lg hover:bg-teal-100 text-teal-800 transition-colors flex items-center justify-center cursor-pointer"
                   title="Expand Sidebar"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_right</span>
@@ -710,27 +708,27 @@ export default function SidebarLayout({ children }) {
           </div>
         </aside>
 
-        {/* ── Mobile Slide-over Drawer (Always Fully Expanded & Beautiful) ── */}
+        {/* ── Mobile Slide-over Drawer (Translucent Glassmorphism & 44px Touch Targets) ── */}
         {mobileDrawerOpen && (
           <div className="md:hidden fixed inset-0 z-50 flex">
             {/* Backdrop Blur Overlay */}
             <div
               onClick={() => setMobileDrawerOpen(false)}
-              className="fixed inset-0 bg-teal-950/60 backdrop-blur-sm transition-opacity"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
             />
 
             {/* Slide-out Drawer Panel */}
-            <aside className="relative flex flex-col w-[300px] max-w-[85vw] h-full bg-white shadow-2xl z-10 animate-slide-right">
+            <aside className="relative flex flex-col w-[300px] max-w-[85vw] h-full bg-white/90 backdrop-blur-xl border-r border-slate-200/70 shadow-2xl z-10 animate-slide-right">
               {/* Drawer Top Header */}
-              <div className="p-4 border-b border-teal-100 flex items-center justify-between bg-gradient-to-r from-teal-50/80 to-white">
+              <div className="p-4 border-b border-slate-200/60 flex items-center justify-between bg-gradient-to-r from-teal-50/80 to-white">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-2xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
+                  <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
                     <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
                       medical_services
                     </span>
                   </div>
                   <div>
-                    <h2 className="font-black text-sm text-teal-950 tracking-tight">CliniCore</h2>
+                    <h2 className="font-black text-sm text-slate-900 tracking-tight">CliniCore</h2>
                     <p className="text-[10px] text-slate-500 font-medium truncate max-w-[160px]">
                       {clinic?.name || "Clinic"}
                     </p>
@@ -738,7 +736,7 @@ export default function SidebarLayout({ children }) {
                 </div>
                 <button
                   onClick={() => setMobileDrawerOpen(false)}
-                  className="p-1.5 rounded-xl hover:bg-teal-100 text-slate-500 hover:text-teal-900 transition-colors cursor-pointer"
+                  className="w-10 h-10 rounded-xl hover:bg-teal-100 text-slate-500 hover:text-teal-900 transition-colors cursor-pointer flex items-center justify-center touch-target-44"
                 >
                   <span className="material-symbols-outlined text-xl">close</span>
                 </button>
@@ -746,19 +744,19 @@ export default function SidebarLayout({ children }) {
 
               {/* Staff Profile Card inside Mobile Drawer */}
               {user && (
-                <div className="mx-3 mt-3 p-3 bg-teal-50/80 border border-teal-100 rounded-2xl flex items-center justify-between">
+                <div className="mx-3 mt-3 p-3 bg-teal-50/80 border border-teal-200/60 rounded-xl flex items-center justify-between">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
                       {getInitials(user.name)}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-xs text-teal-950 truncate">{user.name}</p>
+                      <p className="font-bold text-xs text-slate-900 truncate">{user.name}</p>
                       <p className="text-[10px] font-bold text-teal-700 capitalize leading-none">{user.role}</p>
                     </div>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-xl transition-colors border border-rose-200"
+                    className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200 cursor-pointer"
                     title="Sign Out"
                   >
                     <span className="material-symbols-outlined text-base">logout</span>
@@ -767,18 +765,18 @@ export default function SidebarLayout({ children }) {
               )}
 
               {/* Navigation Items (Fully expanded with labels) */}
-              <div className="p-3 overflow-y-auto flex-1 touch-scroll">
+              <div className="p-3 overflow-y-auto flex-1 touch-scroll custom-scrollbar">
                 <NavigationList isFullWidth={true} onItemClick={() => setMobileDrawerOpen(false)} />
               </div>
 
               {/* Mobile Drawer Bottom Actions */}
-              <div className="p-3 border-t border-teal-50 bg-slate-50/60 space-y-2">
+              <div className="p-3 border-t border-slate-200/60 bg-slate-50/60 space-y-2">
                 <button
                   onClick={() => {
                     setMobileDrawerOpen(false);
                     handleInstallPWA();
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-2xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base text-emerald-700">install_mobile</span>
                   <span>Install App on Phone</span>
@@ -786,7 +784,7 @@ export default function SidebarLayout({ children }) {
 
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 px-3.5 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 rounded-2xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base">logout</span>
                   <span>Sign Out / Exit Portal</span>
@@ -810,8 +808,8 @@ export default function SidebarLayout({ children }) {
         </main>
       </div>
 
-      {/* ── Mobile Bottom Navigation Bar (Fast 1-Thumb Touch Targets) ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-40 bg-white/95 backdrop-blur-lg border-t border-teal-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+      {/* ── Mobile Bottom Navigation Bar (Fast 1-Thumb 44px Touch Targets) ── */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-40 bg-white/85 backdrop-blur-lg border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
         <ul className="flex justify-around items-center h-16 px-1">
           {navItems.slice(0, 4).map((item) => (
             <li key={item.path} className="flex-1 min-w-[50px] text-center">
@@ -819,9 +817,9 @@ export default function SidebarLayout({ children }) {
                 to={item.path}
                 end={item.path === "/store" || item.end}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all ${
+                  `flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all min-h-[44px] ${
                     isActive
-                      ? "text-teal-800 font-black bg-teal-50"
+                      ? "text-teal-800 font-black bg-teal-50/80"
                       : "text-slate-500 font-semibold hover:text-teal-700"
                   }`
                 }
@@ -834,7 +832,7 @@ export default function SidebarLayout({ children }) {
           <li className="flex-1 min-w-[50px] text-center">
             <button
               onClick={() => setMobileDrawerOpen(true)}
-              className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-teal-800 font-black hover:bg-teal-50 transition-all w-full cursor-pointer"
+              className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-teal-800 font-black hover:bg-teal-50/80 transition-all w-full cursor-pointer min-h-[44px]"
             >
               <span className="material-symbols-outlined text-2xl">menu</span>
               <span className="text-[10px] mt-0.5 tracking-tight">Menu</span>

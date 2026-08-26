@@ -78,9 +78,9 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-gray-800">{label}</h3>
+        <h3 className="font-bold text-slate-800 text-sm">{label}</h3>
         {photos.length > 0 && (
-          <span className="text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full font-medium">
+          <span className="text-xs text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-full font-bold">
             {photos.length} photo{photos.length !== 1 ? "s" : ""}
           </span>
         )}
@@ -88,49 +88,49 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
 
       {/* Camera / Preview Modal */}
       {showCamera && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4">
           {!capturedPreview ? (
             <>
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
-                className="w-full max-w-lg rounded-xl"
+                className="w-full max-w-lg rounded-2xl shadow-2xl border border-white/20"
               />
               <div className="flex gap-4 mt-6">
                 <button
                   onClick={stopCamera}
-                  className="bg-white/20 text-white px-5 py-3 rounded-2xl font-semibold flex items-center gap-2"
+                  className="bg-white/20 hover:bg-white/30 text-white min-h-[44px] px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
                   <span className="material-symbols-outlined">close</span>
-                  Cancel
+                  <span>Cancel</span>
                 </button>
                 <button
                   onClick={snap}
-                  className="bg-white text-gray-900 px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl"
+                  className="bg-white text-slate-900 min-h-[44px] px-8 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-xl cursor-pointer hover:bg-slate-100 transition-all active:scale-95"
                 >
                   <span className="material-symbols-outlined text-teal-600">camera</span>
-                  Take Photo
+                  <span>Take Photo</span>
                 </button>
               </div>
             </>
           ) : (
             <>
-              <img src={capturedPreview} alt="Preview" className="w-full max-w-lg rounded-xl object-contain max-h-[70vh]" />
+              <img src={capturedPreview} alt="Preview" className="w-full max-w-lg rounded-2xl object-contain max-h-[70vh] shadow-2xl border border-white/20" />
               <div className="flex gap-4 mt-6">
                 <button
                   onClick={() => { setCapturedPreview(null); openCamera(); }}
-                  className="bg-white/20 text-white px-5 py-3 rounded-2xl font-semibold flex items-center gap-2"
+                  className="bg-white/20 hover:bg-white/30 text-white min-h-[44px] px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
                   <span className="material-symbols-outlined">replay</span>
-                  Retake
+                  <span>Retake</span>
                 </button>
                 <button
                   onClick={confirmCapture}
-                  className="bg-teal-500 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl"
+                  className="bg-teal-600 hover:bg-teal-500 text-white min-h-[44px] px-8 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-xl cursor-pointer transition-all active:scale-95"
                 >
                   <span className="material-symbols-outlined">check_circle</span>
-                  Use Photo
+                  <span>Use Photo</span>
                 </button>
               </div>
             </>
@@ -140,19 +140,20 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
 
       {/* Photos grid */}
       {photos.length > 0 && (
-        <div className={`grid gap-3 mb-3 ${multiple ? "grid-cols-3" : "grid-cols-1"}`}>
+        <div className={`grid gap-3 mb-3 ${multiple ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1"}`}>
           {photos.map((src, i) => (
-            <div key={i} className="relative group rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+            <div key={i} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-xs">
               <img
                 src={src}
                 alt={`${label} ${i + 1}`}
-                className="w-full object-cover aspect-square bg-gray-100"
+                className="w-full object-cover aspect-square bg-slate-100"
               />
               <button
                 onClick={() => onRemove(i)}
-                className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs shadow"
+                className="absolute top-1.5 right-1.5 w-7 h-7 bg-rose-600 hover:bg-rose-700 text-white rounded-full flex items-center justify-center opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity text-xs shadow-md cursor-pointer"
+                title="Remove photo"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>close</span>
+                <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>close</span>
               </button>
             </div>
           ))}
@@ -163,28 +164,28 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
       {(multiple || photos.length === 0) && (
         <div className="flex flex-col gap-2">
           {isCompressing && (
-            <div className="flex items-center justify-center gap-2 p-2 bg-teal-50 text-teal-800 rounded-xl text-xs font-bold animate-pulse">
+            <div className="flex items-center justify-center gap-2 p-2.5 bg-teal-50 text-teal-800 rounded-xl text-xs font-bold animate-pulse border border-teal-200/80">
               <span className="material-symbols-outlined text-base animate-spin">sync</span>
-              Compressing HD photo to ~120KB canvas...
+              <span>Compressing HD photo to ~120KB canvas...</span>
             </div>
           )}
           <div className="flex gap-3">
             <button
               type="button"
               onClick={openCamera}
-              className="flex-1 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-teal-300 rounded-2xl p-5 text-teal-700 hover:bg-teal-50 hover:border-teal-400 transition-all"
+              className="flex-1 min-h-[44px] flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-teal-300 rounded-2xl p-4 text-teal-800 hover:bg-teal-50/80 hover:border-teal-400 transition-all cursor-pointer active:scale-98 shadow-xs"
             >
-              <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>photo_camera</span>
-              <span className="text-sm font-semibold">Take Photo</span>
+              <span className="material-symbols-outlined text-2xl sm:text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>photo_camera</span>
+              <span className="text-xs sm:text-sm font-bold">Take Photo</span>
             </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isCompressing}
-              className="flex-1 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl p-5 text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-50"
+              className="flex-1 min-h-[44px] flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-300 rounded-2xl p-4 text-slate-600 hover:bg-slate-50 hover:border-slate-400 transition-all disabled:opacity-50 cursor-pointer active:scale-98 shadow-xs"
             >
-              <span className="material-symbols-outlined text-3xl">upload</span>
-              <span className="text-sm font-medium">Upload Photo</span>
+              <span className="material-symbols-outlined text-2xl sm:text-3xl">upload</span>
+              <span className="text-xs sm:text-sm font-bold">Upload Photo</span>
             </button>
           </div>
           <input
@@ -215,6 +216,13 @@ export default function ConsultationScreen() {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
+  // Vitals HUD State (Blood Pressure, Pulse Rate, Body Temperature, SpO2, Weight)
+  const [vitalsBP, setVitalsBP] = useState("");
+  const [vitalsPulse, setVitalsPulse] = useState("");
+  const [vitalsTemp, setVitalsTemp] = useState("");
+  const [vitalsSpo2, setVitalsSpo2] = useState("");
+  const [vitalsWeight, setVitalsWeight] = useState("");
+
   const [services, setServices] = useState([]);
 
   useEffect(() => {
@@ -228,9 +236,16 @@ export default function ConsultationScreen() {
         const pv = dbVisits.getByPatient(p.id);
         setPriorVisitCount(pv.filter((pv2) => pv2.id !== visitId).length);
       }
-      // Restore any existing photos
+      // Restore any existing photos & vitals
       if (v.prescription_image_url) setPrescriptionPhoto(v.prescription_image_url);
       if (v.report_image_urls?.length) setReportPhotos(v.report_image_urls);
+      if (v.notes) setNotes(v.notes);
+      if (v.vitals_bp) setVitalsBP(v.vitals_bp);
+      if (v.vitals_pulse) setVitalsPulse(v.vitals_pulse);
+      if (v.vitals_temp) setVitalsTemp(v.vitals_temp);
+      if (v.vitals_spo2) setVitalsSpo2(v.vitals_spo2);
+      if (v.vitals_weight) setVitalsWeight(v.vitals_weight);
+
       setServices(dbClinicServices.getAll());
     }
 
@@ -252,6 +267,11 @@ export default function ConsultationScreen() {
       prescription_image_url: prescriptionPhoto || null,
       report_image_urls: reportPhotos || [],
       notes: notes || "",
+      vitals_bp: vitalsBP.trim(),
+      vitals_pulse: vitalsPulse.trim(),
+      vitals_temp: vitalsTemp.trim(),
+      vitals_spo2: vitalsSpo2.trim(),
+      vitals_weight: vitalsWeight.trim(),
       forcedStatus: targetStatus,
     });
     setSaving(false);
@@ -278,7 +298,7 @@ export default function ConsultationScreen() {
           </p>
           <button
             onClick={() => navigate("/doctor/queue")}
-            className="w-full bg-rose-600 text-white py-3 rounded-2xl font-bold hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/20"
+            className="w-full bg-rose-600 text-white py-3 rounded-2xl font-bold hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/20 cursor-pointer"
           >
             Back to My Queue
           </button>
@@ -291,36 +311,36 @@ export default function ConsultationScreen() {
     const isPendingReports = done.status === "completed_reports_pending";
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-4xl text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>task_alt</span>
+        <div className="text-center max-w-md glass-card p-8 shadow-lg">
+          <div className="w-20 h-20 bg-teal-100/80 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <span className="material-symbols-outlined text-4xl text-teal-700" style={{ fontVariationSettings: "'FILL' 1" }}>task_alt</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Visit Completed</h2>
-          <p className="text-gray-600 text-sm mb-2">
+          <h2 className="text-2xl font-black text-slate-900 mb-2">Visit Completed</h2>
+          <p className="text-slate-600 text-sm mb-2 font-medium">
             Prescription photo saved · Token #{visit?.token_number}
           </p>
           {isPendingReports ? (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-xs mb-6 font-medium">
+            <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-3.5 text-xs mb-6 font-bold">
               Sent to reception as <strong>Completed (Reports Pending)</strong>. Receptionist can attach lab/X-ray report photos anytime.
             </div>
           ) : (
-            <p className="text-emerald-800 text-xs mb-6 font-medium">
-              All prescription and report photos attached.
+            <p className="text-emerald-800 text-xs mb-6 font-bold bg-emerald-50 border border-emerald-200/80 p-2.5 rounded-xl">
+              All prescription and clinical documentation saved.
             </p>
           )}
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => navigate("/doctor/queue")}
-              className="bg-teal-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-teal-700 transition-colors flex items-center gap-2"
+              className="bg-teal-700 text-white min-h-[44px] px-6 py-2.5 rounded-xl font-bold hover:bg-teal-800 transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <span className="material-symbols-outlined">queue</span>
-              Back to Queue
+              <span>Back to Queue</span>
             </button>
             <button
               onClick={() => navigate(`/patients/${patient?.id}`)}
-              className="border border-gray-200 text-gray-600 px-6 py-3 rounded-2xl font-medium hover:bg-gray-50 transition-colors"
+              className="border border-slate-300 text-slate-700 min-h-[44px] px-6 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-all cursor-pointer active:scale-95"
             >
-              View Profile
+              <span>View Profile</span>
             </button>
           </div>
         </div>
@@ -330,10 +350,10 @@ export default function ConsultationScreen() {
 
   if (!visit || !patient) {
     return (
-      <div className="p-6 text-center text-gray-400">
+      <div className="p-6 text-center text-slate-400">
         <span className="material-symbols-outlined text-4xl block mb-2">error</span>
         Visit not found.
-        <button onClick={() => navigate("/doctor/queue")} className="block mx-auto mt-4 text-teal-600 underline text-sm">
+        <button onClick={() => navigate("/doctor/queue")} className="block mx-auto mt-4 text-teal-700 underline text-sm font-bold">
           Back to Queue
         </button>
       </div>
@@ -341,30 +361,31 @@ export default function ConsultationScreen() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto pb-48 md:pb-28">
-      {/* Header */}
+    <div className="p-3 sm:p-5 max-w-3xl mx-auto pb-48 md:pb-32 zero-horizontal-overflow">
+      {/* ── Top Header Bar ── */}
       <div className="flex items-center gap-3 mb-5">
         <button
           onClick={() => navigate("/doctor/queue")}
-          className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
+          className="touch-target-44 p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+          title="Back to Queue"
         >
-          <span className="material-symbols-outlined">arrow_back</span>
+          <span className="material-symbols-outlined text-xl">arrow_back</span>
         </button>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Consultation</h1>
-          <p className="text-xs text-gray-500">Token #{visit.token_number}</p>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">OPD Consultation Chamber</h1>
+          <p className="text-xs text-slate-500 font-medium">Token #{visit.token_number} • Dr. Chamber Active</p>
         </div>
       </div>
 
-      {/* Patient Info Card */}
-      <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-2xl p-5 text-white mb-5 shadow-xl shadow-teal-600/20">
+      {/* ── Patient Info Banner Card ── */}
+      <div className="bg-gradient-to-r from-teal-700 to-teal-800 rounded-2xl p-4 sm:p-5 text-white mb-5 shadow-lg shadow-teal-700/20">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center font-black text-lg">
+          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center font-black text-lg shrink-0 shadow-inner">
             {patient.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
           </div>
-          <div className="flex-1">
-            <div className="font-bold text-lg leading-tight">{patient.full_name}</div>
-            <div className="text-teal-100 text-sm mt-0.5">
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-lg sm:text-xl leading-tight truncate">{patient.full_name}</div>
+            <div className="text-teal-100 text-xs sm:text-sm mt-0.5 font-medium">
               {patient.relation_type === "father" ? "S/O" : patient.relation_type === "husband" ? "W/O" : "H/O"}{" "}
               {patient.relation_name}
             </div>
@@ -382,31 +403,116 @@ export default function ConsultationScreen() {
                     setPatient(dbPatients.getById(patient.id));
                   }
                 }}
-                className="text-[11px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-md font-medium text-white transition-colors"
+                className="text-[11px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-md font-medium text-white transition-colors cursor-pointer"
               >
                 Edit Age
               </button>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-teal-200 font-medium uppercase tracking-wider">Past Visits</div>
-            <div className="text-2xl font-black">{priorVisitCount}</div>
+          <div className="text-right shrink-0">
+            <div className="text-[10px] sm:text-xs text-teal-200 font-bold uppercase tracking-wider">Past Visits</div>
+            <div className="text-2xl sm:text-3xl font-black">{priorVisitCount}</div>
           </div>
         </div>
-        <div className="flex gap-2 mt-3">
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${visit.visit_type === "follow_up" ? "bg-blue-500/30 text-blue-100" : "bg-white/20 text-white"}`}>
+        <div className="flex gap-2 mt-3.5 pt-3 border-t border-white/20">
+          <span className={`text-xs px-3 py-1 rounded-full font-bold ${visit.visit_type === "follow_up" ? "bg-blue-500/30 text-blue-100" : "bg-white/20 text-white"}`}>
             {visit.visit_type === "follow_up" ? "Follow-up" : "New Visit"}
           </span>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-white/20 font-semibold">
+          <span className="text-xs px-3 py-1 rounded-full bg-white/20 font-bold">
             Token #{visit.token_number}
           </span>
         </div>
       </div>
 
-      {/* Prescription Photo Capture */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+      {/* ── Vitals HUD Card (BP, Pulse, Temp, SpO2, Weight) ── */}
+      <div className="glass-card p-4 sm:p-5 mb-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-600 text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+              vital_signs
+            </span>
+            <h3 className="font-black text-slate-900 text-sm tracking-tight">Patient Vitals HUD</h3>
+          </div>
+          <span className="text-[11px] text-slate-400 font-medium">Auto-saved to patient timeline</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+          {/* BP */}
+          <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-2.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              BP (mmHg)
+            </label>
+            <input
+              type="text"
+              value={vitalsBP}
+              onChange={(e) => setVitalsBP(e.target.value)}
+              placeholder="120/80"
+              className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          {/* Pulse Rate */}
+          <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-2.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              Pulse (bpm)
+            </label>
+            <input
+              type="text"
+              value={vitalsPulse}
+              onChange={(e) => setVitalsPulse(e.target.value)}
+              placeholder="72"
+              className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          {/* Body Temp */}
+          <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-2.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              Temp (°F)
+            </label>
+            <input
+              type="text"
+              value={vitalsTemp}
+              onChange={(e) => setVitalsTemp(e.target.value)}
+              placeholder="98.6"
+              className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          {/* SpO2 */}
+          <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-2.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              SpO2 (%)
+            </label>
+            <input
+              type="text"
+              value={vitalsSpo2}
+              onChange={(e) => setVitalsSpo2(e.target.value)}
+              placeholder="98%"
+              className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          {/* Weight */}
+          <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              Weight (kg)
+            </label>
+            <input
+              type="text"
+              value={vitalsWeight}
+              onChange={(e) => setVitalsWeight(e.target.value)}
+              placeholder="65 kg"
+              className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Prescription Photo Capture ── */}
+      <div className="glass-card p-4 sm:p-5 mb-5">
         <PhotoCapture
-          label="Prescription Photo"
+          label="Prescription Photo (HD Compressed)"
           multiple={false}
           photos={prescriptionPhoto ? [prescriptionPhoto] : []}
           onCapture={(src) => setPrescriptionPhoto(src)}
@@ -414,10 +520,10 @@ export default function ConsultationScreen() {
         />
       </div>
 
-      {/* Report Photos Capture */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+      {/* ── Patient Reports Photos Capture (Multi) ── */}
+      <div className="glass-card p-4 sm:p-5 mb-5">
         <PhotoCapture
-          label="Patient Reports (X-ray, Lab, etc.)"
+          label="Patient Reports (Lab, X-Ray, Ultrasound)"
           multiple={true}
           photos={reportPhotos}
           onCapture={addReportPhoto}
@@ -425,12 +531,12 @@ export default function ConsultationScreen() {
         />
       </div>
 
-      {/* Clinical Procedures & Services Quick Add */}
+      {/* ── Clinical Procedures & Services Quick Add ── */}
       {services.length > 0 && (
-        <div className="bg-teal-50/70 rounded-2xl border border-teal-100 p-4 mb-4 space-y-2">
-          <div className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
+        <div className="glass-pill p-4 rounded-2xl mb-5 space-y-2.5">
+          <div className="text-xs font-black text-teal-950 flex items-center gap-1.5">
             <span className="material-symbols-outlined text-base text-teal-700">medical_services</span>
-            Quick Attach Performed Procedures / Clinic Services:
+            <span>Quick Attach Performed Procedures / Clinic Services:</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {services.map((srv) => (
@@ -441,30 +547,32 @@ export default function ConsultationScreen() {
                   const entry = `• ${srv.service_name} (Rs. ${srv.price})`;
                   setNotes((prev) => (prev ? `${prev}\n${entry}` : entry));
                 }}
-                className="text-xs bg-white text-teal-900 border border-teal-200 hover:bg-teal-100 px-3 py-1.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1"
+                className="text-xs bg-white text-teal-950 border border-teal-200 hover:bg-teal-50 px-3 py-1.5 rounded-xl font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <span>+ {srv.service_name}</span>
-                <span className="text-teal-700 font-mono">(Rs. {srv.price})</span>
+                <span className="text-teal-700 font-mono font-bold">(Rs. {srv.price})</span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Optional Notes */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-        <label className="block text-sm font-bold text-gray-700 mb-2">Clinical Notes &amp; Observations <span className="text-gray-400 font-normal">(optional)</span></label>
+      {/* ── Optional Clinical Notes ── */}
+      <div className="glass-card p-4 sm:p-5 mb-6">
+        <label className="block text-xs sm:text-sm font-black text-slate-800 mb-2">
+          Clinical Notes, Diagnosis &amp; Observations <span className="text-slate-400 font-normal">(optional)</span>
+        </label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          placeholder="Any additional observations or procedure notes..."
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-50 font-medium text-gray-800"
+          placeholder="Enter diagnosis, clinical advice, or procedure notes..."
+          className="w-full border border-slate-200 rounded-xl p-3 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/60 font-medium text-slate-800"
         />
       </div>
 
-      {/* Sticky Mobile-Safe Button Bar */}
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-[260px] p-3 sm:p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+      {/* ── Fixed Mobile-Safe Action Bar (Clears Mobile Nav at bottom-16 on mobile, bottom-0 on desktop) ── */}
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/90 backdrop-blur-md border-t border-slate-200/80 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-2.5">
           {/* Primary: Complete Visit */}
           <button
@@ -472,7 +580,7 @@ export default function ConsultationScreen() {
             type="button"
             onClick={() => completeVisit("completed")}
             disabled={saving}
-            className="flex-1 py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md bg-teal-600 text-white hover:bg-teal-700 active:scale-98 shadow-teal-600/20 disabled:opacity-50"
+            className="flex-1 min-h-[44px] py-3 px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white active:scale-98 shadow-teal-700/20 disabled:opacity-50 cursor-pointer"
           >
             {saving ? (
               <span className="material-symbols-outlined animate-spin text-lg">refresh</span>
@@ -488,7 +596,7 @@ export default function ConsultationScreen() {
             type="button"
             onClick={() => completeVisit("completed_reports_pending")}
             disabled={saving}
-            className="flex-1 py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all border bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100 active:scale-98 shadow-sm disabled:opacity-50"
+            className="flex-1 min-h-[44px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border bg-amber-50/90 border-amber-300 text-amber-900 hover:bg-amber-100 active:scale-98 shadow-xs disabled:opacity-50 cursor-pointer"
           >
             <span className="material-symbols-outlined text-lg">forward_to_inbox</span>
             <span>Reports Pending at Reception</span>
@@ -498,3 +606,4 @@ export default function ConsultationScreen() {
     </div>
   );
 }
+

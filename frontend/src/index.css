@@ -114,18 +114,36 @@
     box-sizing: border-box;
   }
 
+  html {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(13, 148, 136, 0.4) rgba(0, 0, 0, 0.04);
+  }
+
   body {
     margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
     font-family: 'Inter', sans-serif;
-    background-color: #f7faf8;
-    color: #181c1c;
+    background-color: #f8fafc;
+    color: #0f172a;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(13, 148, 136, 0.4) rgba(0, 0, 0, 0.04);
   }
 
   #root {
     width: 100%;
+    max-width: 100vw;
     min-height: 100svh;
+    overflow-x: hidden;
   }
 
   h1, h2, h3 {
@@ -167,14 +185,92 @@
 }
 
 @layer components {
-  /* Glassmorphism cards — used across Dashboard, Patient List, etc. */
+  /* ─── CliniCore UI Design Tokens & Glassmorphism Surfaces ─── */
   .glass-card {
-    background-color: rgba(255, 255, 255, 0.70);
+    background-color: rgba(255, 255, 255, 0.80);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.20);
-    box-shadow: 0 8px 32px 0 rgba(15, 118, 110, 0.08);
+    border: 1px solid rgba(226, 232, 240, 0.60);
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
     border-radius: 1rem;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .glass-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  }
+
+  .glass-panel {
+    background-color: rgba(255, 255, 255, 0.85);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(226, 232, 240, 0.70);
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+    border-radius: 1.25rem;
+  }
+
+  .glass-topbar {
+    background-color: rgba(255, 255, 255, 0.82);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.70);
+  }
+
+  .glass-drawer {
+    background-color: rgba(255, 255, 255, 0.90);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(226, 232, 240, 0.70);
+  }
+
+  .glass-modal {
+    background-color: rgba(255, 255, 255, 0.95);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(226, 232, 240, 0.80);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+    border-radius: 1.25rem;
+  }
+
+  .glass-pill {
+    background-color: rgba(240, 253, 250, 0.80);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(204, 251, 241, 0.70);
+  }
+
+  /* ─── 44px Ergonomic Touch Targets Standard ─── */
+  .touch-target-44 {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .touch-pill {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .touch-pill:active {
+    transform: scale(0.96);
+  }
+
+  /* ─── Zero Window Horizontal Overflow Locks ─── */
+  .zero-horizontal-overflow {
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   /* Glass row — used for patient list rows */
@@ -485,37 +581,10 @@
   }
 }
 
-/* Global Mobile Touch & Smooth Inertia Scroll Rules */
-html {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  width: 100%;
-  max-width: 100%;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(13, 148, 136, 0.4) rgba(0, 0, 0, 0.04);
-}
-
-body {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(13, 148, 136, 0.4) rgba(0, 0, 0, 0.04);
-}
-
-#root {
-  width: 100%;
-  max-width: 100%;
-  min-height: 100vh;
-}
-
 /* Universal Clean Modern Scrollbars (Horizontal & Vertical) */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {

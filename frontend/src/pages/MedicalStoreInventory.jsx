@@ -1256,11 +1256,11 @@ export default function MedicalStoreInventory() {
         </div>
       ) : viewMode === "table" ? (
         /* Modern Table View */
-        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black text-slate-600 uppercase tracking-wider">
+        <div className="glass-card rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto custom-scrollbar table-scroll-container">
+            <table className="w-full text-left border-collapse min-w-[760px]">
+              <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200 z-10">
+                <tr className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
                   <th className="py-4 px-6">Medicine &amp; Company</th>
                   <th className="py-4 px-4 text-center">Category / Code</th>
                   <th className="py-4 px-4 text-center">Stock Breakdown</th>
@@ -1288,7 +1288,7 @@ export default function MedicalStoreInventory() {
                       {/* Name & Brand */}
                       <td className="py-3.5 px-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-2xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center font-black shrink-0">
+                          <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center font-black shrink-0 shadow-2xs">
                             {item.has_multi_unit ? "📦" : "💧"}
                           </div>
                           <div>
@@ -1364,16 +1364,16 @@ export default function MedicalStoreInventory() {
 
                       {/* Actions */}
                       <td className="py-3.5 px-6 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => {
                               setLedgerInitialItem(item);
                               setShowStockLedgerModal(true);
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 text-xs font-bold flex items-center gap-1 border border-emerald-200 transition-all active:scale-95 shadow-xs"
+                            className="touch-target-44 min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 text-xs font-black flex items-center gap-1.5 border border-emerald-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
                             title="DrCreate 4-Level Stock Ledger"
                           >
-                            <span className="material-symbols-outlined text-xs">menu_book</span>
+                            <span className="material-symbols-outlined text-sm">menu_book</span>
                             <span>Ledger</span>
                           </button>
                           <button
@@ -1381,10 +1381,10 @@ export default function MedicalStoreInventory() {
                               setSelectedMovementItem(item);
                               setIsMovementOpen(true);
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 text-xs font-bold flex items-center gap-1 border border-teal-200 transition-all active:scale-95 shadow-xs"
+                            className="touch-target-44 min-h-[38px] px-3.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 text-xs font-black flex items-center gap-1.5 border border-teal-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
                             title="Stock Movement Card & Adjustments"
                           >
-                            <span className="material-symbols-outlined text-xs">analytics</span>
+                            <span className="material-symbols-outlined text-sm">analytics</span>
                             <span>Stock Card</span>
                           </button>
                         </div>

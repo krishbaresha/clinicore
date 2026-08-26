@@ -5,11 +5,41 @@ import { useAuth } from "../hooks/useAuth.js";
 import { formatPatientAge } from "../utils/formatters.js";
 
 const STATUS_STYLES = {
-  waiting:                  { bg: "bg-amber-50",  border: "border-amber-200",  badge: "bg-amber-100 text-amber-800",  dot: "bg-amber-500",  label: "Waiting"         },
-  in_consultation:          { bg: "bg-teal-50",   border: "border-teal-200",   badge: "bg-teal-100 text-teal-800",    dot: "bg-teal-500 animate-pulse", label: "In Consultation" },
-  completed:                { bg: "bg-gray-50",   border: "border-gray-200",   badge: "bg-gray-100 text-gray-500",    dot: "bg-gray-400",   label: "Completed"       },
-  completed_reports_pending:{ bg: "bg-orange-50", border: "border-orange-200", badge: "bg-orange-100 text-orange-800",dot: "bg-orange-500", label: "Reports Pending" },
-  skipped:                  { bg: "bg-rose-50",   border: "border-rose-200",   badge: "bg-rose-100 text-rose-700",    dot: "bg-rose-400",   label: "Skipped"         },
+  waiting: {
+    bg: "bg-amber-50/70",
+    border: "border-amber-200/80",
+    badge: "bg-amber-100 text-amber-900 border border-amber-200",
+    dot: "bg-amber-500",
+    label: "Waiting",
+  },
+  in_consultation: {
+    bg: "bg-teal-50/70",
+    border: "border-teal-300/80",
+    badge: "bg-teal-100 text-teal-900 border border-teal-200",
+    dot: "bg-teal-500 animate-pulse",
+    label: "In Consultation",
+  },
+  completed: {
+    bg: "bg-slate-50/70",
+    border: "border-slate-200/80",
+    badge: "bg-slate-100 text-slate-700 border border-slate-200",
+    dot: "bg-slate-400",
+    label: "Completed",
+  },
+  completed_reports_pending: {
+    bg: "bg-amber-50/80",
+    border: "border-amber-300/80",
+    badge: "bg-amber-100 text-amber-900 border border-amber-300 font-bold",
+    dot: "bg-amber-600",
+    label: "Reports Pending",
+  },
+  skipped: {
+    bg: "bg-rose-50/70",
+    border: "border-rose-200/80",
+    badge: "bg-rose-100 text-rose-800 border border-rose-200",
+    dot: "bg-rose-500",
+    label: "Skipped",
+  },
 };
 
 function getRelLabel(type) {
@@ -99,111 +129,117 @@ export default function DoctorQueue() {
   const currentStatus = docProfile?.availability_status || "available";
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-6 overflow-x-hidden">
-      {/* Header */}
+    <div className="w-full max-w-full min-w-0 space-y-6 zero-horizontal-overflow">
+      {/* ── Header with Live Clock & Refresh ── */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>queue</span>
-            {docProfile?.name ? `${docProfile.name}'s OPD Chamber` : "Doctor's Live Queue"}
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-teal-600 text-2xl sm:text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+              stethoscope
+            </span>
+            <span>{docProfile?.name ? `${docProfile.name}'s OPD Chamber` : "Doctor's Live Queue"}</span>
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {now.toLocaleString("en-PK", { weekday: "long", hour: "2-digit", minute: "2-digit" })} • {docProfile?.room_number || "OPD Chamber"}
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+            {now.toLocaleString("en-PK", { weekday: "long", hour: "2-digit", minute: "2-digit", second: "2-digit" })} • {docProfile?.room_number || "OPD Chamber 1"}
           </p>
         </div>
+
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Single-Tap Doctor Chamber Queue Switcher */}
           {!isDoctorUser && doctors.length > 1 && (
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-white/80 border border-slate-200/80 p-1 rounded-2xl shadow-xs backdrop-blur-xs">
               {doctors.map((d) => (
                 <button
                   key={d.id}
                   type="button"
                   onClick={() => setSelectedDoctorId(d.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     doctorId === d.id
-                      ? "bg-teal-600 text-white shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
+                      ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
                   }`}
                 >
-                  {d.name}
+                  <span className="material-symbols-outlined text-sm">meeting_room</span>
+                  <span>{d.name.split(" ")[0]}</span>
                 </button>
               ))}
             </div>
           )}
+
           <button
             onClick={loadQueue}
-            className="flex items-center gap-1.5 text-xs text-teal-800 bg-white border border-teal-200 px-3.5 py-2 rounded-xl hover:bg-teal-50 transition-colors font-bold shadow-sm"
+            className="touch-pill min-h-[44px] text-xs text-teal-900 bg-white/85 border border-teal-200/80 hover:bg-teal-50 transition-colors font-bold shadow-xs cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-base">refresh</span>
-            Refresh Queue
+            <span>Refresh Queue</span>
           </button>
         </div>
       </div>
 
-      {/* ─── DOCTOR LIVE AVAILABILITY CONTROL BAR ──────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
+      {/* ── Doctor Live Chamber Availability Control Bar ── */}
+      <div className="glass-card p-4 sm:p-5 space-y-3.5">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">My Live Chamber Status:</span>
-            <span className="text-xs text-gray-400">(Broadcasts to Waiting Room TV & Patient Mobile)</span>
+            <span className="text-xs font-black uppercase tracking-wider text-slate-600">Live Chamber Broadcast:</span>
+            <span className="text-xs text-slate-400 font-medium hidden sm:inline">(Syncs to Waiting TV & Patient PWA)</span>
           </div>
           {docProfile?.status_note && (
-            <span className="text-xs bg-amber-50 text-amber-800 font-semibold px-2.5 py-0.5 rounded-md border border-amber-200">
+            <span className="text-xs bg-amber-50 text-amber-900 font-bold px-3 py-1 rounded-xl border border-amber-200/80 shadow-xs">
               Notice: {docProfile.status_note}
             </span>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {/* Option 1: Available */}
           <button
             onClick={() => handleSetAvailability("available")}
-            className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
+            className={`min-h-[44px] py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border cursor-pointer active:scale-97 ${
               currentStatus === "available"
                 ? "bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-600/20"
-                : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                : "bg-emerald-50/80 text-emerald-900 border-emerald-200/80 hover:bg-emerald-100"
             }`}
           >
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping"></span>
-            🟢 Available (In Room)
+            <span>🟢 Available (In Chamber)</span>
           </button>
 
           {/* Option 2: 15-Min Short Break */}
           <button
             onClick={() => handleSetAvailability("break", "15-Min Break — Back soon")}
-            className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
+            className={`min-h-[44px] py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border cursor-pointer active:scale-97 ${
               currentStatus === "break"
                 ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20"
-                : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                : "bg-amber-50/80 text-amber-900 border-amber-200/80 hover:bg-amber-100"
             }`}
           >
             <span className="material-symbols-outlined text-base">coffee</span>
-            🟡 Short Break (15m)
+            <span>🟡 Short Break (15m)</span>
           </button>
 
-          {/* Option 3: Unavailable / Done for Today */}
+          {/* Option 3: Unavailable / Shift Ended */}
           <button
             onClick={() => handleSetAvailability("unavailable", "Shift Ended for Today")}
-            className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
+            className={`min-h-[44px] py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border cursor-pointer active:scale-97 ${
               currentStatus === "unavailable"
-                ? "bg-slate-700 text-white border-slate-800 shadow-md shadow-slate-700/20"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                ? "bg-slate-800 text-white border-slate-900 shadow-md shadow-slate-800/20"
+                : "bg-slate-100/80 text-slate-700 border-slate-200/80 hover:bg-slate-200/80"
             }`}
           >
             <span className="material-symbols-outlined text-base">do_not_disturb_on</span>
-            Shift Ended / Away
+            <span>Shift Ended / Away</span>
           </button>
         </div>
 
         {/* Custom Status Note Toggle */}
-        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
+        <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
           <button
             type="button"
             onClick={() => setShowNoteInput(!showNoteInput)}
-            className="text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1"
+            className="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1.5 cursor-pointer py-1"
           >
-            <span className="material-symbols-outlined text-sm">edit_note</span>
-            {showNoteInput ? "Hide Custom Note" : "Add / Edit Custom Status Note (e.g. Back at 6:30 PM)"}
+            <span className="material-symbols-outlined text-base">edit_note</span>
+            <span>{showNoteInput ? "Hide Custom Note" : "Add / Edit Custom Status Note (e.g. Back at 6:30 PM)"}</span>
           </button>
         </div>
 
@@ -213,12 +249,12 @@ export default function DoctorQueue() {
               type="text"
               value={customNote}
               onChange={(e) => setCustomNote(e.target.value)}
-              placeholder="e.g. Tea Break • Available from 5:30 PM"
-              className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              placeholder="e.g. Tea Break • Resuming at 5:30 PM"
+              className="flex-1 text-xs border border-slate-300/80 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
             />
             <button
               type="submit"
-              className="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+              className="min-h-[44px] bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
               Save Note
             </button>
@@ -226,53 +262,55 @@ export default function DoctorQueue() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
-          <div className="text-3xl font-black text-teal-600">{inConsultation.length}</div>
-          <div className="text-xs font-medium text-gray-500 mt-1">In Consultation</div>
+      {/* ── Telemetry KPI Summary Bento Grid ── */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="glass-card p-4 text-center">
+          <div className="text-2xl sm:text-3xl font-black text-teal-700 tracking-tight">{inConsultation.length}</div>
+          <div className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">In Chamber</div>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
-          <div className="text-3xl font-black text-amber-500">{waiting.length}</div>
-          <div className="text-xs font-medium text-gray-500 mt-1">Waiting</div>
+        <div className="glass-card p-4 text-center">
+          <div className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight">{waiting.length}</div>
+          <div className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Waiting</div>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
-          <div className="text-3xl font-black text-gray-400">{queue.length}</div>
-          <div className="text-xs font-medium text-gray-500 mt-1">Total Today</div>
+        <div className="glass-card p-4 text-center">
+          <div className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">{queue.length}</div>
+          <div className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Total Today</div>
         </div>
       </div>
 
-      {/* Call Next Button */}
+      {/* ── Call Next Patient Prominent Action Bar ── */}
       {waiting.length > 0 && inConsultation.length === 0 && (
         <button
           onClick={callNext}
-          className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 transition-colors shadow-xl shadow-teal-600/25 flex items-center justify-center gap-3"
+          className="w-full min-h-[52px] bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white py-3.5 px-6 rounded-2xl font-black text-base sm:text-lg transition-all shadow-lg shadow-teal-700/25 flex items-center justify-center gap-3 cursor-pointer active:scale-98"
         >
-          <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>call</span>
-          Call Next Patient (Token #{waiting[0]?.token_number})
+          <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+            call
+          </span>
+          <span>Call Next Patient (Token #{waiting[0]?.token_number})</span>
         </button>
       )}
 
-      {/* Queue List */}
+      {/* ── Queue Cards List ── */}
       {queue.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-3xl border-2 border-dashed border-teal-200/80 shadow-xs">
-          <div className="w-16 h-16 rounded-3xl bg-teal-50 text-teal-700 flex items-center justify-center mb-4 shadow-inner">
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center glass-card border-dashed border-2 border-teal-200/80">
+          <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center mb-4 shadow-xs">
             <span className="material-symbols-outlined text-4xl">event_available</span>
           </div>
-          <h3 className="font-bold text-slate-800 text-base">No Patients in Today&apos;s Queue</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm">
-            The doctor&apos;s OPD waiting list is clear. New patients registered at the reception counter will appear here in real-time.
+          <h3 className="font-black text-slate-900 text-base">No Patients in Today&apos;s Queue</h3>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm font-medium">
+            The doctor&apos;s OPD waiting list is clear. New walk-ins and appointments registered at the reception desk will appear here automatically.
           </p>
           <button
             onClick={() => navigate("/reception/register")}
-            className="mt-5 px-5 py-2.5 bg-teal-800 hover:bg-teal-900 text-white rounded-2xl text-xs font-bold flex items-center gap-2 shadow-md shadow-teal-800/20 transition-all cursor-pointer active:scale-95"
+            className="mt-5 min-h-[44px] px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm shadow-teal-700/20 transition-all cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-base">how_to_reg</span>
             <span>Register Walk-in Patient</span>
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           {queue.map((visit) => {
             const patient = patients[visit.patient_id];
             const s = STATUS_STYLES[visit.status] || STATUS_STYLES.waiting;
@@ -281,70 +319,81 @@ export default function DoctorQueue() {
             return (
               <div
                 key={visit.id}
-                className={`rounded-2xl border-2 p-4 transition-all ${s.bg} ${s.border} ${isActive ? "shadow-lg" : "shadow-sm"}`}
+                className={`glass-card p-4 sm:p-5 transition-all ${s.bg} ${s.border} ${isActive ? "shadow-md ring-2 ring-teal-500/50" : ""}`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    {/* Token Number */}
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${
-                      isActive ? "bg-teal-600 text-white shadow-md shadow-teal-200" : "bg-white text-gray-700 border border-gray-200"
-                    }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                  <div className="flex items-start gap-3.5 min-w-0">
+                    {/* Token Number High-Contrast Badge */}
+                    <div
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${
+                        isActive
+                          ? "bg-teal-700 text-white shadow-md shadow-teal-700/25"
+                          : "bg-white text-slate-800 border border-slate-200/80 shadow-xs"
+                      }`}
+                    >
                       {visit.token_number}
                     </div>
 
-                    {/* Patient Info */}
+                    {/* Patient Information & Badges */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-gray-900 text-base">
+                        <span className="font-black text-slate-900 text-base">
                           {patient ? patient.full_name : "Unknown Patient"}
                         </span>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${s.badge}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${s.badge}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
                           {s.label}
                         </span>
                         {visit.visit_type === "follow_up" && (
-                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Follow-up</span>
+                          <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200/70 px-2 py-0.5 rounded-full font-bold">
+                            Follow-up
+                          </span>
                         )}
                       </div>
                       {patient && (
-                        <div className="text-sm text-gray-500 mt-0.5">
+                        <div className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
                           {getRelLabel(patient.relation_type)} {patient.relation_name}
                           {formatPatientAge(patient) !== "—" ? ` · ${formatPatientAge(patient)}` : ""}
                           {patient.phone ? ` · ${patient.phone}` : ""}
                         </div>
                       )}
-                      <div className="text-xs text-gray-400 mt-1">
-                        Registered at {new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
+                      <div className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">schedule</span>
+                        <span>Registered at {new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex sm:flex-col flex-row gap-2 shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200/60">
+                  {/* Ergonomic 44px Action Targets */}
+                  <div className="flex sm:flex-col flex-row gap-2 shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                     {isActive && (
                       <button
                         onClick={() => startConsultation(visit.id)}
-                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-teal-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-teal-700 transition-colors shadow-md shadow-teal-200"
+                        className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-2 bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm shadow-teal-700/20 cursor-pointer active:scale-95"
                       >
-                        <span className="material-symbols-outlined text-sm">stethoscope</span>
-                        Consult
+                        <span className="material-symbols-outlined text-base">stethoscope</span>
+                        <span>Consult</span>
                       </button>
                     )}
+
                     {visit.status === "waiting" && (
-                      <>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
-                          onClick={() => { dbVisits.updateStatus(visit.id, "in_consultation"); loadQueue(); }}
-                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-teal-300 text-teal-700 px-3 py-1.5 rounded-xl text-xs font-semibold hover:bg-teal-50 transition-colors"
+                          onClick={() => {
+                            dbVisits.updateStatus(visit.id, "in_consultation");
+                            loadQueue();
+                          }}
+                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1.5 bg-white border border-teal-300 text-teal-800 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-teal-50 transition-all cursor-pointer active:scale-95 shadow-xs"
                         >
-                          <span className="material-symbols-outlined text-sm">call</span>
-                          Call
+                          <span className="material-symbols-outlined text-base">call</span>
+                          <span>Call</span>
                         </button>
                         <button
                           onClick={() => skipVisit(visit.id)}
-                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-gray-200 text-gray-500 px-3 py-1.5 rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors"
+                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1 bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all cursor-pointer active:scale-95 shadow-xs"
                         >
-                          <span className="material-symbols-outlined text-sm">skip_next</span>
-                          Skip
+                          <span className="material-symbols-outlined text-base">skip_next</span>
+                          <span>Skip</span>
                         </button>
                         <button
                           onClick={() => {
@@ -353,33 +402,36 @@ export default function DoctorQueue() {
                               loadQueue();
                             }
                           }}
-                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-gray-200 text-rose-600 hover:bg-rose-50 px-2 py-1.5 rounded-xl text-xs font-medium transition-colors"
+                          className="min-h-[44px] w-10 flex items-center justify-center bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-xs"
                           title="Remove from Queue"
                         >
-                          <span className="material-symbols-outlined text-sm">close</span>
-                          Remove
+                          <span className="material-symbols-outlined text-base">close</span>
                         </button>
-                      </>
+                      </div>
                     )}
+
                     {visit.status === "skipped" && (
-                      <div className="flex sm:flex-col flex-row gap-1">
+                      <div className="flex sm:flex-col flex-row gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => {
                             dbVisits.reissueLateToken(visit.id);
                             loadQueue();
                           }}
                           title="Re-issue new token at END of queue with Rs. 0 Fee"
-                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-amber-300 text-amber-900 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-amber-50 transition-colors"
+                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1.5 bg-white border border-amber-300 text-amber-900 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-amber-50 transition-all cursor-pointer active:scale-95 shadow-xs"
                         >
-                          <span className="material-symbols-outlined text-sm">confirmation_number</span>
-                          Re-issue (End Queue)
+                          <span className="material-symbols-outlined text-base">confirmation_number</span>
+                          <span>Re-issue Token</span>
                         </button>
                         <button
-                          onClick={() => { dbVisits.updateStatus(visit.id, "waiting"); loadQueue(); }}
-                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 bg-white border border-teal-300 text-teal-700 px-3 py-1.5 rounded-xl text-xs font-medium hover:bg-teal-50 transition-colors"
+                          onClick={() => {
+                            dbVisits.updateStatus(visit.id, "waiting");
+                            loadQueue();
+                          }}
+                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1 bg-white border border-teal-300 text-teal-800 px-3 py-2 rounded-xl text-xs font-bold hover:bg-teal-50 transition-all cursor-pointer active:scale-95 shadow-xs"
                         >
-                          <span className="material-symbols-outlined text-sm">undo</span>
-                          Recall Next
+                          <span className="material-symbols-outlined text-base">undo</span>
+                          <span>Recall</span>
                         </button>
                       </div>
                     )}
@@ -393,3 +445,4 @@ export default function DoctorQueue() {
     </div>
   );
 }
+
