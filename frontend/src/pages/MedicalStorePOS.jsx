@@ -367,15 +367,75 @@ export default function MedicalStorePOS() {
   function handleSearchInputKeyDown(e) {
     const visibleList = inventoryResults.slice(0, 40);
     if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedInventoryIndex((prev) => Math.min(visibleList.length - 1, prev + 1));
+      if (visibleList.length > 0) {
+        e.preventDefault();
+        setSelectedInventoryIndex((prev) => Math.min(visibleList.length - 1, prev + 1));
+      } else if (cart.length > 0) {
+        e.preventDefault();
+        const firstCartQty = document.getElementById("pos-cart-qty-0");
+        if (firstCartQty) { firstCartQty.focus(); firstCartQty.select(); }
+      }
     } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedInventoryIndex((prev) => Math.max(0, prev - 1));
+      if (visibleList.length > 0) {
+        e.preventDefault();
+        setSelectedInventoryIndex((prev) => Math.max(0, prev - 1));
+      }
+    } else if (e.key === "ArrowRight") {
+      if (cart.length > 0 && (!inventoryQuery || inventoryQuery.length === 0)) {
+        e.preventDefault();
+        const firstCartQty = document.getElementById("pos-cart-qty-0");
+        if (firstCartQty) { firstCartQty.focus(); firstCartQty.select(); }
+      }
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (visibleList.length > 0 && visibleList[selectedInventoryIndex]) {
         addToCart(visibleList[selectedInventoryIndex], 1);
+      }
+    }
+  }
+
+  function handleCartInputKeyDown(e, index, field) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (index < cart.length - 1) {
+        const nextEl = document.getElementById(`pos-cart-${field}-${index + 1}`);
+        if (nextEl) { nextEl.focus(); nextEl.select(); }
+      } else {
+        const discEl = document.getElementById("pos-discount-input");
+        if (discEl) { discEl.focus(); discEl.select(); }
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (index > 0) {
+        const prevEl = document.getElementById(`pos-cart-${field}-${index - 1}`);
+        if (prevEl) { prevEl.focus(); prevEl.select(); }
+      } else {
+        if (searchInputRef.current) { searchInputRef.current.focus(); searchInputRef.current.select(); }
+      }
+    } else if (e.key === "ArrowRight" && field === "qty") {
+      e.preventDefault();
+      const discEl = document.getElementById(`pos-cart-disc-${index}`);
+      if (discEl) { discEl.focus(); discEl.select(); }
+    } else if (e.key === "ArrowLeft" && field === "disc") {
+      e.preventDefault();
+      const qtyEl = document.getElementById(`pos-cart-qty-${index}`);
+      if (qtyEl) { qtyEl.focus(); qtyEl.select(); }
+    } else if (e.key === "ArrowLeft" && field === "qty") {
+      e.preventDefault();
+      if (searchInputRef.current) { searchInputRef.current.focus(); searchInputRef.current.select(); }
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (field === "qty") {
+        const discEl = document.getElementById(`pos-cart-disc-${index}`);
+        if (discEl) { discEl.focus(); discEl.select(); }
+      } else {
+        if (index < cart.length - 1) {
+          const nextQtyEl = document.getElementById(`pos-cart-qty-${index + 1}`);
+          if (nextQtyEl) { nextQtyEl.focus(); nextQtyEl.select(); }
+        } else {
+          const cashEl = document.getElementById("pos-cash-tendered-input");
+          if (cashEl) { cashEl.focus(); cashEl.select(); }
+        }
       }
     }
   }
@@ -918,7 +978,7 @@ export default function MedicalStorePOS() {
               </div>
             ) : (
               <div ref={cartContainerRef} className="space-y-3 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
-                {cart.map((item) => (
+                {cart.map((item, idx) => (
                   <div
                     key={item.inventory_id}
                     className="p-3 bg-white/80 rounded-xl border border-slate-200/80 flex flex-col gap-2.5 shadow-2xs hover:border-teal-300 transition-all"
@@ -964,12 +1024,14 @@ export default function MedicalStorePOS() {
                           -
                         </button>
                         <input
+                          id={`pos-cart-qty-${idx}`}
                           type="number"
                           min="1"
                           value={item.quantity}
                           onChange={(e) => setExactQty(item.inventory_id, e.target.value)}
-                          className="w-12 h-10 min-h-[40px] bg-white border border-slate-300 rounded-xl text-center text-xs font-black text-slate-950 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono"
-                          title="Quantity"
+                          onKeyDown={(e) => handleCartInputKeyDown(e, idx, "qty")}
+                          className="w-12 h-10 min-h-[40px] bg-white border border-slate-300 rounded-xl text-center text-xs font-black text-slate-950 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono shadow-2xs"
+                          title="Quantity (Navigate with Arrow Keys ↑ ↓ ← →)"
                         />
                         <button
                           type="button"
@@ -985,14 +1047,16 @@ export default function MedicalStorePOS() {
                       <div className="flex items-center gap-1.5 bg-amber-50/80 px-2.5 h-10 min-h-[40px] rounded-xl border border-amber-300 shadow-2xs">
                         <label className="text-[10px] text-amber-950 font-black uppercase tracking-tight">Disc%:</label>
                         <input
+                          id={`pos-cart-disc-${idx}`}
                           type="number"
                           min="0"
                           max="100"
                           value={item.disc_pct === 0 ? "" : (item.disc_pct || "")}
                           placeholder="0%"
                           onChange={(e) => setItemDiscount(item.inventory_id, e.target.value)}
+                          onKeyDown={(e) => handleCartInputKeyDown(e, idx, "disc")}
                           className="w-10 text-center text-xs font-black text-amber-950 focus:outline-none bg-transparent font-mono"
-                          title="Medicine Discount Percentage (%)"
+                          title="Medicine Discount Percentage (%) (Navigate with Arrow Keys ↑ ↓ ← →)"
                         />
                       </div>
 
@@ -1043,6 +1107,21 @@ export default function MedicalStorePOS() {
                     max={subtotal}
                     value={discountInput}
                     onChange={(e) => setDiscountInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "ArrowDown" || e.key === "Enter") {
+                        e.preventDefault();
+                        const cashEl = document.getElementById("pos-cash-tendered-input");
+                        if (cashEl) { cashEl.focus(); cashEl.select(); }
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        if (cart.length > 0) {
+                          const lastQty = document.getElementById(`pos-cart-qty-${cart.length - 1}`);
+                          if (lastQty) { lastQty.focus(); lastQty.select(); }
+                        } else if (searchInputRef.current) {
+                          searchInputRef.current.focus();
+                        }
+                      }
+                    }}
                     placeholder="0"
                     className="w-24 bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 text-right text-xs font-black text-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono shadow-2xs"
                   />
@@ -1096,6 +1175,20 @@ export default function MedicalStorePOS() {
                         min="0"
                         value={cashTenderedInput}
                         onChange={(e) => setCashTenderedInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            const discEl = document.getElementById("pos-discount-input");
+                            if (discEl) { discEl.focus(); discEl.select(); }
+                          } else if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            const checkoutBtn = document.getElementById("pos-checkout-btn");
+                            if (checkoutBtn) checkoutBtn.focus();
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            checkout();
+                          }
+                        }}
                         placeholder={finalTotal.toString()}
                         className="w-28 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-right text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono shadow-2xs"
                       />
