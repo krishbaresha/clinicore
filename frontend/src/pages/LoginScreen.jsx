@@ -43,9 +43,11 @@ export default function LoginScreen() {
       {/* Top Floating Navigation Bar */}
       <header className="w-full max-w-4xl mx-auto flex items-center justify-between py-2 px-1 relative z-20">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-teal-800 flex items-center justify-center text-white shadow-md shadow-teal-900/20 font-black text-sm">
-            C+
-          </div>
+          <img
+            src="/favicon.svg"
+            alt="CliniCore Logo"
+            className="w-10 h-10 object-contain rounded-xl drop-shadow-md"
+          />
           <div>
             <h1 className="text-base font-black tracking-tight text-teal-950 leading-tight">CliniCore</h1>
             <p className="text-[10px] text-teal-700 font-bold uppercase tracking-wider">Clinical OS</p>
@@ -67,8 +69,12 @@ export default function LoginScreen() {
           
           {/* Clinic Branding */}
           <div className="text-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 mx-auto flex items-center justify-center text-teal-800 mb-3 shadow-inner">
-              <span className="material-symbols-outlined text-3xl">local_hospital</span>
+            <div className="w-20 h-20 mx-auto mb-3 flex items-center justify-center">
+              <img
+                src="/favicon.svg"
+                alt="CliniCore Official Logo"
+                className="w-20 h-20 object-contain rounded-2xl drop-shadow-lg"
+              />
             </div>
             <h2 className="text-xl font-black text-teal-950 tracking-tight">
               {clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"}

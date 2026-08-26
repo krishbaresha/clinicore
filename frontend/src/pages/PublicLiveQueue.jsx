@@ -209,11 +209,11 @@ export default function PublicLiveQueue() {
         }`}
       >
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-teal-700/25">
-            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              medical_services
-            </span>
-          </div>
+          <img
+            src="/favicon.svg"
+            alt="CliniCore Logo"
+            className="w-12 h-12 object-contain rounded-2xl drop-shadow-md shrink-0"
+          />
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? "text-white" : "text-teal-950 font-headline-lg"}`}>

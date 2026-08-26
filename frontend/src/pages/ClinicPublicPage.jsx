@@ -150,9 +150,11 @@ export default function ClinicPublicPage() {
       <header className="bg-white border-b border-teal-100 shadow-sm sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 text-white flex items-center justify-center font-black text-xl shadow-md shadow-teal-700/20">
-              DA
-            </div>
+            <img
+              src="/favicon.svg"
+              alt="CliniCore Logo"
+              className="w-12 h-12 object-contain rounded-2xl drop-shadow-md shrink-0"
+            />
             <div>
               <h1 className="text-xl font-black text-teal-950 tracking-tight leading-tight">
                 {clinic?.name || "Dr. Asif Ashraf's Clinic"}
