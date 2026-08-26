@@ -33,12 +33,30 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Sale Invoice & Customer Party Terminology Alignment Deployed
-- **Last worked on:** Updated `SaleInvoiceModal.jsx` and related modules to align terminology from "Voucher No" / "Reffernce" to "Sale Invoice #" (سیل انوائس نمبر), "Customer / Medical Store Party" (گاہک / میڈیکل اسٹور کا نام), and dynamic "Salesman / Order Booker" (سیلز مین / آرڈر بکر).
+- **Phase:** 100% Pure Keyboard-Driven POS Control Deck & 2D Arrow-Key Grid Navigation Deployed
+- **Last worked on:** Implemented full keyboard power deck (F1-F11 hotkeys), 2D arrow-key grid navigation between search, cart items, discounts, cash given and checkout, resolved software licensing evaluateStatus precedence, and created complete Master User Manual in Hinglish (`15_ClinicFlow_Complete_User_Manual_Hinglish.md`).
 - **Currently blocked on:** None.
 - **Overall completion estimate:** 100% Production Ready (149/149 test suite passing, build exit code 0).
 
-### Session: 2026-08-26 (Part 46) — Sale Invoice & Dynamic Salesman UX Alignment
+### Session: 2026-08-27 (Part 47) — Pure Keyboard-Driven POS Control Deck, 2D Arrow-Key Navigation & Master User Manual
+
+**Task worked on:**
+1. **Pure Keyboard-Driven POS Control Deck (`src/pages/MedicalStorePOS.jsx`):**
+   - Implemented master hotkey suite: `F1` / `Alt+S` (Focus Search), `F2` / `Ctrl+Enter` (Checkout & Print), `F3` (Brand / Company Mode), `F4` (Link OPD Prescription), `F6` (Cash / Credit Mode), `F7` (Additional Bill Discount), `F8` (Cash Given / Tendered), `F10` (Reprint Last Bill), `F11` / `Alt+C` (Clear Cart), `Escape` (Close Modals / Clear).
+   - Designed high-contrast sticky bottom **Keyboard Command Deck** with color-coded key badge chips.
+2. **2D Arrow-Key Grid Navigation (`src/pages/MedicalStorePOS.jsx`):**
+   - Implemented `handleCartInputKeyDown` and updated `handleSearchInputKeyDown`:
+   - `ArrowDown` / `ArrowUp` navigates seamlessly across Search results ⇄ Cart Quantity ⇄ Cart Discount% ⇄ Bill Discount ⇄ Cash Given ⇄ Print Checkout Button.
+   - `ArrowRight` / `ArrowLeft` shifts horizontally between Cart Quantity and Item Discount % inputs.
+3. **Software Licensing Fixes (`src/api/db.js`, `DeveloperAdminPanel.jsx`, `LicenseBanner.jsx`):**
+   - Overhauled `dbLicense.evaluateStatus()` so `license_status: "active"` stays clean without premature 5-day warning banners.
+   - Updated `handleQuickRestore` to extend due date by a full 30 days.
+   - Enhanced `LicenseBanner.jsx` with sessionStorage dismissal persistence.
+4. **Master Operating User Manual (`context/15_ClinicFlow_Complete_User_Manual_Hinglish.md`):**
+   - Authored complete 10-chapter operating manual in Hinglish (Roman Urdu) with end-to-end workflows, real clinic examples, ASCII flowcharts, and PDF printing guidelines.
+5. **Verification:**
+   - 149 / 149 Automated Tests passed (`npm test -- --run`).
+   - Production Vite bundle compiled with 0 errors.
 
 **Task worked on:**
 1. **Sale Invoice Terminology Alignment (`src/components/SaleInvoiceModal.jsx`):**

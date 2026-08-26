@@ -317,18 +317,30 @@ Clinic ke security ruls, staff members ke passwords, automated cloud backups aur
 
 ---
 
-## 12. ⌨️ Appendix: Keyboard Hotkeys & Fast Navigation Cheatsheet
+## 12. ⌨️ Appendix: Keyboard Hotkeys & 2D Arrow Grid Navigation Cheatsheet
 
-Tezi se billing aur registration karne ke liye mouse chhor kar ye keyboard shortcuts use karein:
+Tezi se billing aur registration karne ke liye mouse chhor kar ye keyboard shortcuts aur Arrow Keys use karein:
+
+### 🕹️ 2D Arrow Keys Grid Navigation (Medical Store POS):
+- **`↓` (Arrow Down) / `↑` (Arrow Up):** Search Box ➔ Cart Item Quantities ➔ Bill Discount ➔ Cash Tendered ➔ Checkout Print Button.
+- **`→` (Arrow Right) / `←` (Arrow Left):** Cart Quantity ⇄ Item Discount % ⇄ Search Bar ke darmiyan horizontal switch.
+
+### ⚡ Master Hotkeys Table:
 
 | Hotkey | Feature / Action | Screen |
 |---|---|---|
-| **`Enter`** | Quick Add item / Submit Form | Everywhere |
-| **`Tab`** | Next Input Field par jump karna | All Forms |
+| **`F1`** ya **`Alt + S`** | Focus Medicine Search Bar | Medical Store POS |
+| **`Enter`** | Quick Add Item / Submit Form / Jump Field | Everywhere |
+| **`F2`** ya **`Ctrl + ↵`** | Fast Cash Checkout & Instant 80mm Print | Medical Store POS |
+| **`F3`** | Toggle Company Brand Filter vs Global Search | Medical Store POS |
 | **`F4`** | Link Today's OPD Doctor Prescription | Medical Store POS |
+| **`F6`** | Toggle Cash Sale ⇄ Patient Udhaar / Credit | Medical Store POS |
+| **`F7`** | Focus Additional Bill Discount (Rs) Box | Medical Store POS |
+| **`F8`** | Focus Cash Given (Tendered Rupees) Box | Medical Store POS |
 | **`F10`** | Instant Reprint Last Printed Receipt | Medical Store POS |
-| **`F2`** | Fast Cash Checkout & Print Receipt | Medical Store POS |
-| **`Esc`** | Close Open Modal / Search Popup | Everywhere |
+| **`F11`** ya **`Alt + C`** | Clear Cart & Start Fresh Bill | Medical Store POS |
+| **`Esc`** | Close Open Modal / Search Popup / Clear | Everywhere |
+| **`Tab`** | Next Input Field par jump karna | All Forms |
 | **`Ctrl + P`** | Print Screen / Save as PDF | Browser Standard |
 
 ---

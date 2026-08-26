@@ -37,3 +37,23 @@
 ## 3. Screen Layout & Bento Design System
 - **Colors:** Deep Teal (`#0F766E`) primary accents, Mint Emerald success highlights, Charcoal slate text, and Soft glassmorphic containers.
 - **Doctor Switcher:** Quick-access profile switcher in the top bar allows doctors to swap active chambers without a full system logout.
+
+---
+
+## 4. Pure Keyboard-Driven POS Control Deck & 2D Grid Navigation
+
+- **Master Hotkey Suite:**
+  - `F1` / `Alt + S`: Focus Medicine Search Bar
+  - `F2` / `Ctrl + Enter`: Complete Sale & Instant 80mm Print
+  - `F3`: Toggle Company Brand Filter vs Global Search
+  - `F4`: Link Today's OPD Doctor Prescription
+  - `F6`: Toggle Cash vs Credit / Udhaar
+  - `F7`: Focus Additional Bill Discount (Rs.)
+  - `F8`: Focus Cash Given / Tendered
+  - `F10`: Instant Reprint Last Receipt
+  - `F11` / `Alt + C`: Clear Cart & Start New Bill
+  - `Escape`: Close Modals / Clear Search
+- **2D Arrow-Key Grid Navigation:**
+  - `ArrowDown` / `ArrowUp`: Seamless vertical jump across Search ⇄ Cart Items (Quantity / Discount) ⇄ Overall Bill Discount ⇄ Cash Given ⇄ Checkout Button.
+  - `ArrowRight` / `ArrowLeft`: Seamless horizontal jump between item Quantity and Discount % fields without touching the mouse.
+
