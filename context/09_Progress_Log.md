@@ -54,7 +54,12 @@ be specific so a human or next AI can correct it if wrong]
    - Enhanced `LicenseBanner.jsx` with sessionStorage dismissal persistence.
 4. **Master Operating User Manual (`context/15_ClinicFlow_Complete_User_Manual_Hinglish.md`):**
    - Authored complete 10-chapter operating manual in Hinglish (Roman Urdu) with end-to-end workflows, real clinic examples, ASCII flowcharts, and PDF printing guidelines.
-5. **Verification:**
+5. **Global CliniCore Official Logo Integration (`LoginScreen.jsx`, `PublicLiveQueue.jsx`, `ClinicPublicPage.jsx`):**
+   - Standardized the official CliniCore icon/brand logo (`/favicon.svg`) across the Login page navbar, center card header, public live queue display, and public portal, while preserving Dr. Asif's clinic receipts 100% intact.
+6. **AI Autonomous Reminders & Follow-up Scanner Architecture Blueprint:**
+   - Designed complete low-cost hybrid architecture (Evolution API WhatsApp Bridge + Android GSM Gateway + Gemini 2.5 Flash + Microsoft Edge-TTS `ur-PK-UzmaNeural`).
+   - Defined the Daily 10:00 AM Follow-up Scanner daemon specs and local Pakistani monetization model (Rs. 12,000/mo VIP package).
+7. **Verification:**
    - 149 / 149 Automated Tests passed (`npm test -- --run`).
    - Production Vite bundle compiled with 0 errors.
 
