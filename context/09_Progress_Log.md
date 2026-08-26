@@ -33,10 +33,22 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Real-World Supplier Invoices & Changing Salesmen Terminology Deployed
-- **Last worked on:** Updated `SupplierPurchases.jsx` terminology from "Voucher" to "Company Invoice / Bill #" (کمپنی انوائس / بل نمبر), added typeable/searchable Salesman & Booker field, and mapped all 4 physical distributor bills (Contimade, German Homeo, Dr. Reckeweg, Pakistan Post).
+- **Phase:** Sale Invoice & Customer Party Terminology Alignment Deployed
+- **Last worked on:** Updated `SaleInvoiceModal.jsx` and related modules to align terminology from "Voucher No" / "Reffernce" to "Sale Invoice #" (سیل انوائس نمبر), "Customer / Medical Store Party" (گاہک / میڈیکل اسٹور کا نام), and dynamic "Salesman / Order Booker" (سیلز مین / آرڈر بکر).
 - **Currently blocked on:** None.
 - **Overall completion estimate:** 100% Production Ready (149/149 test suite passing, build exit code 0).
+
+### Session: 2026-08-26 (Part 46) — Sale Invoice & Dynamic Salesman UX Alignment
+
+**Task worked on:**
+1. **Sale Invoice Terminology Alignment (`src/components/SaleInvoiceModal.jsx`):**
+   - Replaced "Voucher No" with **"Sale Invoice # (سیل انوائس نمبر)"** (e.g. `S-6218`).
+   - Fixed typo "Reffernce" and upgraded to **"Salesman / Order Booker (سیلز مین / آرڈر بکر)"** with instant searchable combo and +New Salesman input.
+   - Updated Party Account label to **"Customer / Medical Store Party (گاہک / میڈیکل اسٹور کا نام)"**.
+   - Updated action buttons to **"Save & Print Invoice (بل محفوظ کریں اور پرنٹ)"** and **"Invoices Logbook (بل ریکارڈ)"**.
+2. **Verification:**
+   - Vitest test harness: 21 / 21 suites (149 tests) passed (`npm test -- --run`).
+   - Production Vite bundle compiled with exit code 0 (`npm run build`).
 
 ### Session: 2026-08-26 (Part 45) — Real-World Supplier Invoices & Changing Salesmen UX
 

@@ -580,15 +580,15 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
               className="bg-slate-900/80 hover:bg-slate-900 text-white px-4 py-2 rounded-2xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 border border-white/20"
             >
               <span className="material-symbols-outlined text-base">list_alt</span>
-              Show List
+              Invoices List
             </button>
             <button
               type="button"
               onClick={handleSaveSaleBill}
               className="bg-white text-emerald-800 hover:bg-emerald-50 px-5 py-2 rounded-2xl font-black text-xs transition-all shadow-lg flex items-center gap-1.5"
             >
-              <span className="material-symbols-outlined text-base">save</span>
-              Save Bill
+              <span className="material-symbols-outlined text-base">print</span>
+              Save &amp; Print
             </button>
             <button
               type="button"
@@ -605,14 +605,14 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
           {/* Section 1: Basic Info */}
           <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 space-y-3.5">
             <div className="text-xs font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-base text-emerald-700">info</span>
-              Basic Info
+              <span className="material-symbols-outlined text-base text-emerald-700">receipt_long</span>
+              Sale Invoice &amp; Customer Details (انوائس اور گاہک کی تفصیل)
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {/* Date */}
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">Date</label>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1">Invoice Date (تاریخ)</label>
                 <input
                   type="text"
                   value={saleForm.date}
@@ -621,9 +621,9 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
                 />
               </div>
 
-              {/* Voucher No */}
+              {/* Sale Invoice # */}
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">Voucher No</label>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1">Sale Invoice # (انوائس نمبر)</label>
                 <input
                   type="text"
                   value={saleForm.voucher_no}
@@ -632,29 +632,29 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
                 />
               </div>
 
-              {/* GRN No */}
+              {/* Manual Bill # */}
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">GRN No</label>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1">Manual Bill # (دستی بل نمبر)</label>
                 <input
                   type="text"
                   value={saleForm.grn_no}
                   onChange={(e) => setSaleForm({ ...saleForm, grn_no: e.target.value })}
-                  placeholder="0"
+                  placeholder="Optional manual ref"
                   className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
                 />
               </div>
 
-              {/* Reference */}
+              {/* Salesman / Reference with + New */}
               <div>
                 {showNewRefInput ? (
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">New Reference</label>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">New Salesman / Booker</label>
                     <div className="flex gap-1">
                       <input
                         type="text"
                         value={newRefText}
                         onChange={(e) => setNewRefText(e.target.value)}
-                        placeholder="Rep / Booker..."
+                        placeholder="e.g. Asif Raza, Imran..."
                         className="flex-1 bg-white border border-emerald-400 rounded-xl px-2 py-1.5 text-xs font-bold"
                         autoFocus
                         onKeyDown={(e) => e.key === "Enter" && handleAddNewReference()}
@@ -677,22 +677,22 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
                   </div>
                 ) : (
                   <ExpandableCombobox
-                    label="Reffernce"
+                    label="Salesman / Order Booker (سیلز مین / آرڈر بکر)"
                     value={saleForm.reference}
                     onChange={(val) => setSaleForm({ ...saleForm, reference: val })}
                     options={referenceOptions}
-                    placeholder="Select Booker..."
-                    searchPlaceholder="Search Rep / Booker..."
+                    placeholder="Select or Type Salesman..."
+                    searchPlaceholder="Search or type new Salesman..."
                     onAddNew={() => setShowNewRefInput(true)}
-                    addNewLabel="+ New"
+                    addNewLabel="+ New Salesman"
                   />
                 )}
               </div>
 
-              {/* Account Name */}
+              {/* Customer Account Name */}
               <div className="sm:col-span-2">
                 <ExpandableCombobox
-                  label="Account Name (Wholesale Customer / Party)"
+                  label="Customer / Medical Store Party (گاہک / میڈیکل اسٹور کا نام)"
                   value={saleForm.account_name}
                   onChange={handleSelectAccount}
                   options={accountOptions}
@@ -1018,11 +1018,11 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
               className="bg-slate-900 hover:bg-slate-800 text-white font-black px-6 py-2.5 rounded-2xl text-xs flex items-center gap-1.5 shadow-md"
             >
               <span className="material-symbols-outlined text-base">list_alt</span>
-              Show List
+              Invoices Logbook (بل ریکارڈ)
             </button>
 
             <div className="flex items-center gap-3">
-              <span className="text-sm font-black text-gray-700 uppercase tracking-wider">Total Bill:</span>
+              <span className="text-sm font-black text-gray-700 uppercase tracking-wider">Total Bill (کل رقم):</span>
               <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 font-black px-6 py-2 rounded-2xl text-lg min-w-[140px] text-right shadow-inner">
                 Rs. {totalBillCalculated.toLocaleString()}
               </div>
@@ -1033,8 +1033,8 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
               onClick={handleSaveSaleBill}
               className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-8 py-2.5 rounded-2xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-200"
             >
-              <span className="material-symbols-outlined text-base">save</span>
-              Save Bill
+              <span className="material-symbols-outlined text-base">print</span>
+              Save &amp; Print Invoice (بل محفوظ کریں اور پرنٹ)
             </button>
           </div>
         </div>
