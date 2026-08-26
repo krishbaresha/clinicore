@@ -1,0 +1,56 @@
+{
+  "project_name": "ClinicFlow (CliniCore)",
+  "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
+  "version": "2.5.0-production",
+  "last_session_date": "2026-08-27T00:52:00+05:00",
+  "session_id": "part-47",
+  "current_status": {
+    "phase": "Pure Keyboard-Driven POS Control Deck & 2D Grid Navigation",
+    "test_suite_status": "149/149 PASSED (0 failures)",
+    "build_status": "Vite 8.2.1 Production Bundle Clean (Exit Code 0)",
+    "git_branch": "main",
+    "last_commit": "86263e2"
+  },
+  "completed_milestones": [
+    "Milestone 30: Real-World Invoices Integration (GRN & B2B Wholesale)",
+    "Milestone 31: Software Licensing evaluateStatus & Premature Notice Fix",
+    "Milestone 32: 100% Pure Keyboard-Driven POS Control Deck (F1-F11 Hotkeys & 2D Arrow Keys)",
+    "Milestone 33: Master User Manual in Hinglish (context/15_ClinicFlow_Complete_User_Manual_Hinglish.md)"
+  ],
+  "active_features": {
+    "pos_keyboard_navigation": {
+      "f1": "Focus Medicine Search Bar",
+      "f2_or_ctrl_enter": "Instant 80mm Cash Checkout & Print Bill",
+      "f3": "Toggle Company Filter vs Global Search",
+      "f4": "Link Today's OPD Doctor Prescription",
+      "f6": "Toggle Cash Sale vs Patient Udhaar/Credit",
+      "f7": "Focus Additional Bill Discount (Rs)",
+      "f8": "Focus Cash Given (Tendered Rupees)",
+      "f10": "Instant Reprint Last Bill",
+      "f11_or_alt_c": "Clear Cart & Start New Bill",
+      "escape": "Close Modals / Clear Search",
+      "arrow_keys_2d": "Navigate between Search results, Cart Quantity, Cart Disc%, Bill Discount, and Cash Given"
+    },
+    "token_system": "Date-based PKT auto-reset to #01 every morning",
+    "shift_operator_switcher": "Single-login multi-cashier dropdown on POS topbar",
+    "nightly_backup": "24/7 VPS Cron & Linux systemd daemon dispatches .cfbak to drasifhosting@gmail.com at 9:00 PM"
+  },
+  "master_context_files": [
+    "context/00_README_Index.md",
+    "context/01_Business_Domain_and_Workflows.md",
+    "context/02_Database_Schema_and_Data_Dictionary.md",
+    "context/04_Screens_and_Sitemap.md",
+    "context/05_Hardware_and_Thermal_Printers.md",
+    "context/06_Urdu_Terminology_and_Localization.md",
+    "context/07_Security_RBAC_and_Permissions.md",
+    "context/08_AI_Rules_and_Constraints.md",
+    "context/09_Progress_Log.md",
+    "context/10_Verification_and_Test_Cases.md",
+    "context/11_Tech_Stack_and_Deployment.md",
+    "context/12_Desktop_Offline_First_Sync_Architecture.md",
+    "context/13_Legacy_Access_Migration_Playbook.md",
+    "context/14_Comprehensive_Conversation_and_Feature_Context.md",
+    "context/15_ClinicFlow_Complete_User_Manual_Hinglish.md"
+  ],
+  "instructions_for_next_session": "Read SESSION_STATE.json and context/09_Progress_Log.md before doing anything. Maintain zero regression on 149 test suite."
+}

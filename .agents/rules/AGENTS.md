@@ -57,6 +57,9 @@ ClinicFlow/
 9. **Zero-Bloat Performance:**
    - In-memory `_COLLECTION_CACHE` and `_ID_MAP_CACHE` provide instant $O(1)$ lookups without repeated JSON parsing in render loops.
    - Code-splitting with `React.lazy()` keeps initial core bundle light (<320KB).
+10. **Rule 15 — Automatic Session Continuity & Handoff Standard:**
+   - Every new session MUST read `SESSION_STATE.json` and `context/09_Progress_Log.md` FIRST to immediately restore 100% active context.
+   - At the end of every task or session, the agent MUST update `SESSION_STATE.json` and `context/09_Progress_Log.md` so the user can resume from anywhere in Antigravity chat history.
 
 ---
 
