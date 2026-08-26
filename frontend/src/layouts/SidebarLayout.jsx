@@ -133,8 +133,17 @@ export default function SidebarLayout({ children }) {
   // Mobile Slide-over Drawer State
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  // Native PWA Deferred Prompt State
+  // Native PWA Deferred Prompt & Installation State
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isPWAInstalled, setIsPWAInstalled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes("android-app://") ||
+      localStorage.getItem("cf_pwa_installed") === "true"
+    );
+  });
 
   // Live PWA Cloud Sync Status State
   const [syncState, setSyncState] = useState(() => syncEngine.getStatus());
@@ -150,7 +159,49 @@ export default function SidebarLayout({ children }) {
       setDeferredPrompt(e);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+
+    const checkStandalone = () => {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true ||
+        document.referrer.includes("android-app://");
+      if (isStandalone) {
+        setIsPWAInstalled(true);
+        localStorage.setItem("cf_pwa_installed", "true");
+      }
+    };
+
+    checkStandalone();
+
+    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+    const mediaHandler = (e) => {
+      if (e.matches) {
+        setIsPWAInstalled(true);
+        localStorage.setItem("cf_pwa_installed", "true");
+      }
+    };
+    try {
+      mediaQuery.addEventListener("change", mediaHandler);
+    } catch (_) {
+      mediaQuery.addListener(mediaHandler);
+    }
+
+    const appInstalledHandler = () => {
+      setIsPWAInstalled(true);
+      localStorage.setItem("cf_pwa_installed", "true");
+      setDeferredPrompt(null);
+    };
+    window.addEventListener("appinstalled", appInstalledHandler);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      try {
+        mediaQuery.removeEventListener("change", mediaHandler);
+      } catch (_) {
+        mediaQuery.removeListener(mediaHandler);
+      }
+      window.removeEventListener("appinstalled", appInstalledHandler);
+    };
   }, []);
 
   const handleInstallPWA = async () => {
@@ -711,15 +762,17 @@ export default function SidebarLayout({ children }) {
           <div className="p-3 border-t border-slate-200/60 flex flex-col gap-2 bg-slate-50/60 backdrop-blur-xs">
             {sidebarOpen ? (
               <>
-                {/* Install App Trigger Button in Sidebar */}
-                <button
-                  onClick={handleInstallPWA}
-                  className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-950 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer active:scale-98"
-                  title="Install CliniCore App"
-                >
-                  <Download className="w-4 h-4 text-emerald-700" />
-                  <span>Install Desktop App</span>
-                </button>
+                {/* Install App Trigger Button in Sidebar (Only if NOT installed) */}
+                {!isPWAInstalled && (
+                  <button
+                    onClick={handleInstallPWA}
+                    className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-950 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer active:scale-98"
+                    title="Install CliniCore App"
+                  >
+                    <Download className="w-4 h-4 text-emerald-700" />
+                    <span>Install Desktop App</span>
+                  </button>
+                )}
 
                 <div className="flex items-center justify-between w-full px-2 pt-1">
                   <div className="text-[11px] font-bold text-slate-600">
@@ -736,13 +789,15 @@ export default function SidebarLayout({ children }) {
               </>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <button
-                  onClick={handleInstallPWA}
-                  className="w-full h-11 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 text-emerald-900 transition-colors flex items-center justify-center cursor-pointer border border-emerald-200/80 active:scale-95"
-                  title="Install CliniCore App"
-                >
-                  <Download className="w-4 h-4 text-emerald-700" />
-                </button>
+                {!isPWAInstalled && (
+                  <button
+                    onClick={handleInstallPWA}
+                    className="w-full h-11 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 text-emerald-900 transition-colors flex items-center justify-center cursor-pointer border border-emerald-200/80 active:scale-95"
+                    title="Install CliniCore App"
+                  >
+                    <Download className="w-4 h-4 text-emerald-700" />
+                  </button>
+                )}
                 <button
                   onClick={() => setSidebarOpen(true)}
                   className="w-full p-1.5 rounded-lg hover:bg-teal-100 text-teal-800 transition-colors flex items-center justify-center cursor-pointer"
@@ -827,16 +882,18 @@ export default function SidebarLayout({ children }) {
 
                 {/* Mobile Drawer Bottom Actions */}
                 <div className="p-3 border-t border-slate-200/60 bg-slate-50/60 space-y-2">
-                  <button
-                    onClick={() => {
-                      setMobileDrawerOpen(false);
-                      handleInstallPWA();
-                    }}
-                    className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
-                  >
-                    <Smartphone className="w-4 h-4 text-emerald-700" />
-                    <span>Install App on Phone</span>
-                  </button>
+                  {!isPWAInstalled && (
+                    <button
+                      onClick={() => {
+                        setMobileDrawerOpen(false);
+                        handleInstallPWA();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                    >
+                      <Smartphone className="w-4 h-4 text-emerald-700" />
+                      <span>Install App on Phone</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={handleLogout}

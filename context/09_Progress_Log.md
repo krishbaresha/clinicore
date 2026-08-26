@@ -33,10 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Enterprise PWA Self-Healing & Hot-Cache Engine Deployed
-- **Last worked on:** Built zero-downtime client-side self-healing asset recovery engine in `index.html` and hardened `sw.js` with no-cache navigation and 404 cache purge to prevent unstyled screens on live deployments.
+- **Phase:** PWA Standalone Detection & Dynamic Install Button Hiding Deployed
+- **Last worked on:** Added native PWA standalone detection (`display-mode: standalone`, `navigator.standalone`, `appinstalled`) to `SidebarLayout.jsx` so that the "Install Desktop / Mobile App" buttons automatically disappear when running inside an installed PWA.
 - **Currently blocked on:** None.
 - **Overall completion estimate:** 100% Production Ready (149/149 test suite passing, build exit code 0).
+
+### Session: 2026-08-26 (Part 44) — PWA Standalone Detection & Dynamic Install Button Hiding
+
+**Task worked on:**
+1. **PWA Standalone Window Detection (`src/layouts/SidebarLayout.jsx`):**
+   - Added reactive `isPWAInstalled` state checking:
+     - `window.matchMedia('(display-mode: standalone)').matches`
+     - `window.navigator.standalone === true` (iOS Safari)
+     - `document.referrer.includes('android-app://')` (Android TWA)
+     - `window.addEventListener('appinstalled')` and `(display-mode: standalone)` media query listener.
+2. **Conditional Sidebar Footer & Mobile Drawer Rendering:**
+   - Wrapped Desktop "Install Desktop App" button and Mobile Drawer "Install App on Phone" buttons inside `!isPWAInstalled`.
+   - When running in an installed PWA window on Windows, macOS, Android, or iOS, the install prompt buttons are cleanly hidden.
+3. **Verification & Deployment:**
+   - Ran unit test suite: 21/21 suites (149 tests) passed (`npm test -- --run`).
+   - Compiled production build with exit code 0 (`npm run build`).
 
 ### Session: 2026-08-26 (Part 43) — Enterprise PWA Self-Healing & Hot-Cache Engine
 
