@@ -104,7 +104,7 @@ self.addEventListener('fetch', (event) => {
   // When online, this guarantees users immediately receive the newest index.html with fresh chunk hashes
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-cache' })
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
@@ -128,7 +128,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Tier B: Content-Hashed Vite Assets (/assets/*) -> Cache-First
+  // Tier B: Content-Hashed Vite Assets (/assets/*) -> Cache-First with 404 Auto-Invalidate
   // Since Vite asset filenames have unique cryptographic hashes (e.g. index-C1j6_HiN.js), if in cache they're guaranteed exact
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
@@ -140,6 +140,14 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          } else if (networkResponse && (networkResponse.status === 404 || networkResponse.status === 403)) {
+            // New deployment removed old asset hash -> purge outdated cache
+            console.warn(`[SW] Missing asset detected (${request.url}), purging outdated cache.`);
+            caches.keys().then((keys) => {
+              keys.forEach((k) => {
+                if (k.startsWith('clinicflow-pwa-')) caches.delete(k);
+              });
+            });
           }
           return networkResponse;
         });
