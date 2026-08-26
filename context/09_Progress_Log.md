@@ -1763,8 +1763,32 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Automated Verification:**
       - 149/149 test assertions passing (100%), 0 ESLint errors, clean production bundle build in 664ms, and commits pushed to GitHub `origin/main`.
 
+31. **Real-World Invoices (Purchase GRN & Sale Invoice) Missing Fields Integration:**
+    - **Context & User Discovery:**
+      - Analyzed 4 physical pharma invoices from Dr. Muhammad Kashif Khan's clinic:
+        1. *Contimade Traders*: Batch # `250525`, Exp `30-Apr-30`, Qty 36, Rate 240, Line Disc 50%, Trade Disc Rs. 8,160.
+        2. *German Homeo*: Packing sizes (`20GM`, `30ML`, `120ML`, `450ML`), TP Rates, Disc%.
+        3. *Dr. Salim Ahmed & Co.*: Lot No `001PK50029B`, Qty, Unit Price, Disc%, GST.
+        4. *Pakistan Post Bilty Slip*: Bilty / Courier Tracking # `PAR23311018`, Freight Charges.
+      - User feedback: Replaced confusing "Voucher No" with "Company Invoice / Bill #" on Purchase and "Sale Invoice #" on Sale forms. Changed static salesman to dynamic combobox with `+ New Salesman`.
+    - **Engine & Form Implementations:**
+      - **Company Purchase Invoice (`frontend/src/pages/SupplierPurchases.jsx`):**
+        - Added `Batch # / Lot No` and `Expiry Date` inputs in Fast Line Item Add Bar.
+        - Table view displays item packing badge, batch #, and expiry date.
+        - Added `Extra Trade Discount (Rs.)` (`extra_bill_discount`) and `Freight / Bilty Charges (Rs.)` (`freight_charges`) with live recalculated Net Grand Total.
+        - Updated `handleSaveGRNBill` to persist batch details, update `dbInventory` batch tracking, and record net balance in `dbPurchases`.
+      - **Wholesale Sale Invoice (`frontend/src/components/SaleInvoiceModal.jsx`):**
+        - Added `Party Code` fast lookup input with instant auto-fill of party name, phone, city, address, and assigned salesman.
+        - Added **Live Customer Udhaar / Credit Balance Banner** (`Current Udhaar / Ledger Due: Rs. X,XXX`) when customer party is selected.
+        - Line item grid shows packing units (`[30ML]`, `[120ML]`).
+        - Footer summary calculates `Subtotal - Extra Discount + Bilty/Delivery Charges = Net Total`.
+        - Updated `handleSaveSaleBill` to persist financial breakdown and pass to 80mm thermal receipt generator.
+    - **Automated Verification:**
+      - 149/149 test assertions passing (100%), 0 ESLint errors, and clean production bundle build in 1.01s.
+
 **Next Recommended Steps:**
-- Advise user to verify Resend domain or ensure target email matches Resend registered account for Sandbox mode.
+- Advise user that both Purchase and Sale invoices are now 100% aligned with real physical distributor bills.
+
 
 
 

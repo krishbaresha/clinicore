@@ -182,6 +182,7 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
   const [salesHistory, setSalesHistory] = useState([]);
 
   // Form State
+  const [partyCodeSearch, setPartyCodeSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("All");
   const [showNewRefInput, setShowNewRefInput] = useState(false);
   const [newRefText, setNewRefText] = useState("");
@@ -202,12 +203,17 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
     transport: "",
     bilty_no: "",
     destination_type: "warehouse",
+    extra_bill_discount: "0",
+    freight_charges: "0",
   });
 
   const [saleCart, setSaleCart] = useState({
     product_code: "",
     medicine_name: "",
     inventory_id: "",
+    category: "",
+    packing: "",
+    batch_no: "",
     qty: "1",
     rate: "",
     gross: "",
@@ -241,6 +247,27 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
       voucher_no: dbSales.getNextVoucherNo(),
     }));
   };
+
+  const handlePartyCodeChange = (code) => {
+    setPartyCodeSearch(code);
+    if (!code || !code.trim()) return;
+    const clean = code.trim().toLowerCase();
+    const party = partiesList.find(
+      (p) =>
+        (p.party_code && p.party_code.toLowerCase() === clean) ||
+        (p.party_code && p.party_code.toLowerCase().startsWith(clean)) ||
+        (p.name && p.name.toLowerCase().startsWith(clean))
+    );
+    if (party) {
+      handleSelectAccount(party.name, { raw: party });
+    }
+  };
+
+  const matchedParty = useMemo(() => {
+    if (!saleForm.account_name) return null;
+    const lower = saleForm.account_name.toLowerCase().trim();
+    return partiesList.find((p) => p.name.toLowerCase().trim() === lower) || null;
+  }, [partiesList, saleForm.account_name]);
 
   useEffect(() => {
     if (isOpen) {
@@ -492,8 +519,11 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
   };
 
   const totalBillCalculated = useMemo(() => {
-    return saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
-  }, [saleItems]);
+    const subtotal = saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
+    const extraDisc = Number(saleForm.extra_bill_discount) || 0;
+    const freight = Number(saleForm.freight_charges) || 0;
+    return Math.max(0, subtotal - extraDisc + freight);
+  }, [saleItems, saleForm.extra_bill_discount, saleForm.freight_charges]);
 
   const handleAddNewReference = () => {
     if (!newRefText.trim()) return;
@@ -525,12 +555,20 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
       return;
     }
 
+    const itemsSubtotal = saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
+    const extraDisc = Number(saleForm.extra_bill_discount) || 0;
+    const freight = Number(saleForm.freight_charges) || 0;
+    const grandTotal = totalBillCalculated;
+
     const createdSale = dbSales.addSaleInvoice({
       ...saleForm,
       items: saleItems,
-      total_amount: totalBillCalculated,
-      paid_amount: saleForm.payment_mode === "Cash" ? totalBillCalculated : 0,
-      balance_due: saleForm.payment_mode === "Credit" ? totalBillCalculated : 0,
+      subtotal: itemsSubtotal,
+      extra_discount: extraDisc,
+      freight_charges: freight,
+      total_amount: grandTotal,
+      paid_amount: saleForm.payment_mode === "Cash" ? grandTotal : 0,
+      balance_due: saleForm.payment_mode === "Credit" ? grandTotal : 0,
     });
 
     const clinic = dbClinic.get();
@@ -545,7 +583,10 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
     setSaleForm((prev) => ({
       ...prev,
       voucher_no: dbSales.getNextVoucherNo(),
+      extra_bill_discount: "0",
+      freight_charges: "0",
     }));
+    setPartyCodeSearch("");
     refreshData();
   };
 
@@ -689,6 +730,38 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
                 )}
               </div>
 
+              {/* Quick Party Code Auto-Fill */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-amber-900">
+                    <span className="material-symbols-outlined text-sm text-amber-600">bolt</span>
+                    Party Code
+                  </span>
+                  {partyCodeSearch && (
+                    <span className="text-[10px] text-emerald-700 font-bold">✓ Linked</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={partyCodeSearch}
+                    onChange={(e) => handlePartyCodeChange(e.target.value)}
+                    placeholder="e.g. 001, Muslim"
+                    className="w-full bg-amber-50/70 border border-amber-300 rounded-xl px-3 py-2 text-xs font-mono font-black text-amber-950 uppercase tracking-wider focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  />
+                  {partyCodeSearch && (
+                    <button
+                      type="button"
+                      onClick={() => handlePartyCodeChange("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                      title="Clear Code"
+                    >
+                      <span className="material-symbols-outlined text-xs">close</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Customer Account Name */}
               <div className="sm:col-span-2">
                 <ExpandableCombobox
@@ -725,6 +798,26 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
                   className="w-full bg-gray-100 border border-gray-300 rounded-xl px-3 py-2 text-xs font-black text-gray-700"
                 />
               </div>
+
+              {/* Matched Party Udhaar Banner */}
+              {matchedParty && (
+                <div className="col-span-1 sm:col-span-2 md:col-span-4 bg-amber-50/90 border border-amber-300 rounded-2xl p-3 flex flex-wrap items-center justify-between text-xs text-amber-950 gap-2 shadow-xs animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-amber-700">account_balance_wallet</span>
+                    <span className="font-bold">
+                      Party: <strong className="font-mono bg-white px-2 py-0.5 rounded-lg border border-amber-300 text-amber-900">#{matchedParty.party_code || matchedParty.id}</strong> — {matchedParty.name} ({matchedParty.city || "Sindh"})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-bold text-slate-700">
+                      Current Udhaar / Ledger Due: <strong className="text-rose-700 font-black text-sm">Rs. {Number(matchedParty.current_balance || matchedParty.balance_due || 0).toLocaleString()}</strong>
+                    </span>
+                    <span className="text-[10px] bg-amber-700 text-white px-2.5 py-0.5 rounded-full font-black">
+                      ⚡ Live Ledger Sync
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Payment Mode Radio Toggle & Company Filter */}
               <div className="sm:col-span-2 flex flex-wrap items-center gap-4 bg-white p-2.5 rounded-xl border border-gray-200">
@@ -956,7 +1049,6 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
             className="rounded-2xl border border-gray-200 shadow-sm max-h-72 min-h-[160px] overflow-y-auto custom-scrollbar relative bg-white"
           >
             <table className="w-full text-left text-xs">
-
               <thead className="bg-emerald-700 text-white font-black uppercase tracking-wider text-[11px] sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3">Item Name</th>
@@ -982,7 +1074,17 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
                     {saleItems.map((item, idx) => (
                       <tr key={item.id || idx} className="hover:bg-emerald-50/40 transition-colors">
                         <td className="px-4 py-3 font-bold text-gray-900">
-                          {item.medicine_name} {item.product_code ? <span className="text-[10px] text-gray-400 font-mono">[{item.product_code}]</span> : ""}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{item.medicine_name}</span>
+                            {item.product_code && (
+                              <span className="text-[10px] text-gray-400 font-mono">[{item.product_code}]</span>
+                            )}
+                            {item.packing && (
+                              <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">
+                                {item.packing}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-3 text-center font-black text-emerald-800">{item.qty}</td>
                         <td className="px-3 py-3 text-center text-gray-700">Rs. {Number(item.rate).toLocaleString()}</td>
@@ -1010,32 +1112,68 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
             </table>
           </div>
 
-          {/* Section 4: Footer Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t border-gray-200">
+          {/* Section 4: Footer Controls with Extra Bill Discount & Freight */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 pt-3 border-t border-gray-200">
             <button
               type="button"
               onClick={() => setShowListModal(true)}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-black px-6 py-2.5 rounded-2xl text-xs flex items-center gap-1.5 shadow-md"
+              className="w-full lg:w-auto bg-slate-900 hover:bg-slate-800 text-white font-black px-5 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md"
             >
               <span className="material-symbols-outlined text-base">list_alt</span>
               Invoices Logbook (بل ریکارڈ)
             </button>
 
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-black text-gray-700 uppercase tracking-wider">Total Bill (کل رقم):</span>
-              <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 font-black px-6 py-2 rounded-2xl text-lg min-w-[140px] text-right shadow-inner">
+            {/* Financial Summary Controls */}
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+              {/* Items Subtotal */}
+              <div className="bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-xl text-right min-w-[110px]">
+                <div className="text-[9.5px] font-bold text-gray-500 uppercase">Subtotal</div>
+                <div className="text-sm font-black text-gray-900">
+                  Rs. {saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0).toLocaleString()}
+                </div>
+              </div>
+
+              {/* Extra Bill Discount */}
+              <div className="bg-amber-50/70 border border-amber-200 px-3 py-1 rounded-xl text-right">
+                <label className="block text-[9.5px] font-bold text-amber-800 uppercase">Extra Disc (Rs.)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={saleForm.extra_bill_discount}
+                  onChange={(e) => setSaleForm({ ...saleForm, extra_bill_discount: e.target.value })}
+                  placeholder="0"
+                  className="w-20 bg-white border border-amber-300 rounded-lg px-2 py-0.5 text-xs font-black text-amber-950 text-right"
+                />
+              </div>
+
+              {/* Delivery / Freight Charges */}
+              <div className="bg-blue-50/70 border border-blue-200 px-3 py-1 rounded-xl text-right">
+                <label className="block text-[9.5px] font-bold text-blue-800 uppercase">Bilty / Del (Rs.)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={saleForm.freight_charges}
+                  onChange={(e) => setSaleForm({ ...saleForm, freight_charges: e.target.value })}
+                  placeholder="0"
+                  className="w-20 bg-white border border-blue-300 rounded-lg px-2 py-0.5 text-xs font-black text-blue-950 text-right"
+                />
+              </div>
+
+              {/* Net Grand Total */}
+              <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 font-black px-5 py-2 rounded-2xl text-base min-w-[130px] text-right shadow-inner">
+                <div className="text-[9.5px] font-bold text-emerald-800 uppercase">Net Total (کل رقم)</div>
                 Rs. {totalBillCalculated.toLocaleString()}
               </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={handleSaveSaleBill}
-              className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-8 py-2.5 rounded-2xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-200"
-            >
-              <span className="material-symbols-outlined text-base">print</span>
-              Save &amp; Print Invoice (بل محفوظ کریں اور پرنٹ)
-            </button>
+              <button
+                type="button"
+                onClick={handleSaveSaleBill}
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-6 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-200"
+              >
+                <span className="material-symbols-outlined text-base">print</span>
+                Save &amp; Print Invoice (بل محفوظ کریں اور پرنٹ)
+              </button>
+            </div>
           </div>
         </div>
       </div>

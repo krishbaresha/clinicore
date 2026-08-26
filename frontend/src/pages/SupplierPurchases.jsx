@@ -258,12 +258,18 @@ export default function SupplierPurchases() {
     transport: "By Hand",
     bilty_no: "",
     destination_type: "warehouse",
+    extra_bill_discount: "0",
+    freight_charges: "0",
   });
 
   const [grnCart, setGrnCart] = useState({
     product_code: "",
     medicine_name: "",
     inventory_id: "",
+    category: "",
+    packing: "",
+    batch_no: "",
+    expiry_date: "",
     qty: "1",
     rate: "",
     gross: "",
@@ -460,7 +466,7 @@ export default function SupplierPurchases() {
     return filteredGrnInventory.map((inv) => ({
       id: inv.id,
       label: inv.medicine_name,
-      sublabel: `Cost: Rs. ${inv.cost_price_per_box || inv.cost_price || 0} · Godown: ${inv.warehouse_stock || 0}`,
+      sublabel: `Cost: Rs. ${inv.cost_price_per_box || inv.cost_price || 0} · Godown: ${inv.warehouse_stock || 0}${inv.batch_no ? ` · Bat: ${inv.batch_no}` : ""}`,
       badge: inv.company_name || inv.item_code || inv.category || "MED",
       raw: inv,
     }));
@@ -476,7 +482,7 @@ export default function SupplierPurchases() {
   // DrCreate Purchase GRN Form Handlers
   const handleSelectGRNMedicine = (invId) => {
     if (!invId) {
-      setGrnCart((prev) => ({ ...prev, inventory_id: "", medicine_name: "", product_code: "", rate: "", gross: "", net_amount: "" }));
+      setGrnCart((prev) => ({ ...prev, inventory_id: "", medicine_name: "", product_code: "", category: "", packing: "", batch_no: "", expiry_date: "", rate: "", gross: "", net_amount: "" }));
       return;
     }
     const inv = inventoryList.find((i) => i.id === invId);
@@ -492,6 +498,10 @@ export default function SupplierPurchases() {
       product_code: inv.item_code || inv.company_name || "",
       medicine_name: inv.medicine_name,
       inventory_id: inv.id,
+      category: inv.category || "Medicine",
+      packing: inv.unit_label || inv.received_unit_type || "pack",
+      batch_no: inv.batch_no || "",
+      expiry_date: inv.expiry_date || "",
       qty: String(qty),
       rate: String(rate),
       gross: String(gross),
@@ -540,6 +550,10 @@ export default function SupplierPurchases() {
       inventory_id: grnCart.inventory_id || "",
       product_code: grnCart.product_code,
       medicine_name: grnCart.medicine_name.trim(),
+      category: grnCart.category || "Medicine",
+      packing: grnCart.packing || "pack",
+      batch_no: grnCart.batch_no.trim() || `BT-${Date.now().toString().slice(-4)}`,
+      expiry_date: grnCart.expiry_date.trim() || "",
       qty: q,
       qty_base_units: q,
       rate: r,
@@ -557,6 +571,10 @@ export default function SupplierPurchases() {
       product_code: "",
       medicine_name: "",
       inventory_id: "",
+      category: "",
+      packing: "",
+      batch_no: "",
+      expiry_date: "",
       qty: "1",
       rate: "",
       gross: "",
@@ -592,7 +610,10 @@ export default function SupplierPurchases() {
       return;
     }
 
-    const totalBill = grnItems.reduce((sum, it) => sum + (Number(it.net) || 0), 0);
+    const itemsSubtotal = grnItems.reduce((sum, it) => sum + (Number(it.net) || 0), 0);
+    const extraDisc = Number(grnForm.extra_bill_discount) || 0;
+    const freight = Number(grnForm.freight_charges) || 0;
+    const totalBill = Math.max(0, itemsSubtotal - extraDisc + freight);
     const paidAmount = grnForm.payment_mode === "Cash" ? totalBill : 0;
     const matchedSup = suppliers.find((s) => s.name.toLowerCase() === grnForm.account_name.toLowerCase());
 
@@ -608,10 +629,13 @@ export default function SupplierPurchases() {
       destination_type: grnForm.destination_type || "warehouse",
       purchase_date: grnForm.date || new Date().toISOString(),
       items: grnItems,
+      subtotal: itemsSubtotal,
+      extra_discount: extraDisc,
+      freight_charges: freight,
       total_amount: totalBill,
       paid_amount: paidAmount,
       balance_due: totalBill - paidAmount,
-      notes: `Purchase GRN: ${grnForm.voucher_no} | Transport: ${grnForm.transport} | Bilty: ${grnForm.bilty_no}`,
+      notes: `Purchase Invoice: ${grnForm.voucher_no} | Co Bill: ${grnForm.grn_no} | Transport: ${grnForm.transport} | Bilty: ${grnForm.bilty_no}${extraDisc > 0 ? ` | Extra Disc: Rs. ${extraDisc}` : ""}${freight > 0 ? ` | Freight: Rs. ${freight}` : ""}`,
     });
 
     // Auto-Print Thermal GRN Slip
@@ -623,6 +647,10 @@ export default function SupplierPurchases() {
       product_code: "",
       medicine_name: "",
       inventory_id: "",
+      category: "",
+      packing: "",
+      batch_no: "",
+      expiry_date: "",
       qty: "1",
       rate: "",
       gross: "",
@@ -635,9 +663,11 @@ export default function SupplierPurchases() {
       voucher_no: dbPurchases.getNextVoucherNo(),
       grn_no: "0",
       bilty_no: "",
+      extra_bill_discount: "0",
+      freight_charges: "0",
     }));
     refreshData();
-    alert(`Purchase GRN ${savedPur.invoice_no} saved successfully & stock updated in Godown!`);
+    alert(`Purchase Invoice ${savedPur.invoice_no} (Co Bill #${savedPur.grn_no}) saved successfully & stock updated in Godown!`);
   };
 
   const handleAddItemRow = () => {
@@ -1312,23 +1342,28 @@ export default function SupplierPurchases() {
               </div>
             </div>
 
-            {/* Section 2: Cart Detail (Fast Line Item Add Bar) */}
+            {/* Section 2: Cart Detail (Fast Line Item Add Bar with Batch & Expiry) */}
             <div className="bg-teal-50/60 border border-teal-200 rounded-2xl p-4 md:p-5 space-y-3">
-              <div className="text-xs font-black text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
-                Cart Detail (Fast Keyboard Entry &amp; Auto Rate)
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-black text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
+                  Cart Detail (Fast Keyboard Entry, Batch #, Expiry Date &amp; Auto Rate)
+                </div>
+                <span className="text-[10px] text-teal-700 font-bold bg-white px-2.5 py-0.5 rounded-full border border-teal-200">
+                  ⌨️ Tab / Enter Navigation Supported
+                </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-12 gap-2.5 items-end">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2.5 items-end">
                 {/* Product Code */}
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1">Product Code</label>
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1">Code</label>
                   <input
                     type="text"
                     value={grnCart.product_code}
                     readOnly
                     placeholder="Code"
-                    className="w-full bg-gray-100 border border-gray-300 rounded-xl px-2.5 py-2 text-xs font-mono font-bold text-gray-700 text-center"
+                    className="w-full bg-gray-100 border border-gray-300 rounded-xl px-2 py-2 text-xs font-mono font-bold text-gray-700 text-center"
                   />
                 </div>
 
@@ -1349,8 +1384,8 @@ export default function SupplierPurchases() {
                       title={grnShowAllCompanies ? "Switch to Company-Filtered mode" : "Show all products regardless of supplier"}
                     >
                       {grnShowAllCompanies
-                        ? `🌐 All Brands (${inventoryList.length})`
-                        : `🏢 Filtered: ${filteredGrnInventory.length} Items`}
+                        ? `🌐 All (${inventoryList.length})`
+                        : `🏢 Filtered (${filteredGrnInventory.length})`}
                     </button>
                   </div>
                   <ExpandableCombobox
@@ -1371,9 +1406,34 @@ export default function SupplierPurchases() {
                   />
                 </div>
 
+                {/* Batch # / Lot No */}
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1">Batch #</label>
+                  <input
+                    type="text"
+                    value={grnCart.batch_no}
+                    onChange={(e) => handleUpdateGRNCart("batch_no", e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
+                    placeholder="e.g. 250525"
+                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-mono font-bold text-gray-800 focus:border-teal-500"
+                  />
+                </div>
+
+                {/* Expiry Date */}
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1">Exp Date</label>
+                  <input
+                    type="text"
+                    value={grnCart.expiry_date}
+                    onChange={(e) => handleUpdateGRNCart("expiry_date", e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
+                    placeholder="MM/YY"
+                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-gray-800 focus:border-teal-500"
+                  />
+                </div>
 
                 {/* Qty */}
-                <div className="md:col-span-1">
+                <div className="col-span-1 md:col-span-1">
                   <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Qty</label>
                   <input
                     type="number"
@@ -1386,8 +1446,8 @@ export default function SupplierPurchases() {
                 </div>
 
                 {/* Rate */}
-                <div className="md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Rate</label>
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Rate (TP)</label>
                   <input
                     type="number"
                     value={grnCart.rate}
@@ -1399,7 +1459,7 @@ export default function SupplierPurchases() {
                 </div>
 
                 {/* Gross */}
-                <div className="md:col-span-1">
+                <div className="col-span-1 md:col-span-1">
                   <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Gross</label>
                   <input
                     type="text"
@@ -1410,7 +1470,7 @@ export default function SupplierPurchases() {
                 </div>
 
                 {/* Disc % */}
-                <div className="md:col-span-1">
+                <div className="col-span-1 md:col-span-1">
                   <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc %</label>
                   <input
                     type="number"
@@ -1421,8 +1481,8 @@ export default function SupplierPurchases() {
                   />
                 </div>
 
-                {/* Disc 0 */}
-                <div className="md:col-span-1">
+                {/* Disc 0 (Flat) */}
+                <div className="col-span-1 md:col-span-1">
                   <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc 0</label>
                   <input
                     type="number"
@@ -1434,7 +1494,7 @@ export default function SupplierPurchases() {
                 </div>
 
                 {/* Net Amount */}
-                <div className="md:col-span-1">
+                <div className="col-span-1 md:col-span-1">
                   <label className="block text-[10px] font-bold text-emerald-800 mb-1 text-center">Net Amt</label>
                   <input
                     type="text"
@@ -1445,7 +1505,7 @@ export default function SupplierPurchases() {
                 </div>
 
                 {/* Add Button */}
-                <div className="md:col-span-1">
+                <div className="col-span-1 md:col-span-1">
                   <button
                     type="button"
                     onClick={handleAddGRNItem}
@@ -1464,10 +1524,11 @@ export default function SupplierPurchases() {
               className="rounded-2xl border border-gray-200 shadow-sm max-h-80 min-h-[160px] overflow-y-auto custom-scrollbar relative bg-white"
             >
               <table className="w-full text-left text-xs">
-
                 <thead className="bg-emerald-700 text-white font-black uppercase tracking-wider text-[11px] sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3">Item Name</th>
+                    <th className="px-3 py-3 text-center">Batch #</th>
+                    <th className="px-3 py-3 text-center">Exp Date</th>
                     <th className="px-3 py-3 text-center">Qty</th>
                     <th className="px-3 py-3 text-center">Rate</th>
                     <th className="px-3 py-3 text-center">Gross</th>
@@ -1480,9 +1541,9 @@ export default function SupplierPurchases() {
                 <tbody className="divide-y divide-gray-100 font-medium">
                   {grnItems.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="text-center py-12 text-gray-400 font-semibold">
+                      <td colSpan="10" className="text-center py-12 text-gray-400 font-semibold">
                         <span className="material-symbols-outlined text-4xl block mb-1 text-gray-300">add_shopping_cart</span>
-                        No medicine items in this purchase bill yet. Select a product and click Add.
+                        No medicine items in this purchase bill yet. Select a product, enter Batch/Exp, and click Add.
                       </td>
                     </tr>
                   ) : (
@@ -1490,7 +1551,23 @@ export default function SupplierPurchases() {
                       {grnItems.map((item, idx) => (
                         <tr key={item.id || idx} className="hover:bg-emerald-50/40 transition-colors">
                           <td className="px-4 py-3 font-bold text-gray-900">
-                            {item.medicine_name} {item.product_code ? <span className="text-[10px] text-gray-400 font-mono">[{item.product_code}]</span> : ""}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{item.medicine_name}</span>
+                              {item.product_code && (
+                                <span className="text-[10px] text-gray-400 font-mono">[{item.product_code}]</span>
+                              )}
+                              {item.packing && (
+                                <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">
+                                  {item.packing}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-center font-mono font-black text-slate-800 bg-slate-50/70">
+                            {item.batch_no || "—"}
+                          </td>
+                          <td className="px-3 py-3 text-center font-bold text-amber-900 bg-amber-50/40">
+                            {item.expiry_date || "—"}
                           </td>
                           <td className="px-3 py-3 text-center font-black text-emerald-800">{item.qty}</td>
                           <td className="px-3 py-3 text-center text-gray-700">Rs. {Number(item.rate).toLocaleString()}</td>
@@ -1503,6 +1580,7 @@ export default function SupplierPurchases() {
                               type="button"
                               onClick={() => handleRemoveGRNItem(idx)}
                               className="text-rose-600 hover:text-rose-800 p-1 rounded-lg hover:bg-rose-50 transition-colors"
+                              title="Delete Row"
                             >
                               <span className="material-symbols-outlined text-base">delete</span>
                             </button>
@@ -1510,7 +1588,7 @@ export default function SupplierPurchases() {
                         </tr>
                       ))}
                       <tr ref={grnItemsEndRef}>
-                        <td colSpan="8" className="p-0 border-0" />
+                        <td colSpan="10" className="p-0 border-0" />
                       </tr>
                     </>
                   )}
@@ -1519,29 +1597,70 @@ export default function SupplierPurchases() {
             </div>
 
 
-            {/* Section 4: Footer Summary & Action Controls */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-200">
+            {/* Section 4: Footer Summary & Action Controls with Extra Bill Discount & Freight */}
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={() => setShowGRNListModal(true)}
-                className="w-full sm:w-auto bg-slate-800 text-white hover:bg-slate-900 px-6 py-3 rounded-2xl font-bold text-xs transition-colors shadow-md flex items-center justify-center gap-2"
+                className="w-full lg:w-auto bg-slate-800 text-white hover:bg-slate-900 px-5 py-2.5 rounded-2xl font-bold text-xs transition-colors shadow-md flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-base">list_alt</span>
                 Invoices Audit List (بل لسٹ اور ریکارڈ)
               </button>
 
-              <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
-                <div className="bg-emerald-50 border border-emerald-200 px-5 py-2.5 rounded-2xl text-right">
-                  <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Total Bill Net Amount (کل بل)</div>
-                  <div className="text-xl font-black text-emerald-950">
+              {/* Financial Calculation Widgets */}
+              <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+                {/* Items Subtotal */}
+                <div className="bg-gray-50 border border-gray-200 px-3.5 py-2 rounded-xl text-right min-w-[110px]">
+                  <div className="text-[9.5px] font-bold text-gray-500 uppercase">Items Subtotal</div>
+                  <div className="text-sm font-black text-gray-900">
                     Rs. {grnItems.reduce((s, it) => s + (Number(it.net) || 0), 0).toLocaleString()}
+                  </div>
+                </div>
+
+                {/* Extra Bill Discount */}
+                <div className="bg-amber-50/70 border border-amber-200 px-3 py-1.5 rounded-xl text-right">
+                  <label className="block text-[9.5px] font-bold text-amber-800 uppercase">Extra Disc (Rs.)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={grnForm.extra_bill_discount}
+                    onChange={(e) => setGrnForm({ ...grnForm, extra_bill_discount: e.target.value })}
+                    placeholder="0"
+                    className="w-20 bg-white border border-amber-300 rounded-lg px-2 py-0.5 text-xs font-black text-amber-950 text-right"
+                  />
+                </div>
+
+                {/* Freight / Bilty Expense */}
+                <div className="bg-blue-50/70 border border-blue-200 px-3 py-1.5 rounded-xl text-right">
+                  <label className="block text-[9.5px] font-bold text-blue-800 uppercase">Freight / Bilty (Rs.)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={grnForm.freight_charges}
+                    onChange={(e) => setGrnForm({ ...grnForm, freight_charges: e.target.value })}
+                    placeholder="0"
+                    className="w-20 bg-white border border-blue-300 rounded-lg px-2 py-0.5 text-xs font-black text-blue-950 text-right"
+                  />
+                </div>
+
+                {/* Final Net Payable Total */}
+                <div className="bg-emerald-100 border border-emerald-300 px-4 py-2 rounded-xl text-right shadow-sm">
+                  <div className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider">Net Payable (کل بل)</div>
+                  <div className="text-lg font-black text-emerald-950">
+                    Rs. {Math.max(
+                      0,
+                      grnItems.reduce((s, it) => s + (Number(it.net) || 0), 0) -
+                        (Number(grnForm.extra_bill_discount) || 0) +
+                        (Number(grnForm.freight_charges) || 0)
+                    ).toLocaleString()}
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleSaveGRNBill}
-                  className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 px-8 py-3 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 px-6 py-3 rounded-2xl font-black text-xs transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-base">save</span>
                   Save Invoice &amp; Add to Stock (بل محفوظ کریں)
