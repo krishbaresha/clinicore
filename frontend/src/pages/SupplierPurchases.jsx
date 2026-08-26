@@ -942,8 +942,8 @@ export default function SupplierPurchases() {
             onClick={() => setActiveTab("grn_form")}
             className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2.5 rounded-2xl font-black text-xs hover:from-emerald-700 hover:to-teal-800 transition-all shadow-md shadow-emerald-200 flex items-center gap-1.5"
           >
-            <span className="material-symbols-outlined text-base">receipt</span>
-            Purchase GRN (DrCreate)
+            <span className="material-symbols-outlined text-base">receipt_long</span>
+            Company Purchase Bill (کمپنی خریداری بل)
           </button>
           <button
             onClick={() => setShowAddSupplier(true)}
@@ -963,8 +963,8 @@ export default function SupplierPurchases() {
             activeTab === "grn_form" ? "border-emerald-600 text-emerald-800" : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          <span className="material-symbols-outlined text-base text-emerald-600">receipt</span>
-          Purchase GRN _Form (DrCreate V2.0)
+          <span className="material-symbols-outlined text-base text-emerald-600">receipt_long</span>
+          Company Purchase Invoice Entry (کمپنی بل انٹری)
           <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-black">
             {grnForm.voucher_no}
           </span>
@@ -976,7 +976,7 @@ export default function SupplierPurchases() {
           }`}
         >
           <span className="material-symbols-outlined text-base">domain</span>
-          Pharma Distributors Directory ({suppliers.length})
+          Pharma Companies &amp; Suppliers ({suppliers.length})
         </button>
         <button
           onClick={() => setActiveTab("bills")}
@@ -985,7 +985,7 @@ export default function SupplierPurchases() {
           }`}
         >
           <span className="material-symbols-outlined text-base">receipt_long</span>
-          All Purchase Bills Audit Log ({purchases.length})
+          All Purchase Bills &amp; Invoices Log ({purchases.length})
         </button>
         <button
           onClick={() => setActiveTab("new_purchase")}
@@ -994,7 +994,7 @@ export default function SupplierPurchases() {
           }`}
         >
           <span className="material-symbols-outlined text-base">add_shopping_cart</span>
-          Receive New Stock Entry
+          Detailed Multi-Item Purchase Entry
         </button>
       </div>
 
@@ -1010,13 +1010,13 @@ export default function SupplierPurchases() {
               <div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-[11px] font-black uppercase tracking-wider mb-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-                  Pharmacy / Warehouse Goods Received Note
+                  Pharmacy / Godown Company Stock Inward
                 </div>
                 <h2 className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
-                  Purchase GRN <span className="text-emerald-200 text-xl font-medium">_Form</span>
+                  Company Purchase Invoice Entry <span className="text-emerald-200 text-xl font-medium">(کمپنی خریداری بل)</span>
                 </h2>
                 <p className="text-xs text-emerald-100 mt-0.5 font-medium">
-                  MS Access &amp; DrCreate Inward Goods Entry, Bilty Tracking &amp; Instant Stock Replenishment
+                  Enter Company Sale Invoices, Bill #, Changing Salesmen, Bilty Tracking &amp; Auto Godown Stock
                 </p>
               </div>
             </div>
@@ -1028,7 +1028,7 @@ export default function SupplierPurchases() {
                 className="bg-slate-900/80 hover:bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 border border-white/20"
               >
                 <span className="material-symbols-outlined text-base">list_alt</span>
-                Show List
+                Show Invoices List
               </button>
               <button
                 type="button"
@@ -1046,14 +1046,14 @@ export default function SupplierPurchases() {
             {/* Section 1: Basic Info */}
             <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 md:p-5">
               <div className="text-xs font-black text-emerald-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-base text-emerald-700">info</span>
-                Basic Info
+                <span className="material-symbols-outlined text-base text-emerald-700">receipt_long</span>
+                Invoice Header &amp; Company Info (انوائس اور سپلائر کی تفصیل)
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
                 {/* Date */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Date</label>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Invoice Date (تاریخ)</label>
                   <input
                     type="text"
                     value={grnForm.date}
@@ -1062,9 +1062,9 @@ export default function SupplierPurchases() {
                   />
                 </div>
 
-                {/* Voucher No */}
+                {/* System Entry # */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Voucher No</label>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">System Entry # (سسٹم نمبر)</label>
                   <input
                     type="text"
                     value={grnForm.voucher_no}
@@ -1073,29 +1073,32 @@ export default function SupplierPurchases() {
                   />
                 </div>
 
-                {/* GRN No */}
+                {/* Company Invoice / Bill # */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">GRN No (Challan #)</label>
+                  <label className="block text-[11px] font-bold text-emerald-950 mb-1 flex items-center gap-1">
+                    <span>Company Invoice / Bill # (انوائس نمبر)</span>
+                    <span className="text-rose-500 font-black">*</span>
+                  </label>
                   <input
                     type="text"
                     value={grnForm.grn_no}
                     onChange={(e) => setGrnForm({ ...grnForm, grn_no: e.target.value })}
-                    placeholder="e.g. 142863"
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    placeholder="e.g. 10505, 017729, INV/0503"
+                    className="w-full bg-white border border-emerald-400 rounded-xl px-3 py-2 text-xs font-black text-gray-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                   />
                 </div>
 
-                {/* Reference with + New */}
+                {/* Salesman / Reference with + New */}
                 <div>
                   {showNewRefInput ? (
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 mb-1">New Reference</label>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">New Salesman / Booker</label>
                       <div className="flex gap-1.5">
                         <input
                           type="text"
                           value={newRefText}
                           onChange={(e) => setNewRefText(e.target.value)}
-                          placeholder="Enter Rep / Booker..."
+                          placeholder="e.g. M Imran Qasim..."
                           className="flex-1 bg-white border border-emerald-400 rounded-xl px-2.5 py-1.5 text-xs font-bold"
                           autoFocus
                           onKeyDown={(e) => e.key === "Enter" && handleAddNewReference()}
@@ -1118,14 +1121,14 @@ export default function SupplierPurchases() {
                     </div>
                   ) : (
                     <ExpandableCombobox
-                      label="Reference (Rep/Booker)"
+                      label="Salesman / Booker (سیلز مین / آرڈر بکر)"
                       value={grnForm.reference}
                       onChange={(val) => setGrnForm({ ...grnForm, reference: val })}
                       options={referenceOptions}
-                      placeholder="Select or Search Rep..."
-                      searchPlaceholder="Search Rep / Booker..."
+                      placeholder="Select or Type Salesman..."
+                      searchPlaceholder="Search or type new Salesman..."
                       onAddNew={() => setShowNewRefInput(true)}
-                      addNewLabel="+ New"
+                      addNewLabel="+ New Salesman"
                     />
                   )}
                 </div>
@@ -1479,7 +1482,7 @@ export default function SupplierPurchases() {
                     <tr>
                       <td colSpan="8" className="text-center py-12 text-gray-400 font-semibold">
                         <span className="material-symbols-outlined text-4xl block mb-1 text-gray-300">add_shopping_cart</span>
-                        No medicine items in this GRN bill yet. Select a product and click Add.
+                        No medicine items in this purchase bill yet. Select a product and click Add.
                       </td>
                     </tr>
                   ) : (
@@ -1524,12 +1527,12 @@ export default function SupplierPurchases() {
                 className="w-full sm:w-auto bg-slate-800 text-white hover:bg-slate-900 px-6 py-3 rounded-2xl font-bold text-xs transition-colors shadow-md flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-base">list_alt</span>
-                Show List (GRN History)
+                Invoices Audit List (بل لسٹ اور ریکارڈ)
               </button>
 
               <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
                 <div className="bg-emerald-50 border border-emerald-200 px-5 py-2.5 rounded-2xl text-right">
-                  <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Total Bill</div>
+                  <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Total Bill Net Amount (کل بل)</div>
                   <div className="text-xl font-black text-emerald-950">
                     Rs. {grnItems.reduce((s, it) => s + (Number(it.net) || 0), 0).toLocaleString()}
                   </div>
@@ -1541,7 +1544,7 @@ export default function SupplierPurchases() {
                   className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 px-8 py-3 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-base">save</span>
-                  Save Bill
+                  Save Invoice &amp; Add to Stock (بل محفوظ کریں)
                 </button>
               </div>
             </div>

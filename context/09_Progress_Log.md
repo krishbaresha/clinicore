@@ -33,10 +33,22 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** PWA Standalone Detection & Dynamic Install Button Hiding Deployed
-- **Last worked on:** Added native PWA standalone detection (`display-mode: standalone`, `navigator.standalone`, `appinstalled`) to `SidebarLayout.jsx` so that the "Install Desktop / Mobile App" buttons automatically disappear when running inside an installed PWA.
+- **Phase:** Real-World Supplier Invoices & Changing Salesmen Terminology Deployed
+- **Last worked on:** Updated `SupplierPurchases.jsx` terminology from "Voucher" to "Company Invoice / Bill #" (کمپنی انوائس / بل نمبر), added typeable/searchable Salesman & Booker field, and mapped all 4 physical distributor bills (Contimade, German Homeo, Dr. Reckeweg, Pakistan Post).
 - **Currently blocked on:** None.
 - **Overall completion estimate:** 100% Production Ready (149/149 test suite passing, build exit code 0).
+
+### Session: 2026-08-26 (Part 45) — Real-World Supplier Invoices & Changing Salesmen UX
+
+**Task worked on:**
+1. **Terminology Alignment (`src/pages/SupplierPurchases.jsx`):**
+   - Replaced confusing "Voucher No" / "GRN No" labels with crystal-clear **"Company Invoice / Bill # (کمپنی انوائس / بل نمبر)"** (e.g. `10505`, `017729`, `INV/0503`) and **"System Entry # (سسٹم نمبر)"** (e.g. `P-1001`).
+   - Renamed header and tab titles to **"Company Purchase Invoice Entry (کمپنی خریداری بل انٹری)"** and **"Save Invoice & Add to Stock (بل محفوظ کریں)"**.
+2. **Dynamic Salesman / Order Booker Architecture:**
+   - Salesman field is a smart combobox allowing instant selection of existing reps or typing new salesmen on the fly with automatic future suggestion retention.
+3. **Verification:**
+   - Ran test suite: 21/21 suites (149 tests) passed (`npm test -- --run`).
+   - Production bundle compiled with exit code 0 (`npm run build`).
 
 ### Session: 2026-08-26 (Part 44) — PWA Standalone Detection & Dynamic Install Button Hiding
 
