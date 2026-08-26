@@ -1,5 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Stethoscope,
+  RefreshCw,
+  DoorOpen,
+  Coffee,
+  Moon,
+  Edit3,
+  PhoneCall,
+  Clock,
+  UserPlus,
+  SkipForward,
+  RotateCcw,
+  Trash2,
+  Ticket,
+  Users
+} from "lucide-react";
 import { dbVisits, dbPatients, dbUsers } from "../api/db.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { formatPatientAge } from "../utils/formatters.js";
@@ -134,9 +151,7 @@ export default function DoctorQueue() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-teal-600 text-2xl sm:text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              stethoscope
-            </span>
+            <Stethoscope className="w-6 h-6 sm:w-7 sm:h-7 text-teal-600" />
             <span>{docProfile?.name ? `${docProfile.name}'s OPD Chamber` : "Doctor's Live Queue"}</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
@@ -159,7 +174,7 @@ export default function DoctorQueue() {
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-sm">meeting_room</span>
+                  <DoorOpen className="w-3.5 h-3.5" />
                   <span>{d.name.split(" ")[0]}</span>
                 </button>
               ))}
@@ -168,9 +183,9 @@ export default function DoctorQueue() {
 
           <button
             onClick={loadQueue}
-            className="touch-pill min-h-[44px] text-xs text-teal-900 bg-white/85 border border-teal-200/80 hover:bg-teal-50 transition-colors font-bold shadow-xs cursor-pointer active:scale-95"
+            className="touch-pill min-h-[44px] text-xs text-teal-900 bg-white/85 border border-teal-200/80 hover:bg-teal-50 transition-colors font-bold shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
           >
-            <span className="material-symbols-outlined text-base">refresh</span>
+            <RefreshCw className="w-4 h-4 text-teal-700" />
             <span>Refresh Queue</span>
           </button>
         </div>
@@ -200,7 +215,7 @@ export default function DoctorQueue() {
                 : "bg-emerald-50/80 text-emerald-900 border-emerald-200/80 hover:bg-emerald-100"
             }`}
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping" />
             <span>🟢 Available (In Chamber)</span>
           </button>
 
@@ -213,7 +228,7 @@ export default function DoctorQueue() {
                 : "bg-amber-50/80 text-amber-900 border-amber-200/80 hover:bg-amber-100"
             }`}
           >
-            <span className="material-symbols-outlined text-base">coffee</span>
+            <Coffee className="w-4 h-4 text-amber-700" />
             <span>🟡 Short Break (15m)</span>
           </button>
 
@@ -226,7 +241,7 @@ export default function DoctorQueue() {
                 : "bg-slate-100/80 text-slate-700 border-slate-200/80 hover:bg-slate-200/80"
             }`}
           >
-            <span className="material-symbols-outlined text-base">do_not_disturb_on</span>
+            <Moon className="w-4 h-4 text-slate-500" />
             <span>Shift Ended / Away</span>
           </button>
         </div>
@@ -238,7 +253,7 @@ export default function DoctorQueue() {
             onClick={() => setShowNoteInput(!showNoteInput)}
             className="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1.5 cursor-pointer py-1"
           >
-            <span className="material-symbols-outlined text-base">edit_note</span>
+            <Edit3 className="w-4 h-4" />
             <span>{showNoteInput ? "Hide Custom Note" : "Add / Edit Custom Status Note (e.g. Back at 6:30 PM)"}</span>
           </button>
         </div>
@@ -284,18 +299,16 @@ export default function DoctorQueue() {
           onClick={callNext}
           className="w-full min-h-[52px] bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white py-3.5 px-6 rounded-2xl font-black text-base sm:text-lg transition-all shadow-lg shadow-teal-700/25 flex items-center justify-center gap-3 cursor-pointer active:scale-98"
         >
-          <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-            call
-          </span>
+          <PhoneCall className="w-5 h-5" />
           <span>Call Next Patient (Token #{waiting[0]?.token_number})</span>
         </button>
       )}
 
-      {/* ── Queue Cards List ── */}
+      {/* ── Queue Cards List with Layout Animations ── */}
       {queue.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 px-4 text-center glass-card border-dashed border-2 border-teal-200/80">
           <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center mb-4 shadow-xs">
-            <span className="material-symbols-outlined text-4xl">event_available</span>
+            <Users className="w-8 h-8" />
           </div>
           <h3 className="font-black text-slate-900 text-base">No Patients in Today&apos;s Queue</h3>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm font-medium">
@@ -305,144 +318,152 @@ export default function DoctorQueue() {
             onClick={() => navigate("/reception/register")}
             className="mt-5 min-h-[44px] px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm shadow-teal-700/20 transition-all cursor-pointer active:scale-95"
           >
-            <span className="material-symbols-outlined text-base">how_to_reg</span>
+            <UserPlus className="w-4 h-4" />
             <span>Register Walk-in Patient</span>
           </button>
         </div>
       ) : (
         <div className="space-y-3.5">
-          {queue.map((visit) => {
-            const patient = patients[visit.patient_id];
-            const s = STATUS_STYLES[visit.status] || STATUS_STYLES.waiting;
-            const isActive = visit.status === "in_consultation";
+          <AnimatePresence>
+            {queue.map((visit) => {
+              const patient = patients[visit.patient_id];
+              const s = STATUS_STYLES[visit.status] || STATUS_STYLES.waiting;
+              const isActive = visit.status === "in_consultation";
 
-            return (
-              <div
-                key={visit.id}
-                className={`glass-card p-4 sm:p-5 transition-all ${s.bg} ${s.border} ${isActive ? "shadow-md ring-2 ring-teal-500/50" : ""}`}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-                  <div className="flex items-start gap-3.5 min-w-0">
-                    {/* Token Number High-Contrast Badge */}
-                    <div
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${
-                        isActive
-                          ? "bg-teal-700 text-white shadow-md shadow-teal-700/25"
-                          : "bg-white text-slate-800 border border-slate-200/80 shadow-xs"
-                      }`}
-                    >
-                      {visit.token_number}
+              return (
+                <motion.div
+                  key={visit.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className={`glass-card p-4 sm:p-5 transition-all ${s.bg} ${s.border} ${isActive ? "shadow-md ring-2 ring-teal-500/50" : ""}`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      {/* Token Number High-Contrast Badge */}
+                      <div
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${
+                          isActive
+                            ? "bg-teal-700 text-white shadow-md shadow-teal-700/25"
+                            : "bg-white text-slate-800 border border-slate-200/80 shadow-xs"
+                        }`}
+                      >
+                        {visit.token_number}
+                      </div>
+
+                      {/* Patient Information & Badges */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-black text-slate-900 text-base">
+                            {patient ? patient.full_name : "Unknown Patient"}
+                          </span>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${s.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                            {s.label}
+                          </span>
+                          {visit.visit_type === "follow_up" && (
+                            <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200/70 px-2 py-0.5 rounded-full font-bold">
+                              Follow-up
+                            </span>
+                          )}
+                        </div>
+                        {patient && (
+                          <div className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                            {getRelLabel(patient.relation_type)} {patient.relation_name}
+                            {formatPatientAge(patient) !== "—" ? ` · ${formatPatientAge(patient)}` : ""}
+                            {patient.phone ? ` · ${patient.phone}` : ""}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Registered at {new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Patient Information & Badges */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-black text-slate-900 text-base">
-                          {patient ? patient.full_name : "Unknown Patient"}
-                        </span>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${s.badge}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                          {s.label}
-                        </span>
-                        {visit.visit_type === "follow_up" && (
-                          <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200/70 px-2 py-0.5 rounded-full font-bold">
-                            Follow-up
-                          </span>
-                        )}
-                      </div>
-                      {patient && (
-                        <div className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                          {getRelLabel(patient.relation_type)} {patient.relation_name}
-                          {formatPatientAge(patient) !== "—" ? ` · ${formatPatientAge(patient)}` : ""}
-                          {patient.phone ? ` · ${patient.phone}` : ""}
+                    {/* Ergonomic 44px Action Targets */}
+                    <div className="flex sm:flex-col flex-row gap-2 shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                      {isActive && (
+                        <button
+                          onClick={() => startConsultation(visit.id)}
+                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-2 bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm shadow-teal-700/20 cursor-pointer active:scale-95"
+                        >
+                          <Stethoscope className="w-4 h-4" />
+                          <span>Consult</span>
+                        </button>
+                      )}
+
+                      {visit.status === "waiting" && (
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            onClick={() => {
+                              dbVisits.updateStatus(visit.id, "in_consultation");
+                              loadQueue();
+                            }}
+                            className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1.5 bg-white border border-teal-300 text-teal-800 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-teal-50 transition-all cursor-pointer active:scale-95 shadow-xs"
+                          >
+                            <PhoneCall className="w-4 h-4" />
+                            <span>Call</span>
+                          </button>
+                          <button
+                            onClick={() => skipVisit(visit.id)}
+                            className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1 bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all cursor-pointer active:scale-95 shadow-xs"
+                          >
+                            <SkipForward className="w-4 h-4" />
+                            <span>Skip</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Remove Token #${visit.token_number} (${patient?.full_name || "Patient"}) from active queue?`)) {
+                                dbVisits.delete(visit.id);
+                                loadQueue();
+                              }
+                            }}
+                            className="min-h-[44px] w-10 flex items-center justify-center bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-xs"
+                            title="Remove from Queue"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       )}
-                      <div className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">schedule</span>
-                        <span>Registered at {new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
-                      </div>
+
+                      {visit.status === "skipped" && (
+                        <div className="flex sm:flex-col flex-row gap-2 w-full sm:w-auto">
+                          <button
+                            onClick={() => {
+                              dbVisits.reissueLateToken(visit.id);
+                              loadQueue();
+                            }}
+                            title="Re-issue new token at END of queue with Rs. 0 Fee"
+                            className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1.5 bg-white border border-amber-300 text-amber-900 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-amber-50 transition-all cursor-pointer active:scale-95 shadow-xs"
+                          >
+                            <Ticket className="w-4 h-4 text-amber-700" />
+                            <span>Re-issue Token</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              dbVisits.updateStatus(visit.id, "waiting");
+                              loadQueue();
+                            }}
+                            className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1 bg-white border border-teal-300 text-teal-800 px-3 py-2 rounded-xl text-xs font-bold hover:bg-teal-50 transition-all cursor-pointer active:scale-95 shadow-xs"
+                          >
+                            <RotateCcw className="w-4 h-4 text-teal-700" />
+                            <span>Recall</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {/* Ergonomic 44px Action Targets */}
-                  <div className="flex sm:flex-col flex-row gap-2 shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
-                    {isActive && (
-                      <button
-                        onClick={() => startConsultation(visit.id)}
-                        className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-2 bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm shadow-teal-700/20 cursor-pointer active:scale-95"
-                      >
-                        <span className="material-symbols-outlined text-base">stethoscope</span>
-                        <span>Consult</span>
-                      </button>
-                    )}
-
-                    {visit.status === "waiting" && (
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <button
-                          onClick={() => {
-                            dbVisits.updateStatus(visit.id, "in_consultation");
-                            loadQueue();
-                          }}
-                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1.5 bg-white border border-teal-300 text-teal-800 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-teal-50 transition-all cursor-pointer active:scale-95 shadow-xs"
-                        >
-                          <span className="material-symbols-outlined text-base">call</span>
-                          <span>Call</span>
-                        </button>
-                        <button
-                          onClick={() => skipVisit(visit.id)}
-                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1 bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all cursor-pointer active:scale-95 shadow-xs"
-                        >
-                          <span className="material-symbols-outlined text-base">skip_next</span>
-                          <span>Skip</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Remove Token #${visit.token_number} (${patient?.full_name || "Patient"}) from active queue?`)) {
-                              dbVisits.delete(visit.id);
-                              loadQueue();
-                            }
-                          }}
-                          className="min-h-[44px] w-10 flex items-center justify-center bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-xs"
-                          title="Remove from Queue"
-                        >
-                          <span className="material-symbols-outlined text-base">close</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {visit.status === "skipped" && (
-                      <div className="flex sm:flex-col flex-row gap-2 w-full sm:w-auto">
-                        <button
-                          onClick={() => {
-                            dbVisits.reissueLateToken(visit.id);
-                            loadQueue();
-                          }}
-                          title="Re-issue new token at END of queue with Rs. 0 Fee"
-                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1.5 bg-white border border-amber-300 text-amber-900 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-amber-50 transition-all cursor-pointer active:scale-95 shadow-xs"
-                        >
-                          <span className="material-symbols-outlined text-base">confirmation_number</span>
-                          <span>Re-issue Token</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            dbVisits.updateStatus(visit.id, "waiting");
-                            loadQueue();
-                          }}
-                          className="flex-1 sm:flex-initial min-h-[44px] flex items-center justify-center gap-1 bg-white border border-teal-300 text-teal-800 px-3 py-2 rounded-xl text-xs font-bold hover:bg-teal-50 transition-all cursor-pointer active:scale-95 shadow-xs"
-                        >
-                          <span className="material-symbols-outlined text-base">undo</span>
-                          <span>Recall</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
     </div>
   );
 }
+
 

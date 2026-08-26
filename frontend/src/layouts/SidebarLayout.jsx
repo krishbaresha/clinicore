@@ -1,7 +1,33 @@
 // ClinicFlow Master Enterprise Responsive Layout & Collapsible Navigation Engine v2.5
 // Built with UI/UX Pro Max standards for high-performance medical workflows
 import { useState, useEffect } from "react";
-import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  LayoutDashboard,
+  UserPlus,
+  Calendar,
+  CreditCard,
+  Boxes,
+  Receipt,
+  Truck,
+  Building2,
+  Clock,
+  Users,
+  Wallet,
+  Settings,
+  Shield,
+  Stethoscope,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Download,
+  Smartphone,
+  Activity,
+  Hospital
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { getInitials } from "../utils/formatters.js";
 import { dbClinic, dbPatients, dbSales, dbInventory, dbUsers, exportFullDatabase } from "../api/db.js";
@@ -11,6 +37,29 @@ import LanguageSwitcher from "../components/LanguageSwitcher.jsx";
 import LicenseBanner from "../components/LicenseBanner.jsx";
 import { syncEngine } from "../api/syncEngine.js";
 import { useTranslation } from "react-i18next";
+
+function getNavIcon(iconName, className = "w-5 h-5") {
+  switch (iconName) {
+    case "dashboard": return <LayoutDashboard className={className} />;
+    case "how_to_reg":
+    case "person_add": return <UserPlus className={className} />;
+    case "event_note": return <Calendar className={className} />;
+    case "point_of_sale": return <CreditCard className={className} />;
+    case "inventory_2": return <Boxes className={className} />;
+    case "receipt_long": return <Receipt className={className} />;
+    case "local_shipping": return <Truck className={className} />;
+    case "warehouse":
+    case "add_business": return <Building2 className={className} />;
+    case "pending_actions": return <Clock className={className} />;
+    case "group":
+    case "queue": return <Users className={className} />;
+    case "payments": return <Wallet className={className} />;
+    case "settings": return <Settings className={className} />;
+    case "admin_panel_settings": return <Shield className={className} />;
+    case "stethoscope": return <Stethoscope className={className} />;
+    default: return <Activity className={className} />;
+  }
+}
 
 // 1. Unified Front Desk & Medical Store Operator (Receptionist + Pharmacist / Cashier)
 const UNIFIED_DESK_NAV = [
@@ -506,10 +555,10 @@ export default function SidebarLayout({ children }) {
                 }
                 title={!isFullWidth ? displayLabel : undefined}
               >
-                <span className={`material-symbols-outlined text-xl flex-shrink-0 ${
-                  !isFullWidth ? "text-2xl" : ""
+                <span className={`flex-shrink-0 flex items-center justify-center ${
+                  !isFullWidth ? "w-6 h-6" : "w-5 h-5"
                 }`}>
-                  {item.icon}
+                  {getNavIcon(item.icon, !isFullWidth ? "w-6 h-6" : "w-5 h-5")}
                 </span>
 
                 {isFullWidth && (
@@ -546,9 +595,7 @@ export default function SidebarLayout({ children }) {
             className="w-10 h-10 rounded-xl bg-teal-50/80 hover:bg-teal-100 text-teal-800 border border-teal-200/70 transition-all flex items-center justify-center cursor-pointer shadow-xs active:scale-95 touch-target-44"
             title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
-            <span className="material-symbols-outlined text-xl">
-              {sidebarOpen ? "menu_open" : "menu"}
-            </span>
+            <Menu className="w-5 h-5" />
           </button>
 
           {/* Brand Logo & Clinic Info */}
@@ -632,7 +679,7 @@ export default function SidebarLayout({ children }) {
                 title="Sign Out / Exit Portal"
                 className="w-7 h-7 text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg transition-all flex items-center justify-center border border-rose-200 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-sm">logout</span>
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
@@ -670,7 +717,7 @@ export default function SidebarLayout({ children }) {
                   className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-950 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer active:scale-98"
                   title="Install CliniCore App"
                 >
-                  <span className="material-symbols-outlined text-base text-emerald-700">install_desktop</span>
+                  <Download className="w-4 h-4 text-emerald-700" />
                   <span>Install Desktop App</span>
                 </button>
 
@@ -683,7 +730,7 @@ export default function SidebarLayout({ children }) {
                     className="p-1.5 rounded-lg hover:bg-teal-100 text-teal-800 transition-colors cursor-pointer"
                     title="Collapse Sidebar"
                   >
-                    <span className="material-symbols-outlined text-lg">chevron_left</span>
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
                 </div>
               </>
@@ -694,105 +741,115 @@ export default function SidebarLayout({ children }) {
                   className="w-full h-11 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 text-emerald-900 transition-colors flex items-center justify-center cursor-pointer border border-emerald-200/80 active:scale-95"
                   title="Install CliniCore App"
                 >
-                  <span className="material-symbols-outlined text-base text-emerald-700">install_desktop</span>
+                  <Download className="w-4 h-4 text-emerald-700" />
                 </button>
                 <button
                   onClick={() => setSidebarOpen(true)}
                   className="w-full p-1.5 rounded-lg hover:bg-teal-100 text-teal-800 transition-colors flex items-center justify-center cursor-pointer"
                   title="Expand Sidebar"
                 >
-                  <span className="material-symbols-outlined text-lg">chevron_right</span>
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             )}
           </div>
         </aside>
 
-        {/* ── Mobile Slide-over Drawer (Translucent Glassmorphism & 44px Touch Targets) ── */}
-        {mobileDrawerOpen && (
-          <div className="md:hidden fixed inset-0 z-50 flex">
-            {/* Backdrop Blur Overlay */}
-            <div
-              onClick={() => setMobileDrawerOpen(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
-            />
+        {/* ── Mobile Slide-over Drawer with Framer-Motion AnimatePresence ── */}
+        <AnimatePresence>
+          {mobileDrawerOpen && (
+            <div className="md:hidden fixed inset-0 z-50 flex">
+              {/* Backdrop Blur Overlay */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setMobileDrawerOpen(false)}
+                className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"
+              />
 
-            {/* Slide-out Drawer Panel */}
-            <aside className="relative flex flex-col w-[300px] max-w-[85vw] h-full bg-white/90 backdrop-blur-xl border-r border-slate-200/70 shadow-2xl z-10 animate-slide-right">
-              {/* Drawer Top Header */}
-              <div className="p-4 border-b border-slate-200/60 flex items-center justify-between bg-gradient-to-r from-teal-50/80 to-white">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
-                    <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      medical_services
-                    </span>
-                  </div>
-                  <div>
-                    <h2 className="font-black text-sm text-slate-900 tracking-tight">CliniCore</h2>
-                    <p className="text-[10px] text-slate-500 font-medium truncate max-w-[160px]">
-                      {clinic?.name || "Clinic"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setMobileDrawerOpen(false)}
-                  className="w-10 h-10 rounded-xl hover:bg-teal-100 text-slate-500 hover:text-teal-900 transition-colors cursor-pointer flex items-center justify-center touch-target-44"
-                >
-                  <span className="material-symbols-outlined text-xl">close</span>
-                </button>
-              </div>
-
-              {/* Staff Profile Card inside Mobile Drawer */}
-              {user && (
-                <div className="mx-3 mt-3 p-3 bg-teal-50/80 border border-teal-200/60 rounded-xl flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
-                      {getInitials(user.name)}
+              {/* Slide-out Drawer Panel */}
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="relative flex flex-col w-[300px] max-w-[85vw] h-full bg-white/95 backdrop-blur-xl border-r border-slate-200/70 shadow-2xl z-10"
+              >
+                {/* Drawer Top Header */}
+                <div className="p-4 border-b border-slate-200/60 flex items-center justify-between bg-gradient-to-r from-teal-50/80 to-white">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
+                      <Hospital className="w-5 h-5 text-white" />
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-xs text-slate-900 truncate">{user.name}</p>
-                      <p className="text-[10px] font-bold text-teal-700 capitalize leading-none">{user.role}</p>
+                    <div>
+                      <h2 className="font-black text-sm text-slate-900 tracking-tight">CliniCore</h2>
+                      <p className="text-[10px] text-slate-500 font-medium truncate max-w-[160px]">
+                        {clinic?.name || "Clinic"}
+                      </p>
                     </div>
                   </div>
                   <button
-                    onClick={handleLogout}
-                    className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200 cursor-pointer"
-                    title="Sign Out"
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="w-10 h-10 rounded-xl hover:bg-teal-100 text-slate-500 hover:text-teal-900 transition-colors cursor-pointer flex items-center justify-center touch-target-44"
                   >
-                    <span className="material-symbols-outlined text-base">logout</span>
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-              )}
 
-              {/* Navigation Items (Fully expanded with labels) */}
-              <div className="p-3 overflow-y-auto flex-1 touch-scroll custom-scrollbar">
-                <NavigationList isFullWidth={true} onItemClick={() => setMobileDrawerOpen(false)} />
-              </div>
+                {/* Staff Profile Card inside Mobile Drawer */}
+                {user && (
+                  <div className="mx-3 mt-3 p-3 bg-teal-50/80 border border-teal-200/60 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                        {getInitials(user.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-xs text-slate-900 truncate">{user.name}</p>
+                        <p className="text-[10px] font-bold text-teal-700 capitalize leading-none">{user.role}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200 cursor-pointer"
+                      title="Sign Out"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
-              {/* Mobile Drawer Bottom Actions */}
-              <div className="p-3 border-t border-slate-200/60 bg-slate-50/60 space-y-2">
-                <button
-                  onClick={() => {
-                    setMobileDrawerOpen(false);
-                    handleInstallPWA();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base text-emerald-700">install_mobile</span>
-                  <span>Install App on Phone</span>
-                </button>
+                {/* Navigation Items (Fully expanded with labels) */}
+                <div className="p-3 overflow-y-auto flex-1 touch-scroll custom-scrollbar">
+                  <NavigationList isFullWidth={true} onItemClick={() => setMobileDrawerOpen(false)} />
+                </div>
 
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">logout</span>
-                  <span>Sign Out / Exit Portal</span>
-                </button>
-              </div>
-            </aside>
-          </div>
-        )}
+                {/* Mobile Drawer Bottom Actions */}
+                <div className="p-3 border-t border-slate-200/60 bg-slate-50/60 space-y-2">
+                  <button
+                    onClick={() => {
+                      setMobileDrawerOpen(false);
+                      handleInstallPWA();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    <Smartphone className="w-4 h-4 text-emerald-700" />
+                    <span>Install App on Phone</span>
+                  </button>
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-2 min-h-[44px] px-3.5 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200/80 rounded-xl transition-all text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out / Exit Portal</span>
+                  </button>
+                </div>
+              </motion.aside>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* ── Main Content Area with Dynamic Desktop Margin & Natural Scrolling ── */}
         <main
@@ -824,7 +881,7 @@ export default function SidebarLayout({ children }) {
                   }`
                 }
               >
-                <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                {getNavIcon(item.icon, "w-5 h-5")}
                 <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label.split(" ")[0]}</span>
               </NavLink>
             </li>
@@ -834,7 +891,7 @@ export default function SidebarLayout({ children }) {
               onClick={() => setMobileDrawerOpen(true)}
               className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-teal-800 font-black hover:bg-teal-50/80 transition-all w-full cursor-pointer min-h-[44px]"
             >
-              <span className="material-symbols-outlined text-2xl">menu</span>
+              <Menu className="w-6 h-6" />
               <span className="text-[10px] mt-0.5 tracking-tight">Menu</span>
             </button>
           </li>

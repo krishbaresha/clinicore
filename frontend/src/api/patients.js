@@ -1,5 +1,6 @@
 /** patients.js — Patient CRUD operations. */
 import { dbPatients, dbVisits, dbDocuments } from "./db.js";
+import { patientInputSchema, validateSchema } from "../schemas/index.js";
 
 export function getPatients()         { return { success: true, data: dbPatients.getAll(), error: null }; }
 export function searchPatients(query) { return { success: true, data: dbPatients.search(query), error: null }; }
@@ -15,18 +16,11 @@ export function updatePatient(id, data) {
 }
 
 export function createPatient(formData) {
-  const { full_name, relation_name, relation_type, phone, age, gender, cnic } = formData;
-  if (!full_name?.trim()) return { success: false, data: null, error: { code: "VALIDATION", message: "Full name is required." } };
-  if (!phone?.trim())     return { success: false, data: null, error: { code: "VALIDATION", message: "Phone number is required." } };
-  const patient = dbPatients.add({
-    full_name: full_name.trim(),
-    relation_name: relation_name?.trim() || "",
-    relation_type: relation_type || "father",
-    phone: phone.trim(),
-    age: parseInt(age) || null,
-    gender: gender || null,
-    cnic: cnic?.trim() || ""
-  });
+  const validation = validateSchema(patientInputSchema, formData);
+  if (!validation.success) {
+    return validation;
+  }
+  const patient = dbPatients.add(validation.data);
   return { success: true, data: patient, error: null };
 }
 

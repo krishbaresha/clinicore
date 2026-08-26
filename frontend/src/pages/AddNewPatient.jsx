@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { createPatient } from "../api/patients.js";
+import { patientInputSchema, validateSchema } from "../schemas/index.js";
 
 export default function AddNewPatient() {
   const navigate = useNavigate();
@@ -23,13 +25,20 @@ export default function AddNewPatient() {
   function handleSubmit(e) {
     e.preventDefault();
     setError("");
+
+    const validation = validateSchema(patientInputSchema, form);
+    if (!validation.success) {
+      setError(validation.error.message);
+      return;
+    }
+
     setLoading(true);
-    const result = createPatient(form);
+    const result = createPatient(validation.data);
     setLoading(false);
     if (result.success) {
       navigate(`/patients/${result.data.id}`);
     } else {
-      setError(result.error.message);
+      setError(result.error?.message || "Failed to create patient");
     }
   }
 
@@ -39,10 +48,10 @@ export default function AddNewPatient() {
       <button
         id="back-from-add-patient"
         onClick={() => navigate("/patients")}
-        className="flex items-center gap-1 text-primary font-body-sm text-body-sm hover:underline self-start font-bold"
+        className="flex items-center gap-1.5 text-teal-800 font-bold text-xs hover:underline self-start cursor-pointer min-h-[38px]"
       >
-        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-        Back to Patients
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back to Patients</span>
       </button>
 
       <div className="glass-card p-6 md:p-8 rounded-3xl flex flex-col gap-md">

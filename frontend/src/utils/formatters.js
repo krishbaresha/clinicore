@@ -1,7 +1,10 @@
 /**
  * formatters.js — Shared display helpers.
  * Rule 10: Currency displayed as "Rs. 1,200" · Dates as "15-Mar-2023".
+ * Powered by battle-tested date-fns & Intl engines.
  */
+
+import { format, isValid, differenceInYears, parseISO } from "date-fns";
 
 /** Format a number as PKR currency: "Rs. 1,200" */
 export function formatCurrency(amount) {
@@ -11,22 +14,33 @@ export function formatCurrency(amount) {
 
 export const formatPKR = formatCurrency;
 
+/** Safely parses input into a valid Date object */
+function safeParseDate(input) {
+  if (!input) return null;
+  if (input instanceof Date) return isValid(input) ? input : null;
+  if (typeof input === "string") {
+    // Try parseISO first
+    const parsed = parseISO(input);
+    if (isValid(parsed)) return parsed;
+    const standard = new Date(input);
+    return isValid(standard) ? standard : null;
+  }
+  const d = new Date(input);
+  return isValid(d) ? d : null;
+}
+
 /** Format an ISO date string or Date object as "15-Mar-2023" */
-export function formatDate(dateStr) {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).replace(/ /g, "-");
+export function formatDate(dateInput) {
+  const d = safeParseDate(dateInput);
+  if (!d) return "—";
+  return format(d, "dd-MMM-yyyy");
 }
 
 /** Format an ISO datetime string as "15-Mar-2023, 10:05 AM" */
-export function formatDateTime(dateStr) {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "—";
-  const datePart = formatDate(dateStr);
-  const timePart = d.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
-  return `${datePart}, ${timePart}`;
+export function formatDateTime(dateInput) {
+  const d = safeParseDate(dateInput);
+  if (!d) return "—";
+  return `${format(d, "dd-MMM-yyyy")}, ${format(d, "hh:mm a")}`;
 }
 
 /** Return the initials from a full name: "Muhammad Bilal" → "MB" */
@@ -50,7 +64,7 @@ export function getGreeting() {
 
 /** Format today's date for the dashboard header: "Wednesday, 13 Aug 2026" */
 export function formatTodayLong() {
-  return new Date().toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return format(new Date(), "EEEE, d MMMM yyyy");
 }
 
 /**
@@ -63,16 +77,13 @@ export function formatTodayLong() {
 export function getPatientCalculatedAge(patient, asOfDate = new Date()) {
   if (!patient) return null;
 
+  const targetDate = safeParseDate(asOfDate) || new Date();
+
   // 1. If exact Date of Birth is recorded
   if (patient.dob) {
-    const dob = new Date(patient.dob);
-    if (!isNaN(dob.getTime())) {
-      const target = new Date(asOfDate);
-      let age = target.getFullYear() - dob.getFullYear();
-      const m = target.getMonth() - dob.getMonth();
-      if (m < 0 || (m === 0 && target.getDate() < dob.getDate())) {
-        age--;
-      }
+    const dob = safeParseDate(patient.dob);
+    if (dob) {
+      const age = differenceInYears(targetDate, dob);
       return age >= 0 ? age : null;
     }
   }
@@ -84,10 +95,9 @@ export function getPatientCalculatedAge(patient, asOfDate = new Date()) {
 
     const regDateStr = patient.created_at || patient.registration_date;
     if (regDateStr) {
-      const regDate = new Date(regDateStr);
-      if (!isNaN(regDate.getTime())) {
-        const target = new Date(asOfDate);
-        const yearsElapsed = Math.floor((target.getTime() - regDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      const regDate = safeParseDate(regDateStr);
+      if (regDate) {
+        const yearsElapsed = differenceInYears(targetDate, regDate);
         return initialAge + Math.max(0, yearsElapsed);
       }
     }
@@ -109,3 +119,4 @@ export function formatPatientAge(patient, asOfDate = new Date()) {
   if (calculated === 0) return "< 1 yr";
   return `${calculated} yrs`;
 }
+

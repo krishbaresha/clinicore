@@ -1,4 +1,10 @@
 import { dbInventory, dbSales, dbVisits, dbExpenses, dbReturns, resetDatabaseToDemoData } from "./db.js";
+import {
+  pharmacyExpenseSchema,
+  inventoryItemSchema,
+  recordSaleSchema,
+  validateSchema,
+} from "../schemas/index.js";
 
 export function resetDemoData()   { resetDatabaseToDemoData(); return { success: true, data: true, error: null }; }
 export function getInventory()    { return { success: true, data: dbInventory.getAll(),       error: null }; }
@@ -8,9 +14,9 @@ export function getExpenses()     { return { success: true, data: dbExpenses.get
 export function getReturns()      { return { success: true, data: dbReturns.getAll(),         error: null }; }
 
 export function addPharmacyExpense(formData) {
-  const { amount } = formData || {};
-  if (!amount || Number(amount) <= 0) return { success: false, data: null, error: { code: "VALIDATION", message: "Valid amount is required." } };
-  const exp = dbExpenses.add(formData);
+  const validation = validateSchema(pharmacyExpenseSchema, formData);
+  if (!validation.success) return validation;
+  const exp = dbExpenses.add(validation.data);
   return { success: true, data: exp, error: null };
 }
 
@@ -29,22 +35,21 @@ export function processSaleReturn(payload) {
 }
 
 export function addInventoryItem(formData) {
-  const { medicine_name } = formData;
-  if (!medicine_name?.trim()) return { success: false, data: null, error: { code: "VALIDATION", message: "Medicine name is required." } };
-  const item = dbInventory.add({
-    ...formData,
-    medicine_name: medicine_name.trim(),
-  });
+  const validation = validateSchema(inventoryItemSchema, formData);
+  if (!validation.success) return validation;
+  const item = dbInventory.add(validation.data);
   return { success: true, data: item, error: null };
 }
 
 /** Record a sale — automatically deducts stock from inventory. */
 export function recordSale(formData) {
-  const { inventory_id, quantity_sold, linked_visit_id, selected_unit_type = "unit" } = formData;
+  const validation = validateSchema(recordSaleSchema, formData);
+  if (!validation.success) return validation;
+
+  const { inventory_id, quantity_sold: qty, linked_visit_id, selected_unit_type } = validation.data;
   const item = dbInventory.getById(inventory_id);
   if (!item) return { success: false, data: null, error: { code: "NOT_FOUND", message: "Inventory item not found." } };
 
-  const qty = parseInt(quantity_sold) || 1;
   const stripsPerBox = Number(item.strips_per_box) || 10;
   const unitsPerStrip = Number(item.units_per_strip) || 12;
 

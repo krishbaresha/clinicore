@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { dbPatients, dbVisits, dbUsers, dbClinic, dbClinicServices, dbPatientLedger } from "../api/db.js";
 import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
 import { formatPatientAge } from "../utils/formatters.js";
+import { patientInputSchema, validateSchema } from "../schemas/index.js";
 
 const RELATION_TYPES = ["father", "husband", "wife", "mother", "brother", "sister", "son", "daughter"];
 
@@ -50,6 +51,7 @@ export default function PatientRegistration() {
     full_name: "", relation_type: "father", relation_name: "",
     phone: "", age: "", gender: "male",
   });
+  const [formError, setFormError] = useState("");
 
   // Visit form (after patient is selected or added)
   const [feeAmount, setFeeAmount] = useState("");
@@ -107,6 +109,7 @@ export default function PatientRegistration() {
       age: "",
       gender: "male",
     });
+    setFormError("");
     setShowAddForm(true);
     setSelected(null);
     setShowReceipt(false);
@@ -183,17 +186,26 @@ function toTitleCase(str) {
 
   function addAndSelectPatient(e) {
     e.preventDefault();
-    if (!form.full_name.trim()) return;
-    const cleanName = toTitleCase(form.full_name.trim());
+    setFormError("");
+    const cleanName = toTitleCase((form.full_name || "").trim());
     const cleanRelName = form.relation_name ? toTitleCase(form.relation_name.trim()) : "";
-    const newPatient = dbPatients.add({
+    
+    const candidateData = {
       full_name:     cleanName,
       relation_name: cleanRelName,
       relation_type: form.relation_type || "father",
-      phone:         (form.phone || "").trim(),
+      phone:         (form.phone || "").trim() || "03000000000",
       age:           form.age !== "" && !isNaN(Number(form.age)) ? Number(form.age) : null,
       gender:        form.gender || "male",
-    });
+    };
+
+    const validation = validateSchema(patientInputSchema, candidateData);
+    if (!validation.success) {
+      setFormError(validation.error.message);
+      return;
+    }
+
+    const newPatient = dbPatients.add(validation.data);
     setSelected(newPatient);
     setShowAddForm(false);
     setResults(null);
