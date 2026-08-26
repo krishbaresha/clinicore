@@ -272,32 +272,80 @@ export default function MedicalStorePOS() {
     window.addEventListener("clinicflow_status_update", refreshData);
 
     function handleKeyDown(e) {
-      if (e.key === "F2") {
+      // 1. F1 or Alt+S: Focus Medicine Search Bar
+      if (e.key === "F1" || (e.altKey && (e.key === "s" || e.key === "S"))) {
         e.preventDefault();
         if (searchInputRef.current) searchInputRef.current.focus();
-      } else if (e.key === "F3") {
+      }
+      // 2. F2, F9 or Ctrl+Enter: Fast Checkout & Print Bill
+      else if (e.key === "F2" || e.key === "F9" || (e.ctrlKey && e.key === "Enter")) {
+        e.preventDefault();
+        const checkoutBtn = document.getElementById("pos-checkout-btn");
+        if (checkoutBtn) checkoutBtn.click();
+      }
+      // 3. F3: Toggle Company / Brand Filter
+      else if (e.key === "F3") {
         e.preventDefault();
         setSearchMode((prev) => {
           const next = prev === "global" ? "company" : "global";
           if (next === "global") { setPosCompanyCode("ALL"); setPosCompanyFilter(""); }
           return next;
         });
-      } else if (e.key === "F4") {
+      }
+      // 4. F4: Toggle Walk-In vs Link OPD Doctor Prescription
+      else if (e.key === "F4") {
         e.preventDefault();
         setCustomerMode((prev) => (prev === "walkin" ? "link" : "walkin"));
-      } else if (e.key === "F8") {
+      }
+      // 5. F6: Toggle Payment Method (Cash vs Credit / Udhaar)
+      else if (e.key === "F6") {
+        e.preventDefault();
+        setPaymentType((prev) => (prev === "cash" ? "credit" : "cash"));
+      }
+      // 6. F7: Focus Bill Discount (Rs)
+      else if (e.key === "F7") {
+        e.preventDefault();
+        const discEl = document.getElementById("pos-discount-input");
+        if (discEl) {
+          discEl.focus();
+          discEl.select();
+        }
+      }
+      // 7. F8: Focus Cash Given (Tendered Cash)
+      else if (e.key === "F8") {
         e.preventDefault();
         const cashEl = document.getElementById("pos-cash-tendered-input");
-        if (cashEl) cashEl.focus();
-      } else if (e.key === "F9" || (e.ctrlKey && e.key === "Enter")) {
-        e.preventDefault();
-        const checkoutBtn = document.getElementById("pos-checkout-btn");
-        if (checkoutBtn) checkoutBtn.click();
-      } else if (e.key === "F10") {
+        if (cashEl) {
+          cashEl.focus();
+          cashEl.select();
+        }
+      }
+      // 8. F10: Instant Reprint Last Bill
+      else if (e.key === "F10") {
         e.preventDefault();
         handleReprintLastReceipt();
-      } else if (e.key === "Escape") {
-        setShowRxModal(false);
+      }
+      // 9. F11 or Alt+C: Clear Cart / New Bill
+      else if (e.key === "F11" || (e.altKey && (e.key === "c" || e.key === "C"))) {
+        e.preventDefault();
+        if (cart.length > 0) {
+          if (confirm("Clear current cart and start a fresh bill (F11)?")) {
+            setCart([]);
+            setDiscountInput("");
+            setCashTenderedInput("");
+            if (searchInputRef.current) searchInputRef.current.focus();
+          }
+        }
+      }
+      // 10. Escape: Close Modals or Clear Search
+      else if (e.key === "Escape") {
+        if (showRxModal) {
+          setShowRxModal(false);
+        } else if (receipt) {
+          setReceipt(null);
+        } else if (inventoryQuery) {
+          setInventoryQuery("");
+        }
       }
     }
 
@@ -985,8 +1033,11 @@ export default function MedicalStorePOS() {
 
                 {/* Additional Overall Bill Discount */}
                 <div className="flex items-center justify-between gap-2 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
-                  <span className="text-amber-900 font-black text-xs">Additional Bill Discount (Rs):</span>
+                  <label htmlFor="pos-discount-input" className="text-amber-900 font-black text-xs">
+                    Bill Discount (F7) (Rs):
+                  </label>
                   <input
+                    id="pos-discount-input"
                     type="number"
                     min="0"
                     max={subtotal}
@@ -1013,22 +1064,22 @@ export default function MedicalStorePOS() {
                     onClick={() => setPaymentType("cash")}
                     className={`flex-1 min-h-[44px] py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                       paymentType === "cash"
-                        ? "bg-teal-700 text-white shadow-sm"
+                        ? "bg-teal-700 text-white shadow-sm ring-2 ring-teal-500/30"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
-                    💵 Cash Sale
+                    💵 Cash Sale (F6)
                   </button>
                   <button
                     type="button"
                     onClick={() => setPaymentType("credit")}
                     className={`flex-1 min-h-[44px] py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                       paymentType === "credit"
-                        ? "bg-amber-600 text-white shadow-sm"
+                        ? "bg-amber-600 text-white shadow-sm ring-2 ring-amber-500/30"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
-                    📒 Udhaar / Credit
+                    📒 Udhaar (F6)
                   </button>
                 </div>
 
@@ -1036,7 +1087,7 @@ export default function MedicalStorePOS() {
                 {paymentType === "cash" ? (
                   <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <div className="flex items-center justify-between gap-2">
-                      <label htmlFor="pos-cash-tendered-input" className="text-slate-700 font-bold">
+                      <label htmlFor="pos-cash-tendered-input" className="text-slate-700 font-bold text-xs">
                         Cash Given (F8):
                       </label>
                       <input
@@ -1046,7 +1097,7 @@ export default function MedicalStorePOS() {
                         value={cashTenderedInput}
                         onChange={(e) => setCashTenderedInput(e.target.value)}
                         placeholder={finalTotal.toString()}
-                        className="w-28 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-right text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono"
+                        className="w-28 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-right text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono shadow-2xs"
                       />
                     </div>
                     {changeDueVal > 0 && (
@@ -1073,11 +1124,52 @@ export default function MedicalStorePOS() {
                   className="w-full min-h-[48px] bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black py-3 px-4 rounded-xl text-sm transition-all shadow-lg shadow-teal-700/20 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
                   <span className="material-symbols-outlined text-lg">receipt_long</span>
-                  <span>Complete Sale &amp; Print (F9)</span>
+                  <span>Complete Sale &amp; Print (F2 / Ctrl+↵)</span>
                 </button>
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ── Ultra-Fast Keyboard Command Deck (Sticky Bottom Hotkey Bar) ── */}
+      <div className="bg-slate-900/95 text-white backdrop-blur-md px-3 py-2 rounded-2xl border border-slate-700 shadow-xl flex items-center justify-between flex-wrap gap-2 text-[11px] font-bold">
+        <div className="flex items-center gap-1 text-teal-400 font-black uppercase tracking-wider text-[10px]">
+          <span className="material-symbols-outlined text-sm">keyboard</span>
+          <span>Keyboard Power Deck:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-200">
+            <kbd className="bg-teal-700 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F1</kbd> Search
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-200">
+            <kbd className="bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F2 / ↵</kbd> Print Bill
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-200">
+            <kbd className="bg-amber-600 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F3</kbd> Brand Filter
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-200">
+            <kbd className="bg-teal-600 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F4</kbd> Link OPD
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-200">
+            <kbd className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F6</kbd> Cash/Udhaar
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-200">
+            <kbd className="bg-amber-700 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F7</kbd> Discount
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-200">
+            <kbd className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F8</kbd> Cash Given
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-200">
+            <kbd className="bg-slate-700 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F10</kbd> Reprint
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-rose-300">
+            <kbd className="bg-rose-700 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">F11</kbd> Clear
+          </span>
+          <span className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700 text-slate-400">
+            <kbd className="bg-slate-600 text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-black">Esc</kbd> Close
+          </span>
         </div>
       </div>
 
