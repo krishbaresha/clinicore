@@ -2234,10 +2234,9 @@ export const dbPatientLedger = {
 // ---------- Two-Way Supplier Ledger Engine ----------
 export const dbSupplierLedger = {
   getAll: () => {
-    let list = getCollection(KEYS.SUPPLIER_LEDGER);
+    const list = getCollection(KEYS.SUPPLIER_LEDGER);
     if (!list || list.length === 0) {
-      list = SEED_DATA.supplier_ledger || [];
-      setCollection(KEYS.SUPPLIER_LEDGER, list);
+      return SEED_DATA.supplier_ledger || [];
     }
     return Array.isArray(list) ? list : [];
   },
@@ -2905,8 +2904,8 @@ export const dbShiftClosings = {
 export const dbCashBook = {
   getAll: (filters = {}) => {
     let list = getCollection(KEYS.CASHBOOK);
-    if (!localStorage.getItem(KEYS.CASHBOOK)) {
-      // Seed initial baseline records from DrCreate ONLY on fresh first load
+    if (!list || list.length === 0) {
+      // Return initial baseline records from DrCreate ONLY on fresh first load without mutating
       list = [
         {
           id: "cb_5157",
@@ -2942,7 +2941,6 @@ export const dbCashBook = {
           created_at: "2026-08-22T08:30:00.000Z"
         }
       ];
-      setCollection(KEYS.CASHBOOK, list);
     }
 
     let filtered = [...list];
