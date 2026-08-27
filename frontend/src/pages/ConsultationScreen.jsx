@@ -251,8 +251,30 @@ export default function ConsultationScreen() {
 
     loadData();
     window.addEventListener("clinicflow_status_update", loadData);
-    return () => window.removeEventListener("clinicflow_status_update", loadData);
-  }, [visitId]);
+
+    function handleConsultationKeyDown(e) {
+      if (e.key === "F1") {
+        e.preventDefault();
+        const el = document.getElementById("doctor-clinical-notes-input");
+        if (el) el.focus();
+      } else if (e.key === "F2" || (e.ctrlKey && e.key === "Enter")) {
+        e.preventDefault();
+        const btn = document.getElementById("complete-visit-btn");
+        if (btn) btn.click();
+      } else if (e.key === "Escape") {
+        if (done) {
+          navigate("/doctor/queue");
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleConsultationKeyDown);
+
+    return () => {
+      window.removeEventListener("clinicflow_status_update", loadData);
+      window.removeEventListener("keydown", handleConsultationKeyDown);
+    };
+  }, [visitId, done, navigate]);
 
   function addReportPhoto(src) {
     setReportPhotos((prev) => [...prev, src]);
@@ -559,10 +581,16 @@ export default function ConsultationScreen() {
 
       {/* ── Optional Clinical Notes ── */}
       <div className="glass-card p-4 sm:p-5 mb-6">
-        <label className="block text-xs sm:text-sm font-black text-slate-800 mb-2">
-          Clinical Notes, Diagnosis &amp; Observations <span className="text-slate-400 font-normal">(optional)</span>
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-xs sm:text-sm font-black text-slate-800">
+            Clinical Notes, Diagnosis &amp; Observations <span className="text-slate-400 font-normal">(optional)</span>
+          </label>
+          <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-slate-100 text-slate-500 border border-slate-200 rounded">
+            F1
+          </kbd>
+        </div>
         <textarea
+          id="doctor-clinical-notes-input"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
@@ -588,6 +616,9 @@ export default function ConsultationScreen() {
               <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
             )}
             <span>Complete Consultation</span>
+            <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.2 bg-teal-800/80 text-teal-100 text-[10px] font-mono rounded">
+              F2 / Ctrl+Enter
+            </kbd>
           </button>
 
           {/* Secondary: Complete & Forward Reports to Reception */}

@@ -23,6 +23,7 @@ export default function ReceptionQueue() {
   const [isEditingNotice, setIsEditingNotice] = useState(false);
   const [noticeText, setNoticeText] = useState("");
   const [showDoctorManager, setShowDoctorManager] = useState(false);
+  const [selectedQueueIndex, setSelectedQueueIndex] = useState(0);
 
   const load = useCallback(() => {
     const all = dbVisits.getTodayAll();
@@ -46,11 +47,48 @@ export default function ReceptionQueue() {
     const handleCustomUpdate = () => load();
     window.addEventListener("clinicflow_status_update", handleCustomUpdate);
 
+    function handleReceptionQueueKeyDown(e) {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedQueueIndex((prev) => Math.min(displayedVisits.length - 1, prev + 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedQueueIndex((prev) => Math.max(0, prev - 1));
+      } else if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        const currentVisit = displayedVisits[selectedQueueIndex];
+        if (currentVisit) {
+          const patient = patients[currentVisit.patient_id];
+          const assignedDoctor = doctors.find((d) => d.id === currentVisit.doctor_id) || doctors[0];
+          printOPDTokenReceipt({
+            token: currentVisit.token_number,
+            token_number: currentVisit.token_number,
+            patient,
+            doctor: assignedDoctor,
+            visit: currentVisit,
+            fee: currentVisit.fee_amount,
+            fee_amount: currentVisit.fee_amount,
+            registeredAt: new Date(currentVisit.visit_date),
+          }, clinicData);
+        }
+      } else if (e.key === "Enter") {
+        const currentVisit = displayedVisits[selectedQueueIndex];
+        if (currentVisit) {
+          navigate(`/patients/${currentVisit.patient_id}`);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleReceptionQueueKeyDown);
+
     return () => {
       clearInterval(interval);
       window.removeEventListener("clinicflow_status_update", handleCustomUpdate);
+      window.removeEventListener("keydown", handleReceptionQueueKeyDown);
     };
-  }, [load]);
+  }, [load, displayedVisits, selectedQueueIndex, patients, doctors, clinicData, navigate]);
 
   function handleSetClinicStatus(status) {
     dbClinic.updateClinicStatus(status, clinicData?.public_notice || "");
@@ -394,15 +432,19 @@ export default function ReceptionQueue() {
         </div>
       ) : (
         <div className="space-y-3">
-          {displayedVisits.map((visit) => {
+          {displayedVisits.map((visit, idx) => {
             const patient = patients[visit.patient_id];
             const docObj = doctors.find((d) => d.id === visit.doctor_id);
             const meta = STATUS_META[visit.status] || STATUS_META.waiting;
+            const isSelected = idx === selectedQueueIndex;
 
             return (
               <div
                 key={visit.id}
-                className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm hover:shadow-md transition-all space-y-3"
+                onClick={() => setSelectedQueueIndex(idx)}
+                className={`bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm hover:shadow-md transition-all space-y-3 cursor-pointer ${
+                  isSelected ? "ring-2 ring-teal-600 bg-teal-50/60 shadow-md" : ""
+                }`}
               >
                 {/* Top Row: Token # + Patient Name + Doctor Badge + Status Badge */}
                 <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">

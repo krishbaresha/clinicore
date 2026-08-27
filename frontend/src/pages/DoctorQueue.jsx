@@ -77,6 +77,7 @@ export default function DoctorQueue() {
   const doctors = dbUsers.getAll().filter((u) => u.role === "doctor");
   const isDoctorUser = user?.role === "doctor";
   const doctorId = isDoctorUser ? (user?.userId || user?.id || "user_001") : selectedDoctorId;
+  const [selectedQueueIndex, setSelectedQueueIndex] = useState(0);
 
   const loadQueue = useCallback(() => {
     // Pass doctorId to get ONLY visits assigned to this doctor
@@ -105,12 +106,37 @@ export default function DoctorQueue() {
     const handleCustomUpdate = () => loadQueue();
     window.addEventListener("clinicflow_status_update", handleCustomUpdate);
 
+    function handleDoctorQueueKeyDown(e) {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedQueueIndex((prev) => Math.min(queue.length - 1, prev + 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedQueueIndex((prev) => Math.max(0, prev - 1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (queue.length > 0 && queue[selectedQueueIndex]) {
+          startConsultation(queue[selectedQueueIndex].id);
+        } else if (waiting.length > 0) {
+          callNext();
+        }
+      } else if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        callNext();
+      }
+    }
+
+    window.addEventListener("keydown", handleDoctorQueueKeyDown);
+
     return () => {
       clearInterval(interval);
       clearInterval(clock);
       window.removeEventListener("clinicflow_status_update", handleCustomUpdate);
+      window.removeEventListener("keydown", handleDoctorQueueKeyDown);
     };
-  }, [loadQueue]);
+  }, [loadQueue, queue, selectedQueueIndex]);
 
   function handleSetAvailability(status, defaultNote = "") {
     const note = status === "available" ? "" : (defaultNote || docProfile?.status_note || "");
@@ -325,10 +351,11 @@ export default function DoctorQueue() {
       ) : (
         <div className="space-y-3.5">
           <AnimatePresence>
-            {queue.map((visit) => {
+            {queue.map((visit, idx) => {
               const patient = patients[visit.patient_id];
               const s = STATUS_STYLES[visit.status] || STATUS_STYLES.waiting;
               const isActive = visit.status === "in_consultation";
+              const isSelected = idx === selectedQueueIndex;
 
               return (
                 <motion.div
@@ -338,7 +365,10 @@ export default function DoctorQueue() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
-                  className={`glass-card p-4 sm:p-5 transition-all ${s.bg} ${s.border} ${isActive ? "shadow-md ring-2 ring-teal-500/50" : ""}`}
+                  onClick={() => setSelectedQueueIndex(idx)}
+                  className={`glass-card p-4 sm:p-5 transition-all cursor-pointer ${s.bg} ${s.border} ${
+                    isSelected ? "ring-2 ring-teal-600 shadow-md bg-teal-50/90" : isActive ? "shadow-md ring-2 ring-teal-500/50" : ""
+                  }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
                     <div className="flex items-start gap-3.5 min-w-0">

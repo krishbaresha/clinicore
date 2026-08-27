@@ -26,7 +26,8 @@ import {
   Download,
   Smartphone,
   Activity,
-  Hospital
+  Hospital,
+  Keyboard
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { getInitials } from "../utils/formatters.js";
@@ -35,6 +36,8 @@ import { generateCliniCoreEmailTemplate } from "../utils/emailTemplate.js";
 import PullToRefresh from "../components/PullToRefresh.jsx";
 import LanguageSwitcher from "../components/LanguageSwitcher.jsx";
 import LicenseBanner from "../components/LicenseBanner.jsx";
+import KeyboardShortcutsModal from "../components/KeyboardShortcutsModal.jsx";
+import { useGlobalKeyboardNav } from "../hooks/useGlobalKeyboardNav.js";
 import { syncEngine } from "../api/syncEngine.js";
 import { useTranslation } from "react-i18next";
 
@@ -118,10 +121,25 @@ const NAV_DEFAULT = [
   { label: "Super Admin Panel", icon: "admin_panel_settings", path: "/admin" },
 ];
 
+const NAV_SHORTCUTS_MAP = {
+  "/dashboard": "Alt+1",
+  "/reception/register": "Alt+2",
+  "/reception/queue": "Alt+3",
+  "/doctor/queue": "Alt+4",
+  "/store/pos": "Alt+5",
+  "/store": "Alt+6",
+  "/store/sales": "Alt+7",
+  "/store/purchases": "Alt+8",
+  "/store/warehouse": "Alt+9",
+  "/patients": "Alt+0",
+  "/fees": "Alt+F",
+};
+
 export default function SidebarLayout({ children }) {
   const { user, clinic, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isShortcutsModalOpen, setIsShortcutsModalOpen, closeShortcutsModal } = useGlobalKeyboardNav();
 
   // Desktop Collapsible Sidebar State (Default compact on tablet 768-1199px to prevent horizontal scroll)
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -617,6 +635,11 @@ export default function SidebarLayout({ children }) {
                     {displayLabel}
                   </span>
                 )}
+                {isFullWidth && NAV_SHORTCUTS_MAP[item.path] && (
+                  <kbd className="hidden xl:inline-block px-1.5 py-0.5 text-[9px] font-mono font-bold bg-slate-100/90 text-slate-500 border border-slate-200/80 rounded shadow-2xs">
+                    {NAV_SHORTCUTS_MAP[item.path]}
+                  </kbd>
+                )}
               </NavLink>
             </li>
           );
@@ -712,6 +735,18 @@ export default function SidebarLayout({ children }) {
                 ? `Sync (${syncState.pendingCount})`
                 : "Cloud Live"}
             </span>
+          </button>
+
+          <button
+            onClick={() => setIsShortcutsModalOpen(true)}
+            className="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] font-bold border border-teal-200/80 bg-teal-50/70 hover:bg-teal-100 text-teal-900 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+            title="Master Keyboard Shortcuts Deck (F12)"
+          >
+            <Keyboard className="w-4 h-4 text-teal-700" />
+            <span className="hidden sm:inline">Shortcuts</span>
+            <kbd className="hidden lg:inline-block px-1.5 py-0.2 bg-teal-200/80 text-teal-950 text-[10px] font-mono font-bold rounded">
+              F12
+            </kbd>
           </button>
 
           <LanguageSwitcher compact={true} />
@@ -954,6 +989,12 @@ export default function SidebarLayout({ children }) {
           </li>
         </ul>
       </nav>
+
+      {/* ── Global Master Keyboard Shortcuts Cheatsheet Modal (F12) ── */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={closeShortcutsModal}
+      />
     </div>
   );
 }

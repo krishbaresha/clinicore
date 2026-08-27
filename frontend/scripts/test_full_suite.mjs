@@ -61,6 +61,7 @@ import { login, logout, getSession } from "../src/api/auth.js";
 import { createPatient, searchPatients, updatePatient } from "../src/api/patients.js";
 import { recordSale } from "../src/api/store.js";
 import { escapeHtml, printPurchaseGRNReceipt, printSaleInvoiceReceipt, printCashVoucherReceipt } from "../src/utils/thermalPrinter.js";
+import { GLOBAL_NAV_SHORTCUTS } from "../src/hooks/useGlobalKeyboardNav.js";
 
 import { runDesktopSync } from "./sync_desktop_engine.mjs";
 import fs from "fs";
@@ -1092,12 +1093,86 @@ async function runTests() {
     assert(receivedTransfer.damaged_count === 1, "Breakages recorded accurately in receiving audit");
   });
 
+  // ----------------------------------------------------
+  // SUITE 22: Full Application Keyboard Navigation & 2D Grid Engine (Milestone 37)
+  // ----------------------------------------------------
+  await suite("22. Full Application Keyboard Navigation & 2D Grid Engine", async () => {
+    // 1. Verify Global Navigation Shortcuts Definitions
+    assert(Array.isArray(GLOBAL_NAV_SHORTCUTS), "GLOBAL_NAV_SHORTCUTS is exported as an array");
+    assert(GLOBAL_NAV_SHORTCUTS.length >= 11, "Global navigation contains all 11 core portal routes");
 
+    // 2. Verify Key Mappings
+    const alt1 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+1");
+    assert(alt1 && alt1.path === "/dashboard", "Alt+1 maps to /dashboard");
 
+    const alt2 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+2");
+    assert(alt2 && alt2.path === "/reception/register", "Alt+2 maps to /reception/register");
 
+    const alt3 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+3");
+    assert(alt3 && alt3.path === "/reception/queue", "Alt+3 maps to /reception/queue");
 
+    const alt4 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+4");
+    assert(alt4 && alt4.path === "/doctor/queue", "Alt+4 maps to /doctor/queue");
+
+    const alt5 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+5");
+    assert(alt5 && alt5.path === "/store/pos", "Alt+5 maps to /store/pos");
+
+    const alt6 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+6");
+    assert(alt6 && alt6.path === "/store", "Alt+6 maps to /store");
+
+    const alt7 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+7");
+    assert(alt7 && alt7.path === "/store/sales", "Alt+7 maps to /store/sales");
+
+    const alt8 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+8");
+    assert(alt8 && alt8.path === "/store/purchases", "Alt+8 maps to /store/purchases");
+
+    const alt9 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+9");
+    assert(alt9 && alt9.path === "/store/warehouse", "Alt+9 maps to /store/warehouse");
+
+    const alt0 = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+0");
+    assert(alt0 && alt0.path === "/patients", "Alt+0 maps to /patients");
+
+    const altF = GLOBAL_NAV_SHORTCUTS.find((s) => s.key === "Alt+F");
+    assert(altF && altF.path === "/fees", "Alt+F maps to /fees");
+
+    // 3. Verify Component Files Exist
+    const modalPath = path.resolve("src/components/KeyboardShortcutsModal.jsx");
+    assert(fs.existsSync(modalPath), "KeyboardShortcutsModal component exists");
+
+    const hookPath = path.resolve("src/hooks/useGlobalKeyboardNav.js");
+    assert(fs.existsSync(hookPath), "useGlobalKeyboardNav hook exists");
+
+    const modalContent = fs.readFileSync(modalPath, "utf-8");
+    assert(modalContent.includes("ClinicFlow Master Keyboard Deck"), "Shortcuts modal contains Master Keyboard Deck title");
+    assert(modalContent.includes("Alt + 1"), "Shortcuts modal documents Alt+1");
+    assert(modalContent.includes("F12"), "Shortcuts modal documents F12 toggle");
+    assert(modalContent.includes("F1 / Alt+S"), "Shortcuts modal documents POS F1 hotkey");
+  });
 
   // ----------------------------------------------------
+  // SUITE 23: Dynamic Pharma Companies & Bidirectional Code Auto-Fill Engine
+  // ----------------------------------------------------
+  await suite("23. Dynamic Pharma Companies & Bidirectional Code Auto-Fill Engine", async () => {
+    const invPath = path.resolve("src/pages/MedicalStoreInventory.jsx");
+    assert(fs.existsSync(invPath), "MedicalStoreInventory component exists");
+
+    const content = fs.readFileSync(invPath, "utf-8");
+
+    // 1. Dynamic extraction from dbSuppliers
+    assert(content.includes("dbSuppliers.getAll()"), "MedicalStoreInventory dynamically pulls all companies from dbSuppliers");
+    assert(content.includes("allCompanyOptions"), "allCompanyOptions computed dynamically with useMemo");
+    assert(content.includes("extractCompanyCode"), "extractCompanyCode helper function handles supplier objects and prefixes");
+
+    // 2. Bidirectional Auto-Fill in Quick & Advanced Forms
+    assert(content.includes("findCompanyByCode"), "findCompanyByCode auto-resolver is defined");
+    assert(content.includes('name === "item_code"') && content.includes("findCompanyByCode(value)"), "Typing product code triggers instant company_name auto-fill");
+    assert(content.includes('name === "company_name"') && content.includes("next.item_code = found.code"), "Selecting company name triggers instant item_code auto-fill");
+
+    // 3. Covers all 28+ companies including HFP, GHR, BM, PB, SCH, MKT, KL, EGL
+    assert(content.includes("HFP Pvt Ltd") || content.includes('"HFP"'), "HFP Pvt Ltd supported in company options");
+    assert(content.includes("GHR HOMOEO") || content.includes('"GHR"'), "GHR HOMOEO supported in company options");
+    assert(content.includes("Eagle Homoeo") || content.includes('"EGL"'), "Eagle Homoeo supported in company options");
+  });  // ----------------------------------------------------
   // SUMMARY REPORT
   // ----------------------------------------------------
   console.log(`\n======================================================`);

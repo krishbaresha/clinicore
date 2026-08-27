@@ -2,11 +2,11 @@
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
   "version": "2.5.0-production",
-  "last_session_date": "2026-08-27T01:16:00+05:00",
-  "session_id": "part-47",
+  "last_session_date": "2026-08-27T19:54:00+05:00",
+  "session_id": "part-50",
   "current_status": {
-    "phase": "Pure Keyboard-Driven POS Control Deck & 2D Grid Navigation",
-    "test_suite_status": "149/149 PASSED (0 failures)",
+    "phase": "Supplier Ledger Portal Drawer & Android Locale Crash Resolution Deployed",
+    "test_suite_status": "178/178 PASSED (0 failures)",
     "build_status": "Vite 8.2.1 Production Bundle Clean (Exit Code 0)",
     "git_branch": "main",
     "last_commit": "841bdfd"
@@ -18,9 +18,17 @@
     "Milestone 33: Master User Manual in Hinglish (context/15_ClinicFlow_Complete_User_Manual_Hinglish.md)",
     "Milestone 34: Global CliniCore Official Logo Integration across Login, Public Queue, and Portals",
     "Milestone 35: AI Autonomous Voice & WhatsApp Reminder Engine (Follow-up Scanner Blueprint)",
-    "Milestone 36: Automated Self-Updating Graphify Knowledge Graph Engine (Git Post-Commit Hook & update_knowledge_graph.py)"
+    "Milestone 36: Automated Self-Updating Graphify Knowledge Graph Engine (Git Post-Commit Hook & update_knowledge_graph.py)",
+    "Milestone 37: Full Application Keyboard-Driven Navigation Engine (Alt+1 to Alt+0, F12 Master Cheatsheet, 2D Grid Arrow Navigation on all Portals)",
+    "Milestone 38: Dynamic Pharma Companies & Bidirectional Code Auto-Fill Engine (All 28+ suppliers, instant Code-to-Company & Company-to-Code mapping in /store)",
+    "Milestone 39: Supplier Ledger Portal Drawer & Android Locale Crash Resolution (createPortal mounting, multi-identifier matcher, bulletproof date formatting)"
   ],
   "active_features": {
+    "global_keyboard_navigation": {
+      "alt_1_to_alt_0": "Instant jump between Dashboard, Register, Queue, Doctor OPD, POS, Inventory, Sales, Purchases, Warehouse, EMR, Fees",
+      "f12_or_shift_question": "Toggle live Master Keyboard Shortcuts Deck Cheatsheet modal",
+      "escape": "Universal modal and drawer dismiss"
+    },
     "pos_keyboard_navigation": {
       "f1": "Focus Medicine Search Bar",
       "f2_or_ctrl_enter": "Instant 80mm Cash Checkout & Print Bill",
@@ -55,5 +63,6 @@
     "context/14_Comprehensive_Conversation_and_Feature_Context.md",
     "context/15_ClinicFlow_Complete_User_Manual_Hinglish.md"
   ],
-  "instructions_for_next_session": "Read SESSION_STATE.json and context/09_Progress_Log.md before doing anything. Maintain zero regression on 149 test suite."
+  "instructions_for_next_session": "Read SESSION_STATE.json and context/09_Progress_Log.md before doing anything. Maintain zero regression on 168 test suite."
 }
+

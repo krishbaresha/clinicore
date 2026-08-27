@@ -57,3 +57,45 @@
   - `ArrowDown` / `ArrowUp`: Seamless vertical jump across Search ⇄ Cart Items (Quantity / Discount) ⇄ Overall Bill Discount ⇄ Cash Given ⇄ Checkout Button.
   - `ArrowRight` / `ArrowLeft`: Seamless horizontal jump between item Quantity and Discount % fields without touching the mouse.
 
+---
+
+## 5. Full Application Keyboard Navigation Engine (Milestone 37)
+
+- **Global Navigation Hotkeys (Any Screen):**
+  - `Alt + 1`: Executive Dashboard (`/dashboard`)
+  - `Alt + 2`: Patient Registration (`/reception/register`)
+  - `Alt + 3`: Reception Queue (`/reception/queue`)
+  - `Alt + 4`: Doctor OPD Queue & Consultation (`/doctor/queue`)
+  - `Alt + 5`: Counter POS (`/store/pos`)
+  - `Alt + 6`: Store Inventory & Stock Ledger (`/store`)
+  - `Alt + 7`: Sales Log & Returns (`/store/sales`)
+  - `Alt + 8`: Company Purchases (GRN) (`/store/purchases`)
+  - `Alt + 9`: Central Warehouse & Wholesale (`/store/warehouse`)
+  - `Alt + 0`: Patients & EMR Directory (`/patients`)
+  - `Alt + F`: Fees & CashBook (`/fees`)
+  - `F12` or `Shift + ?`: Live Keyboard Shortcuts Cheatsheet Modal
+  - `Escape`: Universal modal/drawer dismiss
+
+- **Doctor Chamber & Consultation Hotkeys:**
+  - `ArrowUp` / `ArrowDown`: Navigate waiting patient queue cards
+  - `Enter`: Call highlighted patient into consultation room
+  - `F1`: Focus Chief Complaints / History
+  - `F2` or `Ctrl + Enter`: Save Consultation & Instant Print Prescription (80mm / A4)
+  - `F3`: Add new prescription medicine row
+  - `F4`: Focus Follow-up days
+  - `F8`: Focus Lab Tests / Clinical Advice
+
+- **Reception Desk & Registration Hotkeys:**
+  - `F1`: Focus Patient Phone / CNIC / Name search bar
+  - `Enter`: Tabular forward movement across registration form inputs
+  - `F2` or `Ctrl + Enter`: Save Registration & Instant Print OPD Token Receipt
+  - `F3`: Toggle between New Patient Registration and Search Mode
+
+- **Warehouse & Supplier Purchases (GRN) Hotkeys:**
+  - `F1`: Focus Supplier / Party search selector
+  - `F2` or `Ctrl + Enter`: Save GRN / Sale Invoice & Instant Print Thermal Receipt
+  - `F3`: Add new invoice item line
+  - `F4`: Toggle Cash vs Credit / Udhaar
+  - `2D Arrow Keys`: Cell-to-cell navigation (Item ⇄ Qty ⇄ Rate ⇄ Disc) in invoice tables
+
+

@@ -2236,25 +2236,49 @@ export const dbSupplierLedger = {
   getAll: () => {
     let list = getCollection(KEYS.SUPPLIER_LEDGER);
     if (!list || list.length === 0) {
-      list = SEED_DATA.supplier_ledger;
+      list = SEED_DATA.supplier_ledger || [];
       setCollection(KEYS.SUPPLIER_LEDGER, list);
     }
-    return list;
+    return Array.isArray(list) ? list : [];
   },
-  getBySupplier: (supplierId) => dbSupplierLedger.getAll().filter((t) => t.supplier_id === supplierId),
+  getBySupplier: (supplierIdOrObj) => {
+    if (!supplierIdOrObj) return [];
+    let id = "";
+    let name = "";
+    let code = "";
+    if (typeof supplierIdOrObj === "object") {
+      id = String(supplierIdOrObj.id || "").toLowerCase().trim();
+      name = String(supplierIdOrObj.name || "").toLowerCase().trim();
+      code = String(supplierIdOrObj.supplier_code || supplierIdOrObj.code || "").toLowerCase().trim();
+    } else {
+      id = String(supplierIdOrObj).toLowerCase().trim();
+    }
+    const all = dbSupplierLedger.getAll() || [];
+    return all.filter((t) => {
+      if (!t) return false;
+      const tId = String(t.supplier_id || "").toLowerCase().trim();
+      const tName = String(t.supplier_name || "").toLowerCase().trim();
+      const tCode = String(t.supplier_code || "").toLowerCase().trim();
+      if (id && (tId === id || tCode === id || tName === id)) return true;
+      if (code && (tId === code || tCode === code)) return true;
+      if (name && (tName === name || tId === name)) return true;
+      return false;
+    });
+  },
   // PURCHASE_BILL | CASH_PAYMENT | CHEQUE_PAYMENT | BANK_PAYMENT | RETURN_CLAIM | ADVANCE
-  addTransaction: (supplierId, type, debit, credit, notes, invoiceNo = "") => {
+  addTransaction: (supplierId, type, debit, credit, notes, invoiceNo = "", supplierName = "") => {
     const list = dbSupplierLedger.getAll();
-    const supplierTxns = list.filter((t) => t.supplier_id === supplierId);
+    const supplierTxns = dbSupplierLedger.getBySupplier(supplierId);
     const lastBalance = supplierTxns.length > 0
-      ? supplierTxns[supplierTxns.length - 1].running_balance || 0
+      ? Number(supplierTxns[supplierTxns.length - 1].running_balance) || 0
       : 0;
-    const newBalance = Math.max(0, lastBalance + Number(debit) - Number(credit));
+    const newBalance = Math.max(0, lastBalance + (Number(debit) || 0) - (Number(credit) || 0));
     const newTx = {
       id: generateId("sl"),
       supplier_id: supplierId,
-      invoice_no: invoiceNo,
-      type,
+      supplier_name: supplierName || "",
+      invoice_no: invoiceNo || "",
+      type: type || "CASH_PAYMENT",
       debit: Number(debit) || 0,
       credit: Number(credit) || 0,
       running_balance: newBalance,
@@ -2268,30 +2292,38 @@ export const dbSupplierLedger = {
     const typeMap = { cash: "CASH_PAYMENT", cheque: "CHEQUE_PAYMENT", bank: "BANK_PAYMENT" };
     const type = typeMap[paymentMode] || "CASH_PAYMENT";
     // Update supplier running balance
-    dbSuppliers.recordPayment(supplierId, Number(amount));
+    if (dbSuppliers && dbSuppliers.recordPayment) {
+      dbSuppliers.recordPayment(supplierId, Number(amount));
+    }
     return dbSupplierLedger.addTransaction(
       supplierId,
       type,
       0,
-      Number(amount),
+      Number(amount) || 0,
       notes || `${type.replace("_", " ")} — Ref: ${reference || "N/A"}`,
       reference
     );
   },
   recordReturnClaim: (supplierId, amount, notes = "") => {
-    dbSuppliers.recordPayment(supplierId, Number(amount));
-    return dbSupplierLedger.addTransaction(supplierId, "RETURN_CLAIM", 0, Number(amount), notes || "Damaged stock return / credit claim");
+    if (dbSuppliers && dbSuppliers.recordPayment) {
+      dbSuppliers.recordPayment(supplierId, Number(amount));
+    }
+    return dbSupplierLedger.addTransaction(supplierId, "RETURN_CLAIM", 0, Number(amount) || 0, notes || "Damaged stock return / credit claim");
   },
   getRunningBalance: (supplierId) => {
     const txns = dbSupplierLedger.getBySupplier(supplierId);
     if (!txns.length) return 0;
-    return txns[txns.length - 1].running_balance || 0;
+    return Number(txns[txns.length - 1].running_balance) || 0;
   },
   getTotals: (supplierId) => {
     const txns = dbSupplierLedger.getBySupplier(supplierId);
-    const totalDebits = txns.reduce((s, t) => s + (t.debit || 0), 0);
-    const totalCredits = txns.reduce((s, t) => s + (t.credit || 0), 0);
-    return { totalDebits, totalCredits, balance: Math.max(0, totalDebits - totalCredits) };
+    const totalDebits = txns.reduce((s, t) => s + (Number(t.debit) || 0), 0);
+    const totalCredits = txns.reduce((s, t) => s + (Number(t.credit) || 0), 0);
+    return {
+      totalDebits: Number.isFinite(totalDebits) ? totalDebits : 0,
+      totalCredits: Number.isFinite(totalCredits) ? totalCredits : 0,
+      balance: Math.max(0, (totalDebits || 0) - (totalCredits || 0)),
+    };
   },
 };
 

@@ -1786,9 +1786,9 @@ export default function SupplierPurchases() {
                     </button>
                     <button
                       onClick={() => {
-                        const txns = dbSupplierLedger.getBySupplier(sup.id);
+                        const txns = dbSupplierLedger.getBySupplier(sup);
                         setLedgerDrawerSupplier(sup);
-                        setSupplierLedgerTxns(txns);
+                        setSupplierLedgerTxns(txns || []);
                       }}
                       className="flex-1 bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
                     >
@@ -2794,11 +2794,11 @@ export default function SupplierPurchases() {
         </div>
       )}
 
-      {/* MODAL: Supplier Ledger Transaction History Drawer */}
-      {ledgerDrawerSupplier && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-end p-4">
-          <div className="bg-white w-full max-w-lg h-full max-h-[100vh] overflow-y-auto rounded-3xl border border-gray-200 shadow-2xl flex flex-col">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-3xl">
+      {/* MODAL: Supplier Ledger Transaction History Drawer (Mounted via createPortal for zero DOM clipping) */}
+      {ledgerDrawerSupplier && createPortal(
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-end p-2 sm:p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-lg h-full max-h-[96vh] sm:max-h-[100vh] overflow-y-auto rounded-3xl border border-gray-200 shadow-2xl flex flex-col">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-sm rounded-t-3xl z-10">
               <div>
                 <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
                   <span className="material-symbols-outlined text-purple-600" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
@@ -2807,44 +2807,55 @@ export default function SupplierPurchases() {
                 <p className="text-xs text-gray-500 mt-0.5">Two-Way Transaction Audit (Payable &amp; Receivable)</p>
               </div>
               <button
+                type="button"
                 onClick={() => setLedgerDrawerSupplier(null)}
-                className="text-gray-400 hover:text-gray-700 font-bold"
+                className="text-gray-400 hover:text-gray-700 font-bold p-1 rounded-xl hover:bg-gray-100 transition-colors"
+                title="Close Ledger"
               >
-                <span className="material-symbols-outlined">close</span>
+                <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
 
             {/* Ledger Totals Summary */}
             {(() => {
-              const totals = dbSupplierLedger.getTotals(ledgerDrawerSupplier.id);
+              const totals = dbSupplierLedger.getTotals(ledgerDrawerSupplier);
+              const totalDebits = Number(totals?.totalDebits) || 0;
+              const totalCredits = Number(totals?.totalCredits) || 0;
+              const balance = Number(totals?.balance) || 0;
               return (
                 <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 border-b border-gray-100">
                   <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl text-center">
                     <div className="text-[10px] font-bold text-rose-700 uppercase">Total Debit</div>
-                    <div className="font-black text-rose-900 text-sm">Rs. {totals.totalDebits.toLocaleString()}</div>
+                    <div className="font-black text-rose-900 text-sm">Rs. {totalDebits.toLocaleString()}</div>
                   </div>
                   <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-center">
                     <div className="text-[10px] font-bold text-emerald-700 uppercase">Total Paid</div>
-                    <div className="font-black text-emerald-900 text-sm">Rs. {totals.totalCredits.toLocaleString()}</div>
+                    <div className="font-black text-emerald-900 text-sm">Rs. {totalCredits.toLocaleString()}</div>
                   </div>
                   <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-center">
-                    <div className="text-[10px] font-bold text-amber-700 uppercase">Balance</div>
-                    <div className="font-black text-amber-900 text-sm">Rs. {totals.balance.toLocaleString()}</div>
+                    <div className="text-[10px] font-bold text-amber-700 uppercase">Balance Due</div>
+                    <div className="font-black text-amber-900 text-sm">Rs. {balance.toLocaleString()}</div>
                   </div>
                 </div>
               );
             })()}
 
             {/* Transactions List */}
-            <div className="flex-1 p-4 space-y-2">
-              {supplierLedgerTxns.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  <span className="material-symbols-outlined text-4xl block mb-2">receipt_long</span>
-                  No ledger transactions yet.
+            <div className="flex-1 p-4 space-y-2.5 overflow-y-auto">
+              {(!supplierLedgerTxns || supplierLedgerTxns.length === 0) ? (
+                <div className="text-center py-16 text-gray-400 space-y-2">
+                  <span className="material-symbols-outlined text-5xl block text-gray-300">receipt_long</span>
+                  <div className="font-bold text-xs">No ledger transactions yet for this supplier.</div>
+                  <p className="text-[11px] text-gray-400 max-w-xs mx-auto">
+                    New Purchase GRN bills and recorded payments will automatically appear here.
+                  </p>
                 </div>
               ) : (
                 supplierLedgerTxns.slice().reverse().map((tx) => {
-                  const isDebit = tx.debit > 0;
+                  const debit = Number(tx.debit) || 0;
+                  const credit = Number(tx.credit) || 0;
+                  const runningBalance = Number(tx.running_balance) || 0;
+                  const isDebit = debit > 0;
                   const typeLabels = {
                     PURCHASE_BILL: "Purchase Bill",
                     CASH_PAYMENT: "Cash Payment",
@@ -2853,22 +2864,31 @@ export default function SupplierPurchases() {
                     RETURN_CLAIM: "Return / Credit Claim",
                     ADVANCE: "Advance Payment",
                   };
+                  let dateStr = "N/A";
+                  if (tx.created_at) {
+                    try {
+                      const d = new Date(tx.created_at);
+                      dateStr = isNaN(d.getTime()) ? String(tx.created_at).split("T")[0] : d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                    } catch {
+                      dateStr = String(tx.created_at).split("T")[0] || "N/A";
+                    }
+                  }
                   return (
-                    <div key={tx.id} className={`p-3.5 rounded-2xl border ${isDebit ? "bg-rose-50/50 border-rose-200" : "bg-emerald-50/50 border-emerald-200"}`}>
+                    <div key={tx.id || Math.random()} className={`p-3.5 rounded-2xl border ${isDebit ? "bg-rose-50/60 border-rose-200" : "bg-emerald-50/60 border-emerald-200"}`}>
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className={`text-xs font-black ${isDebit ? "text-rose-800" : "text-emerald-800"}`}>
-                            {typeLabels[tx.type] || tx.type}
+                          <div className={`text-xs font-black ${isDebit ? "text-rose-900" : "text-emerald-900"}`}>
+                            {typeLabels[tx.type] || tx.type || "Transaction"}
                           </div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">{new Date(tx.created_at).toLocaleString("en-PK")}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">{dateStr}</div>
                           {tx.notes && <div className="text-[10px] text-gray-600 mt-0.5 italic">{tx.notes}</div>}
-                          {tx.invoice_no && <div className="text-[10px] font-mono text-gray-500">Ref: {tx.invoice_no}</div>}
+                          {tx.invoice_no && <div className="text-[10px] font-mono text-gray-500 font-bold">Ref: {tx.invoice_no}</div>}
                         </div>
                         <div className="text-right">
                           <div className={`font-black text-sm ${isDebit ? "text-rose-800" : "text-emerald-700"}`}>
-                            {isDebit ? "+" : "-"} Rs. {(isDebit ? tx.debit : tx.credit).toLocaleString()}
+                            {isDebit ? "+" : "-"} Rs. {(isDebit ? debit : credit).toLocaleString()}
                           </div>
-                          <div className="text-[10px] text-gray-500">Balance: Rs. {(tx.running_balance || 0).toLocaleString()}</div>
+                          <div className="text-[10px] text-gray-500 font-medium">Balance: Rs. {runningBalance.toLocaleString()}</div>
                         </div>
                       </div>
                     </div>
@@ -2878,23 +2898,29 @@ export default function SupplierPurchases() {
             </div>
 
             {/* Quick Pay Button */}
-            {(ledgerDrawerSupplier.balance_due || 0) > 0 && (
-              <div className="p-4 border-t border-gray-100">
+            {(Number(ledgerDrawerSupplier.balance_due) > 0 || Number(ledgerDrawerSupplier.balance) > 0) && (
+              <div className="p-4 border-t border-gray-100 bg-white sticky bottom-0">
                 <button
+                  type="button"
                   onClick={() => {
+                    const due = Number(ledgerDrawerSupplier.balance_due || ledgerDrawerSupplier.balance || 0);
                     setLedgerDrawerSupplier(null);
                     setPaySupplierModal(ledgerDrawerSupplier);
-                    setPayAmountInput(String(ledgerDrawerSupplier.balance_due || ""));
-                    setPaymentMode("cash"); setPaymentRef(""); setPaymentNote("");
+                    setPayAmountInput(String(due || ""));
+                    setPaymentMode("cash");
+                    setPaymentRef("");
+                    setPaymentNote("");
                   }}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-2xl text-xs shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95"
                 >
-                  💳 Record New Payment (Rs. {(ledgerDrawerSupplier.balance_due || 0).toLocaleString()} due)
+                  <span className="material-symbols-outlined text-base">payments</span>
+                  <span>Record New Payment (Rs. {Number(ledgerDrawerSupplier.balance_due || ledgerDrawerSupplier.balance || 0).toLocaleString()} due)</span>
                 </button>
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Purchase GRN List Modal */}

@@ -91,7 +91,37 @@ export default function PatientRegistration() {
         setSelected(p);
       }
     }
-  }, [location.state]);
+
+    function handlePatientRegKeyDown(e) {
+      if (e.key === "F1") {
+        e.preventDefault();
+        if (searchRef.current) {
+          searchRef.current.focus();
+          searchRef.current.select();
+        }
+      } else if (e.key === "F2" || (e.ctrlKey && e.key === "Enter")) {
+        e.preventDefault();
+        const regBtn = document.getElementById("register-visit-btn") || document.getElementById("save-patient-btn");
+        if (regBtn) regBtn.click();
+      } else if (e.key === "F3") {
+        e.preventDefault();
+        setShowAddForm((prev) => !prev);
+      } else if (e.key === "Escape") {
+        if (showReceipt) {
+          newRegistration();
+        } else if (showAddForm) {
+          setShowAddForm(false);
+        } else if (results) {
+          setResults(null);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handlePatientRegKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handlePatientRegKeyDown);
+    };
+  }, [location.state, showReceipt, showAddForm, results]);
 
   function handleDoctorChange(docId) {
     setSelectedDoctorId(docId);

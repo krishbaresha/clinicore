@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
-import { dbClinic, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
+import { dbClinic, dbSuppliers, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
 import { formatCurrency } from "../utils/formatters.js";
 import { printInventoryListReceipt, printProductPricingListReceipt } from "../utils/thermalPrinter.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
 import StockLedgerModal from "../components/StockLedgerModal.jsx";
 
-const COMPANY_OPTIONS = [
+const STANDARD_COMPANIES = [
   { name: "BM Pvt LTD", code: "BM", color: "from-teal-500 to-emerald-600" },
   { name: "Paul Brooks Homoeo Lab", code: "PB", color: "from-blue-500 to-indigo-600" },
   { name: "Dr. Willmar Schwabe Germany", code: "SCH", color: "from-amber-500 to-orange-600" },
@@ -17,8 +17,43 @@ const COMPANY_OPTIONS = [
   { name: "Kamal Laboratories", code: "KAM", color: "from-emerald-500 to-teal-700" },
   { name: "Ashraf Laboratories", code: "ASH", color: "from-yellow-500 to-amber-700" },
   { name: "W.S. Laboratories", code: "WS", color: "from-indigo-500 to-blue-700" },
+  { name: "HFP Pvt Ltd", code: "HFP", color: "from-teal-600 to-cyan-700" },
+  { name: "GHR HOMOEO", code: "GHR", color: "from-emerald-600 to-green-700" },
+  { name: "Eagle Homoeo", code: "EGL", color: "from-amber-600 to-yellow-700" },
   { name: "Local Pharma Market / OTC", code: "LPM", color: "from-slate-500 to-gray-700" },
 ];
+
+function extractCompanyCode(supplierOrName) {
+  if (!supplierOrName) return "GEN";
+  if (typeof supplierOrName === "object") {
+    if (supplierOrName.supplier_code && !String(supplierOrName.supplier_code).startsWith("SUP-")) {
+      return String(supplierOrName.supplier_code).toUpperCase();
+    }
+    if (supplierOrName.code) return String(supplierOrName.code).toUpperCase();
+    supplierOrName = supplierOrName.name || "";
+  }
+  const clean = String(supplierOrName).trim();
+  const lower = clean.toLowerCase();
+  if (lower.includes("bm")) return "BM";
+  if (lower.includes("paul") || lower.includes("brooks")) return "PB";
+  if (lower.includes("schwabe") || lower.includes("willmar")) return "SCH";
+  if (lower.includes("mektum") || lower.includes("mkt") || lower.includes("mek")) return "MKT";
+  if (lower.includes("blossom") || lower.includes("bls")) return "BLS";
+  if (lower.includes("reckeweg") || lower.includes("rec")) return "REC";
+  if (lower.includes("kamal") || lower.includes("kam") || lower.includes("kl")) return "KAM";
+  if (lower.includes("ashraf") || lower.includes("ash")) return "ASH";
+  if (lower.includes("w.s") || lower.includes("ws lab")) return "WS";
+  if (lower.includes("hfp")) return "HFP";
+  if (lower.includes("ghr")) return "GHR";
+  if (lower.includes("eagle")) return "EGL";
+  if (lower.includes("local") || lower.includes("lpm")) return "LPM";
+
+  const words = clean.replace(/[^a-zA-Z0-9\s]/g, "").split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return words.slice(0, 3).map((w) => w[0].toUpperCase()).join("");
+  }
+  return clean.substring(0, 3).toUpperCase();
+}
 
 export default function MedicalStoreInventory() {
   const [inventory, setInventory] = useState([]);
@@ -108,8 +143,36 @@ export default function MedicalStoreInventory() {
   useEffect(() => {
     load();
     window.addEventListener("clinicflow_status_update", load);
-    return () => window.removeEventListener("clinicflow_status_update", load);
-  }, []);
+
+    function handleInventoryKeyDown(e) {
+      if (e.key === "F1") {
+        e.preventDefault();
+        if (quickNameRef.current) {
+          quickNameRef.current.focus();
+          quickNameRef.current.select();
+        }
+      } else if (e.key === "F3") {
+        e.preventDefault();
+        setShowInventoryListModal((prev) => !prev);
+      } else if (e.key === "F4") {
+        e.preventDefault();
+        setShowStockLedgerModal((prev) => !prev);
+      } else if (e.key === "Escape") {
+        if (showInventoryListModal) setShowInventoryListModal(false);
+        else if (showPricingListModal) setShowPricingListModal(false);
+        else if (showCsvModal) setShowCsvModal(false);
+        else if (isMovementOpen) setIsMovementOpen(false);
+        else if (showStockLedgerModal) setShowStockLedgerModal(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleInventoryKeyDown);
+
+    return () => {
+      window.removeEventListener("clinicflow_status_update", load);
+      window.removeEventListener("keydown", handleInventoryKeyDown);
+    };
+  }, [showInventoryListModal, showPricingListModal, showCsvModal, isMovementOpen, showStockLedgerModal]);
 
   // Lock background body scroll when any modal popup is open
   const isAnyModalOpen = Boolean(
@@ -135,24 +198,139 @@ export default function MedicalStoreInventory() {
     setTimeout(() => setToastMsg(""), 3500);
   }
 
+  // Dynamically aggregate all companies from dbSuppliers (28+ accounts), STANDARD_COMPANIES, and active Inventory
+  const allCompanyOptions = useMemo(() => {
+    const map = new Map();
+
+    // 1. Add all suppliers from dbSuppliers
+    const suppliers = dbSuppliers ? dbSuppliers.getAll() : [];
+    suppliers.forEach((s) => {
+      if (s.name && s.name.trim()) {
+        const code = extractCompanyCode(s);
+        map.set(s.name.toLowerCase().trim(), {
+          name: s.name.trim(),
+          code: code,
+          supplier_id: s.id,
+          supplier_code: s.supplier_code || s.code || "",
+        });
+      }
+    });
+
+    // 2. Add standard known companies
+    STANDARD_COMPANIES.forEach((c) => {
+      const key = c.name.toLowerCase().trim();
+      if (!map.has(key)) {
+        map.set(key, { ...c });
+      }
+    });
+
+    // 3. Add any companies already existing in current inventory
+    inventory.forEach((i) => {
+      if (i.company_name && i.company_name.trim()) {
+        const key = i.company_name.toLowerCase().trim();
+        if (!map.has(key)) {
+          const code = i.item_code || extractCompanyCode(i.company_name);
+          map.set(key, { name: i.company_name.trim(), code: code.toUpperCase() });
+        }
+      }
+    });
+
+    // Sort alphabetically by company name
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [inventory]);
+
+  // Two-Way Code & Name Auto-Fill Matcher
+  function findCompanyByCode(codeStr) {
+    if (!codeStr || !codeStr.trim()) return null;
+    const clean = codeStr.trim().toLowerCase();
+
+    // 1. Exact code match in allCompanyOptions
+    const exactCode = allCompanyOptions.find((c) => c.code && c.code.toLowerCase() === clean);
+    if (exactCode) return exactCode;
+
+    // 2. Supplier code or account_no match in dbSuppliers
+    if (dbSuppliers) {
+      const sup = dbSuppliers.getByCode(clean);
+      if (sup) {
+        const matched = allCompanyOptions.find((c) => c.name.toLowerCase() === sup.name.toLowerCase());
+        if (matched) return matched;
+        return { name: sup.name, code: extractCompanyCode(sup) };
+      }
+    }
+
+    // 3. Known code prefixes & abbreviations
+    if (clean === "bm" || clean.startsWith("bm-")) return allCompanyOptions.find((c) => c.code === "BM");
+    if (clean === "pb" || clean === "paul" || clean.startsWith("pb-")) return allCompanyOptions.find((c) => c.code === "PB");
+    if (clean === "sch" || clean === "sc" || clean.startsWith("sch-") || clean.startsWith("sc-")) return allCompanyOptions.find((c) => c.code === "SCH");
+    if (clean === "mkt" || clean === "mek" || clean.startsWith("mkt-") || clean.startsWith("mek-")) return allCompanyOptions.find((c) => c.code === "MKT");
+    if (clean === "bls" || clean.startsWith("bls-")) return allCompanyOptions.find((c) => c.code === "BLS");
+    if (clean === "rec" || clean.startsWith("rec-")) return allCompanyOptions.find((c) => c.code === "REC");
+    if (clean === "kam" || clean === "kl" || clean.startsWith("kam-") || clean.startsWith("kl-")) return allCompanyOptions.find((c) => c.code === "KAM");
+    if (clean === "ash" || clean.startsWith("ash-")) return allCompanyOptions.find((c) => c.code === "ASH");
+    if (clean === "ws" || clean.startsWith("ws-")) return allCompanyOptions.find((c) => c.code === "WS");
+    if (clean === "hfp" || clean.startsWith("hfp-")) return allCompanyOptions.find((c) => c.code === "HFP");
+    if (clean === "ghr" || clean.startsWith("ghr-")) return allCompanyOptions.find((c) => c.code === "GHR");
+    if (clean === "egl" || clean.startsWith("egl-") || clean.startsWith("eah-")) return allCompanyOptions.find((c) => c.code === "EGL");
+    if (clean === "lpm" || clean.startsWith("lpm-")) return allCompanyOptions.find((c) => c.code === "LPM");
+
+    // 4. Match company name starting with code
+    const namePrefix = allCompanyOptions.find((c) => c.name.toLowerCase().startsWith(clean));
+    if (namePrefix) return namePrefix;
+
+    return null;
+  }
+
   function handleQuickChange(e) {
     const { name, value } = e.target;
     setQuickForm((prev) => {
       const next = { ...prev, [name]: value };
+
+      // Case A: User selected Company Name from dropdown -> Auto-fill item_code
       if (name === "company_name") {
-        const found = COMPANY_OPTIONS.find((c) => c.name === value);
-        if (found) next.item_code = found.code;
+        const found = allCompanyOptions.find((c) => c.name.toLowerCase() === value.toLowerCase().trim());
+        if (found) {
+          next.item_code = found.code;
+        }
       }
+
+      // Case B: User typed or changed Product Code (item_code) -> Auto-fill company_name!
+      if (name === "item_code") {
+        const found = findCompanyByCode(value);
+        if (found) {
+          next.company_name = found.name;
+        }
+      }
+
       return next;
     });
   }
 
   function handleAdvChange(e) {
     const { name, value, type, checked } = e.target;
-    setAdvForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setAdvForm((prev) => {
+      const next = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+
+      // Case A: User selected Company Name -> Auto-fill item_code
+      if (name === "company_name") {
+        const found = allCompanyOptions.find((c) => c.name.toLowerCase() === value.toLowerCase().trim());
+        if (found) {
+          next.item_code = found.code;
+        }
+      }
+
+      // Case B: User typed Product Code -> Auto-fill company_name
+      if (name === "item_code") {
+        const found = findCompanyByCode(value);
+        if (found) {
+          next.company_name = found.name;
+        }
+      }
+
+      return next;
+    });
   }
 
   // Quick Fast-Add / DrCreate Submit Submission (supports Enter key loop)
@@ -791,8 +969,8 @@ export default function MedicalStoreInventory() {
                       onChange={handleQuickChange}
                       className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold bg-white text-slate-800 focus:border-emerald-600 focus:outline-none transition-all"
                     >
-                      {COMPANY_OPTIONS.map((c) => (
-                        <option key={c.code} value={c.name}>
+                      {allCompanyOptions.map((c) => (
+                        <option key={`${c.name}_${c.code}`} value={c.name}>
                           {c.name} ({c.code})
                         </option>
                       ))}
@@ -1013,6 +1191,42 @@ export default function MedicalStoreInventory() {
                     onChange={handleAdvChange}
                     className="border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold bg-white focus:border-emerald-600 focus:outline-none"
                   />
+                </div>
+              </div>
+
+              {/* Advanced Company & Product Code Row */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white p-4 rounded-2xl border border-slate-200">
+                <div className="md:col-span-4 flex flex-col gap-1.5">
+                  <label htmlFor="adv_item_code" className="text-xs font-bold text-slate-800">
+                    Product Code (Auto-Matches Brand)
+                  </label>
+                  <input
+                    id="adv_item_code"
+                    name="item_code"
+                    type="text"
+                    placeholder="e.g. BM, PB, SCH, HFP, GHR"
+                    value={advForm.item_code}
+                    onChange={handleAdvChange}
+                    className="border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-emerald-900 bg-slate-50 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-8 flex flex-col gap-1.5">
+                  <label htmlFor="adv_company_name" className="text-xs font-bold text-slate-800">
+                    Manufacturing Company / Supplier
+                  </label>
+                  <select
+                    id="adv_company_name"
+                    name="company_name"
+                    value={advForm.company_name}
+                    onChange={handleAdvChange}
+                    className="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white text-slate-800 focus:border-emerald-600 focus:outline-none"
+                  >
+                    {allCompanyOptions.map((c) => (
+                      <option key={`adv_${c.name}_${c.code}`} value={c.name}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

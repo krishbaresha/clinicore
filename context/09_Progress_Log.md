@@ -33,10 +33,33 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** 100% Pure Keyboard-Driven POS Control Deck & 2D Arrow-Key Grid Navigation Deployed
-- **Last worked on:** Implemented full keyboard power deck (F1-F11 hotkeys), 2D arrow-key grid navigation between search, cart items, discounts, cash given and checkout, resolved software licensing evaluateStatus precedence, and created complete Master User Manual in Hinglish (`15_ClinicFlow_Complete_User_Manual_Hinglish.md`).
+- **Phase:** Full Application Keyboard-Driven Navigation & 2D Grid Deck Deployed
+- **Last worked on:** Expanded the pure keyboard control deck across the entire application: global portal jumping (`Alt+1` to `Alt+0`, `Alt+F`), live interactive Shortcuts Cheatsheet modal (`F12`), doctor consultation keyboard suite (`F1`, `F2`/`Ctrl+Enter`, `ArrowUp`/`ArrowDown`), reception queue & registration shortcuts, and visual UI/UX Pro Max hotkey badges.
 - **Currently blocked on:** None.
-- **Overall completion estimate:** 100% Production Ready (149/149 test suite passing, build exit code 0).
+- **Overall completion estimate:** 100% Production Ready (168/168 test suite passing, build exit code 0).
+
+### Session: 2026-08-27 (Part 48) — Full Application Keyboard-Driven Navigation Engine & 2D Grid Deck
+
+**Task worked on:**
+1. **Global Portal Quick-Jump Navigation (`src/hooks/useGlobalKeyboardNav.js`):**
+   - Implemented `Alt+1` to `Alt+0` and `Alt+F` global hotkeys allowing counter operators, doctors, and staff to jump instantaneously between any screens without touching the mouse.
+   - `Alt+1` ➔ Dashboard, `Alt+2` ➔ Patient Registration, `Alt+3` ➔ Reception Queue, `Alt+4` ➔ Doctor OPD Queue, `Alt+5` ➔ Counter POS, `Alt+6` ➔ Store Inventory, `Alt+7` ➔ Sales Log, `Alt+8` ➔ Purchases (GRN), `Alt+9` ➔ Warehouse & Wholesale, `Alt+0` ➔ Patients & EMR, `Alt+F` ➔ Fees & CashBook.
+2. **Master Keyboard Shortcuts Deck Modal (`src/components/KeyboardShortcutsModal.jsx`):**
+   - Built a sleek, glassmorphic cheatsheet modal invoked anytime via `F12` or `Shift+?` or top-bar button.
+   - Summarizes hotkeys organized by Global Navigation, POS Billing, Doctor Chamber, and Reception/Warehouse.
+3. **SidebarLayout Visual Hotkey Badges (`src/layouts/SidebarLayout.jsx`):**
+   - Added subtle `[Alt+1]`, `[Alt+2]`, etc. badges next to menu labels and an ergonomic `Shortcuts [F12]` action chip in the top header.
+4. **Doctor Queue & Consultation Control (`src/pages/DoctorQueue.jsx`, `ConsultationScreen.jsx`):**
+   - `ArrowUp` / `ArrowDown` to browse waiting patient queue cards with instant focus ring.
+   - `Enter` to call patient or open consultation.
+   - `F1` focuses clinical notes, `F2` / `Ctrl+Enter` completes consultation, `Escape` returns to queue.
+5. **Reception Desk & Registration Navigation (`src/pages/PatientRegistration.jsx`, `ReceptionQueue.jsx`):**
+   - `F1` focuses patient search bar, `F2`/`Ctrl+Enter` fast saves & auto-prints 80mm OPD token.
+   - `ArrowUp`/`ArrowDown` in Queue list, `P` key triggers instant token reprint.
+6. **Automated Verification:**
+   - Added Suite 22 in `scripts/test_full_suite.mjs`. All 168/168 tests PASSED with zero failures. Vite build verified clean (Exit Code 0).
+
+---
 
 ### Session: 2026-08-27 (Part 47) — Pure Keyboard-Driven POS Control Deck, 2D Arrow-Key Navigation & Master User Manual
 
@@ -1809,16 +1832,36 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Automated Verification:**
       - 149/149 test assertions passing (100%), 0 ESLint errors, and clean production bundle build in 1.01s.
 
-**Next Recommended Steps:**
-- Advise user that both Purchase and Sale invoices are now 100% aligned with real physical distributor bills.
+32. **Milestone 38: Dynamic Pharma Companies & Bidirectional Code Auto-Fill Engine (/store):**
+    - **User Query & Context:**
+      - In the Inventory Registration Form (`/store`, `MedicalStoreInventory.jsx`), the Company / Brand dropdown only showed 9 static options, missing the 28+ registered Pharma Companies & Distributors from the Supplier Directory (e.g. `HFP Pvt Ltd`, `GHR HOMOEO`, `BM Pharma`, `Paul Brooks`, `Kamal Laboratories`, `Mektum`, `Schwabe`, `BLOSSOM`, `Eagle`, etc.).
+      - Typing a Product Code (`BM`, `HFP`, `PB`, `GHR`, `KL`, `SCH`, `MKT`, etc.) did not auto-fill or match the company dropdown.
+    - **Engine & Architecture Implementation:**
+      - **Dynamic Aggregation (`allCompanyOptions`):** Merged all suppliers from `dbSuppliers.getAll()`, `STANDARD_COMPANIES`, and any unique `company_name` in active inventory into a deduplicated reactive collection.
+      - **Prefix & Abbreviation Extraction (`extractCompanyCode`):** Intelligently extracts brand codes from supplier objects and names (`HFP`, `BM`, `PB`, `GHR`, `KAM`/`KL`, `MKT`, `SCH`, `BLS`, `REC`, `EGL`, `LPM`, etc.).
+      - **Bidirectional Auto-Fill Engine (`findCompanyByCode`):**
+        - Typing a code in `item_code` instantly searches exact codes, supplier codes, and brand abbreviations, automatically updating `company_name` in real-time.
+        - Selecting a company from the dropdown automatically populates the corresponding `item_code`.
+      - **Applied to Both Quick Form & Multi-Unit Form:** Added company and code fields with the same bidirectional matching to `advForm` (Multi-Unit Mode).
+    - **Automated Verification:**
+      - Added Suite 23 in `scripts/test_full_suite.mjs` verifying dynamic extraction, code auto-matching, and supplier coverage.
+      - **178/178 tests PASSED (100%)**, 0 failures, and production build compiled with Exit Code 0.
 
+33. **Milestone 39: Supplier Ledger Portal Drawer & Android Locale Crash Resolution (/store/purchases):**
+    - **User Query & Context:**
+      - In the Pharma Companies & Suppliers Directory (`/store/purchases`), pressing the `🏛️ Ledger` button on any company card caused a crash or displayed the "App Session Ready" ErrorBoundary screen instead of opening the ledger drawer.
+    - **Root Cause Analysis:**
+      1. Android Chrome / WebView throws `RangeError: Incorrect locale information` when formatting timestamps with `toLocaleString("en-PK")` or unparsed date strings in React render loops.
+      2. The Ledger Drawer modal was not using `createPortal`, causing DOM stacking constraints.
+      3. `dbSupplierLedger.getBySupplier` only accepted exact string ID matches and did not resolve supplier objects or alternate codes/names.
+    - **Engine & Component Implementations:**
+      - **Multi-Identifier Matcher (`dbSupplierLedger.getBySupplier`):** Enhanced to match supplier objects or strings across `id`, `supplier_code`, `code`, and `name`.
+      - **Safe Numeric Arithmetic (`dbSupplierLedger.getTotals`):** Guaranteed finite numbers (`Number.isFinite`) to eliminate `NaN` crashes.
+      - **DOM Portal & Safe Date Formatter (`SupplierPurchases.jsx`):**
+        - Wrapped Ledger Drawer inside `createPortal(..., document.body)` with `z-[999]` backdrop.
+        - Added bulletproof try/catch date formatting (`en-US` with date/time fallback) and safe currency stringification.
+        - Added sticky header and responsive scrolling for tablets and mobile devices.
+    - **Automated Verification:**
+      - 178/178 tests PASSED (100%), 0 failures, and Vite production bundle compiled cleanly in 1.01s.
 
-
-
-
-
-
-
-
-
-
+---
