@@ -1864,4 +1864,32 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Automated Verification:**
       - 178/178 tests PASSED (100%), 0 failures, and Vite production bundle compiled cleanly in 1.01s.
 
+34. **Milestone 41: Master Godowns & Multi-Warehouse Portal in Super Admin Command Center (/admin):**
+    - **User Query & Context:**
+      - In the Super Admin Panel (`DeveloperAdminPanel.jsx`), there was no centralized portal to register, inspect, and manage physical Godowns / Warehouses with complete details (SKUs, stock valuations, incharge, address, status, and default receiving location).
+    - **Engine & Architecture Implementation:**
+      - Added dedicated `godowns` tab with 4 real-time valuation KPI metric cards.
+      - Integrated complete Godown Registration & Editing Modal (`handleSaveGodown`, `handleDeleteGodown`, `handleSetDefaultGodown`).
+      - Added Live Multi-Location Stock Inspector with instant drill-down per warehouse and inventory valuation breakdown.
+      - Dynamically linked all registered warehouses across `ClinicSettings.jsx` and `dbWarehouses`.
+
+35. **Milestone 42: Multi-Warehouse Staff Inventory Isolation & Role-Based Financial Privacy (RBAC):**
+    - **User Query & Context:**
+      - Need strict multi-warehouse staff isolation: Raza manages Warehouse 1 (`wh_001` - Lajpat Rd), Usama manages Warehouse 2 (`wh_002` - Site Area), and Mustafa manages Medical Store Counter & Pharmacy (`wh_str`).
+      - Staff must only see, manage, and inspect their assigned location's stock. Stock figures of other warehouses must remain completely isolated.
+      - Clinic revenue, total earnings, net profit margins, and cost rates must remain confidential and hidden from non-financial staff, visible only to Cashier, Owner Doctor, or Primary Doctor.
+    - **Engine & Architecture Implementation:**
+      - **Auth & Session Location Locking (`auth.js`):** Session retains and validates `assigned_warehouse_id`.
+      - **Database Seeding (`db.js`):** Seeded incharge accounts for `raza@clinicore.pk`, `usama@clinicore.pk`, `mustafa@clinicore.pk`, and `doctor@clinicore.pk`. Added `dbInventory.getScopedInventory` and `dbInventory.setStockForLocation`.
+      - **Medical Store Inventory Isolation (`MedicalStoreInventory.jsx`):**
+        - Added prominent location lock banner for scoped staff (`📍 Location Scoped: [GDW-01] Main Godown (Lajpat Rd) — Incharge: Raza`).
+        - Added dynamic Multi-Warehouse Selector for Admin/Doctor.
+        - Calculated stock per location in `getItemLocationStock` and masked confidential cost rates with `🔒 Confidential`.
+      - **Financial Revenue Privacy in Dashboard & Reports (`Dashboard.jsx`, `FeesReports.jsx`):**
+        - Total revenue, fees, and profit KPI cards masked with `🔒 Confidential` for staff with `can_view_financials: false`.
+        - Cashbook ledgers, vouchers, and Z-report reconciliation restricted to authorized financial personnel.
+    - **Automated Verification:**
+      - Added Suite 26 in `test_full_suite.mjs`.
+      - **257/257 tests PASSED (100%)**, 0 failures, clean production build in 986ms, and deployed live to Hostinger VPS (`77.37.45.233`).
+
 ---

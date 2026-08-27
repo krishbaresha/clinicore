@@ -47,12 +47,14 @@ export default function Dashboard() {
     return () => window.removeEventListener("clinicflow_status_update", handleSync);
   }, []);
 
-  const canViewFinancials =
-    !isDoctor &&
-    (user?.is_owner || user?.can_view_financials ||
-      user?.role === "receptionist" ||
-      user?.role === "cashier" ||
-      user?.role === "pharmacist");
+  const isPrimaryDoctorOrOwner = Boolean(user?.is_owner || user?.role === "admin" || (isDoctor && user?.is_owner));
+  const isCashier = user?.role === "cashier";
+  const canViewFinancials = Boolean(
+    isPrimaryDoctorOrOwner ||
+    user?.can_view_financials ||
+    isCashier ||
+    (isDoctor && user?.can_view_financials)
+  );
 
   // Compute live stats from the mock DB
   const allVisits = dbVisits.getAll();
@@ -172,10 +174,11 @@ export default function Dashboard() {
 
           <SwiperSlide className="h-auto">
             <StatCard
-              label={canViewFinancials ? t("dashboard.feesCollected") : "My Fees Today"}
-              value={formatCurrency(canViewFinancials ? feesToday : myFeesToday)}
+              label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : "Revenue Status"}
+              value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : "🔒 Confidential"}
               icon="payments"
               iconBg="bg-primary-container/10"
+              subline={canViewFinancials ? null : "Owner / Doctor Role Required"}
             />
           </SwiperSlide>
 
@@ -272,10 +275,11 @@ export default function Dashboard() {
 
         {/* Fees Collected Today */}
         <StatCard
-          label={canViewFinancials ? t("dashboard.feesCollected") : "My Fees Today"}
-          value={formatCurrency(canViewFinancials ? feesToday : myFeesToday)}
+          label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : "Revenue Status"}
+          value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : "🔒 Confidential"}
           icon="payments"
           iconBg="bg-primary-container/10"
+          subline={canViewFinancials ? null : "Owner / Doctor Role Required"}
         />
 
         {/* 3rd Card */}

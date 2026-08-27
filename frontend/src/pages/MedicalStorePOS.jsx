@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useAuth } from "../hooks/useAuth.js";
 import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, dbSuppliers, dbUsers, dbSalesmen } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import PhotoLightbox from "../components/PhotoLightbox.jsx";
@@ -175,6 +176,7 @@ function ReceiptModal({ sale, onClose }) {
 }
 
 export default function MedicalStorePOS() {
+  const { user } = useAuth();
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryResults, setInventoryResults] = useState([]);
   const [cart, setCart] = useState([]);
@@ -197,6 +199,7 @@ export default function MedicalStorePOS() {
 
   // Active POS Operator Switcher (Single-login multi-cashier workflow)
   const [activeOperator, setActiveOperator] = useState(() => {
+    if (user?.name) return { id: user.userId || user.id, name: user.name, role: user.role || "Cashier" };
     try {
       const saved = localStorage.getItem("cf_pos_active_operator");
       if (saved) return JSON.parse(saved);

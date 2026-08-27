@@ -206,12 +206,14 @@ export default function FeesReports() {
   const [cbHistorySearch, setCbHistorySearch] = useState("");
   const [cbViewMode, setCbViewMode] = useState("daily"); // "daily" | "all"
 
-  const canViewAllFinancials =
-    user?.is_owner ||
+  const isPrimaryDoctorOrOwner = Boolean(user?.is_owner || user?.role === "admin" || (user?.role === "doctor" && user?.is_owner));
+  const isCashier = user?.role === "cashier";
+  const canViewAllFinancials = Boolean(
+    isPrimaryDoctorOrOwner ||
     user?.can_view_financials ||
-    user?.role === "receptionist" ||
-    user?.role === "cashier" ||
-    user?.role === "pharmacist";
+    isCashier ||
+    user?.role === "receptionist"
+  );
   const targetDoctorId = canViewAllFinancials ? null : user?.id;
 
   const showToast = (msg) => {
@@ -537,6 +539,21 @@ export default function FeesReports() {
 
   const maxFee = summary?.chart_data?.length ? Math.max(...summary.chart_data.map((d) => d.fees), 1) : 1;
   const clinic = dbClinic.get();
+
+  if (!canViewAllFinancials && user?.role !== "doctor") {
+    return (
+      <div className="w-full bg-white rounded-3xl p-8 sm:p-12 text-center border border-slate-200 shadow-sm max-w-lg mx-auto my-12 space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mx-auto">
+          <span className="material-symbols-outlined text-3xl">lock</span>
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Financial Access Restricted</h3>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          You do not have administrative permission to view clinic revenue, cashbook vouchers, or day closing reconciliation.
+          Only the Primary Doctor, Owner, or authorized Cashier can view financial records.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-full min-w-0 flex flex-col gap-6 pb-24 font-sans zero-horizontal-overflow">

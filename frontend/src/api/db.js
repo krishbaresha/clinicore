@@ -41,7 +41,83 @@ const SEED_DATA = {
     created_at: new Date().toISOString(),
   },
   clinic_services: [],
-  users: [],
+  users: [
+    {
+      id: "user_owner",
+      clinic_id: "clinic_001",
+      name: "Dr. Muhammad Asif Ashraf Khan",
+      role: "doctor",
+      specialization: "General Physician & Homeopath",
+      is_owner: true,
+      can_view_financials: true,
+      assigned_warehouse_id: "",
+      email: "doctor@clinicore.pk",
+      phone: "03473100304",
+      status: "active",
+      password: hashPassword("password"),
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "user_kashif",
+      clinic_id: "clinic_001",
+      name: "Dr. Muhammad Kashif Khan",
+      role: "doctor",
+      specialization: "Consultant Homeopath",
+      is_owner: false,
+      can_view_financials: true,
+      assigned_warehouse_id: "",
+      email: "kashif@clinicore.pk",
+      phone: "03473100304",
+      status: "active",
+      password: hashPassword("123456"),
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "user_raza",
+      clinic_id: "clinic_001",
+      name: "Raza (Incharge Lajpat Rd)",
+      role: "warehouse_incharge",
+      specialization: "Godown 1 Manager",
+      is_owner: false,
+      can_view_financials: false,
+      assigned_warehouse_id: "wh_001",
+      email: "raza@clinicore.pk",
+      phone: "03473100304",
+      status: "active",
+      password: hashPassword("password"),
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "user_usama",
+      clinic_id: "clinic_001",
+      name: "Usama",
+      role: "pharmacist",
+      specialization: "Pharmacist & Warehouse 2 Manager",
+      is_owner: false,
+      can_view_financials: false,
+      assigned_warehouse_id: "wh_002",
+      email: "usama@clinicore.pk",
+      phone: "03473100304",
+      status: "active",
+      password: hashPassword("123456"),
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "user_mustafa",
+      clinic_id: "clinic_001",
+      name: "Mustafa (Pharmacy Cashier)",
+      role: "pharmacist",
+      specialization: "Counter Pharmacy Cashier",
+      is_owner: false,
+      can_view_financials: false,
+      assigned_warehouse_id: "wh_str",
+      email: "mustafa@clinicore.pk",
+      phone: "03473100304",
+      status: "active",
+      password: hashPassword("password"),
+      created_at: new Date().toISOString(),
+    },
+  ],
   patients: [],
   visits: [],
   inventory: [],
@@ -57,7 +133,50 @@ const SEED_DATA = {
   shift_closings: [],
   documents: [],
   tenants: [],
-  warehouses: [],
+  warehouses: [
+    {
+      id: "wh_001",
+      clinic_id: "clinic_001",
+      code: "GDW-01",
+      name: "Main Godown (Lajpat Road)",
+      nickname: "Main Godown / Lajpat Rd",
+      location: "Lajpat Road, Hyderabad, Sindh",
+      incharge_name: "Raza",
+      phone: "03473100304",
+      is_default: true,
+      is_store_counter: false,
+      status: "active",
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "wh_002",
+      clinic_id: "clinic_001",
+      code: "GDW-02",
+      name: "Warehouse 2 (Site Area)",
+      nickname: "Warehouse 2 / Site Area",
+      location: "Site Area, Near Bus Stop, Hyderabad, Sindh",
+      incharge_name: "Usama",
+      phone: "03473100304",
+      is_default: false,
+      is_store_counter: false,
+      status: "active",
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "wh_str",
+      clinic_id: "clinic_001",
+      code: "STR-01",
+      name: "Medical Store Counter & Pharmacy",
+      nickname: "Medical Store / Pharmacy",
+      location: "Lajpat Road Clinic Front Desk",
+      incharge_name: "Mustafa",
+      phone: "03473100304",
+      is_default: false,
+      is_store_counter: true,
+      status: "active",
+      created_at: new Date().toISOString(),
+    },
+  ],
   supplier_ledger: []
 };
 
@@ -424,8 +543,12 @@ export const dbClinicServices = {
 // ---------- Users / Staff ----------
 export const dbUsers = {
   getAll: () => {
-    const list = getCollection(KEYS.USERS);
-    return list || [];
+    let list = getCollection(KEYS.USERS);
+    if (!list || list.length === 0) {
+      list = SEED_DATA.users;
+      setCollection(KEYS.USERS, list);
+    }
+    return list;
   },
   getById: (id) => getFromCollectionById(KEYS.USERS, id),
   getByEmail: (email) => dbUsers.getAll().find((u) => u.email?.toLowerCase() === email?.toLowerCase()) || null,
@@ -857,6 +980,48 @@ export const dbInventory = {
     if (warehouseId === "wh_str") return item.store_stock ?? (item.stock_qty ?? 0);
     if (warehouseId === "wh_001") return item.warehouse_stock ?? 0;
     return 0;
+  },
+  // Scoped inventory getter based on user role and assigned location
+  getScopedInventory: (user = null) => {
+    const all = dbInventory.getAll();
+    if (!user || user.is_owner || user.role === "admin" || user.role === "doctor" || !user.assigned_warehouse_id) {
+      return all;
+    }
+    const whId = user.assigned_warehouse_id;
+    return all.map((item) => {
+      const locQty = dbInventory.getLocationStock(item, whId);
+      return {
+        ...item,
+        current_location_stock: locQty,
+        stock_qty: locQty,
+        store_stock: whId === "wh_str" ? locQty : 0,
+        warehouse_stock: whId !== "wh_str" ? locQty : 0,
+        total_base_stock: locQty,
+      };
+    });
+  },
+  // Set stock quantity directly for a specific warehouse
+  setStockForLocation: (id, qty, warehouseId = "wh_001") => {
+    const inventory = getCollection(KEYS.INVENTORY);
+    const q = Math.max(0, Number(qty) || 0);
+    const updated = inventory.map((i) => {
+      if (i.id !== id) return i;
+      const locStocks = { ...(i.location_stocks || { wh_001: i.warehouse_stock ?? 0, wh_str: i.store_stock ?? (i.stock_qty ?? 0) }) };
+      locStocks[warehouseId] = q;
+      const newWarehouseTotal = Object.entries(locStocks)
+        .filter(([k]) => k !== "wh_str")
+        .reduce((sum, [, v]) => sum + Number(v), 0);
+      const storeStock = Number(locStocks["wh_str"]) || 0;
+      return {
+        ...i,
+        location_stocks: locStocks,
+        warehouse_stock: newWarehouseTotal,
+        store_stock: storeStock,
+        stock_qty: storeStock,
+        total_base_stock: newWarehouseTotal + storeStock,
+      };
+    });
+    setCollection(KEYS.INVENTORY, updated);
   },
   // Deduct stock from a specific warehouse/location
   deductStockFromLocation: (id, baseQty, warehouseId = "wh_001") => {

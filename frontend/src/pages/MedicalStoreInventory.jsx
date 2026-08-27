@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useAuth } from "../hooks/useAuth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
-import { dbClinic, dbSuppliers, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
+import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
 import { formatCurrency } from "../utils/formatters.js";
 import { printInventoryListReceipt, printProductPricingListReceipt } from "../utils/thermalPrinter.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
@@ -56,6 +57,22 @@ function extractCompanyCode(supplierOrName) {
 }
 
 export default function MedicalStoreInventory() {
+  const { user } = useAuth();
+  const allWarehouses = useMemo(() => dbWarehouses.getAll(), []);
+  const isLocationLocked = Boolean(
+    user && !user.is_owner && user.role !== "admin" && user.role !== "doctor" && user.assigned_warehouse_id
+  );
+  const [selectedLocationId, setSelectedLocationId] = useState(user?.assigned_warehouse_id || "all");
+  const effectiveLocationId = isLocationLocked ? (user?.assigned_warehouse_id || "wh_001") : selectedLocationId;
+  const currentWarehouseInfo = useMemo(() => {
+    if (effectiveLocationId === "all") return null;
+    return allWarehouses.find((w) => w.id === effectiveLocationId) || null;
+  }, [allWarehouses, effectiveLocationId]);
+
+  const canViewFinancials = Boolean(
+    user?.is_owner || user?.role === "doctor" || user?.role === "admin" || user?.can_view_financials
+  );
+
   const [inventory, setInventory] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formTab, setFormTab] = useState("quick"); // "quick" | "advanced"
@@ -517,13 +534,21 @@ export default function MedicalStoreInventory() {
     document.body.removeChild(link);
   }
 
+  function getItemLocationStock(item) {
+    if (!item) return 0;
+    if (effectiveLocationId === "all") {
+      return item.total_base_stock ?? item.stock_qty ?? 0;
+    }
+    return dbInventory.getLocationStock(item, effectiveLocationId);
+  }
+
   function isLowStock(item) {
-    const base = item.total_base_stock ?? item.stock_qty ?? 0;
+    const base = getItemLocationStock(item);
     return base > 0 && base <= (item.low_stock_threshold || 6);
   }
 
   function isOutOfStock(item) {
-    const base = item.total_base_stock ?? item.stock_qty ?? 0;
+    const base = getItemLocationStock(item);
     return base <= 0;
   }
 
@@ -537,7 +562,7 @@ export default function MedicalStoreInventory() {
     let outOfStockCount = 0;
 
     inventory.forEach((item) => {
-      const stock = item.total_base_stock ?? item.stock_qty ?? 0;
+      const stock = getItemLocationStock(item);
       const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || 0);
       const cost = Number(item.cost_price_per_box || item.purchase_price || (sale * 0.7));
 
@@ -560,7 +585,7 @@ export default function MedicalStoreInventory() {
       lowStockCount,
       outOfStockCount,
     };
-  }, [inventory]);
+  }, [inventory, effectiveLocationId]);
 
   // Unique Category / Company Codes for Filter Dropdowns
   const uniqueCompanyNames = useMemo(() => {
@@ -732,6 +757,28 @@ export default function MedicalStoreInventory() {
               <span>Bulk CSV</span>
             </button>
 
+            {/* Multi-Warehouse Selector for Admin / Doctor */}
+            {!isLocationLocked && (
+              <div className="flex items-center gap-1.5 bg-slate-800/90 p-1 rounded-2xl border border-slate-700">
+                <span className="material-symbols-outlined text-xs text-teal-400 pl-2">warehouse</span>
+                <select
+                  value={selectedLocationId}
+                  onChange={(e) => {
+                    setSelectedLocationId(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-transparent text-white text-xs font-bold py-1.5 pr-3 focus:outline-none cursor-pointer"
+                >
+                  <option value="all" className="bg-slate-900 text-white">🏢 All Locations &amp; Counter</option>
+                  {allWarehouses.map((wh) => (
+                    <option key={wh.id} value={wh.id} className="bg-slate-900 text-white">
+                      📍 {wh.nickname || wh.name} ({wh.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Zero-Pilferage Blind Stock Audit */}
             <button
               onClick={() => {
@@ -766,6 +813,35 @@ export default function MedicalStoreInventory() {
         </div>
       </div>
 
+      {/* Location Scoped Incharge Notice */}
+      {isLocationLocked && userAssignedWh && (
+        <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-teal-900 text-white rounded-3xl p-4 sm:p-5 border border-teal-500/40 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-bold">
+              <span className="material-symbols-outlined text-2xl">warehouse</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-500 text-slate-950">
+                  {userAssignedWh.code || "GDW"}
+                </span>
+                <h3 className="font-extrabold text-sm sm:text-base text-white">
+                  Location Scoped: {userAssignedWh.nickname || userAssignedWh.name}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Logged in as <strong>{user?.name}</strong> • Only stock &amp; movements for this specific location are accessible.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 bg-teal-950/80 px-4 py-2 rounded-2xl border border-teal-500/30 text-xs font-semibold text-teal-200">
+            <span className="material-symbols-outlined text-sm text-teal-400">lock</span>
+            <span>Isolated Godown Security Active</span>
+          </div>
+        </div>
+      )}
+
       {/* KPI & Valuation Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total Catalog Medicines */}
@@ -788,7 +864,9 @@ export default function MedicalStoreInventory() {
         {/* Total Stock Volume */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Stock Units</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {isLocationLocked ? "Location Stock" : effectiveLocationId === "all" ? "Total Stock Units" : "Location Stock"}
+            </span>
             <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-cyan-800 flex items-center justify-center font-bold">
               <span className="material-symbols-outlined text-xl">inventory</span>
             </div>
@@ -796,7 +874,11 @@ export default function MedicalStoreInventory() {
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-slate-900">{metrics.totalStockUnits.toLocaleString()}</div>
             <div className="text-xs text-slate-500 font-medium mt-0.5">
-              Combined Store &amp; Godown Units
+              {isLocationLocked
+                ? `Assigned: ${userAssignedWh?.nickname || "This Godown"}`
+                : effectiveLocationId === "all"
+                ? "Combined Store & Godown Units"
+                : `Filtered: ${currentWarehouseInfo?.nickname || "Selected Location"}`}
             </div>
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-500 opacity-60" />
@@ -811,12 +893,26 @@ export default function MedicalStoreInventory() {
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-black text-emerald-800">
-              Rs. {Math.round(metrics.totalValuationRetail).toLocaleString()}
-            </div>
-            <div className="text-xs text-slate-500 font-medium mt-0.5">
-              Cost Asset: Rs. {Math.round(metrics.totalValuationCost).toLocaleString()}
-            </div>
+            {canViewFinancials ? (
+              <>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-800">
+                  Rs. {Math.round(metrics.totalValuationRetail).toLocaleString()}
+                </div>
+                <div className="text-xs text-slate-500 font-medium mt-0.5">
+                  Cost Asset: Rs. {Math.round(metrics.totalValuationCost).toLocaleString()}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-base font-black text-slate-400 flex items-center gap-1.5 mt-1">
+                  <span className="material-symbols-outlined text-base">lock</span>
+                  <span>Confidential</span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-medium mt-0.5">
+                  Doctor &amp; Owner Access Only
+                </div>
+              </>
+            )}
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-60" />
         </div>
@@ -1477,7 +1573,13 @@ export default function MedicalStoreInventory() {
                 <tr className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
                   <th className="py-4 px-6">Medicine &amp; Company</th>
                   <th className="py-4 px-4 text-center">Category / Code</th>
-                  <th className="py-4 px-4 text-center">Stock Breakdown</th>
+                  <th className="py-4 px-4 text-center">
+                    {isLocationLocked
+                      ? `Stock in ${userAssignedWh?.nickname || "Location"}`
+                      : effectiveLocationId === "all"
+                      ? "Stock Breakdown"
+                      : `Stock in ${currentWarehouseInfo?.nickname || "Location"}`}
+                  </th>
                   <th className="py-4 px-4 text-right">Cost Rate</th>
                   <th className="py-4 px-4 text-right">Sale Price</th>
                   <th className="py-4 px-6 text-right">Actions &amp; Ledger</th>
@@ -1487,7 +1589,7 @@ export default function MedicalStoreInventory() {
                 {paginatedInventory.map((item) => {
                   const low = isLowStock(item);
                   const out = isOutOfStock(item);
-                  const base = item.total_base_stock ?? item.stock_qty ?? 0;
+                  const base = getItemLocationStock(item);
                   const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || 0);
                   const cost = Number(item.cost_price_per_box || item.purchase_price || (sale * 0.7));
 
@@ -1552,16 +1654,26 @@ export default function MedicalStoreInventory() {
                             {base} <span className="text-xs font-medium text-slate-500">Units</span>
                           </span>
                           <span className="text-[10px] text-slate-500 font-medium mt-0.5">
-                            {formatStockBreakdown(item)}
+                            {isLocationLocked
+                              ? `📍 ${userAssignedWh?.nickname || "Assigned Location"}`
+                              : effectiveLocationId === "all"
+                              ? formatStockBreakdown(item)
+                              : `📍 ${currentWarehouseInfo?.nickname || "Selected Location"}`}
                           </span>
                         </div>
                       </td>
 
                       {/* Cost Rate */}
                       <td className="py-3.5 px-4 text-right">
-                        <div className="font-bold text-slate-500 text-xs">
-                          Rs. {cost.toLocaleString()}
-                        </div>
+                        {canViewFinancials ? (
+                          <div className="font-bold text-slate-500 text-xs">
+                            Rs. {cost.toLocaleString()}
+                          </div>
+                        ) : (
+                          <div className="font-medium text-slate-400 text-xs">
+                            🔒 Confidential
+                          </div>
+                        )}
                       </td>
 
                       {/* Sale Price */}
@@ -1569,7 +1681,7 @@ export default function MedicalStoreInventory() {
                         <div className="font-black text-emerald-900 text-sm">
                           {formatCurrency(sale)}
                         </div>
-                        {sale > cost && (
+                        {sale > cost && canViewFinancials && (
                           <div className="text-[10px] text-emerald-600 font-bold">
                             +Rs. {(sale - cost).toFixed(0)} ({(((sale - cost) / (cost || 1)) * 100).toFixed(0)}%)
                           </div>
@@ -1616,7 +1728,7 @@ export default function MedicalStoreInventory() {
           {paginatedInventory.map((item) => {
             const low = isLowStock(item);
             const out = isOutOfStock(item);
-            const base = item.total_base_stock ?? item.stock_qty ?? 0;
+            const base = getItemLocationStock(item);
             const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || 0);
             const cost = Number(item.cost_price_per_box || item.purchase_price || (sale * 0.7));
 
@@ -1668,7 +1780,13 @@ export default function MedicalStoreInventory() {
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-1.5">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500 font-medium">Stock:</span>
-                    <span className="font-black text-slate-900">{formatStockBreakdown(item)}</span>
+                    <span className="font-black text-slate-900">
+                      {isLocationLocked
+                        ? `${base} Units (${userAssignedWh?.nickname || "Assigned Godown"})`
+                        : effectiveLocationId === "all"
+                        ? formatStockBreakdown(item)
+                        : `${base} Units (${currentWarehouseInfo?.nickname || "Selected Location"})`}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500 font-medium">Price:</span>
@@ -1676,7 +1794,9 @@ export default function MedicalStoreInventory() {
                   </div>
                   <div className="flex justify-between items-center text-[11px]">
                     <span className="text-slate-500 font-medium">Cost Rate:</span>
-                    <span className="font-bold text-slate-600">Rs. {cost.toLocaleString()}</span>
+                    <span className="font-bold text-slate-600">
+                      {canViewFinancials ? `Rs. ${cost.toLocaleString()}` : "🔒 Confidential"}
+                    </span>
                   </div>
                 </div>
 

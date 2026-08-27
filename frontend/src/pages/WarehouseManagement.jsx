@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth.js";
 import { dbInventory, dbStockTransfers, dbB2BSales, dbClinic, dbParties, dbSalesmen, dbWarehouses, dbAccounts, dbUsers } from "../api/db.js";
 import { printThermalReceipt, printChartOfAccountsReceipt } from "../utils/thermalPrinter.js";
 import { formatPKR, formatDate } from "../utils/formatters.js";
@@ -54,6 +55,7 @@ const SINDH_ACCOUNT_TYPES = [
 ];
 
 export default function WarehouseManagement() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get("tab");
   const [inventory, setInventory] = useState([]);
@@ -62,6 +64,16 @@ export default function WarehouseManagement() {
   const [parties, setParties] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [godowns, setGodowns] = useState([]);
+
+  const isLocationLocked = Boolean(
+    user && !user.is_owner && user.role !== "admin" && user.role !== "doctor" && user.assigned_warehouse_id
+  );
+  const userAssignedWh = useMemo(() => godowns.find((w) => w.id === user?.assigned_warehouse_id), [godowns, user]);
+  const canViewFinancials = Boolean(
+    user?.is_owner || user?.role === "doctor" || user?.role === "admin" || user?.can_view_financials
+  );
+
   const [activeTab, setActiveTab] = useState(urlTab && ["stock", "b2b", "transfer", "parties", "logs", "godowns"].includes(urlTab) ? urlTab : "stock");
 
   // DrCreate Account Registration Form & Chart of Accounts State
@@ -94,7 +106,6 @@ export default function WarehouseManagement() {
   const [accessAccountsImportStatus, setAccessAccountsImportStatus] = useState({ loading: false, result: null, error: "" });
 
   // Godown / Multi-Warehouse Management State
-  const [godowns, setGodowns] = useState([]);
   const [showGodownModal, setShowGodownModal] = useState(false);
   const [editingGodown, setEditingGodown] = useState(null);
   const [godownForm, setGodownForm] = useState({
@@ -1147,7 +1158,9 @@ export default function WarehouseManagement() {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono text-gray-600">
-                          {formatPKR(item.cost_price_per_box || item.purchase_price || 0)}
+                          {canViewFinancials
+                            ? formatPKR(item.cost_price_per_box || item.purchase_price || 0)
+                            : <span className="text-xs text-gray-400 font-semibold">🔒 Confidential</span>}
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-gray-900">
                           {formatPKR(item.box_sale_price || item.sale_price || 0)}

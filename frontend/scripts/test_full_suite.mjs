@@ -1218,6 +1218,49 @@ async function runTests() {
 
     // 4. Dynamic Warehouses in Clinic Settings
     assert(settingsCode.includes("dbWarehouses.getAll()"), "ClinicSettings dynamically pulls all registered godowns from dbWarehouses");
+  });
+
+  // ====================================================
+  // SUITE 26: Multi-Warehouse Staff Inventory Isolation & Financial Revenue Privacy (RBAC)
+  // ====================================================
+  await suite("26. Multi-Warehouse Staff Inventory Isolation & Financial Revenue Privacy (RBAC)", async () => {
+    const authPath = path.resolve("src/api/auth.js");
+    const dbPath = path.resolve("src/api/db.js");
+    const invPath = path.resolve("src/pages/MedicalStoreInventory.jsx");
+    const dashPath = path.resolve("src/pages/Dashboard.jsx");
+    const feesPath = path.resolve("src/pages/FeesReports.jsx");
+
+    const authCode = fs.readFileSync(authPath, "utf8");
+    const dbCode = fs.readFileSync(dbPath, "utf8");
+    const invCode = fs.readFileSync(invPath, "utf8");
+    const dashCode = fs.readFileSync(dashPath, "utf8");
+    const feesCode = fs.readFileSync(feesPath, "utf8");
+
+    // 1. Auth session includes assigned_warehouse_id
+    assert(authCode.includes("assigned_warehouse_id: user.assigned_warehouse_id"), "Login session retains assigned_warehouse_id");
+    assert(authCode.includes("assigned_warehouse_id: dbUser.assigned_warehouse_id"), "Session validation restores assigned_warehouse_id");
+
+    // 2. Seeding sample warehouse incharge accounts (Raza, Usama, Mustafa)
+    assert(dbCode.includes("user_raza"), "Raza incharge account is seeded");
+    assert(dbCode.includes("user_usama"), "Usama incharge account is seeded");
+    assert(dbCode.includes("user_mustafa"), "Mustafa pharmacy cashier account is seeded");
+    assert(dbCode.includes("wh_001") && dbCode.includes("wh_002") && dbCode.includes("wh_str"), "Default warehouses are seeded");
+
+    // 3. Scoped inventory calculation engine
+    assert(dbCode.includes("getScopedInventory"), "dbInventory provides getScopedInventory helper");
+    assert(dbCode.includes("setStockForLocation"), "dbInventory provides setStockForLocation helper");
+
+    // 4. Medical Store Inventory location locking & multi-warehouse switcher
+    assert(invCode.includes("isLocationLocked"), "MedicalStoreInventory calculates isLocationLocked");
+    assert(invCode.includes("effectiveLocationId"), "MedicalStoreInventory computes effectiveLocationId");
+    assert(invCode.includes("getItemLocationStock"), "MedicalStoreInventory isolates item stock calculation per location");
+    assert(invCode.includes("Location Scoped:"), "MedicalStoreInventory displays prominent location lock banner for scoped staff");
+    assert(invCode.includes("Multi-Warehouse Selector for Admin"), "MedicalStoreInventory provides location switcher for Admin/Doctor");
+
+    // 5. Financial Revenue Privacy (RBAC) in Dashboard & Fees Reports
+    assert(dashCode.includes("canViewFinancials"), "Dashboard respects canViewFinancials permission");
+    assert(dashCode.includes("Confidential"), "Dashboard masks revenue cards for unauthorized staff");
+    assert(feesCode.includes("Financial Access Restricted"), "FeesReports restricts full ledger access to authorized staff");
   });  // ----------------------------------------------------
   // SUMMARY REPORT
   // ----------------------------------------------------
