@@ -83,54 +83,72 @@ export function escapeHtml(str) {
  * Uses hidden iframe (immune to popup blockers) and falls back to window.open.
  */
 export function executeThermalPrint(receiptHtml, title = "Print") {
-  if (typeof document === "undefined") {
+  if (typeof document === "undefined" || !receiptHtml) {
     return receiptHtml;
   }
   try {
-    let iframe = document.getElementById("thermal-print-iframe");
-
-    if (!iframe) {
-      iframe = document.createElement("iframe");
-      iframe.id = "thermal-print-iframe";
-      iframe.style.position = "fixed";
-      iframe.style.right = "0";
-      iframe.style.bottom = "0";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "0";
-      iframe.setAttribute("aria-hidden", "true");
-      iframe.title = title || "Print Thermal Receipt";
-      document.body.appendChild(iframe);
+    // 1. Clean up any previous iframe to prevent stale document locks
+    const oldIframe = document.getElementById("thermal-print-iframe");
+    if (oldIframe) {
+      try { oldIframe.remove(); } catch {}
     }
+
+    // 2. Create fresh, properly-dimensioned invisible print iframe
+    const iframe = document.createElement("iframe");
+    iframe.id = "thermal-print-iframe";
+    iframe.style.position = "fixed";
+    iframe.style.left = "-9999px";
+    iframe.style.top = "-9999px";
+    iframe.style.width = "76mm";
+    iframe.style.height = "100%";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.title = title || "Print Thermal Receipt";
+    document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow.document;
     doc.open();
     doc.write(receiptHtml);
     doc.close();
 
+    // 3. Trigger printing with clean focus and timing
     setTimeout(() => {
       try {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
       } catch (err) {
-        console.warn("Iframe print blocked, falling back to window.open:", err);
-        const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
+        console.warn("Iframe print blocked, falling back to window.open popup:", err);
+        const win = window.open("", "_blank", "width=460,height=700,scrollbars=yes,resizable=yes");
         if (win) {
           win.document.open();
           win.document.write(receiptHtml);
           win.document.close();
-          setTimeout(() => { win.print(); }, 600);
+          setTimeout(() => {
+            try {
+              win.focus();
+              win.print();
+            } catch {}
+          }, 350);
         }
       }
-    }, 600);
+    }, 250);
   } catch (outerErr) {
-    console.warn("Direct window fallback:", outerErr);
-    const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-    if (win) {
-      win.document.open();
-      win.document.write(receiptHtml);
-      win.document.close();
-      setTimeout(() => { win.print(); }, 250);
+    console.warn("Direct window fallback for thermal print:", outerErr);
+    try {
+      const win = window.open("", "_blank", "width=460,height=700,scrollbars=yes,resizable=yes");
+      if (win) {
+        win.document.open();
+        win.document.write(receiptHtml);
+        win.document.close();
+        setTimeout(() => {
+          try {
+            win.focus();
+            win.print();
+          } catch {}
+        }, 350);
+      }
+    } catch (finalErr) {
+      console.error("Print execution failed completely:", finalErr);
     }
   }
 }
