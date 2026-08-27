@@ -248,7 +248,7 @@ export default function FeesReports() {
       const matchedParty = parties.find((p) => p.name.toLowerCase() === acc.account_name.toLowerCase());
       const extraDue =
         matchedParty && matchedParty.current_balance > 0
-          ? `Udhaar: Rs. ${matchedParty.current_balance.toLocaleString("en-PK")}`
+          ? `Udhaar: Rs. ${Number(matchedParty.current_balance || 0).toLocaleString("en-US")}`
           : null;
 
       return {

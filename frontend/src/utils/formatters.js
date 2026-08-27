@@ -9,7 +9,11 @@ import { format, isValid, differenceInYears, parseISO } from "date-fns";
 /** Format a number as PKR currency: "Rs. 1,200" */
 export function formatCurrency(amount) {
   if (amount == null || isNaN(amount)) return "Rs. 0";
-  return `Rs. ${Number(amount).toLocaleString("en-PK")}`;
+  try {
+    return `Rs. ${Number(amount).toLocaleString("en-US")}`;
+  } catch {
+    return `Rs. ${Number(amount).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+  }
 }
 
 export const formatPKR = formatCurrency;

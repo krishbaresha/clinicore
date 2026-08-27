@@ -8,7 +8,7 @@ export function generateCliniCoreEmailTemplate({
   clinicName = "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale",
   targetEmail = "admin@clinicore.pk",
   dateStr = new Date().toISOString().split("T")[0],
-  timestampStr = new Date().toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" }),
+  timestampStr = new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" }),
   totalInflows = 0,
   totalStockValuation = 0,
   staffCount = 0,
@@ -153,7 +153,7 @@ export function generateCliniCoreEmailTemplate({
                   <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; vertical-align: top;">
                     <div style="font-size: 10px; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px;">💰 Total Inflows</div>
                     <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 4px; font-family: monospace;">
-                      Rs. ${Number(totalInflows).toLocaleString("en-PK")}
+                      Rs. ${Number(totalInflows).toLocaleString("en-US")}
                     </div>
                     <div style="font-size: 10px; color: #64748b; margin-top: 2px;">OPD Fees + POS &amp; B2B Sales</div>
                   </td>
@@ -161,7 +161,7 @@ export function generateCliniCoreEmailTemplate({
                   <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; vertical-align: top;">
                     <div style="font-size: 10px; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px;">📦 Stock Valuation</div>
                     <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 4px; font-family: monospace;">
-                      Rs. ${Number(totalStockValuation).toLocaleString("en-PK")}
+                      Rs. ${Number(totalStockValuation).toLocaleString("en-US")}
                     </div>
                     <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Central Godown &amp; Pharmacy</div>
                   </td>

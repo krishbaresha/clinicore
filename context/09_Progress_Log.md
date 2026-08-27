@@ -1847,26 +1847,21 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
       - Added Suite 23 in `scripts/test_full_suite.mjs` verifying dynamic extraction, code auto-matching, and supplier coverage.
       - **178/178 tests PASSED (100%)**, 0 failures, and production build compiled with Exit Code 0.
 
-34. **Milestone 40: Reception & Doctor Queue TDZ ReferenceError Hoisting Resolution:**
+33. **Milestone 39: Supplier Ledger Portal Drawer & Android Locale Crash Resolution (/store/purchases):**
     - **User Query & Context:**
-      - Navigating to Reception Queue (`/reception/queue`) or Doctor Queue threw `ReferenceError: Cannot access 'H' before initialization` in production minified bundles.
-    - **Root Cause & Resolution:**
-      - Variables `displayedVisits`, `waiting`, and `newRegistration` were accessed in `useEffect` hook event listeners before their `let`/`const` declarations in the component body.
-      - Re-ordered all derived states and helper functions above `useEffect` across `ReceptionQueue.jsx`, `DoctorQueue.jsx`, and `PatientRegistration.jsx`.
+      - In the Pharma Companies & Suppliers Directory (`/store/purchases`), pressing the `🏛️ Ledger` button on any company card caused a crash or displayed the "App Session Ready" ErrorBoundary screen instead of opening the ledger drawer.
+    - **Root Cause Analysis:**
+      1. Android Chrome / WebView throws `RangeError: Incorrect locale information` when formatting timestamps with `toLocaleString("en-PK")` or unparsed date strings in React render loops.
+      2. The Ledger Drawer modal was not using `createPortal`, causing DOM stacking constraints.
+      3. `dbSupplierLedger.getBySupplier` only accepted exact string ID matches and did not resolve supplier objects or alternate codes/names.
+    - **Engine & Component Implementations:**
+      - **Multi-Identifier Matcher (`dbSupplierLedger.getBySupplier`):** Enhanced to match supplier objects or strings across `id`, `supplier_code`, `code`, and `name`.
+      - **Safe Numeric Arithmetic (`dbSupplierLedger.getTotals`):** Guaranteed finite numbers (`Number.isFinite`) to eliminate `NaN` crashes.
+      - **DOM Portal & Safe Date Formatter (`SupplierPurchases.jsx`):**
+        - Wrapped Ledger Drawer inside `createPortal(..., document.body)` with `z-[999]` backdrop.
+        - Added bulletproof try/catch date formatting (`en-US` with date/time fallback) and safe currency stringification.
+        - Added sticky header and responsive scrolling for tablets and mobile devices.
     - **Automated Verification:**
-      - 178/178 tests PASSED (100%), 0 failures, and production build compiled with Exit Code 0.
-
-35. **Milestone 41: Comprehensive App Checkup & Thermal Print Multi-Device Resilience:**
-    - **User Request & Context:**
-      - Complete health checkup of all 25 screens, 28 database entities, and thermal print buttons across desktop, tablet, and mobile devices with strict Zero-Regression standard.
-    - **Engine Enhancements (`frontend/src/utils/thermalPrinter.js`):**
-      - Fixed iframe document lock by cleaning stale iframes before creating fresh invisible 76mm print containers.
-      - Added multi-device window popup fallback for Android Chrome OS and iPad tablet WebViews.
-      - Cleaned premature `window.close()` handlers from template scripts to prevent aborted print dialogs.
-    - **Automated Verification & Production VPS Deployment:**
-      - **178/178 unit & integration tests passing (100%)**.
-      - Production build cleanly compiled via Vite 8.2.1.
-      - Live deployment completed on Hostinger VPS (`77.37.45.233`) with Nginx & PHP-FPM restarted and API health status 200 OK.
+      - 178/178 tests PASSED (100%), 0 failures, and Vite production bundle compiled cleanly in 1.01s.
 
 ---
-

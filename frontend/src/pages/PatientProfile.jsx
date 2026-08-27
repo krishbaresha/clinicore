@@ -16,7 +16,7 @@ function PharmacyReceiptModal({ sale, onClose }) {
   const changeDue = sale.change_due ?? Math.max(0, cashTendered - sale.total_amount);
   
   const rawDate = sale.sale_date ? new Date(sale.sale_date) : new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+  const dateTimeStr = rawDate.toLocaleString("en-US", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -238,7 +238,7 @@ function VisitCard({ visit, index, onUpdate, onViewReceipt }) {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  {new Date(visit.visit_date).toLocaleDateString("en-PK", { year: "numeric", month: "long", day: "numeric" })}
+                  {new Date(visit.visit_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
                 </span>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   visit.visit_type === "follow_up" ? "bg-blue-50 text-blue-700" : "bg-teal-50 text-teal-700"
@@ -358,7 +358,7 @@ function VisitCard({ visit, index, onUpdate, onViewReceipt }) {
           {visit.follow_up_date && (
             <div className="flex items-center gap-1.5 text-xs text-teal-700 mt-2">
               <span className="material-symbols-outlined text-sm">event_available</span>
-              Follow-up: {new Date(visit.follow_up_date).toLocaleDateString("en-PK", { year: "numeric", month: "long", day: "numeric" })}
+              Follow-up: {new Date(visit.follow_up_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
             </div>
           )}
 

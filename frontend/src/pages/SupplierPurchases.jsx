@@ -1862,7 +1862,7 @@ export default function SupplierPurchases() {
                   globalFilteredPurchases.map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50/50">
                       <td className="px-4 py-3 text-gray-500">
-                        {new Date(p.purchase_date).toLocaleDateString("en-PK")}
+                        {new Date(p.purchase_date).toLocaleDateString("en-US")}
                       </td>
                       <td className="px-4 py-3 font-bold text-teal-700">{p.invoice_no}</td>
                       <td className="px-4 py-3 font-bold text-gray-800">{p.company_bill_no || "N/A"}</td>
@@ -2290,7 +2290,7 @@ export default function SupplierPurchases() {
                   ) : (
                     filteredSupplierInvoices.map((p) => (
                       <tr key={p.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2.5">{new Date(p.purchase_date).toLocaleDateString("en-PK")}</td>
+                        <td className="px-3 py-2.5">{new Date(p.purchase_date).toLocaleDateString("en-US")}</td>
                         <td className="px-3 py-2.5 font-bold text-teal-700">{p.invoice_no}</td>
                         <td className="px-3 py-2.5 font-bold text-gray-800">{p.company_bill_no || "N/A"}</td>
                         <td className="px-3 py-2.5 text-right font-black text-gray-900">Rs. {(p.total_amount || 0).toLocaleString()}</td>
@@ -2348,7 +2348,7 @@ export default function SupplierPurchases() {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Date:</span>
-                <span>{new Date(selectedInvoiceModal.purchase_date).toLocaleString("en-PK")}</span>
+                <span>{selectedInvoiceModal.purchase_date ? new Date(selectedInvoiceModal.purchase_date).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}</span>
               </div>
             </div>
 

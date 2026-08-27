@@ -665,7 +665,7 @@ export default function DeveloperAdminPanel() {
       const timeTag = now.toTimeString().split(" ")[0].replace(/:/g, "");
       const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
       const sizeBytes = new Blob([encryptedBackupStr]).size;
-      const timestampStr = now.toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" });
+      const timestampStr = now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" });
 
       const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
 
@@ -767,7 +767,7 @@ export default function DeveloperAdminPanel() {
       clinicName: clinicForm.name || "Medical Clinic & Pharmacy",
       targetEmail,
       dateStr,
-      timestampStr: now.toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" }),
+      timestampStr: now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" }),
       totalInflows: auditMetrics.totalInflows || 0,
       totalStockValuation: auditMetrics.totalStockValuation || 0,
       staffCount: usersList.length || 0,
@@ -803,7 +803,7 @@ export default function DeveloperAdminPanel() {
         clinicName: clinicForm.name || "Medical Clinic & Pharmacy",
         targetEmail,
         dateStr,
-        timestampStr: new Date().toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" }),
+        timestampStr: new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" }),
         isTestPing: true,
       });
 
@@ -1527,7 +1527,7 @@ export default function DeveloperAdminPanel() {
                             href={`https://wa.me/${cleanWaPhone || "923473100304"}?text=${encodeURIComponent(
                               `*📋 SOFTWARE MONTHLY INVOICE / REMINDER*\n` +
                               `*🏥 ${activeClinic?.name || "CliniCore Client"}*\n\n` +
-                              `• Monthly Subscription Fee: Rs. ${licenseForm.monthly_fee?.toLocaleString("en-PK") || "5,000"}\n` +
+                              `• Monthly Subscription Fee: Rs. ${Number(licenseForm.monthly_fee || 5000).toLocaleString("en-US")}\n` +
                               `• Due Date: ${licenseForm.next_due_date || "1st of Month"}\n` +
                               `• Grace Period: 1st to ${licenseForm.grace_days || 10}th of Month\n` +
                               `• Payment Mode: JazzCash / EasyPaisa / Bank Transfer (03142291356)\n\n` +
@@ -1913,7 +1913,7 @@ export default function DeveloperAdminPanel() {
                               <table>
                                 <tr><td colspan="6" class="title-row">${activeClinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"} - Executive Audit Statement</td></tr>
                                 <tr><td colspan="6" style="color: #475569;">Period: ${periodLabel} (${auditDates.startDateStr} to ${auditDates.endDateStr}) | Godown Scope: ${godownScopeName}</td></tr>
-                                <tr><td colspan="6">Generated On: ${new Date().toLocaleString("en-PK")}</td></tr>
+                                <tr><td colspan="6">Generated On: ${new Date().toLocaleString("en-US")}</td></tr>
                                 <tr><td colspan="6"></td></tr>
 
                                 <!-- FINANCIAL KPI SUMMARY -->
@@ -2094,37 +2094,37 @@ export default function DeveloperAdminPanel() {
                 <div className="bg-white border border-teal-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-[10px] sm:text-[11px] font-bold text-teal-800 uppercase tracking-wider">Total Godown Stock Valuation</div>
                   <div className="text-xl sm:text-2xl font-black text-teal-950 mt-1">
-                    Rs. {auditMetrics.totalStockValuation.toLocaleString("en-PK")}
+                    Rs. {Number(auditMetrics.totalStockValuation || 0).toLocaleString("en-US")}
                   </div>
                   <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                    {auditMetrics.totalUnitsCount.toLocaleString()} Total Units in Selected Godowns
+                    {Number(auditMetrics.totalUnitsCount || 0).toLocaleString("en-US")} Total Units in Selected Godowns
                   </div>
                 </div>
 
                 <div className="bg-white border border-emerald-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-[10px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Total Clinic &amp; Store Inflows</div>
                   <div className="text-xl sm:text-2xl font-black text-emerald-950 mt-1">
-                    Rs. {auditMetrics.totalInflows.toLocaleString("en-PK")}
+                    Rs. {Number(auditMetrics.totalInflows || 0).toLocaleString("en-US")}
                   </div>
                   <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                    OPD: Rs. {auditMetrics.opdFeesTotal.toLocaleString()} | B2B: Rs. {auditMetrics.b2bSalesTotal.toLocaleString()}
+                    OPD: Rs. {Number(auditMetrics.opdFeesTotal || 0).toLocaleString("en-US")} | B2B: Rs. {Number(auditMetrics.b2bSalesTotal || 0).toLocaleString("en-US")}
                   </div>
                 </div>
 
                 <div className="bg-white border border-rose-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-[10px] sm:text-[11px] font-bold text-rose-800 uppercase tracking-wider">Total Outflows &amp; Purchases</div>
                   <div className="text-xl sm:text-2xl font-black text-rose-950 mt-1">
-                    Rs. {auditMetrics.totalOutflows.toLocaleString("en-PK")}
+                    Rs. {Number(auditMetrics.totalOutflows || 0).toLocaleString("en-US")}
                   </div>
                   <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                    GRN: Rs. {auditMetrics.supplierPurchasesCash.toLocaleString()} | Exp: Rs. {auditMetrics.expensesTotal.toLocaleString()}
+                    GRN: Rs. {Number(auditMetrics.supplierPurchasesCash || 0).toLocaleString("en-US")} | Exp: Rs. {Number(auditMetrics.expensesTotal || 0).toLocaleString("en-US")}
                   </div>
                 </div>
 
                 <div className="bg-white border border-purple-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-[10px] sm:text-[11px] font-bold text-purple-800 uppercase tracking-wider">Net Operating Margin</div>
                   <div className={`text-xl sm:text-2xl font-black mt-1 ${auditMetrics.netOperatingSurplus >= 0 ? "text-purple-950" : "text-rose-600"}`}>
-                    Rs. {auditMetrics.netOperatingSurplus.toLocaleString("en-PK")}
+                    Rs. {Number(auditMetrics.netOperatingSurplus || 0).toLocaleString("en-US")}
                   </div>
                   <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
                     {auditMetrics.netOperatingSurplus >= 0 ? "✅ Net Operational Profit" : "⚠️ Operating Deficit"}

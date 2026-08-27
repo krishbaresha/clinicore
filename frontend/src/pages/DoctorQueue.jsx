@@ -181,7 +181,7 @@ export default function DoctorQueue() {
             <span>{docProfile?.name ? `${docProfile.name}'s OPD Chamber` : "Doctor's Live Queue"}</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            {now.toLocaleString("en-PK", { weekday: "long", hour: "2-digit", minute: "2-digit", second: "2-digit" })} • {docProfile?.room_number || "OPD Chamber 1"}
+            {now.toLocaleString("en-US", { weekday: "long", hour: "2-digit", minute: "2-digit", second: "2-digit" })} • {docProfile?.room_number || "OPD Chamber 1"}
           </p>
         </div>
 
@@ -408,7 +408,7 @@ export default function DoctorQueue() {
                         )}
                         <div className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" />
-                          <span>Registered at {new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
+                          <span>Registered at {new Date(visit.visit_date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</span>
                         </div>
                       </div>
                     </div>

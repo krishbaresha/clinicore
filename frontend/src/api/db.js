@@ -3514,7 +3514,7 @@ export const dbLicense = {
         isGrace: false,
         daysLeft: Math.max(0, daysLeft),
         daysOverdue: 0,
-        message: lic.custom_notice || `Monthly Software License is due in ${daysLeft <= 0 ? "today" : `${daysLeft} days`} (${lic.next_due_date || "End of Month"}). Please clear payment of Rs. ${lic.monthly_fee?.toLocaleString("en-PK") || "5,000"}.`,
+        message: lic.custom_notice || `Monthly Software License is due in ${daysLeft <= 0 ? "today" : `${daysLeft} days`} (${lic.next_due_date || "End of Month"}). Please clear payment of Rs. ${Number(lic.monthly_fee || 5000).toLocaleString("en-US")}.`,
         isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
       };
     }

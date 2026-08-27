@@ -257,10 +257,10 @@ export default function PublicLiveQueue() {
             }`}
           >
             <div className={`text-sm sm:text-base font-mono font-black tracking-wider ${isDark ? "text-teal-300" : "text-teal-800"}`}>
-              {currentTime.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}
+              {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}
             </div>
             <div className={`text-[11px] font-semibold ${isDark ? "text-slate-400" : "text-gray-500"}`}>
-              {currentTime.toLocaleDateString("en-PK", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+              {currentTime.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
             </div>
           </div>
 

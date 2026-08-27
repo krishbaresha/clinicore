@@ -401,7 +401,7 @@ export default function SidebarLayout({ children }) {
         const timeTag = now.toTimeString().split(" ")[0].replace(/:/g, "");
         const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
         const sizeBytes = new Blob([encryptedBackupStr]).size;
-        const timestampStr = now.toLocaleString("en-PK", { dateStyle: "full", timeStyle: "medium" });
+        const timestampStr = now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" });
 
         const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
 

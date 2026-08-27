@@ -151,20 +151,20 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                     <div className="flex items-center justify-between font-black text-gray-900 pb-1 border-b border-gray-200">
                       <span className="font-serif text-sm">Sale</span>
                       <span className="font-mono text-emerald-700 text-sm">
-                        Rs. {closingData.sales.total.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                        Rs. {closingData.sales.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="pt-1.5 space-y-0.5 text-[11px] text-gray-700 font-medium">
                       <div className="flex items-center justify-between">
                         <span>Cash</span>
                         <span className="font-mono font-bold text-gray-900">
-                          Rs. {closingData.sales.cash.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                          Rs. {closingData.sales.cash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Credit</span>
                         <span className="font-mono font-bold text-rose-700">
-                          Rs. {closingData.sales.credit.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                          Rs. {closingData.sales.credit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
@@ -175,20 +175,20 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                     <div className="flex items-center justify-between font-black text-gray-900 pb-1 border-b border-gray-200">
                       <span className="font-serif text-sm">Purchase</span>
                       <span className="font-mono text-gray-900 text-sm">
-                        Rs. {closingData.purchases.total.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                        Rs. {closingData.purchases.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="pt-1.5 space-y-0.5 text-[11px] text-gray-700 font-medium">
                       <div className="flex items-center justify-between">
                         <span>Cash</span>
                         <span className="font-mono font-bold text-gray-900">
-                          Rs. {closingData.purchases.cash.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                          Rs. {closingData.purchases.cash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Credit</span>
                         <span className="font-mono font-bold text-gray-600">
-                          Rs. {closingData.purchases.credit.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                          Rs. {closingData.purchases.credit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
@@ -199,7 +199,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                     <div className="flex items-center justify-between font-black text-rose-950 pb-1 border-b border-rose-200">
                       <span className="font-serif text-sm">Payment Paid</span>
                       <span className="font-mono text-rose-700 text-sm">
-                        Rs. {closingData.payments_paid.total.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                        Rs. {closingData.payments_paid.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
 
@@ -211,7 +211,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                           <div key={idx} className="py-1 flex items-center justify-between text-gray-800">
                             <span className="font-bold truncate max-w-[200px]">{it.account_name}</span>
                             <span className="font-mono font-black text-rose-700 shrink-0">
-                              Rs. {it.amount.toLocaleString("en-PK")}
+                              Rs. {Number(it.amount || 0).toLocaleString("en-US")}
                             </span>
                           </div>
                         ))
@@ -224,7 +224,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                     <div className="flex items-center justify-between font-black text-emerald-950 pb-1 border-b border-emerald-200">
                       <span className="font-serif text-sm">Payment Receive</span>
                       <span className="font-mono text-emerald-700 text-sm">
-                        Rs. {closingData.payments_received.total.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                        Rs. {Number(closingData.payments_received.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
 
@@ -236,7 +236,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                           <div key={idx} className="py-1 flex items-center justify-between text-gray-800">
                             <span className="font-bold truncate max-w-[200px]">{it.account_name}</span>
                             <span className="font-mono font-black text-emerald-700 shrink-0">
-                              Rs. {it.amount.toLocaleString("en-PK")}
+                              Rs. {Number(it.amount || 0).toLocaleString("en-US")}
                             </span>
                           </div>
                         ))
@@ -250,7 +250,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                       Clossing Cash
                     </span>
                     <span className="font-mono font-black text-xl text-emerald-300">
-                      Rs. {closingData.closing_cash.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                      Rs. {closingData.closing_cash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 

@@ -142,7 +142,7 @@ export default function ReceptionQueue() {
             Reception &amp; Counter Queue Desk
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {new Date().toLocaleDateString("en-PK", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -463,7 +463,7 @@ export default function ReceptionQueue() {
                         <span>•</span>
                         <span className="capitalize">{visit.visit_type === "follow_up" ? "Follow-up" : "New Visit"}</span>
                         <span>•</span>
-                        <span>{new Date(visit.visit_date).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
+                        <span>{new Date(visit.visit_date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
                     </div>
                   </div>

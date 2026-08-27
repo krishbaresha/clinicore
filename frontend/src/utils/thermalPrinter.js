@@ -83,72 +83,54 @@ export function escapeHtml(str) {
  * Uses hidden iframe (immune to popup blockers) and falls back to window.open.
  */
 export function executeThermalPrint(receiptHtml, title = "Print") {
-  if (typeof document === "undefined" || !receiptHtml) {
+  if (typeof document === "undefined") {
     return receiptHtml;
   }
   try {
-    // 1. Clean up any previous iframe to prevent stale document locks
-    const oldIframe = document.getElementById("thermal-print-iframe");
-    if (oldIframe) {
-      try { oldIframe.remove(); } catch {}
-    }
+    let iframe = document.getElementById("thermal-print-iframe");
 
-    // 2. Create fresh, properly-dimensioned invisible print iframe
-    const iframe = document.createElement("iframe");
-    iframe.id = "thermal-print-iframe";
-    iframe.style.position = "fixed";
-    iframe.style.left = "-9999px";
-    iframe.style.top = "-9999px";
-    iframe.style.width = "76mm";
-    iframe.style.height = "100%";
-    iframe.style.border = "0";
-    iframe.setAttribute("aria-hidden", "true");
-    iframe.title = title || "Print Thermal Receipt";
-    document.body.appendChild(iframe);
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "thermal-print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      iframe.setAttribute("aria-hidden", "true");
+      iframe.title = title || "Print Thermal Receipt";
+      document.body.appendChild(iframe);
+    }
 
     const doc = iframe.contentWindow.document;
     doc.open();
     doc.write(receiptHtml);
     doc.close();
 
-    // 3. Trigger printing with clean focus and timing
     setTimeout(() => {
       try {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
       } catch (err) {
-        console.warn("Iframe print blocked, falling back to window.open popup:", err);
-        const win = window.open("", "_blank", "width=460,height=700,scrollbars=yes,resizable=yes");
+        console.warn("Iframe print blocked, falling back to window.open:", err);
+        const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
         if (win) {
           win.document.open();
           win.document.write(receiptHtml);
           win.document.close();
-          setTimeout(() => {
-            try {
-              win.focus();
-              win.print();
-            } catch {}
-          }, 350);
+          setTimeout(() => { win.print(); }, 600);
         }
       }
-    }, 250);
+    }, 600);
   } catch (outerErr) {
-    console.warn("Direct window fallback for thermal print:", outerErr);
-    try {
-      const win = window.open("", "_blank", "width=460,height=700,scrollbars=yes,resizable=yes");
-      if (win) {
-        win.document.open();
-        win.document.write(receiptHtml);
-        win.document.close();
-        setTimeout(() => {
-          try {
-            win.focus();
-            win.print();
-          } catch {}
-        }, 350);
-      }
-    } catch (finalErr) {
-      console.error("Print execution failed completely:", finalErr);
+    console.warn("Direct window fallback:", outerErr);
+    const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
+    if (win) {
+      win.document.open();
+      win.document.write(receiptHtml);
+      win.document.close();
+      setTimeout(() => { win.print(); }, 250);
     }
   }
 }
@@ -164,7 +146,7 @@ export function printThermalReceipt(sale, clinicData = null) {
   const changeDue = Number(sale.change_due) || Math.max(0, cashTendered - netTotal);
 
   const rawDate = sale.sale_date ? new Date(sale.sale_date) : new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+  const dateTimeStr = rawDate.toLocaleString("en-US", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -323,7 +305,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
   const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store");
   const rawDate = closing.date || closing.closing_date ? new Date(closing.date || closing.closing_date) : new Date();
   const dateStr = rawDate.toISOString().split("T")[0];
-  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+  const dateTimeStr = rawDate.toLocaleString("en-US", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -354,14 +336,14 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
   const paidItemsHtml = paidItems.length > 0 ? paidItems.map(it => `
     <div style="display:flex; justify-content:space-between; padding: 2px 0; font-size: 10px; color: #1f2937;">
       <span style="font-weight:700; max-width: 48mm; word-break: break-word;">${escapeHtml(it.account_name || 'Expense')} ${it.naration ? `<span style="font-weight:normal;color:#6b7280;">(${escapeHtml(it.naration)})</span>` : ''}</span>
-      <span style="font-weight:900; color:#b91c1c; font-family:monospace; shrink-0;">Rs. ${Number(it.amount || 0).toLocaleString("en-PK")}</span>
+      <span style="font-weight:900; color:#b91c1c; font-family:monospace; shrink-0;">Rs. ${Number(it.amount || 0).toLocaleString("en-US")}</span>
     </div>
   `).join('') : '<div style="font-size: 9.5px; color: #9ca3af; text-align: center; padding: 2px 0;">No payments paid on this date.</div>';
 
   const recItemsHtml = recItems.length > 0 ? recItems.map(it => `
     <div style="display:flex; justify-content:space-between; padding: 2px 0; font-size: 10px; color: #1f2937;">
       <span style="font-weight:700; max-width: 48mm; word-break: break-word;">${escapeHtml(it.account_name || 'Receive')} ${it.naration ? `<span style="font-weight:normal;color:#6b7280;">(${escapeHtml(it.naration)})</span>` : ''}</span>
-      <span style="font-weight:900; color:#047857; font-family:monospace; shrink-0;">Rs. ${Number(it.amount || 0).toLocaleString("en-PK")}</span>
+      <span style="font-weight:900; color:#047857; font-family:monospace; shrink-0;">Rs. ${Number(it.amount || 0).toLocaleString("en-US")}</span>
     </div>
   `).join('') : '<div style="font-size: 9.5px; color: #9ca3af; text-align: center; padding: 2px 0;">No cash payments received on this date.</div>';
 
@@ -432,7 +414,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
         ${openingCash > 0 ? `
           <div style="display: flex; justify-content: space-between; padding: 3px 0; font-size: 10.5px; font-weight: bold; color: #047857;">
             <span>Opening Drawer Float:</span>
-            <span>Rs. ${openingCash.toLocaleString("en-PK", { minimumFractionDigits: 2 })}</span>
+            <span>Rs. ${openingCash.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
         ` : ''}
 
@@ -441,17 +423,17 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
           <div class="box-header" style="color: #111827;">
             <span style="font-family: Georgia, serif; font-size: 13px;">Sale</span>
             <span style="color: #047857; font-family: monospace; font-size: 13px;">
-              Rs. ${saleTotal.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. ${saleTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div style="padding-top: 4px; font-size: 10.5px; color: #374151;">
             <div style="display: flex; justify-content: space-between; padding: 1px 0;">
               <span>Cash</span>
-              <span style="font-weight: bold; font-family: monospace;">Rs. ${saleCash.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span style="font-weight: bold; font-family: monospace;">Rs. ${saleCash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 1px 0;">
               <span>Credit</span>
-              <span style="font-weight: bold; font-family: monospace; color: #b91c1c;">Rs. ${saleCredit.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span style="font-weight: bold; font-family: monospace; color: #b91c1c;">Rs. ${saleCredit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
@@ -461,17 +443,17 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
           <div class="box-header" style="color: #111827;">
             <span style="font-family: Georgia, serif; font-size: 13px;">Purchase</span>
             <span style="color: #111827; font-family: monospace; font-size: 13px;">
-              Rs. ${purchaseTotal.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. ${purchaseTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div style="padding-top: 4px; font-size: 10.5px; color: #374151;">
             <div style="display: flex; justify-content: space-between; padding: 1px 0;">
               <span>Cash</span>
-              <span style="font-weight: bold; font-family: monospace;">Rs. ${purchaseCash.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span style="font-weight: bold; font-family: monospace;">Rs. ${purchaseCash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 1px 0;">
               <span>Credit</span>
-              <span style="font-weight: bold; font-family: monospace; color: #4b5563;">Rs. ${purchaseCredit.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span style="font-weight: bold; font-family: monospace; color: #4b5563;">Rs. ${purchaseCredit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
@@ -481,7 +463,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
           <div class="box-header" style="color: #9f1239; border-color: #fecdd3;">
             <span style="font-family: Georgia, serif; font-size: 13px;">Payment Paid</span>
             <span style="color: #b91c1c; font-family: monospace; font-size: 13px;">
-              Rs. ${paidTotal.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. ${paidTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div style="padding-top: 5px;">
@@ -494,7 +476,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
           <div class="box-header" style="color: #065f46; border-color: #a7f3d0;">
             <span style="font-family: Georgia, serif; font-size: 13px;">Payment Receive</span>
             <span style="color: #047857; font-family: monospace; font-size: 13px;">
-              Rs. ${recTotal.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. ${recTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div style="padding-top: 5px;">
@@ -509,7 +491,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
               Clossing Cash
             </span>
             <span style="font-family: monospace; font-weight: 900; font-size: 18px; color: #6ee7b7;">
-              Rs. ${closingCash.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs. ${closingCash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>
@@ -545,7 +527,7 @@ export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicDa
   const balanceDue = Number(purchase.balance_due) || Math.max(0, totalAmount - paidAmount);
 
   const rawDate = purchase.purchase_date ? new Date(purchase.purchase_date) : new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+  const dateTimeStr = rawDate.toLocaleString("en-US", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -685,7 +667,7 @@ export function printCashVoucherReceipt(entry, clinicData = null) {
   const amount = Number(entry.amount) || 0;
 
   const rawDate = entry.date ? new Date(entry.date) : new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+  const dateTimeStr = rawDate.toLocaleString("en-US", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -773,7 +755,7 @@ export function printCashVoucherReceipt(entry, clinicData = null) {
             ${isReceive ? 'Total Cash Received' : 'Total Cash Paid Out'}
           </div>
           <div style="font-size: 18px; font-weight: 900; color: #000; letter-spacing: -0.5px;">
-            Rs. ${amount.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            Rs. ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
 
@@ -820,7 +802,7 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
   const fee = Number(receipt.fee != null ? receipt.fee : (receipt.visit?.fee_amount || 0));
 
   const rawDate = receipt.registeredAt ? new Date(receipt.registeredAt) : new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+  const dateTimeStr = rawDate.toLocaleString("en-US", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -949,7 +931,7 @@ export function printProductStockCard(item, transactions = [], summary = {}, cli
   const clinicAddress = escapeHtml(clinicData?.address || "Lajpat Road, Hyderabad");
   const clinicPhone = escapeHtml(clinicData?.phone || "0300-1234567");
   const rawDate = new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+  const dateTimeStr = rawDate.toLocaleString("en-US", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -1074,7 +1056,7 @@ export function printProductStockCard(item, transactions = [], summary = {}, cli
  */
 export function printInventoryListReceipt(items = [], categoryName = "All Categories", clinic = null) {
   const cName = clinic?.name || "CliniCore Pharmacy & Clinic";
-  const dateStr = new Date().toLocaleString("en-PK", { dateStyle: "short", timeStyle: "short" });
+  const dateStr = new Date().toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
 
   const rowsHtml = (items || []).map((item) => {
     const stock = Number(item.total_base_stock ?? item.stock_qty ?? 0);
@@ -1152,7 +1134,7 @@ export function printInventoryListReceipt(items = [], categoryName = "All Catego
  * 80mm ESC/POS Thermal & Standard Print: Product Pricing List (DrCreate & Access Format)
  */
 export function printProductPricingListReceipt(items = [], categoryName = "All Categories", clinic = null) {
-  const dateStr = new Date().toLocaleString("en-PK", { dateStyle: "short", timeStyle: "short" });
+  const dateStr = new Date().toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
 
   const rowsHtml = (items || []).map((item) => {
     const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || 0);
@@ -1684,7 +1666,7 @@ export function printExecutiveAuditReceipt(auditData, clinicData = null) {
           <div style="color: #666; font-size: 7.5px;">${code} · ${brand}</div>
         </td>
         <td style="text-align: center; font-size: 8.5px; font-weight: bold; vertical-align: top; padding: 2px 0;">${qty}</td>
-        <td style="text-align: right; font-size: 8.5px; font-weight: bold; vertical-align: top; padding: 2px 0;">${val.toLocaleString("en-PK")}</td>
+        <td style="text-align: right; font-size: 8.5px; font-weight: bold; vertical-align: top; padding: 2px 0;">${val.toLocaleString("en-US")}</td>
       </tr>
     `;
   }).join("");
@@ -1730,7 +1712,7 @@ export function printExecutiveAuditReceipt(auditData, clinicData = null) {
           <div><strong>Audit Period:</strong> ${periodLabel}</div>
           <div><strong>Date Range:</strong> ${startDate} ➔ ${endDate}</div>
           <div><strong>Location Scope:</strong> ${godownLabel}</div>
-          <div><strong>Generated On:</strong> ${new Date().toLocaleString("en-PK")}</div>
+          <div><strong>Generated On:</strong> ${new Date().toLocaleString("en-US")}</div>
         </div>
 
         <div class="divider-dashed"></div>
@@ -1741,41 +1723,41 @@ export function printExecutiveAuditReceipt(auditData, clinicData = null) {
 
         <div class="flex-row" style="font-weight: 900; font-size: 9.5px;">
           <span>TOTAL INFLOWS (REVENUE):</span>
-          <span>Rs. ${totalInflows.toLocaleString("en-PK")}</span>
+          <span>Rs. ${totalInflows.toLocaleString("en-US")}</span>
         </div>
         <div class="flex-row" style="padding-left: 6px; color: #333;">
           <span>• OPD Doctor Consultations:</span>
-          <span>Rs. ${opdFeesTotal.toLocaleString("en-PK")}</span>
+          <span>Rs. ${opdFeesTotal.toLocaleString("en-US")}</span>
         </div>
         <div class="flex-row" style="padding-left: 6px; color: #333;">
           <span>• Store Counter POS Sales:</span>
-          <span>Rs. ${posSalesTotal.toLocaleString("en-PK")}</span>
+          <span>Rs. ${posSalesTotal.toLocaleString("en-US")}</span>
         </div>
         <div class="flex-row" style="padding-left: 6px; color: #333;">
           <span>• B2B Godown / Wholesale Sales:</span>
-          <span>Rs. ${b2bSalesTotal.toLocaleString("en-PK")}</span>
+          <span>Rs. ${b2bSalesTotal.toLocaleString("en-US")}</span>
         </div>
 
         <div class="divider-single"></div>
 
         <div class="flex-row" style="font-weight: 900; font-size: 9.5px;">
           <span>TOTAL OUTFLOWS (EXPENSES):</span>
-          <span>Rs. ${totalOutflows.toLocaleString("en-PK")}</span>
+          <span>Rs. ${totalOutflows.toLocaleString("en-US")}</span>
         </div>
         <div class="flex-row" style="padding-left: 6px; color: #333;">
           <span>• Supplier Purchases (GRN):</span>
-          <span>Rs. ${supplierPurchasesCash.toLocaleString("en-PK")}</span>
+          <span>Rs. ${supplierPurchasesCash.toLocaleString("en-US")}</span>
         </div>
         <div class="flex-row" style="padding-left: 6px; color: #333;">
           <span>• General Operational Expenses:</span>
-          <span>Rs. ${expensesTotal.toLocaleString("en-PK")}</span>
+          <span>Rs. ${expensesTotal.toLocaleString("en-US")}</span>
         </div>
 
         <div class="divider-double"></div>
 
         <div class="flex-row" style="font-size: 11px; font-weight: 900;">
           <span>NET OPERATING MARGIN:</span>
-          <span>Rs. ${netOperatingSurplus.toLocaleString("en-PK")}</span>
+          <span>Rs. ${netOperatingSurplus.toLocaleString("en-US")}</span>
         </div>
         <div style="text-align: right; font-size: 8px; font-weight: bold; margin-bottom: 2px;">
           ${isProfit ? "✅ [NET OPERATING SURPLUS / PROFIT]" : "⚠️ [NET OPERATING DEFICIT]"}
@@ -1789,11 +1771,11 @@ export function printExecutiveAuditReceipt(auditData, clinicData = null) {
 
         <div class="flex-row" style="font-weight: 900; font-size: 9.5px;">
           <span>TOTAL STOCK VALUATION:</span>
-          <span>Rs. ${totalStockValuation.toLocaleString("en-PK")}</span>
+          <span>Rs. ${totalStockValuation.toLocaleString("en-US")}</span>
         </div>
         <div class="flex-row" style="color: #333;">
           <span>Total Quantities / Units:</span>
-          <span>${totalUnitsCount.toLocaleString("en-PK")} Packs</span>
+          <span>${totalUnitsCount.toLocaleString("en-US")} Packs</span>
         </div>
 
         ${topItems.length > 0 ? `
@@ -1879,8 +1861,8 @@ export function printExecutiveAuditDocument(auditData, clinicData = null) {
         <td style="padding: 6px 8px; font-weight: 600; color: #0f172a;">${name}</td>
         <td style="padding: 6px 8px; color: #475569;">${company}</td>
         <td style="padding: 6px 8px; text-align: center; font-weight: bold; color: #0f172a;">${qty}</td>
-        <td style="padding: 6px 8px; text-align: right; font-family: monospace; color: #334155;">Rs. ${cost.toLocaleString("en-PK")}</td>
-        <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: 800; color: #0f766e;">Rs. ${val.toLocaleString("en-PK")}</td>
+        <td style="padding: 6px 8px; text-align: right; font-family: monospace; color: #334155;">Rs. ${cost.toLocaleString("en-US")}</td>
+        <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: 800; color: #0f766e;">Rs. ${val.toLocaleString("en-US")}</td>
       </tr>
     `;
   }).join("");
@@ -1993,7 +1975,7 @@ export function printExecutiveAuditDocument(auditData, clinicData = null) {
           </div>
           <div style="text-align: right;">
             <img src="${CLINIC_LOGO_BASE64}" alt="Logo" style="max-height: 48px; width: auto;" />
-            <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Audited on: ${new Date().toLocaleDateString("en-PK")}</div>
+            <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Audited on: ${new Date().toLocaleDateString("en-US")}</div>
           </div>
         </div>
 
@@ -2015,25 +1997,25 @@ export function printExecutiveAuditDocument(auditData, clinicData = null) {
         <div class="kpi-grid">
           <div class="kpi-card" style="border-left: 4px solid #0f766e;">
             <div class="kpi-label" style="color: #0f766e;">Godown Stock Valuation</div>
-            <div class="kpi-val" style="color: #0f172a;">Rs. ${totalStockValuation.toLocaleString("en-PK")}</div>
+            <div class="kpi-val" style="color: #0f172a;">Rs. ${totalStockValuation.toLocaleString("en-US")}</div>
             <div class="kpi-sub">${totalUnitsCount.toLocaleString()} Total Units</div>
           </div>
 
           <div class="kpi-card" style="border-left: 4px solid #059669;">
             <div class="kpi-label" style="color: #059669;">Total Revenue Inflows</div>
-            <div class="kpi-val" style="color: #059669;">Rs. ${totalInflows.toLocaleString("en-PK")}</div>
+            <div class="kpi-val" style="color: #059669;">Rs. ${totalInflows.toLocaleString("en-US")}</div>
             <div class="kpi-sub">OPD + POS + B2B</div>
           </div>
 
           <div class="kpi-card" style="border-left: 4px solid #e11d48;">
             <div class="kpi-label" style="color: #e11d48;">Total Outflows & GRN</div>
-            <div class="kpi-val" style="color: #e11d48;">Rs. ${totalOutflows.toLocaleString("en-PK")}</div>
+            <div class="kpi-val" style="color: #e11d48;">Rs. ${totalOutflows.toLocaleString("en-US")}</div>
             <div class="kpi-sub">Purchases + Expenses</div>
           </div>
 
           <div class="kpi-card" style="border-left: 4px solid ${isProfit ? '#7c3aed' : '#dc2626'}; background: ${isProfit ? '#faf5ff' : '#fef2f2'};">
             <div class="kpi-label" style="color: ${isProfit ? '#7c3aed' : '#dc2626'};">Net Operating Surplus</div>
-            <div class="kpi-val" style="color: ${isProfit ? '#581c87' : '#991b1b'};">Rs. ${netOperatingSurplus.toLocaleString("en-PK")}</div>
+            <div class="kpi-val" style="color: ${isProfit ? '#581c87' : '#991b1b'};">Rs. ${netOperatingSurplus.toLocaleString("en-US")}</div>
             <div class="kpi-sub" style="font-weight: bold; color: ${isProfit ? '#7c3aed' : '#dc2626'};">${isProfit ? '✅ Net Profit' : '⚠️ Operating Deficit'}</div>
           </div>
         </div>
@@ -2051,27 +2033,27 @@ export function printExecutiveAuditDocument(auditData, clinicData = null) {
           <tbody>
             <tr>
               <td>OPD Doctor Consultation Collection</td>
-              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${opdFeesTotal.toLocaleString("en-PK")}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${opdFeesTotal.toLocaleString("en-US")}</td>
               <td>Supplier Inventory Purchases (GRN)</td>
-              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${supplierPurchasesCash.toLocaleString("en-PK")}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${supplierPurchasesCash.toLocaleString("en-US")}</td>
             </tr>
             <tr>
               <td>Retail Counter POS Pharmacy Sales</td>
-              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${posSalesTotal.toLocaleString("en-PK")}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${posSalesTotal.toLocaleString("en-US")}</td>
               <td>Clinic & Godown Operating Expenses</td>
-              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${expensesTotal.toLocaleString("en-PK")}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${expensesTotal.toLocaleString("en-US")}</td>
             </tr>
             <tr>
               <td>Central Warehouse & B2B Wholesale Distribution</td>
-              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${b2bSalesTotal.toLocaleString("en-PK")}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${b2bSalesTotal.toLocaleString("en-US")}</td>
               <td><strong>Total Operational Outflows</strong></td>
-              <td style="text-align: right; font-family: monospace; font-weight: 800; color: #e11d48;">Rs. ${totalOutflows.toLocaleString("en-PK")}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: 800; color: #e11d48;">Rs. ${totalOutflows.toLocaleString("en-US")}</td>
             </tr>
             <tr style="background: #f8fafc; font-weight: bold;">
               <td><strong>Total Inflows & Revenue</strong></td>
-              <td style="text-align: right; font-family: monospace; font-weight: 800; color: #059669;">Rs. ${totalInflows.toLocaleString("en-PK")}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: 800; color: #059669;">Rs. ${totalInflows.toLocaleString("en-US")}</td>
               <td><strong>Net Operating Margin</strong></td>
-              <td style="text-align: right; font-family: monospace; font-weight: 900; color: ${isProfit ? '#0f766e' : '#dc2626'};">Rs. ${netOperatingSurplus.toLocaleString("en-PK")}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: 900; color: ${isProfit ? '#0f766e' : '#dc2626'};">Rs. ${netOperatingSurplus.toLocaleString("en-US")}</td>
             </tr>
           </tbody>
         </table>

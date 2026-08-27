@@ -224,11 +224,11 @@ export default function CashBookModal({ isOpen, onClose }) {
       let codePrefix = "";
       if (matchedParty) {
         if (matchedParty.party_code) codePrefix = `[#${matchedParty.party_code}] `;
-        if (matchedParty.current_balance > 0) extraDue = `Udhaar: Rs. ${matchedParty.current_balance.toLocaleString("en-PK")}`;
+        if (matchedParty.current_balance > 0) extraDue = `Udhaar: Rs. ${matchedParty.current_balance.toLocaleString("en-US")}`;
       } else if (matchedSup) {
         if (matchedSup.supplier_code) codePrefix = `[#${matchedSup.supplier_code}] `;
         const supBal = Number(matchedSup.current_balance || matchedSup.balance_due || 0);
-        if (supBal > 0) extraDue = `Payable: Rs. ${supBal.toLocaleString("en-PK")}`;
+        if (supBal > 0) extraDue = `Payable: Rs. ${supBal.toLocaleString("en-US")}`;
       } else if (acc.account_no) {
         codePrefix = `[#${acc.account_no}] `;
       }
@@ -601,7 +601,7 @@ export default function CashBookModal({ isOpen, onClose }) {
                                 {r.naration || "—"}
                               </td>
                               <td className="px-3 py-2 text-right font-black text-emerald-700">
-                                Rs. {Number(r.amount).toLocaleString("en-PK")}
+                                Rs. {Number(r.amount).toLocaleString("en-US")}
                               </td>
                               <td className="px-2 py-2 text-center">
                                 <div className="flex items-center justify-center gap-1">
@@ -633,7 +633,7 @@ export default function CashBookModal({ isOpen, onClose }) {
                   <div className="bg-emerald-50/60 px-4 py-2.5 border-t border-emerald-100 flex items-center justify-between mt-auto">
                     <span className="text-xs font-black text-emerald-950 uppercase">Total Debit:</span>
                     <span className="text-sm font-black text-emerald-800 font-mono">
-                      Rs. {todaySummary.total_debit.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                      Rs. {todaySummary.total_debit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
@@ -681,7 +681,7 @@ export default function CashBookModal({ isOpen, onClose }) {
                                 {r.naration || "—"}
                               </td>
                               <td className="px-3 py-2 text-right font-black text-rose-700">
-                                Rs. {Number(r.amount).toLocaleString("en-PK")}
+                                Rs. {Number(r.amount).toLocaleString("en-US")}
                               </td>
                               <td className="px-2 py-2 text-center">
                                 <div className="flex items-center justify-center gap-1">
@@ -713,7 +713,7 @@ export default function CashBookModal({ isOpen, onClose }) {
                   <div className="bg-rose-50/60 px-4 py-2.5 border-t border-rose-100 flex items-center justify-between mt-auto">
                     <span className="text-xs font-black text-rose-950 uppercase">Total Credit:</span>
                     <span className="text-sm font-black text-rose-800 font-mono">
-                      Rs. {todaySummary.total_credit.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                      Rs. {todaySummary.total_credit.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
@@ -726,7 +726,7 @@ export default function CashBookModal({ isOpen, onClose }) {
                   <div>
                     <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Total Debit (Inflow)</span>
                     <div className="text-lg font-black text-emerald-400 font-mono">
-                      + Rs. {todaySummary.total_debit.toLocaleString("en-PK")}
+                      + Rs. {todaySummary.total_debit.toLocaleString("en-US")}
                     </div>
                   </div>
 
@@ -735,7 +735,7 @@ export default function CashBookModal({ isOpen, onClose }) {
                   <div>
                     <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Total Credit (Outflow)</span>
                     <div className="text-lg font-black text-rose-400 font-mono">
-                      - Rs. {todaySummary.total_credit.toLocaleString("en-PK")}
+                      - Rs. {todaySummary.total_credit.toLocaleString("en-US")}
                     </div>
                   </div>
                 </div>
@@ -745,7 +745,7 @@ export default function CashBookModal({ isOpen, onClose }) {
                     Net Cash Balance Today ({date})
                   </span>
                   <div className={`text-2xl font-black font-mono ${todaySummary.balance >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                    Rs. {todaySummary.balance.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                    Rs. {todaySummary.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>
@@ -837,10 +837,10 @@ export default function CashBookModal({ isOpen, onClose }) {
                               {e.naration || e.description || "—"}
                             </td>
                             <td className="px-3.5 py-2.5 text-right font-mono font-bold text-emerald-700">
-                              {isRec ? `Rs. ${Number(e.amount).toLocaleString("en-PK")}` : "—"}
+                              {isRec ? `Rs. ${Number(e.amount).toLocaleString("en-US")}` : "—"}
                             </td>
                             <td className="px-3.5 py-2.5 text-right font-mono font-bold text-rose-700">
-                              {!isRec ? `Rs. ${Number(e.amount).toLocaleString("en-PK")}` : "—"}
+                              {!isRec ? `Rs. ${Number(e.amount).toLocaleString("en-US")}` : "—"}
                             </td>
                             <td className="px-3.5 py-2.5 text-center">
                               <div className="flex items-center justify-center gap-1.5">

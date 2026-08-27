@@ -374,7 +374,7 @@ export default function MedicalStoreSalesLog() {
                         </span>
                         <span className="text-xs text-gray-500 flex items-center gap-1 font-medium">
                           <span className="material-symbols-outlined text-sm">calendar_today</span>
-                          {new Date(sale.sale_date).toLocaleString("en-PK")}
+                          {sale.sale_date ? new Date(sale.sale_date).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
                         </span>
                         
                         {/* Dynamic Cashier Tag */}
@@ -551,7 +551,7 @@ export default function MedicalStoreSalesLog() {
                     <div>
                       <div className="font-bold text-gray-900 text-sm">{exp.category}</div>
                       <div className="text-xs text-gray-500">
-                        {exp.description || "No description"} · <span className="font-medium">{new Date(exp.date).toLocaleDateString("en-PK")}</span>
+                        {exp.description || "No description"} · <span className="font-medium">{new Date(exp.date).toLocaleDateString("en-US")}</span>
                       </div>
                     </div>
                   </div>

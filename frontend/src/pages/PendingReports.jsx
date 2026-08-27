@@ -95,7 +95,7 @@ function PhotoCaptureModal({ visit, patient, onClose, onSave }) {
           <div>
             <div className="text-xs uppercase tracking-wider text-teal-200 font-semibold">Upload Pending Reports</div>
             <h3 className="text-lg font-bold">{patient?.full_name}</h3>
-            <p className="text-xs text-teal-100">Token #{visit.token_number} · Visit Date: {new Date(visit.visit_date).toLocaleDateString("en-PK")}</p>
+            <p className="text-xs text-teal-100">Token #{visit.token_number} · Visit Date: {new Date(visit.visit_date).toLocaleDateString("en-US")}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/20 text-white">
             <span className="material-symbols-outlined">close</span>
@@ -307,7 +307,7 @@ export default function PendingReports() {
                   )}
 
                   <div className="text-xs text-gray-400 mb-4">
-                    Visited: {new Date(visit.visit_date).toLocaleDateString("en-PK", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    Visited: {new Date(visit.visit_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </div>
                 </div>
 

@@ -390,7 +390,7 @@ function toTitleCase(str) {
               <div className="text-[10px] opacity-70 mb-0.5">{clinic?.address || "Lajpat Road, Hyderabad"}</div>
               {clinic?.phone && <div className="text-[10px] opacity-70 mb-1">Tel: {clinic.phone}</div>}
               <div className="text-[10px] opacity-60 mb-3">
-                {receipt.registeredAt.toLocaleString("en-PK", {
+                {receipt.registeredAt.toLocaleString("en-US", {
                   day: "2-digit", month: "short", year: "numeric",
                   hour: "2-digit", minute: "2-digit",
                 })}

@@ -226,7 +226,7 @@ export default function ClinicPublicPage() {
                 Live Patient Queue
               </div>
               <div className="text-xs text-teal-100 mt-0.5">
-                {currentTime.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </div>
 
               {/* Calling Token Box */}

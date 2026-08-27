@@ -64,7 +64,7 @@ export default function LicenseGuard({ children }) {
           <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-left space-y-2.5 text-xs">
             <div className="flex justify-between items-center pb-2 border-b border-slate-800">
               <span className="text-slate-400 font-bold">Monthly Fee:</span>
-              <span className="font-mono font-black text-rose-400">Rs. {lic.monthly_fee?.toLocaleString("en-PK") || "5,000"}</span>
+              <span className="font-mono font-black text-rose-400">Rs. {Number(lic.monthly_fee || 5000).toLocaleString("en-US")}</span>
             </div>
             <div className="flex justify-between items-center pb-2 border-b border-slate-800">
               <span className="text-slate-400 font-bold">Account / Payment:</span>
@@ -131,7 +131,7 @@ export default function LicenseGuard({ children }) {
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl max-w-md mx-auto text-left text-xs space-y-2">
           <div className="flex justify-between items-center font-bold">
             <span className="text-slate-500">To resume this module:</span>
-            <span className="text-rose-700 font-mono">Rs. {lic.monthly_fee?.toLocaleString("en-PK") || "5,000"}</span>
+            <span className="text-rose-700 font-mono">Rs. {Number(lic.monthly_fee || 5000).toLocaleString("en-US")}</span>
           </div>
           <div className="text-[11px] text-slate-600">
             Payment via JazzCash / EasyPaisa / Bank: <strong className="text-slate-900 font-mono">03142291356</strong>

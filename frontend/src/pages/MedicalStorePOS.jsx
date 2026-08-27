@@ -38,7 +38,7 @@ function ReceiptModal({ sale, onClose }) {
   const changeDue = sale.change_due ?? Math.max(0, cashTendered - sale.total_amount);
   
   const rawDate = sale.sale_date ? new Date(sale.sale_date) : new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-PK", {
+  const dateTimeStr = rawDate.toLocaleString("en-US", {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });

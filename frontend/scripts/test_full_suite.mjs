@@ -1172,6 +1172,20 @@ async function runTests() {
     assert(content.includes("HFP Pvt Ltd") || content.includes('"HFP"'), "HFP Pvt Ltd supported in company options");
     assert(content.includes("GHR HOMOEO") || content.includes('"GHR"'), "GHR HOMOEO supported in company options");
     assert(content.includes("Eagle Homoeo") || content.includes('"EGL"'), "Eagle Homoeo supported in company options");
+  });
+
+  // ====================================================
+  await suite("24. Complete Application Screen Audit & Universal Locale Safety", async () => {
+    const pagesPath = path.resolve("src/pages");
+    const pageFiles = fs.readdirSync(pagesPath).filter((f) => f.endsWith(".jsx"));
+    
+    assert(pageFiles.length >= 20, `At least 20 core pages exist (found: ${pageFiles.length})`);
+
+    pageFiles.forEach((file) => {
+      const code = fs.readFileSync(path.join(pagesPath, file), "utf8");
+      assert(code.includes("export default"), `${file} exports default component`);
+      assert(!code.includes('"en-PK"'), `${file} has no unhandled en-PK locale crashes`);
+    });
   });  // ----------------------------------------------------
   // SUMMARY REPORT
   // ----------------------------------------------------

@@ -860,7 +860,7 @@ export default function ClinicSettings() {
             </div>
             {clinic?.last_email_backup && (
               <span className="text-[11px] bg-teal-50 text-teal-800 px-3 py-1 rounded-xl border border-teal-200 font-mono font-bold">
-                Last Backup Sent: {new Date(clinic.last_email_backup).toLocaleString("en-PK")}
+                Last Backup Sent: {new Date(clinic.last_email_backup).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
           </div>
@@ -962,12 +962,12 @@ export default function ClinicSettings() {
                           const resendPayload = {
                             from: "CliniCore Backup <onboarding@resend.dev>",
                             to: targetEmails,
-                            subject: `🏥 CliniCore Encrypted Vault Backup - ${clinicForm.name || "Clinic"} (${new Date().toLocaleDateString("en-PK")})`,
+                            subject: `🏥 CliniCore Encrypted Vault Backup - ${clinicForm.name || "Clinic"} (${new Date().toLocaleDateString("en-US")})`,
                             html: `
                               <div style="font-family: sans-serif; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #ccfbf1;">
                                 <h2 style="color: #0f766e; margin-top: 0;">🏥 CliniCore Encrypted Database Backup</h2>
                                 <p><strong>Clinic:</strong> ${clinicForm.name || "CliniCore Clinic"}</p>
-                                <p><strong>Date & Time:</strong> ${new Date().toLocaleString("en-PK")}</p>
+                                <p><strong>Date & Time:</strong> ${new Date().toLocaleString("en-US")}</p>
                                 <p style="background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; font-weight: bold;">
                                   🔒 Your full encrypted database vault is attached as a secure <code>.cfbak</code> file! Only CliniCore Software can restore this file.
                                 </p>
