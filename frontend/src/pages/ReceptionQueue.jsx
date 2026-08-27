@@ -40,6 +40,48 @@ export default function ReceptionQueue() {
     setNoticeText(c.public_notice || "");
   }, []);
 
+  function handleSetClinicStatus(status) {
+    dbClinic.updateClinicStatus(status, clinicData?.public_notice || "");
+    load();
+  }
+
+  function handleSaveNotice(e) {
+    e.preventDefault();
+    dbClinic.updateClinicStatus(clinicData?.clinic_status || "open", noticeText.trim());
+    setIsEditingNotice(false);
+    load();
+  }
+
+  function handleUpdateDoctorAvailability(doctorId, status, note = "") {
+    dbUsers.updateDoctorStatus(doctorId, status, note);
+    load();
+  }
+
+  const filteredVisitsByDoc = selectedDoctorFilter === "all"
+    ? visits
+    : visits.filter((v) => v.doctor_id === selectedDoctorFilter);
+
+  const waitingList = filteredVisitsByDoc.filter((v) => v.status === "waiting");
+  const inRoomList  = filteredVisitsByDoc.filter((v) => v.status === "in_consultation");
+  const completedList = filteredVisitsByDoc.filter((v) => v.status === "completed" || v.status === "completed_reports_pending");
+  const skippedList = filteredVisitsByDoc.filter((v) => v.status === "skipped" || v.status === "skipped_reissued");
+
+  const currentToken = inRoomList[0]?.token_number ?? "—";
+  const nextToken    = waitingList[0]?.token_number ?? "—";
+  const clinicStatus = clinicData?.clinic_status || "open";
+
+  // Tab Filtering
+  let displayedVisits = [];
+  if (activeTab === "active") {
+    displayedVisits = [...inRoomList, ...waitingList];
+  } else if (activeTab === "completed") {
+    displayedVisits = completedList;
+  } else if (activeTab === "skipped") {
+    displayedVisits = skippedList;
+  } else {
+    displayedVisits = filteredVisitsByDoc;
+  }
+
   useEffect(() => {
     load();
     const interval = setInterval(load, 10000);
@@ -89,48 +131,6 @@ export default function ReceptionQueue() {
       window.removeEventListener("keydown", handleReceptionQueueKeyDown);
     };
   }, [load, displayedVisits, selectedQueueIndex, patients, doctors, clinicData, navigate]);
-
-  function handleSetClinicStatus(status) {
-    dbClinic.updateClinicStatus(status, clinicData?.public_notice || "");
-    load();
-  }
-
-  function handleSaveNotice(e) {
-    e.preventDefault();
-    dbClinic.updateClinicStatus(clinicData?.clinic_status || "open", noticeText.trim());
-    setIsEditingNotice(false);
-    load();
-  }
-
-  function handleUpdateDoctorAvailability(doctorId, status, note = "") {
-    dbUsers.updateDoctorStatus(doctorId, status, note);
-    load();
-  }
-
-  const filteredVisitsByDoc = selectedDoctorFilter === "all"
-    ? visits
-    : visits.filter((v) => v.doctor_id === selectedDoctorFilter);
-
-  const waitingList = filteredVisitsByDoc.filter((v) => v.status === "waiting");
-  const inRoomList  = filteredVisitsByDoc.filter((v) => v.status === "in_consultation");
-  const completedList = filteredVisitsByDoc.filter((v) => v.status === "completed" || v.status === "completed_reports_pending");
-  const skippedList = filteredVisitsByDoc.filter((v) => v.status === "skipped" || v.status === "skipped_reissued");
-
-  const currentToken = inRoomList[0]?.token_number ?? "—";
-  const nextToken    = waitingList[0]?.token_number ?? "—";
-  const clinicStatus = clinicData?.clinic_status || "open";
-
-  // Tab Filtering
-  let displayedVisits = [];
-  if (activeTab === "active") {
-    displayedVisits = [...inRoomList, ...waitingList];
-  } else if (activeTab === "completed") {
-    displayedVisits = completedList;
-  } else if (activeTab === "skipped") {
-    displayedVisits = skippedList;
-  } else {
-    displayedVisits = filteredVisitsByDoc;
-  }
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-6 overflow-x-hidden">

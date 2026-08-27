@@ -97,6 +97,39 @@ export default function DoctorQueue() {
     }
   }, [doctorId]);
 
+  function handleSetAvailability(status, defaultNote = "") {
+    const note = status === "available" ? "" : (defaultNote || docProfile?.status_note || "");
+    dbUsers.updateDoctorStatus(doctorId, status, note);
+    setDocProfile(dbUsers.getById(doctorId));
+  }
+
+  function handleSaveCustomNote(e) {
+    e.preventDefault();
+    dbUsers.updateDoctorStatus(doctorId, docProfile?.availability_status || "break", customNote.trim());
+    setDocProfile(dbUsers.getById(doctorId));
+    setShowNoteInput(false);
+  }
+
+  function callNext() {
+    const nextWaiting = queue.find((v) => v.status === "waiting");
+    if (!nextWaiting) return;
+    dbVisits.updateStatus(nextWaiting.id, "in_consultation");
+    loadQueue();
+  }
+
+  function skipVisit(visitId) {
+    dbVisits.skip(visitId);
+    loadQueue();
+  }
+
+  function startConsultation(visitId) {
+    navigate(`/doctor/consultation/${visitId}`);
+  }
+
+  const inConsultation = queue.filter((v) => v.status === "in_consultation");
+  const waiting = queue.filter((v) => v.status === "waiting");
+  const currentStatus = docProfile?.availability_status || "available";
+
   useEffect(() => {
     loadQueue();
     // Auto-refresh every 10 seconds (simulates live queue)
@@ -136,40 +169,7 @@ export default function DoctorQueue() {
       window.removeEventListener("clinicflow_status_update", handleCustomUpdate);
       window.removeEventListener("keydown", handleDoctorQueueKeyDown);
     };
-  }, [loadQueue, queue, selectedQueueIndex]);
-
-  function handleSetAvailability(status, defaultNote = "") {
-    const note = status === "available" ? "" : (defaultNote || docProfile?.status_note || "");
-    dbUsers.updateDoctorStatus(doctorId, status, note);
-    setDocProfile(dbUsers.getById(doctorId));
-  }
-
-  function handleSaveCustomNote(e) {
-    e.preventDefault();
-    dbUsers.updateDoctorStatus(doctorId, docProfile?.availability_status || "break", customNote.trim());
-    setDocProfile(dbUsers.getById(doctorId));
-    setShowNoteInput(false);
-  }
-
-  function callNext() {
-    const nextWaiting = queue.find((v) => v.status === "waiting");
-    if (!nextWaiting) return;
-    dbVisits.updateStatus(nextWaiting.id, "in_consultation");
-    loadQueue();
-  }
-
-  function skipVisit(visitId) {
-    dbVisits.skip(visitId);
-    loadQueue();
-  }
-
-  function startConsultation(visitId) {
-    navigate(`/doctor/consultation/${visitId}`);
-  }
-
-  const inConsultation = queue.filter((v) => v.status === "in_consultation");
-  const waiting = queue.filter((v) => v.status === "waiting");
-  const currentStatus = docProfile?.availability_status || "available";
+  }, [loadQueue, queue, selectedQueueIndex, waiting]);
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-6 zero-horizontal-overflow">

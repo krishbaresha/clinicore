@@ -71,6 +71,19 @@ export default function PatientRegistration() {
     return Number(doc.consultation_fee) || defaultClinicFee;
   }
 
+  function newRegistration() {
+    setShowReceipt(false);
+    setReceipt(null);
+    setQuery("");
+    setResults(null);
+    setSelected(null);
+    setShowAddForm(false);
+    setForm({ full_name: "", relation_type: "father", relation_name: "", phone: "", age: "", gender: "male" });
+    const autoFee = getDoctorFee(selectedDoctorId);
+    setFeeAmount(String(autoFee));
+    setTimeout(() => searchRef.current?.focus(), 100);
+  }
+
   useEffect(() => {
     if (searchRef.current) searchRef.current.focus();
     const c = dbClinic.get();
@@ -121,7 +134,7 @@ export default function PatientRegistration() {
     return () => {
       window.removeEventListener("keydown", handlePatientRegKeyDown);
     };
-  }, [location.state, showReceipt, showAddForm, results]);
+  }, [location.state, showReceipt, showAddForm, results, selectedDoctorId]);
 
   function handleDoctorChange(docId) {
     setSelectedDoctorId(docId);
