@@ -1186,6 +1186,38 @@ async function runTests() {
       assert(code.includes("export default"), `${file} exports default component`);
       assert(!code.includes('"en-PK"'), `${file} has no unhandled en-PK locale crashes`);
     });
+  });
+
+  // ====================================================
+  // SUITE 25: Admin Multi-Warehouse & Godown Portal Engine
+  // ====================================================
+  await suite("25. Admin Multi-Warehouse & Godown Portal Engine", async () => {
+    const adminPath = path.resolve("src/pages/DeveloperAdminPanel.jsx");
+    const settingsPath = path.resolve("src/pages/ClinicSettings.jsx");
+
+    assert(fs.existsSync(adminPath), "DeveloperAdminPanel.jsx exists");
+    assert(fs.existsSync(settingsPath), "ClinicSettings.jsx exists");
+
+    const adminCode = fs.readFileSync(adminPath, "utf8");
+    const settingsCode = fs.readFileSync(settingsPath, "utf8");
+
+    // 1. NAV_ITEMS contains godowns tab
+    assert(adminCode.includes('id: "godowns"'), "DeveloperAdminPanel has godowns navigation tab");
+    assert(adminCode.includes("Godowns & Multi-Warehouse Portal"), "DeveloperAdminPanel displays proper Godown Portal label");
+
+    // 2. Godown statistics and master modal
+    assert(adminCode.includes("godownStats"), "DeveloperAdminPanel calculates multi-warehouse stock valuations & SKU totals");
+    assert(adminCode.includes("handleSaveGodown"), "DeveloperAdminPanel has handleSaveGodown registration engine");
+    assert(adminCode.includes("handleDeleteGodown"), "DeveloperAdminPanel has protected handleDeleteGodown function");
+    assert(adminCode.includes("handleSetDefaultGodown"), "DeveloperAdminPanel supports setting primary receiving godown");
+    assert(adminCode.includes("showGodownModal"), "DeveloperAdminPanel renders full Godown registration/edit modal");
+
+    // 3. Live Stock Inspector
+    assert(adminCode.includes("selectedGodownForStock"), "DeveloperAdminPanel supports drill-down live stock inspection per godown");
+    assert(adminCode.includes("currentGodownStockItems"), "DeveloperAdminPanel filters and calculates item valuation per location");
+
+    // 4. Dynamic Warehouses in Clinic Settings
+    assert(settingsCode.includes("dbWarehouses.getAll()"), "ClinicSettings dynamically pulls all registered godowns from dbWarehouses");
   });  // ----------------------------------------------------
   // SUMMARY REPORT
   // ----------------------------------------------------

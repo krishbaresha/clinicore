@@ -124,6 +124,8 @@ export default function DeveloperAdminPanel() {
     let savedTabs = {
       licensing: { locked: true, hidden: false },
       audits: { locked: false, hidden: false },
+      godowns: { locked: false, hidden: false },
+      receipt_studio: { locked: false, hidden: false },
       staff: { locked: false, hidden: false },
       clinic: { locked: false, hidden: false },
       apis: { locked: true, hidden: false },
@@ -201,6 +203,25 @@ export default function DeveloperAdminPanel() {
     is_owner: false,
     availability_status: "available",
   });
+
+  // Godown / Multi-Warehouse Master States
+  const [showGodownModal, setShowGodownModal] = useState(false);
+  const [editingGodown, setEditingGodown] = useState(null);
+  const [godownForm, setGodownForm] = useState({
+    name: "",
+    code: "",
+    location: "Hyderabad, Sindh",
+    incharge_name: "",
+    phone: "",
+    notes: "",
+    status: "active",
+    is_default: false,
+    is_store_counter: false,
+  });
+  const [selectedGodownForStock, setSelectedGodownForStock] = useState(null);
+  const [godownStockSearch, setGodownStockSearch] = useState("");
+  const [godownCompanyFilter, setGodownCompanyFilter] = useState("all");
+  const [godownSearch, setGodownSearch] = useState("");
 
   // Clinic Identity Form
   const [clinicForm, setClinicForm] = useState(() => {
@@ -602,6 +623,80 @@ export default function DeveloperAdminPanel() {
   };
 
   // ---------------------------------------------------------------------------
+  // GODOWNS & MULTI-WAREHOUSE HANDLERS
+  // ---------------------------------------------------------------------------
+  const handleSaveGodown = async (e) => {
+    if (e) e.preventDefault();
+    if (!godownForm.name.trim()) {
+      alert("Godown / Warehouse name is required.");
+      return;
+    }
+    if (editingGodown) {
+      dbWarehouses.update(editingGodown.id, godownForm);
+      if (godownForm.is_default) {
+        dbWarehouses.getAll().forEach((w) => {
+          if (w.id !== editingGodown.id) dbWarehouses.update(w.id, { is_default: false });
+        });
+      }
+      showToast(`🏢 Godown "${godownForm.name}" updated successfully.`);
+    } else {
+      const created = dbWarehouses.add(godownForm);
+      if (godownForm.is_default) {
+        dbWarehouses.getAll().forEach((w) => {
+          if (w.id !== created.id) dbWarehouses.update(w.id, { is_default: false });
+        });
+      }
+      showToast(`🏢 Godown "${created.name}" registered successfully.`);
+    }
+    setShowGodownModal(false);
+    setEditingGodown(null);
+    setGodownForm({
+      name: "",
+      code: "",
+      location: "Hyderabad, Sindh",
+      incharge_name: "",
+      phone: "",
+      notes: "",
+      status: "active",
+      is_default: false,
+      is_store_counter: false,
+    });
+    loadData();
+    try {
+      await syncEngine.pushLocalStateToCloud();
+    } catch {}
+  };
+
+  const handleDeleteGodown = async (godownId, godownName) => {
+    if (!window.confirm(`Are you sure you want to delete Godown "${godownName}"? This action cannot be undone.`)) return;
+    const ok = dbWarehouses.delete(godownId);
+    if (!ok) {
+      alert("⚠️ Cannot delete this godown. System-protected primary locations or active store counters cannot be removed.");
+      return;
+    }
+    showToast(`🗑️ Godown "${godownName}" deleted.`);
+    if (selectedGodownForStock === godownId) {
+      setSelectedGodownForStock(null);
+    }
+    loadData();
+    try {
+      await syncEngine.pushLocalStateToCloud();
+    } catch {}
+  };
+
+  const handleSetDefaultGodown = async (godownId) => {
+    const list = dbWarehouses.getAll();
+    list.forEach((w) => {
+      dbWarehouses.update(w.id, { is_default: w.id === godownId });
+    });
+    showToast("⭐ Primary default godown updated.");
+    loadData();
+    try {
+      await syncEngine.pushLocalStateToCloud();
+    } catch {}
+  };
+
+  // ---------------------------------------------------------------------------
   // CLINIC IDENTITY & API SAVE
   // ---------------------------------------------------------------------------
   const handleSaveClinicSettings = async (e) => {
@@ -986,9 +1081,82 @@ export default function DeveloperAdminPanel() {
     loadData();
   };
 
+  // Computed Godown Statistics & Valuations
+  const godownStats = useMemo(() => {
+    const warehouses = dbWarehouses.getAll() || [];
+    const inv = dbInventory.getAll() || [];
+    
+    let totalValuation = 0;
+    let totalUnits = 0;
+
+    const breakdown = warehouses.map((wh) => {
+      const val = dbWarehouses.getStockValuation(wh.id);
+      const itemsInGodown = inv.filter((i) => {
+        const qty = dbInventory.getLocationStock(i, wh.id);
+        return qty > 0;
+      });
+      totalValuation += val.totalValue || 0;
+      totalUnits += val.totalUnits || 0;
+      return {
+        ...wh,
+        valuation: val.totalValue || 0,
+        unitsCount: val.totalUnits || 0,
+        skuCount: itemsInGodown.length,
+      };
+    });
+
+    return {
+      totalValuation,
+      totalUnits,
+      warehouses: breakdown,
+      activeCount: breakdown.filter((w) => w.status !== "inactive").length,
+    };
+  }, [warehousesList, inventoryList]);
+
+  // Filtered list of items for the selected godown stock inspector
+  const currentGodownStockItems = useMemo(() => {
+    if (!selectedGodownForStock) return [];
+    const inv = dbInventory.getAll() || [];
+    const q = (godownStockSearch || "").toLowerCase().trim();
+    const comp = godownCompanyFilter;
+
+    return inv.map((item) => {
+      const qty = dbInventory.getLocationStock(item, selectedGodownForStock);
+      const cost = Number(item.cost_price_per_box || item.unit_cost_price || item.cost_price || 0);
+      const sale = Number(item.unit_sale_price || item.sale_price || item.retail_price || 0);
+      const val = qty * cost;
+      return {
+        ...item,
+        locationQty: qty,
+        unitCost: cost,
+        unitSale: sale,
+        locationValuation: val,
+      };
+    }).filter((item) => {
+      if (item.locationQty <= 0 && !q) return false;
+      const matchesSearch = !q ||
+        (item.medicine_name || "").toLowerCase().includes(q) ||
+        (item.item_code || "").toLowerCase().includes(q) ||
+        (item.company_name || "").toLowerCase().includes(q) ||
+        (item.generic_name || "").toLowerCase().includes(q);
+      const matchesComp = comp === "all" || (item.company_name || "").toLowerCase() === comp.toLowerCase();
+      return matchesSearch && matchesComp;
+    });
+  }, [selectedGodownForStock, inventoryList, godownStockSearch, godownCompanyFilter]);
+
+  const godownCompanyOptions = useMemo(() => {
+    const inv = dbInventory.getAll() || [];
+    const set = new Set();
+    inv.forEach((i) => {
+      if (i.company_name) set.add(i.company_name);
+    });
+    return Array.from(set).sort();
+  }, [inventoryList]);
+
   const NAV_ITEMS = [
     { id: "licensing", label: "Software Licensing & Remote Control", icon: "vpn_key", badge: "Control" },
     { id: "audits", label: "Multi-Godown & Clinic Audits", icon: "analytics", badge: "Live" },
+    { id: "godowns", label: "Godowns & Multi-Warehouse Portal", icon: "warehouse", count: warehousesList.length, badge: "Stock" },
     { id: "receipt_studio", label: "Thermal Receipt Studio & Customizer", icon: "receipt_long", badge: "New" },
     { id: "staff", label: "Doctors & Staff Master", icon: "group", count: usersList.length },
     { id: "clinic", label: "Clinic Identity & Governance", icon: "domain" },
@@ -2198,6 +2366,482 @@ export default function DeveloperAdminPanel() {
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ================================================================= */}
+          {/* TAB: GODOWNS & MULTI-WAREHOUSE MASTER PORTAL                      */}
+          {/* ================================================================= */}
+          {activeTab === "godowns" && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Header Hero & Bento Stats */}
+              <div className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-50 pb-6">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-black uppercase tracking-wider mb-2">
+                      <span className="material-symbols-outlined text-sm">warehouse</span>
+                      Central Storage &amp; Multi-Location Control Plane
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black text-teal-950 tracking-tight">
+                      Godowns &amp; Multi-Warehouse Master Portal
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium max-w-2xl leading-relaxed">
+                      Register and manage storage godowns, track exact stock breakdown per location, assign warehouse incharges, and monitor real-time multi-branch inventory valuations.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        setEditingGodown(null);
+                        setGodownForm({
+                          name: "",
+                          code: `GDW-0${(warehousesList.filter(w => !w.is_store_counter).length + 1)}`,
+                          location: "Hyderabad, Sindh",
+                          incharge_name: "",
+                          phone: "",
+                          notes: "",
+                          status: "active",
+                          is_default: false,
+                          is_store_counter: false,
+                        });
+                        setShowGodownModal(true);
+                      }}
+                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-teal-700/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-base">add_home_work</span>
+                      <span>+ Register New Godown / Warehouse</span>
+                    </button>
+
+                    <Link
+                      to="/store/warehouse"
+                      className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                      title="Open Warehouse Transfer & Internal Movements Desk"
+                    >
+                      <span className="material-symbols-outlined text-base text-teal-700">sync_alt</span>
+                      <span>Stock Transfer Desk</span>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Bento KPI Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  <div className="bg-gradient-to-br from-teal-50 to-emerald-50/40 border border-teal-200/80 p-5 rounded-3xl">
+                    <div className="flex items-center justify-between text-teal-800">
+                      <span className="text-[11px] font-black uppercase tracking-wider">Total Godowns</span>
+                      <span className="material-symbols-outlined text-xl">domain</span>
+                    </div>
+                    <div className="text-2xl font-black text-teal-950 mt-2">
+                      {warehousesList.length} <span className="text-xs font-semibold text-teal-700">Locations</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                      {godownStats.activeCount} Active • {warehousesList.filter(w => w.is_store_counter).length} Counter Store
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-teal-200/80 p-5 rounded-3xl shadow-xs">
+                    <div className="flex items-center justify-between text-emerald-800">
+                      <span className="text-[11px] font-black uppercase tracking-wider">Total Stock Valuation</span>
+                      <span className="material-symbols-outlined text-xl">payments</span>
+                    </div>
+                    <div className="text-2xl font-black text-emerald-950 mt-2">
+                      Rs. {Number(godownStats.totalValuation || 0).toLocaleString("en-US")}
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                      Across all {warehousesList.length} physical locations
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-teal-200/80 p-5 rounded-3xl shadow-xs">
+                    <div className="flex items-center justify-between text-teal-800">
+                      <span className="text-[11px] font-black uppercase tracking-wider">Total Physical Inventory</span>
+                      <span className="material-symbols-outlined text-xl">inventory_2</span>
+                    </div>
+                    <div className="text-2xl font-black text-teal-950 mt-2">
+                      {Number(godownStats.totalUnits || 0).toLocaleString("en-US")} <span className="text-xs font-semibold text-slate-500">Units/Packs</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                      {inventoryList.length} Unique Medicine SKUs
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-amber-200/80 p-5 rounded-3xl shadow-xs">
+                    <div className="flex items-center justify-between text-amber-800">
+                      <span className="text-[11px] font-black uppercase tracking-wider">Default Primary Godown</span>
+                      <span className="material-symbols-outlined text-xl">star</span>
+                    </div>
+                    <div className="text-base font-black text-slate-900 mt-2 truncate">
+                      {warehousesList.find(w => w.is_default)?.name || warehousesList.find(w => !w.is_store_counter)?.name || "Main Godown"}
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                      Code: {warehousesList.find(w => w.is_default)?.code || "GDW-01"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Godown Cards Grid */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-teal-100 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-teal-700">store</span>
+                    <span className="text-sm font-black text-teal-950">Registered Storage Facilities &amp; Godowns</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Search godown name, code, incharge..."
+                      value={godownSearch}
+                      onChange={(e) => setGodownSearch(e.target.value)}
+                      className="bg-slate-50 border border-teal-200 rounded-2xl px-3.5 py-2 text-xs font-bold text-teal-950 focus:outline-none focus:border-teal-600 w-full sm:w-64"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {godownStats.warehouses
+                    .filter((gd) => {
+                      const q = (godownSearch || "").toLowerCase();
+                      if (!q) return true;
+                      return (
+                        (gd.name || "").toLowerCase().includes(q) ||
+                        (gd.code || "").toLowerCase().includes(q) ||
+                        (gd.location || "").toLowerCase().includes(q) ||
+                        (gd.incharge_name || "").toLowerCase().includes(q)
+                      );
+                    })
+                    .map((gd) => {
+                      const isSelected = selectedGodownForStock === gd.id;
+                      return (
+                        <div
+                          key={gd.id}
+                          className={`bg-white rounded-3xl border transition-all duration-200 p-5 space-y-4 shadow-sm hover:shadow-md ${
+                            isSelected
+                              ? "border-teal-600 ring-2 ring-teal-500/20 bg-teal-50/10"
+                              : gd.is_default
+                              ? "border-teal-300 ring-1 ring-teal-200"
+                              : "border-teal-100"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${
+                                  gd.is_store_counter
+                                    ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                                    : "bg-teal-50 border border-teal-200 text-teal-700"
+                                }`}
+                              >
+                                <span className="material-symbols-outlined text-2xl">
+                                  {gd.is_store_counter ? "storefront" : "warehouse"}
+                                </span>
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-black text-slate-900 text-sm leading-tight truncate">{gd.name}</h4>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                                    {gd.code || gd.id}
+                                  </span>
+                                  {gd.is_default && (
+                                    <span className="text-[9px] font-black bg-teal-700 text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                      PRIMARY
+                                    </span>
+                                  )}
+                                  {gd.is_store_counter && (
+                                    <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md uppercase">
+                                      POS Counter
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span
+                              className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-wider shrink-0 ${
+                                gd.status === "active"
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                  : "bg-slate-100 text-slate-600 border-slate-200"
+                              }`}
+                            >
+                              {gd.status || "active"}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-medium">Incharge Custodian:</span>
+                              <span className="font-bold text-teal-950">{gd.incharge_name || "Central Team"}</span>
+                            </div>
+                            {gd.phone && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-400 font-medium">Contact Phone:</span>
+                                <a href={`tel:${gd.phone}`} className="font-mono font-bold text-teal-700 hover:underline">
+                                  {gd.phone}
+                                </a>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-medium">Physical Location:</span>
+                              <span className="font-semibold text-slate-800 truncate max-w-[170px]" title={gd.location}>
+                                {gd.location || "Hyderabad, Sindh"}
+                              </span>
+                            </div>
+                            <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
+                              <span className="text-slate-400 font-medium">Stock SKUs / Units:</span>
+                              <span className="font-black text-teal-800">
+                                {gd.skuCount} SKUs ({Number(gd.unitsCount || 0).toLocaleString("en-US")} Units)
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 font-medium">Estimated Value:</span>
+                              <span className="font-black text-emerald-800 text-sm">
+                                Rs. {Number(gd.valuation || 0).toLocaleString("en-US")}
+                              </span>
+                            </div>
+                          </div>
+
+                          {gd.notes && (
+                            <p className="text-[11px] text-slate-500 italic bg-amber-50/60 border border-amber-100 p-2 rounded-xl">
+                              📝 {gd.notes}
+                            </p>
+                          )}
+
+                          {/* Card Action Buttons */}
+                          <div className="pt-2 border-t border-teal-50 flex flex-wrap gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedGodownForStock(isSelected ? null : gd.id);
+                                setGodownStockSearch("");
+                                setGodownCompanyFilter("all");
+                              }}
+                              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                                isSelected
+                                  ? "bg-teal-800 text-white shadow-md shadow-teal-900/20"
+                                  : "bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200"
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-sm">
+                                {isSelected ? "visibility_off" : "inventory"}
+                              </span>
+                              <span>{isSelected ? "Hide Stock" : "Inspect Live Stock"}</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setEditingGodown(gd);
+                                setGodownForm({
+                                  name: gd.name || "",
+                                  code: gd.code || "",
+                                  location: gd.location || "",
+                                  incharge_name: gd.incharge_name || "",
+                                  phone: gd.phone || "",
+                                  notes: gd.notes || "",
+                                  status: gd.status || "active",
+                                  is_default: Boolean(gd.is_default),
+                                  is_store_counter: Boolean(gd.is_store_counter),
+                                });
+                                setShowGodownModal(true);
+                              }}
+                              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                              title="Edit Godown Details"
+                            >
+                              <span className="material-symbols-outlined text-sm">edit</span>
+                            </button>
+
+                            {!gd.is_default && !gd.is_store_counter && (
+                              <button
+                                onClick={() => handleSetDefaultGodown(gd.id)}
+                                className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer"
+                                title="Set as Default Primary Godown"
+                              >
+                                <span className="material-symbols-outlined text-sm">star</span>
+                              </button>
+                            )}
+
+                            {!gd.is_store_counter && !gd.is_default && (
+                              <button
+                                onClick={() => handleDeleteGodown(gd.id, gd.name)}
+                                className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                                title="Delete Godown"
+                              >
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Drill-down: Live Stock Inspector for Selected Godown */}
+              {selectedGodownForStock && (() => {
+                const currentGd = warehousesList.find(w => w.id === selectedGodownForStock) || { name: "Godown", code: "GDW" };
+                const currentVal = dbWarehouses.getStockValuation(selectedGodownForStock);
+                return (
+                  <div className="bg-white border-2 border-teal-600/30 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl animate-fade-in">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-100 pb-5">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black uppercase tracking-wider bg-teal-100 text-teal-800 px-3 py-1 rounded-full border border-teal-200">
+                            Active Stock Inspector
+                          </span>
+                          <span className="font-mono text-xs font-bold text-slate-500">
+                            ID: {selectedGodownForStock}
+                          </span>
+                        </div>
+                        <h4 className="text-xl font-black text-teal-950 mt-2 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-teal-700">inventory_2</span>
+                          Stock Inventory in: <span className="text-teal-700">{currentGd.name}</span> ({currentGd.code})
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1 font-medium">
+                          Showing live stock count, unit purchase costs, and real-time total valuation for this physical location.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="bg-teal-50 border border-teal-200 px-4 py-2 rounded-2xl text-right">
+                          <div className="text-[10px] font-bold text-teal-700 uppercase">Location Valuation</div>
+                          <div className="text-base font-black text-teal-950 font-mono">
+                            Rs. {Number(currentVal.totalValue || 0).toLocaleString("en-US")}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            const csvContent = "data:text/csv;charset=utf-8," + 
+                              ["Item Code,Medicine Name,Company,Formula,Location Stock,Unit Cost Price,Total Valuation,Unit Sale Price"].join(",") + "\n" +
+                              currentGodownStockItems.map(i => `"${i.item_code}","${i.medicine_name}","${i.company_name || ''}","${i.generic_name || ''}",${i.locationQty},${i.unitCost},${i.locationValuation},${i.unitSale}`).join("\n");
+                            const encodedUri = encodeURI(csvContent);
+                            const link = document.createElement("a");
+                            link.setAttribute("href", encodedUri);
+                            link.setAttribute("download", `Stock_Report_${currentGd.code}_${new Date().toISOString().split("T")[0]}.csv`);
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            showToast(`📊 Exported stock report for ${currentGd.name}!`);
+                          }}
+                          className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold rounded-2xl border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base text-emerald-700">download</span>
+                          Export Location CSV
+                        </button>
+
+                        <button
+                          onClick={() => setSelectedGodownForStock(null)}
+                          className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                          title="Close Stock Inspector"
+                        >
+                          <span className="material-symbols-outlined text-base">close</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Search and Company Filter */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2 relative">
+                        <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                          search
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="Search medicine name, item code, formula..."
+                          value={godownStockSearch}
+                          onChange={(e) => setGodownStockSearch(e.target.value)}
+                          className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600 focus:bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <select
+                          value={godownCompanyFilter}
+                          onChange={(e) => setGodownCompanyFilter(e.target.value)}
+                          className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600"
+                        >
+                          <option value="all">🏢 All Manufacturing Brands</option>
+                          {godownCompanyOptions.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Stock Table */}
+                    <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto">
+                      <table className="w-full text-left text-xs min-w-[700px]">
+                        <thead className="bg-teal-50/90 text-teal-950 font-black uppercase tracking-wider sticky top-0 z-10 border-b border-teal-200">
+                          <tr>
+                            <th className="px-4 py-3">Item Code</th>
+                            <th className="px-4 py-3">Medicine &amp; Formula</th>
+                            <th className="px-4 py-3">Company Brand</th>
+                            <th className="px-4 py-3 text-center">Stock in Godown</th>
+                            <th className="px-4 py-3 text-right">Cost Price</th>
+                            <th className="px-4 py-3 text-right">Valuation</th>
+                            <th className="px-4 py-3 text-right">Sale Price</th>
+                            <th className="px-4 py-3 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-teal-50 font-medium">
+                          {currentGodownStockItems.map((item) => {
+                            const isLowStock = item.locationQty <= (item.min_reorder_level || 5);
+                            return (
+                              <tr key={item.id} className="hover:bg-teal-50/40 transition-colors">
+                                <td className="px-4 py-3 font-mono font-bold text-teal-800">{item.item_code || "MED"}</td>
+                                <td className="px-4 py-3">
+                                  <div className="font-bold text-teal-950">{item.medicine_name}</div>
+                                  {item.generic_name && (
+                                    <div className="text-[10px] text-slate-400 italic">{item.generic_name}</div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-slate-700">{item.company_name || "BM Pvt LTD"}</td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`px-2.5 py-1 rounded-full font-black text-xs ${
+                                    item.locationQty > 0
+                                      ? "bg-teal-100 text-teal-950"
+                                      : "bg-rose-100 text-rose-800"
+                                  }`}>
+                                    {item.locationQty} {item.unit_label || "Units"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-slate-600">
+                                  Rs. {item.unitCost.toLocaleString("en-US")}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono font-black text-teal-950">
+                                  Rs. {item.locationValuation.toLocaleString("en-US")}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-emerald-800">
+                                  Rs. {item.unitSale.toLocaleString("en-US")}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  {isLowStock ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">
+                                      Low Stock
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                      Healthy
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {currentGodownStockItems.length === 0 && (
+                            <tr>
+                              <td colSpan={8} className="py-12 text-center text-slate-400">
+                                <span className="material-symbols-outlined text-4xl block mb-2 text-slate-300">inventory_2</span>
+                                No medicines found matching filter in this godown.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -3649,6 +4293,168 @@ export default function DeveloperAdminPanel() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ================================================================= */}
+      {/* MODAL: REGISTER / EDIT GODOWN & MULTI-WAREHOUSE                   */}
+      {/* ================================================================= */}
+      {showGodownModal && (
+        <div className="fixed inset-0 bg-teal-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <form
+            onSubmit={handleSaveGodown}
+            className="bg-white rounded-3xl border border-teal-200 shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 animate-fade-in max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between border-b border-teal-50 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-teal-800 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-2xl">warehouse</span>
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-teal-950">
+                    {editingGodown ? `Edit Godown: ${editingGodown.name}` : "Register New Godown / Warehouse"}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">Configure storage location details, incharge &amp; inventory tracking</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowGodownModal(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
+                  Godown / Warehouse Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={godownForm.name}
+                  onChange={(e) => setGodownForm({ ...godownForm, name: e.target.value })}
+                  placeholder="e.g. Main Godown (Lajpat Road) or Warehouse B"
+                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-bold text-teal-950"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
+                    Short Identification Code
+                  </label>
+                  <input
+                    type="text"
+                    value={godownForm.code}
+                    onChange={(e) => setGodownForm({ ...godownForm, code: e.target.value })}
+                    placeholder="e.g. GDW-02"
+                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-mono font-bold text-teal-950 uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
+                    Operational Status
+                  </label>
+                  <select
+                    value={godownForm.status}
+                    onChange={(e) => setGodownForm({ ...godownForm, status: e.target.value })}
+                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-bold text-teal-950"
+                  >
+                    <option value="active">Active (Operational)</option>
+                    <option value="inactive">Inactive (Temporarily Closed)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
+                    Incharge Custodian / Manager
+                  </label>
+                  <input
+                    type="text"
+                    value={godownForm.incharge_name}
+                    onChange={(e) => setGodownForm({ ...godownForm, incharge_name: e.target.value })}
+                    placeholder="e.g. Usama / Kashif Khan"
+                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
+                    Manager Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    value={godownForm.phone}
+                    onChange={(e) => setGodownForm({ ...godownForm, phone: e.target.value })}
+                    placeholder="03473100304"
+                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-mono font-bold text-teal-950"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
+                  City &amp; Physical Street Address
+                </label>
+                <input
+                  type="text"
+                  value={godownForm.location}
+                  onChange={(e) => setGodownForm({ ...godownForm, location: e.target.value })}
+                  placeholder="e.g. Site Area, Near Bus Stop, Hyderabad, Sindh"
+                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold text-teal-950"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
+                  Storage Notes &amp; Working Hours
+                </label>
+                <textarea
+                  rows={2}
+                  value={godownForm.notes}
+                  onChange={(e) => setGodownForm({ ...godownForm, notes: e.target.value })}
+                  placeholder="e.g. Bulk liquid syrup & tablet storage. Key with manager."
+                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-medium text-teal-950"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 p-3 bg-teal-50/60 rounded-2xl border border-teal-200/70">
+                <input
+                  type="checkbox"
+                  id="is_default_godown"
+                  checked={godownForm.is_default}
+                  onChange={(e) => setGodownForm({ ...godownForm, is_default: e.target.checked })}
+                  className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
+                />
+                <label htmlFor="is_default_godown" className="text-xs font-bold text-teal-950 cursor-pointer">
+                  Set as Primary / Default Receiving Godown for Supplier Purchases (GRN)
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-2 border-t border-teal-50">
+              <button
+                type="button"
+                onClick={() => setShowGodownModal(false)}
+                className="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="w-1/2 py-3 bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black rounded-2xl text-xs shadow-lg shadow-teal-700/20 transition-all cursor-pointer"
+              >
+                {editingGodown ? "Save Changes" : "Register Godown"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

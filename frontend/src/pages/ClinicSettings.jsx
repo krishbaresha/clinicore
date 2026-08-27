@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbClinic, dbUsers, dbClinicServices, exportFullDatabase, importFullDatabase, clearAllTransactionalData, hashPassword } from "../api/db.js";
+import { dbClinic, dbUsers, dbWarehouses, dbClinicServices, exportFullDatabase, importFullDatabase, clearAllTransactionalData, hashPassword } from "../api/db.js";
 
 export default function ClinicSettings() {
   const { user, clinic, refreshClinic, refreshUser } = useAuth();
@@ -502,9 +503,11 @@ export default function ClinicSettings() {
                   className="input-field"
                 >
                   <option value="">All Locations / Central Staff</option>
-                  <option value="wh_str">Medical Store Counter (POS)</option>
-                  <option value="wh_001">Main Godown (Lajpat Road)</option>
-                  <option value="wh_002">Secondary Godown (Site Area)</option>
+                  {dbWarehouses.getAll().map((wh) => (
+                    <option key={wh.id} value={wh.id}>
+                      {wh.name} {wh.location ? `(${wh.location})` : ""}
+                    </option>
+                  ))}
                 </select>
               </div>
 
