@@ -126,8 +126,8 @@ echo ""
 # STEP 6.5: Build Frontend Production SPA Bundle
 # ─────────────────────────────────────────────────────────
 echo ""
-echo "[6.5/8] Building Frontend Production SPA Bundle..."
-if [ -d "$FRONTEND_DIR" ]; then
+echo "[6.5/8] Verifying Frontend Production SPA Bundle..."
+if [ -f "$FRONTEND_DIR/package.json" ]; then
     cd "$FRONTEND_DIR"
     if command -v npm &> /dev/null; then
         npm install --no-audit --no-fund
@@ -142,6 +142,8 @@ if [ -d "$FRONTEND_DIR" ]; then
         echo "  Node.js installed and Frontend built."
     fi
     cd "$CLINICORE_DIR"
+elif [ -d "$FRONTEND_DIR/dist" ]; then
+    echo "  Prebuilt Frontend dist/ verified and ready."
 fi
 
 # ─────────────────────────────────────────────────────────
