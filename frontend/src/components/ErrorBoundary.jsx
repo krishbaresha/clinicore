@@ -3,7 +3,7 @@ import React from "react";
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null, showDetails: false };
   }
 
   static getDerivedStateFromError(error) {
@@ -12,6 +12,7 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("ClinicFlow Uncaught App Error:", error, errorInfo);
+    this.setState({ errorInfo });
 
     // Auto-reload once if dynamic import chunk hash changed after new deployment
     if (
@@ -22,14 +23,26 @@ export default class ErrorBoundary extends React.Component {
       const hasReloaded = sessionStorage.getItem("cf_chunk_retry");
       if (!hasReloaded) {
         sessionStorage.setItem("cf_chunk_retry", "true");
-        window.location.reload();
+        this.handleReload();
       }
     }
   }
 
-  handleReload = () => {
+  handleReload = async () => {
     sessionStorage.removeItem("cf_chunk_retry");
-    window.location.reload();
+    try {
+      if (typeof window !== "undefined" && "caches" in window) {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((k) => window.caches.delete(k)));
+      }
+      if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch {
+      // ignore
+    }
+    window.location.href = window.location.origin + window.location.pathname + "?_t=" + Date.now();
   };
 
   handleResetStorage = async () => {
@@ -61,9 +74,29 @@ export default class ErrorBoundary extends React.Component {
             <div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight">App Session Ready</h2>
               <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
-                A new update or offline cache was loaded. Tap below to resume immediately.
+                A new update was loaded. Tap below to reload and apply latest updates.
               </p>
             </div>
+
+            {this.state.error && (
+              <div className="text-left bg-slate-50 border border-slate-200 rounded-2xl p-3 text-[11px] text-slate-700">
+                <div className="font-bold text-rose-700 truncate">
+                  {this.state.error.name || "Error"}: {this.state.error.message || "An unexpected error occurred"}
+                </div>
+                {this.state.showDetails && (
+                  <pre className="mt-2 text-[10px] text-slate-500 overflow-x-auto whitespace-pre-wrap max-h-32 bg-white p-2 rounded border border-slate-200 font-mono">
+                    {this.state.error.stack || "No stack trace available"}
+                  </pre>
+                )}
+                <button
+                  type="button"
+                  onClick={() => this.setState({ showDetails: !this.state.showDetails })}
+                  className="mt-1 text-[10px] text-teal-700 font-bold hover:underline"
+                >
+                  {this.state.showDetails ? "Hide Stack Details" : "Show Technical Details"}
+                </button>
+              </div>
+            )}
 
             <div className="pt-2 flex flex-col gap-2.5">
               <button
@@ -78,7 +111,7 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleResetStorage}
                 className="w-full py-2.5 text-[11px] font-bold text-slate-500 hover:text-teal-800 transition-colors cursor-pointer"
               >
-                Clear Temp Session &amp; Go to Login
+                Clear Cache &amp; Go to Login
               </button>
             </div>
           </div>

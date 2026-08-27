@@ -1785,12 +1785,19 @@ export default function SupplierPurchases() {
                       Invoices ({supBills.length})
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
-                        const txns = dbSupplierLedger.getBySupplier(sup);
-                        setLedgerDrawerSupplier(sup);
-                        setSupplierLedgerTxns(txns || []);
+                        try {
+                          const txns = dbSupplierLedger ? dbSupplierLedger.getBySupplier(sup) : [];
+                          setLedgerDrawerSupplier(sup);
+                          setSupplierLedgerTxns(Array.isArray(txns) ? txns : []);
+                        } catch (err) {
+                          console.error("Ledger load error:", err);
+                          setLedgerDrawerSupplier(sup);
+                          setSupplierLedgerTxns([]);
+                        }
                       }}
-                      className="flex-1 bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                     >
                       <span className="material-symbols-outlined text-base">account_balance</span>
                       Ledger
