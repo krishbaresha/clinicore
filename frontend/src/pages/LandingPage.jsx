@@ -226,7 +226,7 @@ export default function LandingPage() {
         <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
 
           {/* Brand Logo & Name */}
-          <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0 max-w-[40%] xxs:max-w-[45%] xs:max-w-[55%] md:max-w-none">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0 max-w-[40%] xxs:max-w-[45%] xs:max-w-[55%] md:max-w-[35%] lg:max-w-[30%] xl:max-w-[28%] 2xl:max-w-[32%]">
             <img
               src="/favicon.svg"
               alt="CliniCore Logo"
@@ -238,7 +238,7 @@ export default function LandingPage() {
                 <span className="text-[11px] xs:text-sm sm:text-base md:text-lg font-black tracking-tight text-slate-900 truncate">
                   {clinicName}
                 </span>
-                <span className="hidden 2xl:inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+                <span className="hidden xl:inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
                   <span className={`w-1.5 h-1.5 rounded-full ${clinicStatus === "open" ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
                   {clinicStatus === "open" ? t("landing.nav.opdOpen") : t("landing.nav.closed")}
                 </span>
@@ -290,18 +290,6 @@ export default function LandingPage() {
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <LanguageSwitcher compact={true} />
 
-            {/* Direct WhatsApp (Desktop only 2xl+) */}
-            <a
-              href={`https://wa.me/${clinicWhatsapp}?text=Assalam-o-Alaikum%20Clinic,%20I%20would%20like%20to%20inquire%20about%20OPD%20consultation.`}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden 2xl:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm shadow-emerald-700/20 cursor-pointer whitespace-nowrap"
-              title="Message Clinic Helpdesk on WhatsApp"
-            >
-              <span className="material-symbols-outlined text-base">chat</span>
-              <span>{t("landing.nav.whatsapp")}</span>
-            </a>
-
             {/* Staff Login Link */}
             <Link
               to="/login"
@@ -310,16 +298,6 @@ export default function LandingPage() {
             >
               <span className="material-symbols-outlined text-base">login</span>
               <span className="hidden xs:inline">Staff Login</span>
-            </Link>
-
-            {/* Super Admin Command Center Link (visible on sm+) */}
-            <Link
-              to="/admin"
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-950 border border-teal-200 transition-all cursor-pointer whitespace-nowrap shadow-2xs"
-              title="Super Admin Command Center"
-            >
-              <span className="material-symbols-outlined text-base text-teal-700">admin_panel_settings</span>
-              <span className="hidden 2xl:inline">Admin</span>
             </Link>
 
             {/* Mobile / Tablet Menu Drawer Trigger (visible on < xl) */}
