@@ -215,7 +215,7 @@ function todayAt(hour, minute = 0) {
 const SEED_DATA = {
   clinic: {
     id: "clinic_001",
-    name: "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Medical Store",
+    name: "H/Dr.Asif Ashraf Khan Clinic Medical Store",
     logo_url: "",
     address: "Lajpat Road, Hyderabad, Sindh",
     phone: "03473100304",
@@ -725,7 +725,12 @@ export function clearAllTransactionalData() {
 export const dbClinic = {
   get: () => {
     const raw = localStorage.getItem(KEYS.CLINIC);
-    return raw ? JSON.parse(raw) : SEED_DATA.clinic;
+    let clinic = raw ? JSON.parse(raw) : SEED_DATA.clinic;
+    if (clinic && clinic.name && clinic.name.includes("Asif Ashraf Khan") && !clinic.name.startsWith("H/Dr.Asif")) {
+      clinic.name = "H/Dr.Asif Ashraf Khan Clinic";
+      localStorage.setItem(KEYS.CLINIC, JSON.stringify(clinic));
+    }
+    return clinic;
   },
   update: (data) => {
     const current = dbClinic.get();
@@ -4881,7 +4886,7 @@ export const dbDayClosing = {
 
     // 6. Generate WhatsApp Message Text
     const clinic = dbClinic.get();
-    const clinicName = clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic";
+    const clinicName = clinic?.name || "H/Dr.Asif Ashraf Khan Clinic";
     const waText = `*📋 DAY CLOSING RECEIPT — ${targetDate}*\n` +
       `*🏥 ${clinicName}*\n\n` +
       `*💰 SALE:*\n` +
@@ -5120,7 +5125,7 @@ export function parseAndValidateBackupString(rawInput) {
       format_version: parsed.format_version || parsed.version || "2.0.0",
       app: parsed.app || "CliniCore Desktop & Web Suite",
       export_date: parsed.export_date || new Date().toISOString(),
-      clinic_name: parsed.clinic_name || "Dr. Muhammad Asif Ashraf Khan Clinic",
+      clinic_name: parsed.clinic_name || "H/Dr.Asif Ashraf Khan Clinic",
       schema_version: backupSchemaVersion,
       checksum_sha256: parsed.checksum_sha256 || null,
       data: parsed.data,
@@ -5271,7 +5276,7 @@ export function exportFullDatabase(returnEncryptedString = false) {
     schema_version: TARGET_SCHEMA_VERSION,
     app: "CliniCore Desktop & Web Suite",
     export_date: new Date().toISOString(),
-    clinic_name: dbClinic.get()?.name || "Dr. Muhammad Asif Ashraf Khan Clinic",
+    clinic_name: dbClinic.get()?.name || "H/Dr.Asif Ashraf Khan Clinic",
     manifest: {
       total_collections: Object.keys(collectionsData).length,
       record_counts: recordCounts,

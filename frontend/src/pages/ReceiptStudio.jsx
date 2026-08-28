@@ -42,7 +42,7 @@ export default function ReceiptStudio() {
       if (saved) return JSON.parse(saved);
     } catch {}
     return {
-      clinic_name: "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Homoeo Store",
+      clinic_name: "H/Dr.Asif Ashraf Khan Clinic Homoeo Store",
       tagline: "Homoeopathic Consultant & Bulk Distributors (Interior Sindh)",
       address: "Near Gul Center / Lajpat Road, Hyderabad, Sindh",
       phone: "0300-1234567 / 022-2780000",

@@ -230,7 +230,7 @@ export default function DeveloperAdminPanel() {
   const [clinicForm, setClinicForm] = useState(() => {
     const c = dbClinic.get() || {};
     return {
-      name: c.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale",
+      name: c.name || "H/Dr.Asif Ashraf Khan Clinic",
       address: c.address || "Lajpat Road, Hyderabad, Sindh",
       phone: c.phone || "03473100304",
       default_consultation_fee: Number(c.default_consultation_fee) || 300,
@@ -1375,7 +1375,7 @@ export default function DeveloperAdminPanel() {
               </span>
             </div>
             <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate hidden md:block">
-              Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"}</strong>
+              Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}</strong>
             </p>
           </div>
         </div>
@@ -2133,7 +2133,7 @@ export default function DeveloperAdminPanel() {
                             </head>
                             <body>
                               <table>
-                                <tr><td colspan="6" class="title-row">${activeClinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"} - Executive Audit Statement</td></tr>
+                                <tr><td colspan="6" class="title-row">${activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"} - Executive Audit Statement</td></tr>
                                 <tr><td colspan="6" style="color: #475569;">Period: ${periodLabel} (${auditDates.startDateStr} to ${auditDates.endDateStr}) | Godown Scope: ${godownScopeName}</td></tr>
                                 <tr><td colspan="6">Generated On: ${new Date().toLocaleString("en-US")}</td></tr>
                                 <tr><td colspan="6"></td></tr>

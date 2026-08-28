@@ -432,7 +432,7 @@ export default function SidebarLayout({ children }) {
 
         // 3. Generate HTML email template
         const emailHtml = generateCliniCoreEmailTemplate({
-          clinicName: c.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale",
+          clinicName: c.name || "H/Dr.Asif Ashraf Khan Clinic",
           targetEmail,
           dateStr,
           timestampStr,
@@ -697,7 +697,7 @@ export default function SidebarLayout({ children }) {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium truncate max-w-[160px] sm:max-w-xs">
-                {clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"}
+                {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
               </p>
             </div>
           </div>

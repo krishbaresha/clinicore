@@ -408,7 +408,7 @@ export default function FeesReports() {
       return;
     }
 
-    const clinicName = clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic";
+    const clinicName = clinic?.name || "H/Dr.Asif Ashraf Khan Clinic";
     const waText =
       `*📋 DAY CLOSING RECEIPT (Z-REPORT) — ${closingDate}*\n` +
       `*🏥 ${clinicName}*\n\n` +
@@ -664,7 +664,7 @@ export default function FeesReports() {
               {/* Slip Header */}
               <div className="text-center pb-3 border-b border-dashed border-slate-300 space-y-1">
                 <div className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                  {clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"}
+                  {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
                 </div>
                 <div className="text-[10px] text-slate-500 font-sans">
                   {clinic?.address || "Lajpat Road, Hyderabad"}

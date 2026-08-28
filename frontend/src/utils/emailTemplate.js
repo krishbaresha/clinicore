@@ -5,7 +5,7 @@
  */
 
 export function generateCliniCoreEmailTemplate({
-  clinicName = "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale",
+  clinicName = "H/Dr.Asif Ashraf Khan Clinic",
   targetEmail = "admin@clinicore.pk",
   dateStr = new Date().toISOString().split("T")[0],
   timestampStr = new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" }),

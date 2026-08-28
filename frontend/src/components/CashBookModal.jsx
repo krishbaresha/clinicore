@@ -337,7 +337,7 @@ export default function CashBookModal({ isOpen, onClose }) {
                 </span>
               </div>
               <p className="text-xs text-emerald-100 font-semibold mt-0.5">
-                {dbClinic.get()?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"} • Daily Cash Inflow &amp; Outflow
+                {dbClinic.get()?.name || "H/Dr.Asif Ashraf Khan Clinic"} • Daily Cash Inflow &amp; Outflow
               </p>
             </div>
           </div>

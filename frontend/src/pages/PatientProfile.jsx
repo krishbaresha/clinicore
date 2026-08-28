@@ -42,7 +42,7 @@ function PharmacyReceiptModal({ sale, onClose }) {
               {(clinic?.name || "D").charAt(0)}
             </div>
             <div className="text-base font-black text-teal-800 mt-1">
-              {clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store"}
+              {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
             </div>
             <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">
               Retail Medical Store Invoice

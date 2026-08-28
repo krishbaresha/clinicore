@@ -85,7 +85,7 @@ export default function LoginScreen() {
               />
             </div>
             <h2 className="text-xl font-black text-teal-950 tracking-tight">
-              {clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic"}
+              {clinicData?.name || "H/Dr.Asif Ashraf Khan Clinic"}
             </h2>
             <p className="text-xs text-teal-700/80 font-medium mt-1">
               Staff &amp; Doctor Terminal Login

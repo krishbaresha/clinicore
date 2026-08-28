@@ -71,7 +71,7 @@ function ReceiptModal({ sale, onClose }) {
               onError={(e) => { e.target.style.display = "none"; }}
             />
             <div className="text-base font-black text-slate-900">
-              {clinic?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store"}
+              {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
             </div>
             <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-0.5">
               Retail Medical Store Invoice

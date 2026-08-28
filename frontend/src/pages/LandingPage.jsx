@@ -200,7 +200,7 @@ export default function LandingPage() {
     },
   ];
 
-  const clinicName = clinicData.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Store";
+  const clinicName = clinicData.name || "H/Dr.Asif Ashraf Khan Clinic Store";
   const clinicTagline = clinicData.tagline || "Specialized Homeopathic Healthcare & Certified Medicine Distribution";
   const heroTitle = clinicData.hero_title || t("landing.hero.defaultTitle");
   const heroDesc = clinicData.hero_description || t("landing.hero.defaultDesc");
