@@ -91,6 +91,8 @@ jobs:
     needs: [ build-and-budget ]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -104,12 +106,21 @@ jobs:
           port: 22
           timeout: 120s
           command_timeout: 15m
+          envs: GH_TOKEN
           script: |
             set -e
             echo "🚀 Starting CliniCore Automated Production Deployment..."
             cd /var/www/clinicore
+
+            # Fix git auth: inject GitHub Actions token into remote URL
+            # (GitHub dropped password-based git auth — PAT/token is required)
             git config --global --add safe.directory /var/www/clinicore
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/krishbaresha/clinicore.git"
+
             git fetch origin main
             git reset --hard origin/main
+
+            # Run VPS post-deploy scripts (npm build, nginx reload, etc.)
             bash /var/www/clinicore/scripts/vps_fix_all.sh
+
             echo "🎉 CliniCore VPS Deployment completed and verified successfully!"
