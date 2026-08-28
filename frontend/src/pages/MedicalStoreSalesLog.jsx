@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSales, getExpenses, getReturns, addPharmacyExpense, deletePharmacyExpense, processSaleReturn } from "../api/store.js";
-import { dbClinic } from "../api/db.js";
+import { dbClinic, dbSales } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import { formatDate } from "../utils/formatters.js";
 import SaleInvoiceModal from "../components/SaleInvoiceModal.jsx";
