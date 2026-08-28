@@ -267,7 +267,7 @@ export default function PendingReports() {
       )}
 
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -279,9 +279,12 @@ export default function PendingReports() {
             Visits completed by Doctor where lab/X-ray report photos are waiting to be attached at Reception.
           </p>
         </div>
-        <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-full">
-          {pendingVisits.length} Pending
-        </span>
+        <div className="shrink-0 flex items-center">
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap bg-amber-100 text-amber-900 border border-amber-300 text-xs font-black px-3.5 py-1.5 rounded-full shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>{pendingVisits.length} Pending</span>
+          </span>
+        </div>
       </div>
 
       {/* List */}

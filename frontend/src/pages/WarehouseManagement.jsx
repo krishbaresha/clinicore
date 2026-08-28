@@ -679,9 +679,9 @@ export default function WarehouseManagement() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap items-center gap-2.5 w-full lg:w-auto">
           {/* Active Godown Incharge Pill */}
-          <div className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-2xl shadow-xs">
+          <div className="min-h-[42px] flex items-center gap-1.5 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-2xl shadow-xs col-span-2 sm:col-span-1">
             <span className="material-symbols-outlined text-teal-700 text-sm">badge</span>
             <span className="text-[11px] font-bold text-teal-900">Incharge:</span>
             <select
@@ -693,7 +693,7 @@ export default function WarehouseManagement() {
                   try { localStorage.setItem("cf_warehouse_active_operator", JSON.stringify(found)); } catch {}
                 }
               }}
-              className="bg-white text-teal-950 font-black text-xs px-2 py-1 rounded-xl border border-teal-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
+              className="bg-white text-teal-950 font-black text-xs px-2 py-1 rounded-xl border border-teal-300 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer w-full"
             >
               {availableGodownOperators.map((op) => (
                 <option key={op.id} value={op.id}>
@@ -709,17 +709,17 @@ export default function WarehouseManagement() {
               setLedgerInitialItem(null);
               setShowStockLedgerModal(true);
             }}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-purple-900/20 transition-all active:scale-95"
+            className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-purple-900/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
             title="Open DrCreate 4-Level Stock Ledger (Category -> SKU -> Timeline -> Vouchers)"
           >
             <span className="material-symbols-outlined text-base">menu_book</span>
-            Stock Ledger
+            <span>Stock Ledger</span>
           </button>
 
           <button
             type="button"
             onClick={handleOpenAccountForm}
-            className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 shadow-md transition-all ${
+            className={`min-h-[42px] px-3.5 py-2 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-all whitespace-nowrap cursor-pointer ${
               showAccountForm
                 ? "bg-emerald-800 text-white shadow-emerald-900/20 ring-2 ring-emerald-400"
                 : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
@@ -727,18 +727,17 @@ export default function WarehouseManagement() {
             title="DrCreate & MS Access Style Account Registration"
           >
             <span className="material-symbols-outlined text-base">person_add</span>
-            {showAccountForm ? "Close Account Form" : "Account Registration"}
+            <span>{showAccountForm ? "Close Form" : "Account Reg"}</span>
           </button>
-
 
           <button
             type="button"
             onClick={() => setShowSaleInvoiceModal(true)}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-700/20 transition-all active:scale-95"
+            className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
             title="Open DrCreate & MS Access Style Sale Invoice (Form & History List)"
           >
             <span className="material-symbols-outlined text-base">point_of_sale</span>
-            Sale Invoice (DrCreate)
+            <span>Sale Invoice</span>
           </button>
 
           <button
@@ -746,19 +745,18 @@ export default function WarehouseManagement() {
               setTransferDirection("to_store");
               handleTabChange("transfer");
             }}
-            className="px-4 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-teal-600/20 transition-all"
+            className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-600/20 transition-all whitespace-nowrap cursor-pointer"
           >
             <span className="material-symbols-outlined text-base">sync_alt</span>
-            Two-Way Stock Transfer
+            <span>Stock Transfer</span>
           </button>
 
-          
           <button
             onClick={() => handleTabChange("b2b")}
-            className="px-4 py-2.5 rounded-2xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-teal-900/20 transition-all"
+            className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-900/20 transition-all whitespace-nowrap cursor-pointer"
           >
             <span className="material-symbols-outlined text-base">local_shipping</span>
-            New Wholesale B2B Invoice
+            <span>Wholesale B2B</span>
           </button>
         </div>
       </div>

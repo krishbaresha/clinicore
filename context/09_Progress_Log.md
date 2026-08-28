@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Localhost Vite Dev Proxy & Same-Origin Cloud Sync Gateway Complete
-- **Last worked on:** Configured Vite dev server proxy for `/api` targeting `https://api.clinicore.me` with `changeOrigin: true` to prevent browser CORS blocks during local development when remote VPS backend returns 502/bad gateway. Unified `DEFAULT_API_URL` across `DeveloperAdminPanel.jsx`, `syncEngine.js`, `SidebarLayout.jsx`, and `ClinicSettings.jsx`. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
+- **Phase:** UI/UX Pro Max Responsive Action Toolbars & Badge Hardening Complete
+- **Last worked on:** Upgraded action toolbars and badges across `MedicalStoreInventory.jsx`, `WarehouseManagement.jsx`, `SupplierPurchases.jsx`, and `PendingReports.jsx` to adhere to UI/UX Pro Max mobile-first responsiveness standards. Refactored top hero action toolbars into responsive grid/flex layouts with standard 42px touch targets to eliminate right-edge clipping on small laptops and mobile screens. Hardened badge containers with `inline-flex`, `whitespace-nowrap`, and `shrink-0` to eliminate squished vertical text wrapping. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-28 (Part 61) — UI/UX Pro Max Responsive Action Toolbars & Badge Hardening
+**Task worked on:**
+1. **Medical Store Inventory (`MedicalStoreInventory.jsx`):**
+   - Refactored hero header container to `flex-col xl:flex-row xl:items-center` and action buttons toolbar into `grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap` with `min-h-[42px]` touch targets, preventing button overflow clipping on laptop/mobile screens.
+   - Added `shrink-0`, `whitespace-nowrap`, and `scroll-smooth` to Category Filter Pills so brand and category chips scroll cleanly on all device viewports.
+2. **Pending Reports (`PendingReports.jsx`):**
+   - Fixed squished `0 Pending` badge by adding `inline-flex`, `whitespace-nowrap`, and `shrink-0` with pulse indicator and responsive header wrapping (`flex-col sm:flex-row`).
+3. **Warehouse & Supplier Purchases (`WarehouseManagement.jsx`, `SupplierPurchases.jsx`):**
+   - Transformed header action button rows into responsive grid/flex layouts with `min-h-[42px]` touch targets, clean icon alignments, and active scale animations.
+4. **Verification & Zero-Regression Check:**
+   - `npx oxlint --quiet`: **0 errors** on 70 files.
+   - `node scripts/scan_imports_and_hooks.mjs`: **0 errors** on 60 files.
+   - `npm test`: **308/308 tests passed** (100% success rate).
+   - `npm run build`: Clean production bundle compiled in **969ms (Exit code 0)**.
+
+---
 
 ### Session: 2026-08-28 (Part 60) — Localhost Vite Dev Proxy & Same-Origin Cloud Sync Gateway
 **Task worked on:**

@@ -953,8 +953,8 @@ export default function SupplierPurchases() {
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-teal-100 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-600 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               domain
             </span>
             Pharma Companies &amp; Distributor Directory
@@ -963,24 +963,24 @@ export default function SupplierPurchases() {
             Manage Distributor Accounts, Stock Purchase Bills, Expiry Batches &amp; Payable Ledgers
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-rose-50 border border-rose-200 px-4 py-2 rounded-2xl text-right shadow-sm">
-            <div className="text-[11px] text-rose-700 font-bold uppercase tracking-wider">Total Company Credit Due</div>
-            <div className="text-xl font-black text-rose-800">Rs. {totalSupplierPayables.toLocaleString()}</div>
+        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+          <div className="bg-rose-50 border border-rose-200 px-3.5 py-1.5 rounded-2xl text-left sm:text-right shadow-xs shrink-0">
+            <div className="text-[10px] text-rose-700 font-bold uppercase tracking-wider">Company Credit Due</div>
+            <div className="text-lg font-black text-rose-800">Rs. {totalSupplierPayables.toLocaleString()}</div>
           </div>
           <button
             onClick={() => setActiveTab("grn_form")}
-            className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2.5 rounded-2xl font-black text-xs hover:from-emerald-700 hover:to-teal-800 transition-all shadow-md shadow-emerald-200 flex items-center gap-1.5"
+            className="min-h-[42px] bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2 rounded-2xl font-black text-xs hover:from-emerald-700 hover:to-teal-800 transition-all shadow-md shadow-emerald-200 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-base">receipt_long</span>
-            Company Purchase Bill (کمپنی خریداری بل)
+            <span>Purchase Bill (بل انٹری)</span>
           </button>
           <button
             onClick={() => setShowAddSupplier(true)}
-            className="bg-teal-600 text-white px-4 py-2.5 rounded-2xl font-bold text-xs hover:bg-teal-700 transition-colors shadow-md shadow-teal-200 flex items-center gap-1.5"
+            className="min-h-[42px] bg-teal-600 text-white px-4 py-2 rounded-2xl font-bold text-xs hover:bg-teal-700 transition-colors shadow-md shadow-teal-200 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-base">add_business</span>
-            Add Distributor Company
+            <span>+ Add Company</span>
           </button>
         </div>
       </div>
