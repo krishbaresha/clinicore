@@ -419,6 +419,9 @@ export default function DeveloperAdminPanel() {
 
       if (res.ok && data?.success) {
         sessionStorage.setItem("cf_dev_auth", "true");
+        if (data?.data?.token) {
+          try { localStorage.setItem("cf_vps_jwt", data.data.token); } catch {}
+        }
         try {
           sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
         } catch {}
@@ -426,7 +429,8 @@ export default function DeveloperAdminPanel() {
         setAuthError("");
         loadData();
         return;
-      } else {
+      }
+ else {
         // If server rejected the passcode, stop here immediately!
         failedAttempts++;
         const lockTime = failedAttempts >= 5 ? Date.now() + 60_000 : lockoutUntil;
@@ -3702,6 +3706,7 @@ export default function DeveloperAdminPanel() {
                           },
                           body: JSON.stringify({ passcode }),
                         });
+
                         const data = await res.json().catch(() => null);
 
                         if (res.ok && data?.success) {

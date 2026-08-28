@@ -125,28 +125,17 @@ echo "  .env written."
 # ─────────────────────────────────────────────────────────
 echo ""
 # ─────────────────────────────────────────────────────────
-# STEP 6.5: Build Frontend Production SPA Bundle
+# ─────────────────────────────────────────────────────────
+# STEP 6.5: Verify Frontend Production SPA Bundle
 # ─────────────────────────────────────────────────────────
 echo ""
 echo "[6.5/8] Verifying Frontend Production SPA Bundle..."
-if [ -f "$FRONTEND_DIR/package.json" ]; then
-    cd "$FRONTEND_DIR"
-    if command -v npm &> /dev/null; then
-        npm install --no-audit --no-fund
-        npm run build
-        echo "  Frontend built successfully to dist/."
-    else
-        echo "  WARNING: npm is not installed on VPS. Installing Node.js & npm..."
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-        apt-get install -y nodejs
-        npm install --no-audit --no-fund
-        npm run build
-        echo "  Node.js installed and Frontend built."
-    fi
-    cd "$CLINICORE_DIR"
-elif [ -d "$FRONTEND_DIR/dist" ]; then
-    echo "  Prebuilt Frontend dist/ verified and ready."
+if [ -d "$FRONTEND_DIR/dist" ]; then
+    echo "  Production SPA bundle dist/ is verified and ready."
+else
+    echo "  WARNING: dist/ folder is missing! If this is a fresh setup, compile locally and push."
 fi
+
 
 # ─────────────────────────────────────────────────────────
 # STEP 7: Fix Nginx configuration

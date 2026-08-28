@@ -1017,7 +1017,9 @@ async function runTests() {
     const vpsScriptPath = path.resolve("../scripts/vps_fix_all.sh");
     if (fs.existsSync(vpsScriptPath)) {
       const vpsScript = fs.readFileSync(vpsScriptPath, "utf8");
-      assert(vpsScript.includes("npm run build"), "VPS deployment script compiles production frontend bundle");
+      // Architecture: frontend is built in GitHub Actions CI (Stage 2) and uploaded via SCP.
+      // VPS must NOT run live npm build (causes CPU spike, white screen, Nginx freeze).
+      assert(!vpsScript.includes("npm run build"), "VPS deployment script must NOT run live npm build (CI/CD now ships pre-built dist via artifact SCP)");
       assert((vpsScript.includes("sw.js") || vpsScript.includes("sw\\.js")) && vpsScript.includes("no-cache"), "VPS Nginx configuration enforces no-cache headers for sw.js");
     }
   });

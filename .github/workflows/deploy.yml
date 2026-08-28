@@ -97,7 +97,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy to Hostinger VPS via SSH
+      - name: Deploy Backend + Config to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 77.37.45.233
@@ -105,22 +105,51 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port: 22
           timeout: 120s
-          command_timeout: 15m
+          command_timeout: 10m
           envs: GH_TOKEN
           script: |
             set -e
-            echo "🚀 Starting CliniCore Automated Production Deployment..."
+            echo "🚀 Deploying CliniCore backend & config..."
             cd /var/www/clinicore
 
-            # Fix git auth: inject GitHub Actions token into remote URL
-            # (GitHub dropped password-based git auth — PAT/token is required)
             git config --global --add safe.directory /var/www/clinicore
             git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/krishbaresha/clinicore.git"
-
             git fetch origin main
             git reset --hard origin/main
 
-            # Run VPS post-deploy scripts (npm build, nginx reload, etc.)
+            # Lightweight VPS fix: nginx reload, php-fpm restart, DB migrations only
+            # (No live npm build — dist/ delivered via artifact SCP below)
             bash /var/www/clinicore/scripts/vps_fix_all.sh
+            echo "✅ Backend deployed!"
 
+      - name: Download Pre-Built Production Dist Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: clinicore-dist-bundle
+          path: ./dist-bundle
+
+      - name: Upload Pre-Built Dist to VPS via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 77.37.45.233
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          source: "dist-bundle/*"
+          target: "/var/www/clinicore/frontend/dist"
+          strip_components: 1
+          overwrite: true
+
+      - name: Fix Permissions & Reload Nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 77.37.45.233
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          timeout: 30s
+          script: |
+            chown -R www-data:www-data /var/www/clinicore/frontend/dist
+            chmod -R 755 /var/www/clinicore/frontend/dist
+            nginx -t && systemctl reload nginx
             echo "🎉 CliniCore VPS Deployment completed and verified successfully!"
