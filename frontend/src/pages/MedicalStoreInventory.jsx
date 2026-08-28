@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../hooks/useAuth.js";
+import { verifyAdminPasscode } from "../api/auth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
 import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
 import { formatCurrency } from "../utils/formatters.js";
@@ -153,6 +154,161 @@ export default function MedicalStoreInventory() {
   const [auditCounts, setAuditCounts] = useState({});
   const [auditSearchQuery, setAuditSearchQuery] = useState("");
 
+  // Edit Medicine Modal State
+  const [editingItem, setEditingItem] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    medicine_name: "",
+    company_name: "BM Pvt LTD",
+    item_code: "",
+    naration: "",
+    category: "Homeopathic Drops",
+    cost_price: "0",
+    sale_price: "0",
+    store_stock: "0",
+    warehouse_stock: "0",
+    low_stock_threshold: "6",
+  });
+
+  // Delete Item State
+  const [deletingItem, setDeletingItem] = useState(null);
+
+  // Admin Passcode Authorization Modal State
+  const [adminAuthModal, setAdminAuthModal] = useState({
+    isOpen: false,
+    action: "", // 'edit' | 'delete'
+    targetItem: null,
+    passcode: "",
+    error: "",
+    showPass: false,
+  });
+
+  const isAdminOrOwner = Boolean(
+    user?.is_owner ||
+    user?.role === "admin" ||
+    user?.role === "doctor"
+  );
+
+  const openEditFormForItem = (item) => {
+    setEditingItem(item);
+    setEditFormData({
+      medicine_name: item.medicine_name || "",
+      company_name: item.company_name || "BM Pvt LTD",
+      item_code: item.item_code || "",
+      naration: item.naration || item.strength || "",
+      category: item.category || "Homeopathic Drops",
+      cost_price: String(item.cost_price_per_box || item.purchase_price || item.cost_price || "0"),
+      sale_price: String(item.unit_sale_price || item.box_sale_price || item.sale_price || item.unit_price || "0"),
+      store_stock: String(item.store_stock ?? (item.stock_qty ?? 0)),
+      warehouse_stock: String(item.warehouse_stock ?? 0),
+      low_stock_threshold: String(item.low_stock_threshold ?? 6),
+    });
+  };
+
+  const handleRequestEdit = (item) => {
+    if (isAdminOrOwner) {
+      openEditFormForItem(item);
+    } else {
+      setAdminAuthModal({
+        isOpen: true,
+        action: "edit",
+        targetItem: item,
+        passcode: "",
+        error: "",
+        showPass: false,
+      });
+    }
+  };
+
+  const handleRequestDelete = (item) => {
+    if (isAdminOrOwner) {
+      setDeletingItem(item);
+    } else {
+      setAdminAuthModal({
+        isOpen: true,
+        action: "delete",
+        targetItem: item,
+        passcode: "",
+        error: "",
+        showPass: false,
+      });
+    }
+  };
+
+  const handleVerifyAdminPasscode = (e) => {
+    e?.preventDefault?.();
+    const isPassValid = verifyAdminPasscode(adminAuthModal.passcode);
+    if (!isPassValid) {
+      setAdminAuthModal((prev) => ({
+        ...prev,
+        error: "Incorrect Admin Passcode. Please contact clinic admin/doctor.",
+      }));
+      return;
+    }
+
+    const { action, targetItem } = adminAuthModal;
+    setAdminAuthModal({ isOpen: false, action: "", targetItem: null, passcode: "", error: "", showPass: false });
+
+    if (action === "edit" && targetItem) {
+      openEditFormForItem(targetItem);
+    } else if (action === "delete" && targetItem) {
+      setDeletingItem(targetItem);
+    }
+  };
+
+  const handleSaveEditedItem = (e) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    if (!editFormData.medicine_name.trim()) {
+      alert("Medicine name cannot be empty.");
+      return;
+    }
+
+    const costVal = Math.max(0, Number(editFormData.cost_price) || 0);
+    const saleVal = Math.max(0, Number(editFormData.sale_price) || 0);
+    const storeQty = Math.max(0, Number(editFormData.store_stock) || 0);
+    const godownQty = Math.max(0, Number(editFormData.warehouse_stock) || 0);
+    const threshold = Math.max(0, Number(editFormData.low_stock_threshold) || 6);
+
+    const updated = {
+      medicine_name: editFormData.medicine_name.trim(),
+      company_name: editFormData.company_name.trim(),
+      item_code: editFormData.item_code.trim(),
+      naration: editFormData.naration.trim(),
+      category: editFormData.category,
+      cost_price_per_box: costVal,
+      purchase_price: costVal,
+      cost_price: costVal,
+      unit_sale_price: saleVal,
+      box_sale_price: saleVal,
+      sale_price: saleVal,
+      unit_price: saleVal,
+      store_stock: storeQty,
+      warehouse_stock: godownQty,
+      stock_qty: storeQty,
+      total_base_stock: storeQty + godownQty,
+      low_stock_threshold: threshold,
+      location_stocks: {
+        ...(editingItem.location_stocks || {}),
+        wh_str: storeQty,
+        wh_001: godownQty,
+      },
+    };
+
+    dbInventory.update(editingItem.id, updated);
+    setEditingItem(null);
+    load();
+    triggerToast(`✅ "${updated.medicine_name}" updated successfully!`);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingItem) return;
+    const name = deletingItem.medicine_name;
+    dbInventory.delete(deletingItem.id);
+    setDeletingItem(null);
+    load();
+    triggerToast(`🗑️ "${name}" permanently removed from catalog.`);
+  };
+
   function load() {
     const r = getInventory();
     if (r.success) setInventory(r.data || []);
@@ -220,7 +376,11 @@ export default function MedicalStoreInventory() {
     showPricingListModal ||
     showCsvModal ||
     isMovementOpen ||
-    showStockLedgerModal
+    showStockLedgerModal ||
+    showBlindAuditModal ||
+    editingItem ||
+    deletingItem ||
+    adminAuthModal.isOpen
   );
 
   useEffect(() => {
@@ -1718,28 +1878,51 @@ export default function MedicalStoreInventory() {
 
                       {/* Actions */}
                       <td className="py-3.5 px-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Edit Item */}
+                          <button
+                            onClick={() => handleRequestEdit(item)}
+                            className="touch-target-44 min-h-[38px] px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-800 text-xs font-black flex items-center gap-1 border border-blue-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
+                            title="Edit Medicine Details / Stock / Pricing (Admin Permission)"
+                          >
+                            <span className="material-symbols-outlined text-sm">edit</span>
+                            <span>Edit</span>
+                          </button>
+
+                          {/* Ledger */}
                           <button
                             onClick={() => {
                               setLedgerInitialItem(item);
                               setShowStockLedgerModal(true);
                             }}
-                            className="touch-target-44 min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 text-xs font-black flex items-center gap-1.5 border border-emerald-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
+                            className="touch-target-44 min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 text-xs font-black flex items-center gap-1 border border-emerald-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
                             title="DrCreate 4-Level Stock Ledger"
                           >
                             <span className="material-symbols-outlined text-sm">menu_book</span>
                             <span>Ledger</span>
                           </button>
+
+                          {/* Stock Card */}
                           <button
                             onClick={() => {
                               setSelectedMovementItem(item);
                               setIsMovementOpen(true);
                             }}
-                            className="touch-target-44 min-h-[38px] px-3.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 text-xs font-black flex items-center gap-1.5 border border-teal-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
+                            className="touch-target-44 min-h-[38px] px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 text-xs font-black flex items-center gap-1 border border-teal-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
                             title="Stock Movement Card & Adjustments"
                           >
                             <span className="material-symbols-outlined text-sm">analytics</span>
                             <span>Stock Card</span>
+                          </button>
+
+                          {/* Delete Item */}
+                          <button
+                            onClick={() => handleRequestDelete(item)}
+                            className="touch-target-44 min-h-[38px] px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 text-xs font-black flex items-center gap-1 border border-rose-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
+                            title="Delete Item (Admin Permission)"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                            <span>Delete</span>
                           </button>
                         </div>
                       </td>
@@ -1828,13 +2011,22 @@ export default function MedicalStoreInventory() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-1.5 pt-1">
+                  <button
+                    onClick={() => handleRequestEdit(item)}
+                    className="flex-1 py-2 rounded-xl bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-800 text-xs font-bold border border-blue-200 flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    title="Edit Item"
+                  >
+                    <span className="material-symbols-outlined text-xs">edit</span>
+                    Edit
+                  </button>
                   <button
                     onClick={() => {
                       setLedgerInitialItem(item);
                       setShowStockLedgerModal(true);
                     }}
-                    className="flex-1 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 text-xs font-bold border border-emerald-200 flex items-center justify-center gap-1 transition-all"
+                    className="flex-1 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 text-xs font-bold border border-emerald-200 flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    title="Stock Ledger"
                   >
                     <span className="material-symbols-outlined text-xs">menu_book</span>
                     Ledger
@@ -1844,10 +2036,18 @@ export default function MedicalStoreInventory() {
                       setSelectedMovementItem(item);
                       setIsMovementOpen(true);
                     }}
-                    className="flex-1 py-2 rounded-xl bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 text-xs font-bold border border-teal-200 flex items-center justify-center gap-1 transition-all"
+                    className="flex-1 py-2 rounded-xl bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 text-xs font-bold border border-teal-200 flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    title="Stock Card"
                   >
                     <span className="material-symbols-outlined text-xs">analytics</span>
-                    Stock Card
+                    Card
+                  </button>
+                  <button
+                    onClick={() => handleRequestDelete(item)}
+                    className="p-2 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 text-xs font-bold border border-rose-200 flex items-center justify-center transition-all cursor-pointer"
+                    title="Delete Item (Admin Permission)"
+                  >
+                    <span className="material-symbols-outlined text-xs">delete</span>
                   </button>
                 </div>
               </div>
@@ -2406,6 +2606,396 @@ export default function MedicalStoreInventory() {
               >
                 Close &amp; Save Audit Progress
               </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 1. Admin Passcode Authorization Modal */}
+      {adminAuthModal.isOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-300 flex items-center justify-center font-black">
+                  <span className="material-symbols-outlined text-xl">lock</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-white">Admin Authorization Required</h3>
+                  <p className="text-[11px] text-slate-300">
+                    {adminAuthModal.action === "edit" ? "Modify Catalog Item" : "Delete Catalog Item"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdminAuthModal({ isOpen: false, action: "", targetItem: null, passcode: "", error: "", showPass: false })}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/* Content */}
+            <form onSubmit={handleVerifyAdminPasscode} className="p-6 space-y-4">
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl text-xs text-amber-950 flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-amber-600 text-lg shrink-0 mt-0.5">security</span>
+                <div>
+                  <strong>Staff Permission Guard:</strong> Deleting or modifying inventory items requires Clinic Admin / Supervisor Passcode to maintain data integrity.
+                </div>
+              </div>
+
+              {adminAuthModal.targetItem && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs">
+                  <div className="font-extrabold text-slate-900">{adminAuthModal.targetItem.medicine_name}</div>
+                  <div className="text-slate-500 text-[11px] mt-0.5">
+                    {adminAuthModal.targetItem.company_name} • {adminAuthModal.targetItem.category}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
+                  Admin Passcode / PIN <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={adminAuthModal.showPass ? "text" : "password"}
+                    autoFocus
+                    placeholder="Enter Admin Master Passcode (e.g. KB2026)"
+                    value={adminAuthModal.passcode}
+                    onChange={(e) => setAdminAuthModal((prev) => ({ ...prev, passcode: e.target.value, error: "" }))}
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-sm font-bold text-slate-900 placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAdminAuthModal((prev) => ({ ...prev, showPass: !prev.showPass }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {adminAuthModal.showPass ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+                {adminAuthModal.error && (
+                  <p className="text-rose-600 font-bold text-xs mt-1.5 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">error</span>
+                    <span>{adminAuthModal.error}</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAdminAuthModal({ isOpen: false, action: "", targetItem: null, passcode: "", error: "", showPass: false })}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-black text-xs shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm">verified_user</span>
+                  <span>Authorize &amp; Continue</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 2. Edit Medicine Details Modal */}
+      {editingItem && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200 my-8">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-500/30 text-teal-300 flex items-center justify-center font-black">
+                  <span className="material-symbols-outlined text-xl">edit_note</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg text-white flex items-center gap-2">
+                    Edit Medicine Details
+                    <span className="bg-teal-500/30 text-teal-200 text-[10px] font-black px-2 py-0.5 rounded-full border border-teal-500/40">
+                      ID: {editingItem.id}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    Update catalog name, pricing, stock levels &amp; formula specs
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveEditedItem} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Product Name */}
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                    Medicine / Product Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.medicine_name}
+                    onChange={(e) => setEditFormData({ ...editFormData, medicine_name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm font-bold text-slate-900"
+                    placeholder="e.g. Berberis Vulgaris"
+                  />
+                </div>
+
+                {/* Company / Manufacturer */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                    Company / Brand <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.company_name}
+                    onChange={(e) => setEditFormData({ ...editFormData, company_name: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold text-slate-900"
+                    placeholder="e.g. BM Pvt LTD"
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                    Category
+                  </label>
+                  <select
+                    value={editFormData.category}
+                    onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold text-slate-900"
+                  >
+                    <option value="Homeopathic Drops">Homeopathic Drops</option>
+                    <option value="Syrup / Suspension">Syrup / Suspension</option>
+                    <option value="Specialized Drops">Specialized Drops</option>
+                    <option value="Tablet">Tablet</option>
+                    <option value="Capsule">Capsule</option>
+                    <option value="Allopathic OTC">Allopathic OTC</option>
+                    <option value="Ointment / Cream">Ointment / Cream</option>
+                    <option value="General Item">General Item</option>
+                  </select>
+                </div>
+
+                {/* Item Code */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                    Item Code / SKU
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.item_code}
+                    onChange={(e) => setEditFormData({ ...editFormData, item_code: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold text-slate-900"
+                    placeholder="e.g. BM-01"
+                  />
+                </div>
+
+                {/* Naration / Formula */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                    Naration / Pack Spec
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.naration}
+                    onChange={(e) => setEditFormData({ ...editFormData, naration: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold text-slate-900"
+                    placeholder="e.g. Drops 20ml / 500mg"
+                  />
+                </div>
+
+                {/* Pricing Box */}
+                <div className="sm:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                      Purchase Cost Rate (Rs)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={editFormData.cost_price}
+                      onChange={(e) => setEditFormData({ ...editFormData, cost_price: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold font-mono text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-emerald-800 uppercase tracking-wider">
+                      Retail Sale Price (Rs) <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      required
+                      value={editFormData.sale_price}
+                      onChange={(e) => setEditFormData({ ...editFormData, sale_price: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-emerald-300 bg-emerald-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-black font-mono text-emerald-900"
+                    />
+                  </div>
+                </div>
+
+                {/* Stock Counts Box */}
+                <div className="sm:col-span-2 bg-teal-50/60 p-4 rounded-2xl border border-teal-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-black text-teal-950 uppercase tracking-wider">
+                      Counter Stock (POS)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editFormData.store_stock}
+                      onChange={(e) => setEditFormData({ ...editFormData, store_stock: e.target.value })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-teal-300 bg-white font-mono font-bold text-xs text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-black text-teal-950 uppercase tracking-wider">
+                      Godown Stock (Warehouse)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editFormData.warehouse_stock}
+                      onChange={(e) => setEditFormData({ ...editFormData, warehouse_stock: e.target.value })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-teal-300 bg-white font-mono font-bold text-xs text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-black text-teal-950 uppercase tracking-wider">
+                      Low Stock Threshold
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editFormData.low_stock_threshold}
+                      onChange={(e) => setEditFormData({ ...editFormData, low_stock_threshold: e.target.value })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-teal-300 bg-white font-mono font-bold text-xs text-slate-900"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Footer */}
+              <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const it = editingItem;
+                    setEditingItem(null);
+                    handleRequestDelete(it);
+                  }}
+                  className="px-4 py-2 rounded-xl text-rose-700 hover:bg-rose-50 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">delete</span>
+                  <span>Delete This Item</span>
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-sm">save</span>
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 3. Delete Confirmation Modal */}
+      {deletingItem && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-rose-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-rose-900 via-rose-800 to-slate-900 p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-200 flex items-center justify-center font-black">
+                  <span className="material-symbols-outlined text-xl">delete_forever</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">Permanently Delete Item?</h3>
+                  <p className="text-[11px] text-rose-200">Catalog Removal Confirmation</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingItem(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-rose-200 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-600">
+                Are you sure you want to delete this medicine from the store inventory catalog?
+              </p>
+
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-2">
+                <div className="font-black text-slate-900 text-sm">{deletingItem.medicine_name}</div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                  <span className="font-bold text-teal-800">{deletingItem.company_name || "General Brand"}</span>
+                  <span>•</span>
+                  <span>{deletingItem.category}</span>
+                  {deletingItem.item_code && (
+                    <>
+                      <span>•</span>
+                      <span className="font-mono font-bold">Code: {deletingItem.item_code}</span>
+                    </>
+                  )}
+                </div>
+                <div className="text-xs font-bold text-rose-900 pt-1 border-t border-rose-200/60">
+                  Current Stock: {formatStockBreakdown(deletingItem)}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletingItem(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 cursor-pointer"
+                >
+                  Keep Item
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm">delete</span>
+                  <span>Yes, Delete Permanently</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>,

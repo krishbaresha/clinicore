@@ -33,9 +33,27 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** UI/UX Pro Max Responsive Action Toolbars & Badge Hardening Complete
-- **Last worked on:** Upgraded action toolbars and badges across `MedicalStoreInventory.jsx`, `WarehouseManagement.jsx`, `SupplierPurchases.jsx`, and `PendingReports.jsx` to adhere to UI/UX Pro Max mobile-first responsiveness standards. Refactored top hero action toolbars into responsive grid/flex layouts with standard 42px touch targets to eliminate right-edge clipping on small laptops and mobile screens. Hardened badge containers with `inline-flex`, `whitespace-nowrap`, and `shrink-0` to eliminate squished vertical text wrapping. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
+- **Phase:** Inventory Item Edit & Delete with Admin Passcode Permission Guard Complete
+- **Last worked on:** Implemented `dbInventory.delete(id)` in `src/api/db.js`, added dedicated `[Edit]` and `[Delete]` action buttons to both Table View and Card Grid View in `MedicalStoreInventory.jsx`. Built a secure `Admin Authorization Modal` requiring the Clinic Admin / Supervisor Passcode (`KB2026`) when staff users attempt to modify or delete inventory items. Added full-featured `Edit Medicine Details Modal` and `Permanently Delete Item Confirmation Modal`. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-28 (Part 62) — Inventory Item Edit & Delete with Admin Permission Guard
+**Task worked on:**
+1. **Core Database Engine (`src/api/db.js`):**
+   - Implemented `dbInventory.delete(id)` with immediate cache eviction and collection persistence.
+   - Updated `dbInventory.update(id, data)` to return updated record reference.
+2. **Medical Store Inventory UI (`MedicalStoreInventory.jsx`):**
+   - Added `[Edit]` (✏️) and `[Delete]` (🗑️) buttons to every table row and card view item.
+   - Integrated Admin Security Guard: If logged in as non-admin staff (e.g. Pharmacist/Cashier), clicking Edit or Delete triggers the **Admin Passcode Modal** (`verifyAdminPasscode`).
+   - Built **Edit Medicine Details Modal**: Allows editing Medicine Name, Brand/Company, Category, Item Code, Naration/Formula, Purchase Cost Price, Retail Sale Price, Store Counter Stock, Godown Stock, and Low Stock Alert Threshold.
+   - Built **Delete Confirmation Modal**: Prominently warns about catalog removal and current stock loss before executing permanent deletion.
+3. **Verification & Zero-Regression Check:**
+   - `npx oxlint --quiet`: **0 errors** on 70 files.
+   - `node scripts/scan_imports_and_hooks.mjs`: **0 errors** on 60 files.
+   - `npm test`: **308/308 tests passed** (100% success rate).
+   - `npm run build`: Clean production bundle compiled in **986ms (Exit code 0)**.
+
+---
 
 ### Session: 2026-08-28 (Part 61) — UI/UX Pro Max Responsive Action Toolbars & Badge Hardening
 **Task worked on:**

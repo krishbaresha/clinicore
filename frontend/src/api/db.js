@@ -1233,6 +1233,14 @@ export const dbInventory = {
     const inventory = getCollection(KEYS.INVENTORY);
     const updated = inventory.map((i) => (i.id === id ? { ...i, ...data } : i));
     setCollection(KEYS.INVENTORY, updated);
+    return updated.find((i) => i.id === id) || null;
+  },
+
+  delete: (id) => {
+    const inventory = getCollection(KEYS.INVENTORY);
+    const updated = inventory.filter((i) => i.id !== id);
+    setCollection(KEYS.INVENTORY, updated);
+    return true;
   },
 
   deductStock: (id, baseQty) => {
