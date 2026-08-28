@@ -85,25 +85,35 @@ export default function ReceptionQueue() {
   useEffect(() => {
     load();
     const interval = setInterval(load, 10000);
-
     const handleCustomUpdate = () => load();
     window.addEventListener("clinicflow_status_update", handleCustomUpdate);
 
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("clinicflow_status_update", handleCustomUpdate);
+    };
+  }, [load]);
+
+  const navStateRef = useRef({ displayedVisits, selectedQueueIndex, patients, doctors, clinicData });
+  navStateRef.current = { displayedVisits, selectedQueueIndex, patients, doctors, clinicData };
+
+  useEffect(() => {
     function handleReceptionQueueKeyDown(e) {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      const { displayedVisits: curVisits, selectedQueueIndex: curIdx, patients: curPatients, doctors: curDoctors, clinicData: curClinic } = navStateRef.current;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedQueueIndex((prev) => Math.min(displayedVisits.length - 1, prev + 1));
+        setSelectedQueueIndex((prev) => Math.min(curVisits.length - 1, prev + 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedQueueIndex((prev) => Math.max(0, prev - 1));
       } else if (e.key === "p" || e.key === "P") {
         e.preventDefault();
-        const currentVisit = displayedVisits[selectedQueueIndex];
+        const currentVisit = curVisits[curIdx];
         if (currentVisit) {
-          const patient = patients[currentVisit.patient_id];
-          const assignedDoctor = doctors.find((d) => d.id === currentVisit.doctor_id) || doctors[0];
+          const patient = curPatients[currentVisit.patient_id];
+          const assignedDoctor = curDoctors.find((d) => d.id === currentVisit.doctor_id) || curDoctors[0];
           printOPDTokenReceipt({
             token: currentVisit.token_number,
             token_number: currentVisit.token_number,
@@ -113,10 +123,10 @@ export default function ReceptionQueue() {
             fee: currentVisit.fee_amount,
             fee_amount: currentVisit.fee_amount,
             registeredAt: new Date(currentVisit.visit_date),
-          }, clinicData);
+          }, curClinic);
         }
       } else if (e.key === "Enter") {
-        const currentVisit = displayedVisits[selectedQueueIndex];
+        const currentVisit = curVisits[curIdx];
         if (currentVisit) {
           navigate(`/patients/${currentVisit.patient_id}`);
         }
@@ -124,13 +134,8 @@ export default function ReceptionQueue() {
     }
 
     window.addEventListener("keydown", handleReceptionQueueKeyDown);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("clinicflow_status_update", handleCustomUpdate);
-      window.removeEventListener("keydown", handleReceptionQueueKeyDown);
-    };
-  }, [load, displayedVisits, selectedQueueIndex, patients, doctors, clinicData, navigate]);
+    return () => window.removeEventListener("keydown", handleReceptionQueueKeyDown);
+  }, [navigate]);
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-6 overflow-x-hidden">

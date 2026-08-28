@@ -267,6 +267,9 @@ export default function MedicalStorePOS() {
     }
   }, [selectedInventoryIndex]);
 
+  const posStateRef = useRef({ cart, showRxModal, receipt, inventoryQuery });
+  posStateRef.current = { cart, showRxModal, receipt, inventoryQuery };
+
   useEffect(() => {
     const refreshData = () => {
       setInventoryResults(dbInventory.getAll());
@@ -331,7 +334,8 @@ export default function MedicalStorePOS() {
       // 9. F11 or Alt+C: Clear Cart / New Bill
       else if (e.key === "F11" || (e.altKey && (e.key === "c" || e.key === "C"))) {
         e.preventDefault();
-        if (cart.length > 0) {
+        const currentCart = posStateRef.current.cart;
+        if (currentCart && currentCart.length > 0) {
           if (confirm("Clear current cart and start a fresh bill (F11)?")) {
             setCart([]);
             setDiscountInput("");
@@ -342,11 +346,12 @@ export default function MedicalStorePOS() {
       }
       // 10. Escape: Close Modals or Clear Search
       else if (e.key === "Escape") {
-        if (showRxModal) {
+        const { showRxModal: sRx, receipt: rec, inventoryQuery: invQ } = posStateRef.current;
+        if (sRx) {
           setShowRxModal(false);
-        } else if (receipt) {
+        } else if (rec) {
           setReceipt(null);
-        } else if (inventoryQuery) {
+        } else if (invQ) {
           setInventoryQuery("");
         }
       }

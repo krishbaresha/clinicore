@@ -221,6 +221,25 @@ const _COLLECTION_CACHE = new Map();
 const _ID_MAP_CACHE = new Map();
 let _collectionChangeHook = null;
 
+let _statusUpdateScheduled = false;
+export function notifyStatusUpdate() {
+  if (_statusUpdateScheduled) return;
+  _statusUpdateScheduled = true;
+  const dispatch = () => {
+    _statusUpdateScheduled = false;
+    try {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("clinicflow_status_update"));
+      }
+    } catch {}
+  };
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(dispatch);
+  } else {
+    setTimeout(dispatch, 0);
+  }
+}
+
 export function registerCollectionChangeHook(cb) {
   _collectionChangeHook = cb;
 }
@@ -288,9 +307,7 @@ function setCollection(key, data) {
 
     localStorage.setItem(key, raw);
 
-    try {
-      window.dispatchEvent(new Event("clinicflow_status_update"));
-    } catch {}
+    notifyStatusUpdate();
 
     if (_syncChannel) {
       try {
@@ -323,9 +340,7 @@ try {
         _COLLECTION_CACHE.clear();
         _ID_MAP_CACHE.clear();
       }
-      try {
-        window.dispatchEvent(new Event("clinicflow_status_update"));
-      } catch {}
+      notifyStatusUpdate();
     };
   }
 } catch (bcErr) {
@@ -339,9 +354,7 @@ try {
       if (e.key && e.storageArea === localStorage) {
         _COLLECTION_CACHE.delete(e.key);
         _ID_MAP_CACHE.delete(e.key);
-        try {
-          window.dispatchEvent(new Event("clinicflow_status_update"));
-        } catch {}
+        notifyStatusUpdate();
       }
     });
   }

@@ -498,13 +498,19 @@ export default function SidebarLayout({ children }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Real-time Countdown Broadcast Engine (1-second tick)
+  // Real-time Countdown Broadcast Engine (1-second tick with memoized config)
   useEffect(() => {
+    let cachedClinic = dbClinic.get() || {};
+    const handleClinicUpdate = () => {
+      cachedClinic = dbClinic.get() || {};
+    };
+    window.addEventListener("clinicflow_status_update", handleClinicUpdate);
+
     const tickInterval = setInterval(() => {
-      const c = dbClinic.get() || {};
-      const targetEmail = (c.notification_email || c.backup_email || localStorage.getItem("cf_notification_email") || "").trim();
-      const resendKey = (c.resend_api_key || localStorage.getItem("cf_resend_api_key") || "").trim();
-      const frequency = c.report_frequency || c.backup_frequency || localStorage.getItem("cf_report_frequency") || "daily_9pm";
+      const c = cachedClinic;
+      const targetEmail = (c.notification_email || c.backup_email || "").trim();
+      const resendKey = (c.resend_api_key || "").trim();
+      const frequency = c.report_frequency || c.backup_frequency || "daily_9pm";
 
       if (!targetEmail || !resendKey || frequency === "manual") {
         window.dispatchEvent(new CustomEvent("cf_automation_tick", { detail: null }));
@@ -526,9 +532,8 @@ export default function SidebarLayout({ children }) {
       const now = getPKTDate();
       const nowMs = now.getTime();
       const lastBackupMs = c.last_email_backup ? new Date(c.last_email_backup).getTime() : 0;
-      const lastDailyReportDate = c.last_daily_report_date || localStorage.getItem("cf_last_daily_report_date");
+      const lastDailyReportDate = c.last_daily_report_date;
       const todayDateStr = getPKTDateStr(now);
-      const currentHour = now.getHours();
 
       let secondsLeft = 0;
       let label = "";
@@ -574,7 +579,11 @@ export default function SidebarLayout({ children }) {
         detail: { secondsLeft, label, frequency }
       }));
     }, 1000);
-    return () => clearInterval(tickInterval);
+
+    return () => {
+      clearInterval(tickInterval);
+      window.removeEventListener("clinicflow_status_update", handleClinicUpdate);
+    };
   }, []);
 
   // Build nav items — ensure Admin / Owner gets full settings & super admin panel
@@ -649,13 +658,13 @@ export default function SidebarLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col zero-horizontal-overflow">
+    <div className="h-screen w-screen max-h-screen max-w-full overflow-hidden bg-[#f8fafc] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
       
       {/* ── Top License & Subscription Reminder Banner ── */}
       <LicenseBanner />
 
-      {/* ── Top Header Bar (Translucent Glassmorphic Engine) ── */}
-      <header className="border-b border-slate-200/70 bg-white/80 backdrop-blur-md sticky top-0 z-40 shadow-xs h-16 flex items-center px-4 sm:px-6 justify-between flex-shrink-0">
+      {/* ── Top Header Bar (Translucent Glassmorphic Engine - Fixed Topbar) ── */}
+      <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-md z-40 shadow-xs h-16 flex items-center px-4 sm:px-6 justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           {/* Sidebar Open/Close Toggle Button with 44px ergonomic touch target */}
           <button
@@ -772,15 +781,15 @@ export default function SidebarLayout({ children }) {
         </div>
       </header>
 
-      {/* ── Main Body with Collapsible Desktop Sidebar ── */}
-      <div className="flex flex-1 relative min-w-0">
+      {/* ── Main Body with Fixed Collapsible Desktop Sidebar & Scoped Scrollable Content ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
 
-        {/* ── Desktop Left Sidebar Menu (Full on desktop >=1200px, 80px Compact on tablet 768-1199px) ── */}
+        {/* ── Desktop Left Sidebar Menu (Fixed, naturally flexed, independent inner scroll) ── */}
         <aside
           className={`
-            hidden md:flex flex-col justify-between
+            hidden md:flex flex-col justify-between h-full flex-shrink-0
             bg-white/85 backdrop-blur-md border-r border-slate-200/70 shadow-xs
-            transition-all duration-300 ease-in-out fixed top-16 bottom-0 left-0 z-30
+            transition-all duration-300 ease-in-out z-30
             ${sidebarOpen ? "w-[280px]" : "w-[80px]"}
           `}
         >
@@ -794,7 +803,7 @@ export default function SidebarLayout({ children }) {
           </div>
 
           {/* Bottom Sidebar Footer */}
-          <div className="p-3 border-t border-slate-200/60 flex flex-col gap-2 bg-slate-50/60 backdrop-blur-xs">
+          <div className="p-3 border-t border-slate-200/60 flex flex-col gap-2 bg-slate-50/60 backdrop-blur-xs flex-shrink-0">
             {sidebarOpen ? (
               <>
                 {/* Install App Trigger Button in Sidebar (Only if NOT installed) */}
@@ -868,7 +877,7 @@ export default function SidebarLayout({ children }) {
                 className="relative flex flex-col w-[300px] max-w-[85vw] h-full bg-white/95 backdrop-blur-xl border-r border-slate-200/70 shadow-2xl z-10"
               >
                 {/* Drawer Top Header */}
-                <div className="p-4 border-b border-slate-200/60 flex items-center justify-between bg-gradient-to-r from-teal-50/80 to-white">
+                <div className="p-4 border-b border-slate-200/60 flex items-center justify-between bg-gradient-to-r from-teal-50/80 to-white flex-shrink-0">
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
                       <Hospital className="w-5 h-5 text-white" />
@@ -890,7 +899,7 @@ export default function SidebarLayout({ children }) {
 
                 {/* Staff Profile Card inside Mobile Drawer */}
                 {user && (
-                  <div className="mx-3 mt-3 p-3 bg-teal-50/80 border border-teal-200/60 rounded-xl flex items-center justify-between">
+                  <div className="mx-3 mt-3 p-3 bg-teal-50/80 border border-teal-200/60 rounded-xl flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
                         {getInitials(user.name)}
@@ -916,7 +925,7 @@ export default function SidebarLayout({ children }) {
                 </div>
 
                 {/* Mobile Drawer Bottom Actions */}
-                <div className="p-3 border-t border-slate-200/60 bg-slate-50/60 space-y-2">
+                <div className="p-3 border-t border-slate-200/60 bg-slate-50/60 space-y-2 flex-shrink-0">
                   {!isPWAInstalled && (
                     <button
                       onClick={() => {
@@ -943,13 +952,11 @@ export default function SidebarLayout({ children }) {
           )}
         </AnimatePresence>
 
-        {/* ── Main Content Area with Dynamic Desktop Margin & Natural Scrolling ── */}
+        {/* ── Main Content Area (THE ONLY INDEPENDENT SCROLLABLE CONTAINER) ── */}
         <main
-          className={`
-            flex-1 min-h-[calc(100vh-4rem)] p-3 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full min-w-0 pb-24 md:pb-12 overflow-x-auto
-            transition-all duration-300 ease-in-out
-            ${sidebarOpen ? "md:ml-[280px]" : "md:ml-[80px]"}
-          `}
+          id="main-content-viewport"
+          className="flex-1 h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full pb-24 md:pb-12 custom-scrollbar focus:outline-none"
+          tabIndex={-1}
         >
           <PullToRefresh>
             {children}
@@ -958,7 +965,7 @@ export default function SidebarLayout({ children }) {
       </div>
 
       {/* ── Mobile Bottom Navigation Bar (Fast 1-Thumb 44px Touch Targets) ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-40 bg-white/85 backdrop-blur-lg border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+      <nav className="md:hidden flex-shrink-0 z-40 bg-white/85 backdrop-blur-lg border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
         <ul className="flex justify-around items-center h-16 px-1">
           {navItems.slice(0, 4).map((item) => (
             <li key={item.path} className="flex-1 min-w-[50px] text-center">

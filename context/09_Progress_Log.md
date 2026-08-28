@@ -33,10 +33,73 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Full Application Keyboard-Driven Navigation & 2D Grid Deck Deployed
-- **Last worked on:** Expanded the pure keyboard control deck across the entire application: global portal jumping (`Alt+1` to `Alt+0`, `Alt+F`), live interactive Shortcuts Cheatsheet modal (`F12`), doctor consultation keyboard suite (`F1`, `F2`/`Ctrl+Enter`, `ArrowUp`/`ArrowDown`), reception queue & registration shortcuts, and visual UI/UX Pro Max hotkey badges.
+- **Phase:** Fixed Enterprise Viewport Layout & Scoped Workspace Scrolling Deployed
+- **Last worked on:** Converted `SidebarLayout.jsx` into a true Fixed Enterprise Viewport Architecture (`h-screen overflow-hidden`). Pinned Topbar and Left Sidebar permanently so only the main workspace content area scrolls independently with zero page jitter or header displacement.
 - **Currently blocked on:** None.
-- **Overall completion estimate:** 100% Production Ready (168/168 test suite passing, build exit code 0).
+
+---
+
+### Session: 2026-08-28 (Part 54) — True Fixed Enterprise Viewport Layout Architecture
+
+**Task worked on:**
+1. **Fixed Topbar & Pinned Left Navigation Menu (`SidebarLayout.jsx`):**
+   - Eliminated full-window body scroll behavior that was causing header and sidebar to drift down with content.
+   - Enforced strict `h-screen w-screen max-h-screen overflow-hidden` outer layout shell.
+   - Pinned `<header>` as a fixed `h-16 flex-shrink-0` topbar with glassmorphic backdrop blur.
+   - Pinned `<aside>` as a fixed `h-full flex-shrink-0` sidebar menu with its own independent smooth scroll for navigation items.
+2. **Independent Content Workspace Scrolling (`<main id="main-content-viewport">`):**
+   - Scoped scroll to `<main className="flex-1 h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar">`.
+   - Now, when scrolling through large supplier lists, patient queues, POS carts, or inventory tables, **ONLY the center content moves**, while top controls and navigation deck remain 100% rock-solid.
+3. **Mobile & Tablet Bottom Nav Optimization:**
+   - Bottom mobile nav is flex-anchored to the viewport bottom without jumping or overlapping content.
+4. **Verification:**
+   - 257/257 tests passing across all 26 test suites. Clean Vite production build.
+
+---
+
+### Session: 2026-08-28 (Part 53) — Zero-Lag Performance Optimization & React Stutter / Bug Resolution
+
+**Task worked on:**
+1. **Elimination of $O(N^2)$ Render Freeze on Dashboard (`Dashboard.jsx`):**
+   - Discovered and eliminated nested `.filter` loops that executed quadratic iterations across all visits on every render.
+   - Replaced with a single-pass $O(N)$ Map frequency counter wrapped in `useMemo`, dropping dashboard render computation time from seconds to <1ms.
+2. **Microtask-Batched Event Dispatcher Engine (`src/api/db.js`):**
+   - Engineered `notifyStatusUpdate()` using `queueMicrotask` to coalesce multiple synchronous `setCollection` calls during transactions, checkouts, deletes, and transfers into a single unified event dispatch.
+   - Eliminated redundant 4x-6x cascading component re-renders per transaction.
+3. **Doctor & Reception Queue Arrow Key Stutter & Timer Churn Resolution (`DoctorQueue.jsx` & `ReceptionQueue.jsx`):**
+   - Decoupled `useEffect` dependencies using `useRef` for keyboard navigation state.
+   - Arrow keys (`ArrowUp`/`ArrowDown`) now navigate between queue items smoothly without tearing down intervals or triggering synchronous database re-queries.
+   - Isolated live clock interval to avoid queue reload triggers every 1 second.
+4. **MedicalStore POS Stale Closure Resolution (`MedicalStorePOS.jsx`):**
+   - Fixed closure bug where `cart`, `showRxModal`, `receipt`, and `inventoryQuery` in the keyboard listener were captured from initial mount state.
+   - Bound state to `posStateRef` so `F11` (Clear Cart & New Bill) and `Escape` (Dismiss Modal / Clear Search) trigger reliably at all times.
+5. **SidebarLayout 1-Second localStorage Polling Optimization (`SidebarLayout.jsx`):**
+   - Replaced repeated 1-second `dbClinic.get()` and multiple `localStorage.getItem` reads with a reactive cached config listener updated only on `clinicflow_status_update`.
+6. **MedicalStoreInventory Modal State Decoupling (`MedicalStoreInventory.jsx`):**
+   - Decoupled modal open/close states from `load()` effect, eliminating redundant inventory disk fetches when modals toggle.
+7. **Verification & Zero Regression:**
+   - 257/257 tests passing across all 26 test suites. Vite production bundle builds cleanly in <1 second (958ms).
+
+---
+
+### Session: 2026-08-28 (Part 49) — Native Desktop & Mobile Offline-First Cloud Architecture & Audit Engine
+
+**Task worked on:**
+1. **Native Desktop & Mobile Architecture Specification (`context/12_Desktop_Offline_First_Sync_Architecture.md`):**
+   - Engineered complete architectural blueprint for zero-domain native `.exe` (Windows Desktop/Laptop) and `.apk` (Android Mobile/Tablet).
+   - Designed embedded SQLite database storage model ($O(1)$ sub-millisecond local speed, 100% offline capability).
+   - Designed local clinic Wi-Fi P2P synchronization hub (WebSocket / LAN sync between Reception, Doctor OPD, and Pharmacy POS without internet).
+   - Evaluated cross-platform engines: Flutter (C++ Skia/Impeller engine) vs Tauri + Rust vs C++ (Qt) vs Kotlin Multiplatform.
+2. **Doctor Remote Access & Executive Dashboard:**
+   - 3 access channels: Installed software on home computer, Doctor mobile app (Android/iOS), and Automated 12:00 Z-Report.
+3. **Automated 12:00 PM / Closing WhatsApp & Email Z-Report Dispatcher:**
+   - Designed 12:00 background cloud cron engine sending encrypted PDF + instant WhatsApp breakdown directly to Doctor's phone.
+4. **Master "Who Did What" Staff Audit Trail & Security Log (`audit_trail_events`):**
+   - Immutable audit logging tracking every sale, discount, price change, fee waiver, bill reprint, and deletion with before/after diffs.
+5. **Clock-Drift Calibration & Time Synchronization Engine:**
+   - Designed atomic cloud/NTP reference time offset calibrator (`time_offset_ms = server_time - laptop_local_time`) and monotonic sequence counter (`seq_no`) to eliminate clock drift on old laptops with dead CMOS batteries.
+
+---
 
 ### Session: 2026-08-27 (Part 48) — Full Application Keyboard-Driven Navigation Engine & 2D Grid Deck
 

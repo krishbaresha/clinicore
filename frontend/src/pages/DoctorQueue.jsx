@@ -132,27 +132,42 @@ export default function DoctorQueue() {
 
   useEffect(() => {
     loadQueue();
-    // Auto-refresh every 10 seconds (simulates live queue)
     const interval = setInterval(loadQueue, 10000);
-    const clock = setInterval(() => setNow(new Date()), 1000);
-
     const handleCustomUpdate = () => loadQueue();
     window.addEventListener("clinicflow_status_update", handleCustomUpdate);
 
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("clinicflow_status_update", handleCustomUpdate);
+    };
+  }, [loadQueue]);
+
+  // Dedicated live clock interval
+  useEffect(() => {
+    const clock = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(clock);
+  }, []);
+
+  // Stable keyboard navigation using ref
+  const navStateRef = useRef({ queue, selectedQueueIndex, waiting });
+  navStateRef.current = { queue, selectedQueueIndex, waiting };
+
+  useEffect(() => {
     function handleDoctorQueueKeyDown(e) {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      const { queue: curQueue, selectedQueueIndex: curIdx, waiting: curWaiting } = navStateRef.current;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedQueueIndex((prev) => Math.min(queue.length - 1, prev + 1));
+        setSelectedQueueIndex((prev) => Math.min(curQueue.length - 1, prev + 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedQueueIndex((prev) => Math.max(0, prev - 1));
       } else if (e.key === "Enter") {
         e.preventDefault();
-        if (queue.length > 0 && queue[selectedQueueIndex]) {
-          startConsultation(queue[selectedQueueIndex].id);
-        } else if (waiting.length > 0) {
+        if (curQueue.length > 0 && curQueue[curIdx]) {
+          startConsultation(curQueue[curIdx].id);
+        } else if (curWaiting.length > 0) {
           callNext();
         }
       } else if (e.key === "c" || e.key === "C") {
@@ -162,14 +177,8 @@ export default function DoctorQueue() {
     }
 
     window.addEventListener("keydown", handleDoctorQueueKeyDown);
-
-    return () => {
-      clearInterval(interval);
-      clearInterval(clock);
-      window.removeEventListener("clinicflow_status_update", handleCustomUpdate);
-      window.removeEventListener("keydown", handleDoctorQueueKeyDown);
-    };
-  }, [loadQueue, queue, selectedQueueIndex, waiting]);
+    return () => window.removeEventListener("keydown", handleDoctorQueueKeyDown);
+  }, []);
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-6 zero-horizontal-overflow">

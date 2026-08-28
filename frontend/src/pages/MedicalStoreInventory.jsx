@@ -160,8 +160,34 @@ export default function MedicalStoreInventory() {
   useEffect(() => {
     load();
     window.addEventListener("clinicflow_status_update", load);
+    return () => window.removeEventListener("clinicflow_status_update", load);
+  }, []);
 
+  const modalNavRef = useRef({
+    showInventoryListModal,
+    showPricingListModal,
+    showCsvModal,
+    isMovementOpen,
+    showStockLedgerModal,
+  });
+  modalNavRef.current = {
+    showInventoryListModal,
+    showPricingListModal,
+    showCsvModal,
+    isMovementOpen,
+    showStockLedgerModal,
+  };
+
+  useEffect(() => {
     function handleInventoryKeyDown(e) {
+      const {
+        showInventoryListModal: sInv,
+        showPricingListModal: sPrice,
+        showCsvModal: sCsv,
+        isMovementOpen: sMov,
+        showStockLedgerModal: sLed,
+      } = modalNavRef.current;
+
       if (e.key === "F1") {
         e.preventDefault();
         if (quickNameRef.current) {
@@ -175,21 +201,17 @@ export default function MedicalStoreInventory() {
         e.preventDefault();
         setShowStockLedgerModal((prev) => !prev);
       } else if (e.key === "Escape") {
-        if (showInventoryListModal) setShowInventoryListModal(false);
-        else if (showPricingListModal) setShowPricingListModal(false);
-        else if (showCsvModal) setShowCsvModal(false);
-        else if (isMovementOpen) setIsMovementOpen(false);
-        else if (showStockLedgerModal) setShowStockLedgerModal(false);
+        if (sInv) setShowInventoryListModal(false);
+        else if (sPrice) setShowPricingListModal(false);
+        else if (sCsv) setShowCsvModal(false);
+        else if (sMov) setIsMovementOpen(false);
+        else if (sLed) setShowStockLedgerModal(false);
       }
     }
 
     window.addEventListener("keydown", handleInventoryKeyDown);
-
-    return () => {
-      window.removeEventListener("clinicflow_status_update", load);
-      window.removeEventListener("keydown", handleInventoryKeyDown);
-    };
-  }, [showInventoryListModal, showPricingListModal, showCsvModal, isMovementOpen, showStockLedgerModal]);
+    return () => window.removeEventListener("keydown", handleInventoryKeyDown);
+  }, []);
 
   // Lock background body scroll when any modal popup is open
   const isAnyModalOpen = Boolean(

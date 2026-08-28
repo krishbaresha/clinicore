@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients } from "../api/db.js";
@@ -39,7 +39,7 @@ export default function Dashboard() {
 
   // Doctor ke liye strict data isolation: sirf apna OPD data dikhe
   const isDoctor = user?.role === "doctor";
-  const [, setSyncTick] = useState(0);
+  const [syncTick, setSyncTick] = useState(0);
 
   useEffect(() => {
     const handleSync = () => setSyncTick((t) => t + 1);
@@ -56,54 +56,95 @@ export default function Dashboard() {
     (isDoctor && user?.can_view_financials)
   );
 
-  // Compute live stats from the mock DB
-  const allVisits = dbVisits.getAll();
-  const today = new Date().toDateString();
-  const todayVisits = allVisits.filter((v) => new Date(v.visit_date).toDateString() === today);
-  const feesToday = todayVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
+  // Compute live stats efficiently in single-pass O(N) memoized block
+  const {
+    todayVisits,
+    feesToday,
+    myTodayVisits,
+    myFeesToday,
+    pharmacyRevenueToday,
+    expensesToday,
+    netRevenueToday,
+    doctorBreakdown,
+    lowStockItems,
+    totalVisits,
+    repeatRatio,
+    newRatio,
+    myWaitingVisits,
+    myInRoomVisit,
+  } = useMemo(() => {
+    const allVisits = dbVisits.getAll() || [];
+    const todayStr = new Date().toDateString();
+    const tVisits = allVisits.filter((v) => new Date(v.visit_date).toDateString() === todayStr);
+    const fToday = tVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
 
-  // User-specific visits & fees (e.g. Dr. Kashif, Dr. Asif)
-  const activeDocId = user?.userId || user?.id;
-  const myTodayVisits = todayVisits.filter((v) => v.doctor_id === activeDocId || (!v.doctor_id && activeDocId === "user_001"));
-  const myFeesToday = myTodayVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
+    const activeDocId = user?.userId || user?.id;
+    const myTVisits = tVisits.filter((v) => v.doctor_id === activeDocId || (!v.doctor_id && activeDocId === "user_001"));
+    const myFToday = myTVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
 
-  const allSales = dbSales.getAll();
-  const todaySales = allSales.filter((s) => new Date(s.sale_date).toDateString() === today);
-  const pharmacyRevenueToday = todaySales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
+    const allSales = dbSales.getAll() || [];
+    const tSales = allSales.filter((s) => new Date(s.sale_date).toDateString() === todayStr);
+    const pRevToday = tSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
 
-  const allExpenses = dbExpenses.getAll();
-  const todayExpenses = allExpenses.filter((e) => new Date(e.expense_date).toDateString() === today);
-  const expensesToday = todayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const allExpenses = dbExpenses.getAll() || [];
+    const tExpenses = allExpenses.filter((e) => new Date(e.expense_date).toDateString() === todayStr);
+    const expToday = tExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-  const netRevenueToday = (feesToday + pharmacyRevenueToday) - expensesToday;
+    const netRevToday = (fToday + pRevToday) - expToday;
 
-  // Doctor-by-Doctor OPD Revenue Breakdown (for Principal Owner View)
-  const doctorAccounts = dbUsers.getAll().filter((u) => u.role === "doctor");
-  const doctorBreakdown = doctorAccounts.map((doc) => {
-    const docVisits = todayVisits.filter((v) => v.doctor_id === doc.id);
-    const docFees = docVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
+    const doctorAccounts = (dbUsers.getAll() || []).filter((u) => u.role === "doctor");
+    const docBreakdown = doctorAccounts.map((doc) => {
+      const docVisits = tVisits.filter((v) => v.doctor_id === doc.id);
+      const docFees = docVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
+      return {
+        ...doc,
+        today_patient_count: docVisits.length,
+        today_fees: docFees,
+      };
+    });
+
+    const allInventory = dbInventory.getAll() || [];
+    const lowStock = allInventory.filter((i) => (i.stock_qty ?? 0) <= (i.low_stock_threshold ?? 6));
+
+    // O(N) single-pass frequency counter for first-time vs repeat patients
+    const totVisits = allVisits.length;
+    const visitCountsByPatient = new Map();
+    for (let i = 0; i < allVisits.length; i++) {
+      const pid = allVisits[i].patient_id;
+      if (pid) {
+        visitCountsByPatient.set(pid, (visitCountsByPatient.get(pid) || 0) + 1);
+      }
+    }
+    let newPatientsCount = 0;
+    for (const count of visitCountsByPatient.values()) {
+      if (count === 1) newPatientsCount++;
+    }
+
+    const rRatio = totVisits > 0
+      ? Math.round(((totVisits - newPatientsCount) / totVisits) * 100)
+      : 0;
+    const nRatio = 100 - rRatio;
+
+    const myWait = myTVisits.filter((v) => v.status === "waiting");
+    const myInRoom = myTVisits.find((v) => v.status === "in_consultation");
+
     return {
-      ...doc,
-      today_patient_count: docVisits.length,
-      today_fees: docFees,
+      todayVisits: tVisits,
+      feesToday: fToday,
+      myTodayVisits: myTVisits,
+      myFeesToday: myFToday,
+      pharmacyRevenueToday: pRevToday,
+      expensesToday: expToday,
+      netRevenueToday: netRevToday,
+      doctorBreakdown: docBreakdown,
+      lowStockItems: lowStock,
+      totalVisits: totVisits,
+      repeatRatio: rRatio,
+      newRatio: nRatio,
+      myWaitingVisits: myWait,
+      myInRoomVisit: myInRoom,
     };
-  });
-
-  const allInventory = dbInventory.getAll();
-  const lowStockItems = allInventory.filter((i) => i.stock_qty <= i.low_stock_threshold);
-
-  const totalVisits = allVisits.length;
-  const newPatientIds = new Set(allVisits.filter((v) => {
-    const pVisits = allVisits.filter((x) => x.patient_id === v.patient_id);
-    return pVisits.length === 1; // first ever visit = new patient
-  }).map((v) => v.patient_id));
-  const repeatRatio = totalVisits > 0
-    ? Math.round(((totalVisits - newPatientIds.size) / totalVisits) * 100)
-    : 0;
-  const newRatio = 100 - repeatRatio;
-
-  const myWaitingVisits = myTodayVisits.filter((v) => v.status === "waiting");
-  const myInRoomVisit = myTodayVisits.find((v) => v.status === "in_consultation");
+  }, [syncTick, user]);
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-full min-w-0 overflow-x-hidden">
