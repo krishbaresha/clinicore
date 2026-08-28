@@ -175,6 +175,10 @@ try {
         (new SystemController())->saveSyncState();
     } elseif ($uri === '/api/v1/system/trigger-scheduled-backup' && ($method === 'GET' || $method === 'POST')) {
         (new SystemController())->triggerScheduledBackup();
+    } elseif ($uri === '/api/v1/system/factory-reset' && $method === 'POST') {
+        (new SystemController())->factoryReset();
+    } elseif ($uri === '/api/v1/system/restore-backup-data' && $method === 'POST') {
+        (new SystemController())->restoreBackupData();
     } elseif ($uri === '/api/v1/time' && $method === 'GET') {
         (new SyncController())->time();
     } elseif ($uri === '/api/v1/sync/push' && $method === 'POST') {

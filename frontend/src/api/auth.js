@@ -279,7 +279,7 @@ export function verifyAdminPasscode(passcode) {
 }
 
 /** Attempt login. Returns { success, user, error }. */
-export function login(identifier, password) {
+export async function login(identifier, password) {
   // Rate limit check
   const now = Date.now();
   let { failedAttempts, lockoutUntil } = getRateLimitState();
@@ -291,18 +291,104 @@ export function login(identifier, password) {
       error: { code: "RATE_LIMITED", message: `Too many failed attempts. Try again in ${secsLeft} seconds.` }
     };
   }
-
-  // Reset counter if lockout period has passed
   if (now >= lockoutUntil && failedAttempts >= MAX_ATTEMPTS) {
     failedAttempts = 0;
     setRateLimitState({ failedAttempts: 0, lockoutUntil: 0 });
   }
 
+  const GENERIC_ERROR = {
+    code: "INVALID_CREDENTIALS",
+    message: "Invalid email/phone or password. Please check your credentials.",
+  };
+
+  // ─────────────────────────────────────────────────────────
+  // STEP 1: Try VPS API authentication first (when online)
+  // ─────────────────────────────────────────────────────────
+  const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+  if (isOnline) {
+    try {
+      const API_BASE =
+        (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+        (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: identifier, password }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && json?.data?.user && json?.data?.token) {
+          const vpsUser = json.data.user;
+
+          // Save JWT token for sync engine API calls
+          try { localStorage.setItem("cf_vps_jwt", json.data.token); } catch {}
+
+          // Update local user cache from VPS record so offline login works next time
+          try {
+            const { dbUsers } = await import("./db.js");
+            const existingUser = dbUsers.getAll().find((u) => u.id === vpsUser.id);
+            if (existingUser) {
+              dbUsers.update(vpsUser.id, { ...vpsUser });
+            } else {
+              dbUsers.add({ ...vpsUser, password: "", password_hash: "" });
+            }
+          } catch {}
+
+          // Build session from VPS user data
+          const session = {
+            userId: vpsUser.id,
+            name: vpsUser.name || vpsUser.display_label,
+            role: vpsUser.role,
+            clinic_id: vpsUser.clinic_id,
+            assigned_warehouse_id: vpsUser.assigned_warehouse_id || "",
+            is_owner: Boolean(vpsUser.is_principal_doctor || vpsUser.is_owner),
+            can_view_financials: Boolean(vpsUser.can_view_financials),
+            is_principal_doctor: Boolean(vpsUser.is_principal_doctor),
+            sessionToken: "st_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+            authenticatedAt: new Date().toISOString(),
+            auth_source: "vps",
+          };
+
+          try {
+            if (typeof sessionStorage !== "undefined") {
+              sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            }
+            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+          } catch {}
+
+          setRateLimitState({ failedAttempts: 0, lockoutUntil: 0 });
+          return { success: true, user: session, error: null };
+        }
+
+        // VPS rejected credentials (401)
+        if (res.status === 401) {
+          failedAttempts++;
+          lockoutUntil = failedAttempts >= MAX_ATTEMPTS ? Date.now() + 60_000 : lockoutUntil;
+          setRateLimitState({ failedAttempts, lockoutUntil });
+          return { success: false, user: null, error: GENERIC_ERROR };
+        }
+      }
+    } catch (networkErr) {
+      // Network error / timeout → fall through to offline local auth
+      console.warn("[Auth] VPS auth unreachable, trying local fallback:", networkErr?.message || networkErr);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // STEP 2: Offline fallback — use local localStorage users
+  // (cached from last successful VPS pull)
+  // ─────────────────────────────────────────────────────────
   const idLower = (identifier || "").toString().trim().toLowerCase();
   const cleanPhone = typeof identifier === "string" ? identifier.replace(/\D/g, "") : "";
   const allUsers = dbUsers.getAll();
 
-  // Find user by exact email, phone, or username prefix
   let user = allUsers.find((u) => {
     if (u.email && u.email.trim().toLowerCase() === idLower) return true;
     if (cleanPhone && u.phone && u.phone.replace(/\D/g, "") === cleanPhone) return true;
@@ -310,12 +396,7 @@ export function login(identifier, password) {
     return false;
   });
 
-  const GENERIC_ERROR = {
-    code: "INVALID_CREDENTIALS",
-    message: "Invalid email/phone or password. Please check your credentials.",
-  };
-
-  // Bootstrap initial Admin user only when database has zero users
+  // Bootstrap initial Admin user only when database has zero users AND VPS is unreachable
   if (!user && allUsers.length === 0 && (idLower === "admin" || idLower === "admin@clinicore.pk" || idLower === "admin@clinicflow.com")) {
     const adminPasscode = getAdminPasscode();
     if (password === adminPasscode || password === "KB2026") {
@@ -343,7 +424,6 @@ export function login(identifier, password) {
     return { success: false, user: null, error: GENERIC_ERROR };
   }
 
-  // Account status check — deactivated / suspended accounts cannot authenticate
   if (user.status === "disabled" || user.status === "deactivated" || user.status === "inactive") {
     return {
       success: false,
@@ -352,26 +432,20 @@ export function login(identifier, password) {
     };
   }
 
-  // Strict password verification — supporting modern salted SHA-256 and legacy hashes
   const isMatch = verifyPassword(password, user.password || user.password_hash);
-
   if (!isMatch) {
     failedAttempts++;
     lockoutUntil = failedAttempts >= MAX_ATTEMPTS ? Date.now() + 60_000 : lockoutUntil;
     setRateLimitState({ failedAttempts, lockoutUntil });
     dbAuditLogs.logEvent({
-      actor_id: user.id,
-      actor_name: user.name,
-      role: user.role,
-      action: "LOGIN_FAILED",
-      entity: "auth",
-      entity_id: user.id,
+      actor_id: user.id, actor_name: user.name, role: user.role,
+      action: "LOGIN_FAILED", entity: "auth", entity_id: user.id,
       reason: "Invalid password attempt",
     });
     return { success: false, user: null, error: GENERIC_ERROR };
   }
 
-  // Auto-upgrade legacy password hashes to modern Salted SHA-256 upon successful login
+  // Auto-upgrade legacy password hashes
   const currentPassStr = String(user.password || user.password_hash || "");
   if (!currentPassStr.startsWith("cf_s256$")) {
     try {
@@ -380,7 +454,6 @@ export function login(identifier, password) {
     } catch {}
   }
 
-  // Success — reset rate limiter counter
   setRateLimitState({ failedAttempts: 0, lockoutUntil: 0 });
 
   const session = {
@@ -393,6 +466,7 @@ export function login(identifier, password) {
     can_view_financials: Boolean(user.can_view_financials),
     sessionToken: "st_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
     authenticatedAt: new Date().toISOString(),
+    auth_source: "local_offline",
   };
 
   try {
@@ -403,14 +477,10 @@ export function login(identifier, password) {
   } catch {}
 
   dbAuditLogs.logEvent({
-    actor_id: user.id,
-    actor_name: user.name,
-    role: user.role,
-    action: "LOGIN_SUCCESS",
-    entity: "auth",
-    entity_id: user.id,
+    actor_id: user.id, actor_name: user.name, role: user.role,
+    action: "LOGIN_SUCCESS", entity: "auth", entity_id: user.id,
     session_token: session.sessionToken,
-    reason: "User authenticated successfully",
+    reason: isOnline ? "VPS unavailable — local cache used" : "Offline mode",
   });
 
   return { success: true, user: session, error: null };

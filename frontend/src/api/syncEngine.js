@@ -417,56 +417,77 @@ class SyncEngine {
         if (json?.success && json?.data && typeof json.data === "object") {
           const remoteData = json.data;
 
-          // Protect Dirty Local Records via Domain-Specific Merging:
-          // A. Reconcile Patients via 3-Way Merge
-          if (remoteData[KEYS.PATIENTS]) {
+          // ── VPS-PRIMARY AUTHORITY: Overwrite local data with VPS data ──
+          // VPS is the single source of truth. All collections are overwritten.
+          // Exception: records with pending outbox mutations are protected
+          //   (their pending-write fields are preserved locally until sync confirms).
+
+          // Get IDs of records with pending mutations (protect dirty local records)
+          const pendingOutbox = dbOutbox?.getAll?.() || [];
+          const pendingIds = new Set(
+            pendingOutbox
+              .filter((m) => m.status === "pending" || m.status === "sending")
+              .map((m) => m.entity_id || m.payload?.id)
+              .filter(Boolean)
+          );
+
+          // ── A. Patients — VPS wins; protect records with pending outbox mutations ──
+          if (Array.isArray(remoteData[KEYS.PATIENTS])) {
             const localPatients = dbPatients.getAll();
-            const remotePatients = remoteData[KEYS.PATIENTS];
-            const baseRaw = localStorage.getItem("cf_patients_base_sync");
-            const baseMap = new Map(baseRaw ? JSON.parse(baseRaw).map((p) => [p.id, p]) : []);
-
-            const mergedPatients = [];
-            const remoteMap = new Map(remotePatients.map((p) => [p.id, p]));
-
+            const localMap = new Map(localPatients.map((p) => [p.id, p]));
+            const merged = remoteData[KEYS.PATIENTS].map((remPat) => {
+              if (pendingIds.has(remPat.id) && localMap.has(remPat.id)) {
+                // Merge: VPS base + local pending edits on top
+                return mergePatientEntity(remPat, localMap.get(remPat.id), remPat, getDeviceId());
+              }
+              return remPat;
+            });
+            // Add any local-only patients not yet pushed (pending creates)
             for (const locPat of localPatients) {
-              const remPat = remoteMap.get(locPat.id);
-              const basePat = baseMap.get(locPat.id) || null;
-              if (remPat) {
-                mergedPatients.push(mergePatientEntity(basePat, locPat, remPat, getDeviceId()));
-                remoteMap.delete(locPat.id);
-              } else {
-                mergedPatients.push(locPat);
+              if (!remoteData[KEYS.PATIENTS].find((p) => p.id === locPat.id) && pendingIds.has(locPat.id)) {
+                merged.push(locPat);
               }
             }
-            for (const remRemaining of remoteMap.values()) {
-              mergedPatients.push(remRemaining);
-            }
-            setCollection(KEYS.PATIENTS, mergedPatients);
-            localStorage.setItem("cf_patients_base_sync", JSON.stringify(mergedPatients));
+            setCollection(KEYS.PATIENTS, merged);
+            localStorage.setItem("cf_patients_base_sync", JSON.stringify(merged));
           }
 
-          // B. Reconcile Inventory via Commutative PN-Counter Deltas
-          if (remoteData[KEYS.INVENTORY]) {
-            const pendingMovements = (dbOutbox.getAll() || [])
-              .filter((m) => m.entity === "stock_movements" || m.action_type === "STOCK_MOVEMENT")
-              .map((m) => m.payload);
+          // ── B. All other collections — direct VPS overwrite ──
+          const directOverwriteKeys = [
+            KEYS.INVENTORY,
+            KEYS.SALES,
+            KEYS.B2B_SALES,
+            KEYS.PURCHASES,
+            KEYS.EXPENSES,
+            KEYS.VISITS,
+            KEYS.PARTIES,
+            KEYS.SUPPLIERS,
+            KEYS.SALESMEN,
+            KEYS.CASHBOOK,
+            KEYS.STOCK_TRANSFERS,
+            KEYS.SHIFT_CLOSINGS,
+            KEYS.PATIENT_LEDGER,
+            KEYS.SUPPLIER_LEDGER,
+            KEYS.RETURNS,
+            KEYS.STOCK_MOVEMENTS,
+            KEYS.WAREHOUSES,
+            KEYS.USERS,
+            KEYS.CLINIC,
+          ];
 
-            const reconciledInv = reconcileInventoryWithDeltas(remoteData[KEYS.INVENTORY], pendingMovements);
-            setCollection(KEYS.INVENTORY, reconciledInv);
-          }
-
-          // C. Reconcile Sales & Invoices via Append-Only Union
-          if (remoteData[KEYS.SALES]) {
-            const localSales = dbSales.getAll();
-            const remoteSales = remoteData[KEYS.SALES];
-            const salesIdSet = new Set(localSales.map((s) => s.id));
-            const mergedSales = [...localSales];
-            for (const rSale of remoteSales) {
-              if (!salesIdSet.has(rSale.id)) {
-                mergedSales.push(rSale);
+          for (const key of directOverwriteKeys) {
+            if (remoteData[key] !== undefined && remoteData[key] !== null) {
+              const remoteVal = remoteData[key];
+              if (Array.isArray(remoteVal) && remoteVal.length === 0) {
+                // VPS returns empty array → wipe local (VPS says empty = truth)
+                setCollection(key, []);
+              } else if (Array.isArray(remoteVal) && remoteVal.length > 0) {
+                setCollection(key, remoteVal);
+              } else if (remoteVal && typeof remoteVal === "object" && !Array.isArray(remoteVal)) {
+                // Singleton object (clinic config)
+                localStorage.setItem(key, JSON.stringify(remoteVal));
               }
             }
-            setCollection(KEYS.SALES, mergedSales);
           }
 
           this.lastSyncTime = new Date().toISOString();

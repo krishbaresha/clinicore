@@ -370,7 +370,7 @@ const SEED_DATA = {
 
 // ---------- Storage Keys ----------
 export const KEYS = {
-  SEEDED:           "cf_seeded_v15_absolute_ground_zero_clean_sync",
+  SEEDED:           "cf_seeded_v16_vps_primary",
   CLINIC:           "cf_clinic_v5",
   SERVICES:         "cf_services_v5",
   USERS:            "cf_users_v5",
@@ -557,6 +557,39 @@ try {
 
 function generateId(prefix = "id") {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/**
+ * Factory Reset — wipes ALL local app data (all cf_* keys).
+ * Used by Admin panel before importing a backup or doing a fresh VPS pull.
+ * After calling this, the next syncEngine.pullLatestCloudState() will re-hydrate from VPS.
+ */
+export function factoryResetAllData() {
+  try {
+    // Collect all cf_* keys first (avoid modifying during iteration)
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith("cf_") || k.startsWith("clinicflow_"))) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+
+    // Wipe in-memory caches
+    _COLLECTION_CACHE.clear();
+    _ID_MAP_CACHE.clear();
+
+    // Notify all tabs
+    if (_syncChannel) {
+      try { _syncChannel.postMessage({ type: "FACTORY_RESET" }); } catch {}
+    }
+    notifyStatusUpdate();
+    return true;
+  } catch (e) {
+    console.error("Factory reset failed:", e);
+    return false;
+  }
 }
 
 export function generateSequentialInvoiceNo(prefix = "INV") {
@@ -4539,46 +4572,10 @@ export const dbShiftClosings = {
 // ---------- DrCreate & MS Access CashBook Engine ----------
 export const dbCashBook = {
   getAll: (filters = {}) => {
-    let list = getCollection(KEYS.CASHBOOK);
-    if (!list || list.length === 0) {
-      // Return initial baseline records from DrCreate ONLY on fresh first load without mutating
-      list = [
-        {
-          id: "cb_5157",
-          voucher_no: "C-5157",
-          term: "Paid",
-          type: "Paid",
-          account_name: "HFP Private Limited",
-          naration: "cash payment",
-          amount: 20000,
-          date: "2026-08-22",
-          created_at: "2026-08-22T08:00:00.000Z"
-        },
-        {
-          id: "cb_5158",
-          voucher_no: "C-5158",
-          term: "Receive",
-          type: "Receive",
-          account_name: "Sakhi Shahbaz H/Store (Moro)",
-          naration: "Bill payment received",
-          amount: 5000,
-          date: "2026-08-22",
-          created_at: "2026-08-22T08:15:00.000Z"
-        },
-        {
-          id: "cb_5159",
-          voucher_no: "C-5159",
-          term: "Paid",
-          type: "Paid",
-          account_name: "Shop Expense",
-          naration: "Staff tea & refreshment",
-          amount: 350,
-          date: "2026-08-22",
-          created_at: "2026-08-22T08:30:00.000Z"
-        }
-      ];
-      setCollection(KEYS.CASHBOOK, list);
-    }
+    // VPS-Primary: CashBook starts empty on fresh install.
+    // All real entries come from VPS via syncEngine pull.
+    // Do NOT inject fake baseline entries.
+    let list = getCollection(KEYS.CASHBOOK) || [];
 
     let filtered = [...list];
     if (filters.date) {
@@ -4597,7 +4594,7 @@ export const dbCashBook = {
 
   getNextVoucherNo: () => {
     const list = getCollection(KEYS.CASHBOOK) || [];
-    let maxNum = 5159; // DrCreate baseline start at C-5160
+    let maxNum = 5000; // Start at C-5001 on fresh install
     list.forEach((entry) => {
       const v = entry.voucher_no || "";
       const match = v.match(/^C-(\d+)$/i);

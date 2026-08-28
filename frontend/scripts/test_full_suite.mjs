@@ -268,7 +268,7 @@ async function runTests() {
   // ----------------------------------------------------
   // SUITE 3: Auth, RBAC & Brute Force Rate Limiter
   // ----------------------------------------------------
-  await suite("3. Authentication, Security & Rate Limiting", () => {
+  await suite("3. Authentication, Security & Rate Limiting", async () => {
     // Ensure doctor and pharmacist exist with hashed test password
     const allUsers = dbUsers.getAll();
     const doc = allUsers.find((u) => u.username === "kashif");
@@ -281,7 +281,7 @@ async function runTests() {
     }
 
     // Test Doctor Login
-    const docLogin = login("kashif", "123456");
+    const docLogin = await login("kashif", "123456");
     assert(docLogin.success === true && docLogin.user.role === "doctor", "Doctor 1 (kashif) login successful");
 
     const session = getSession();
@@ -291,12 +291,13 @@ async function runTests() {
     assert(getSession() === null, "Logout terminates session");
 
     // Test Wrong Password
-    const badLogin = login("kashif", "wrong_pass_999");
+    const badLogin = await login("kashif", "wrong_pass_999");
     assert(badLogin.success === false, "Invalid password correctly rejected");
 
     // Test Pharmacist Login
-    const pharmLogin = login("usama", "123456");
+    const pharmLogin = await login("usama", "123456");
     assert(pharmLogin.success === true && pharmLogin.user.role === "pharmacist", "Pharmacist (usama) login successful");
+
     logout();
   });
 
@@ -1809,8 +1810,9 @@ async function runTests() {
     const testUser = users[0];
     dbUsers.update(testUser.id, { password: "PlaintextOldPassword123" });
     
-    const loginRes = login(testUser.email || testUser.phone, "PlaintextOldPassword123");
+    const loginRes = await login(testUser.email || testUser.phone, "PlaintextOldPassword123");
     assert(loginRes.success === true, "User authenticated with legacy password");
+
     
     const upgradedUser = dbUsers.getById(testUser.id);
     assert(String(upgradedUser.password).startsWith("cf_s256$"), "Legacy password automatically upgraded to salted SHA-256 upon successful login");

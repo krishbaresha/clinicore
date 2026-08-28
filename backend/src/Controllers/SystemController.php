@@ -504,4 +504,154 @@ class SystemController
             'timestamp' => date('c')
         ], 200, ['message' => 'Scheduled backup runner executed on VPS.']);
     }
+
+    /**
+     * POST /api/v1/system/factory-reset
+     * Permanently wipes ALL transactional data from VPS MySQL.
+     * Requires Admin/Owner role + master passcode confirmation.
+     * After this, all browsers will pull an empty state and start fresh.
+     */
+    public function factoryReset(): void
+    {
+        try {
+            RBACMiddleware::requireAdminOrOwner();
+
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $passcode = trim((string)($input['passcode'] ?? ''));
+
+            if (empty($passcode)) {
+                Response::error('PASSCODE_REQUIRED', 'Master passcode is required to perform factory reset.', 400);
+                return;
+            }
+
+            $db = Database::getConnection();
+            $this->ensureSettingsTable($db);
+
+            // Verify master passcode against VPS DB
+            $stmt = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'admin_master_passcode'");
+            $stmt->execute();
+            $savedPasscode = $stmt->fetchColumn() ?: 'KB2026';
+
+            if ($passcode !== $savedPasscode) {
+                Response::error('UNAUTHORIZED', 'Incorrect master passcode. Factory reset denied.', 401);
+                return;
+            }
+
+            // 1. Wipe all transactional data from app_cloud_state (JSON blob store)
+            $db->exec("DELETE FROM app_cloud_state WHERE collection_key NOT IN ('system_settings', 'license')");
+
+            // 2. Wipe dedicated relational tables
+            $tables = ['patients', 'visits', 'expenses', 'stock_movements', 'idempotency_keys'];
+            foreach ($tables as $table) {
+                try {
+                    $db->exec("TRUNCATE TABLE `$table`");
+                } catch (\Throwable $tableErr) {
+                    // Table may not exist yet — skip silently
+                }
+            }
+
+            // 3. Reset invoice counters
+            try { $db->exec("DELETE FROM app_cloud_state WHERE collection_key LIKE 'cf_seq_%'"); } catch (\Throwable) {}
+
+            // 4. Clear backup files older than reset
+            $backupDir = $this->getBackupStorageDir();
+            foreach (glob($backupDir . '/*.cfbak') ?: [] as $file) {
+                @unlink($file);
+            }
+
+            Response::success([
+                'reset'       => true,
+                'message'     => 'Factory reset complete. All transactional data wiped. Pull from VPS to get empty state.',
+                'reset_at'    => date('c'),
+            ]);
+        } catch (\Throwable $e) {
+            Response::error('RESET_FAILED', 'Factory reset failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/system/restore-backup-data
+     * Receives a decrypted backup payload (JSON) and restores all collections to VPS MySQL.
+     * After restore, all browsers will pull the restored data on next sync.
+     * Requires Admin/Owner role + master passcode confirmation.
+     */
+    public function restoreBackupData(): void
+    {
+        try {
+            RBACMiddleware::requireAdminOrOwner();
+
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $passcode = trim((string)($input['passcode'] ?? ''));
+            $collections = $input['collections'] ?? [];
+            $metadata = $input['metadata'] ?? [];
+
+            if (empty($passcode)) {
+                Response::error('PASSCODE_REQUIRED', 'Master passcode is required to restore backup.', 400);
+                return;
+            }
+
+            if (empty($collections) || !is_array($collections)) {
+                Response::error('INVALID_PAYLOAD', 'Backup payload must contain a collections object.', 400);
+                return;
+            }
+
+            $db = Database::getConnection();
+            $this->ensureSettingsTable($db);
+
+            // Verify master passcode
+            $stmt = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'admin_master_passcode'");
+            $stmt->execute();
+            $savedPasscode = $stmt->fetchColumn() ?: 'KB2026';
+
+            if ($passcode !== $savedPasscode) {
+                Response::error('UNAUTHORIZED', 'Incorrect master passcode. Backup restore denied.', 401);
+                return;
+            }
+
+            // Restore each collection into app_cloud_state
+            $restoredKeys = [];
+            $upsertStmt = $db->prepare("
+                INSERT INTO app_cloud_state (collection_key, data_json, updated_at)
+                VALUES (:key, :data, NOW())
+                ON DUPLICATE KEY UPDATE data_json = VALUES(data_json), updated_at = NOW()
+            ");
+
+            foreach ($collections as $collectionKey => $collectionData) {
+                // Sanitize key
+                $safeKey = preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)$collectionKey);
+                if (empty($safeKey)) continue;
+
+                $dataJson = is_string($collectionData) ? $collectionData : json_encode($collectionData, JSON_UNESCAPED_UNICODE);
+                $upsertStmt->execute([':key' => $safeKey, ':data' => $dataJson]);
+                $restoredKeys[] = $safeKey;
+            }
+
+            // Also restore patients & visits into their dedicated MySQL tables (best-effort)
+            if (isset($collections['cf_patients_v5']) && is_array($collections['cf_patients_v5'])) {
+                try {
+                    $patStmt = $db->prepare("INSERT IGNORE INTO patients (id, clinic_id, data_json, created_at) VALUES (:id, :cid, :data, NOW())");
+                    foreach ($collections['cf_patients_v5'] as $pat) {
+                        if (!empty($pat['id'])) {
+                            $patStmt->execute([
+                                ':id'   => $pat['id'],
+                                ':cid'  => $pat['clinic_id'] ?? 'clinic_001',
+                                ':data' => json_encode($pat, JSON_UNESCAPED_UNICODE),
+                            ]);
+                        }
+                    }
+                } catch (\Throwable) {}
+            }
+
+            Response::success([
+                'restored'        => true,
+                'collections_restored' => count($restoredKeys),
+                'keys'            => $restoredKeys,
+                'backup_metadata' => $metadata,
+                'restored_at'     => date('c'),
+                'message'         => 'Backup restored to VPS. All browsers will receive restored data on next sync pull.',
+            ]);
+        } catch (\Throwable $e) {
+            Response::error('RESTORE_FAILED', 'Backup restore failed: ' . $e->getMessage(), 500);
+        }
+    }
 }
