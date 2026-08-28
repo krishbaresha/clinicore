@@ -701,7 +701,8 @@ export default function MedicalStoreInventory() {
         <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute left-1/3 -top-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+        {/* Tier 1: Title & Primary Action Controls */}
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <span className="px-3 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center gap-1.5">
@@ -718,71 +719,11 @@ export default function MedicalStoreInventory() {
             </p>
           </div>
 
-          {/* Quick Action Toolbar - Responsive Grid & Flex Layout */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap items-center justify-start xl:justify-end gap-2.5 shrink-0 w-full xl:w-auto">
-            {/* Stock Ledger */}
-            <button
-              id="show-stock-ledger-top-btn"
-              onClick={() => {
-                setLedgerInitialItem(null);
-                setShowStockLedgerModal(true);
-              }}
-              className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-950/40 hover:shadow-teal-900/60 transition-all active:scale-95 border border-teal-400/40 whitespace-nowrap cursor-pointer"
-              title="Open DrCreate 4-Level Stock Ledger (Category -> SKU -> Timeline -> Vouchers)"
-            >
-              <span className="material-symbols-outlined text-base">menu_book</span>
-              <span>Stock Ledger</span>
-            </button>
-
-            {/* Inventory List Popup */}
-            <button
-              id="show-inventory-list-top-btn"
-              onClick={() => {
-                setModalCategoryFilter("All");
-                setModalSearchQuery("");
-                setShowInventoryListModal(true);
-              }}
-              className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all hover:border-emerald-400 active:scale-95 shadow-sm whitespace-nowrap cursor-pointer"
-              title="Open Inventory List (DrCreate Format)"
-            >
-              <span className="material-symbols-outlined text-base text-emerald-400">inventory_2</span>
-              <span>Stock Sheet</span>
-            </button>
-
-            {/* Price List Popup */}
-            <button
-              id="show-pricing-list-top-btn"
-              onClick={() => {
-                setModalCategoryFilter("All");
-                setModalSearchQuery("");
-                setShowPricingListModal(true);
-              }}
-              className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-teal-300 border border-teal-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all hover:border-teal-400 active:scale-95 shadow-sm whitespace-nowrap cursor-pointer"
-              title="Open Product Pricing List (DrCreate Format)"
-            >
-              <span className="material-symbols-outlined text-base text-teal-400">sell</span>
-              <span>Price List</span>
-            </button>
-
-            {/* Bulk CSV Import */}
-            <button
-              id="import-csv-btn"
-              onClick={() => {
-                setCsvImportStatus({ loading: false, result: null, error: "" });
-                setCsvParsedRows([]);
-                setCsvFileName("");
-                setShowCsvModal(true);
-              }}
-              className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-              title="Upload medicines in bulk from Excel / CSV"
-            >
-              <span className="material-symbols-outlined text-base text-sky-400">upload_file</span>
-              <span>Bulk CSV</span>
-            </button>
-
+          {/* Primary Quick Controls: Multi-Warehouse Selector for Admin / Doctor + Add Medicine */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             {/* Multi-Warehouse Selector for Admin / Doctor */}
             {!isLocationLocked && (
-              <div className="min-h-[42px] flex items-center gap-1.5 bg-slate-800/90 p-1 px-3 rounded-2xl border border-slate-700 col-span-2 sm:col-span-1">
+              <div className="min-h-[42px] flex items-center gap-1.5 bg-slate-800/90 p-1 px-3 rounded-2xl border border-slate-700">
                 <span className="material-symbols-outlined text-xs text-teal-400">warehouse</span>
                 <select
                   value={selectedLocationId}
@@ -790,7 +731,7 @@ export default function MedicalStoreInventory() {
                     setSelectedLocationId(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="bg-transparent text-white text-xs font-bold py-1 pr-2 focus:outline-none cursor-pointer w-full"
+                  className="bg-transparent text-white text-xs font-bold py-1 pr-2 focus:outline-none cursor-pointer"
                 >
                   <option value="all" className="bg-slate-900 text-white">🏢 All Locations</option>
                   {allWarehouses.map((wh) => (
@@ -802,21 +743,6 @@ export default function MedicalStoreInventory() {
               </div>
             )}
 
-            {/* Zero-Pilferage Blind Stock Audit */}
-            <button
-              onClick={() => {
-                setAuditCounts({});
-                setAuditSearchQuery("");
-                setShowBlindAuditModal(true);
-              }}
-              className="min-h-[42px] px-3.5 py-2 rounded-2xl bg-teal-900/40 hover:bg-teal-900/70 text-teal-200 border border-teal-500/40 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm whitespace-nowrap cursor-pointer"
-              title="Zero-Pilferage Blind Physical Stock Audit (Count shelf items without bias)"
-            >
-              <span className="material-symbols-outlined text-base text-teal-400">fact_check</span>
-              <span>Blind Audit</span>
-            </button>
-
-            {/* Registration Form Toggle Button */}
             <button
               id="add-medicine-btn"
               onClick={() => {
@@ -827,12 +753,89 @@ export default function MedicalStoreInventory() {
                   }, 100);
                 }
               }}
-              className="min-h-[42px] px-4 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/25 transition-all active:scale-95 col-span-2 sm:col-span-1 whitespace-nowrap cursor-pointer"
+              className="min-h-[42px] px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
             >
               <span className="material-symbols-outlined text-base font-black">{showForm ? "close" : "add"}</span>
               <span>{showForm ? "Close Form" : "+ Register Medicine"}</span>
             </button>
           </div>
+        </div>
+
+        {/* Tier 2: Dedicated Quick Action Command Deck (Full Width, Zero Clipping on Any Screen) */}
+        <div className="relative z-10 pt-4 border-t border-slate-700/60 flex flex-wrap items-center gap-2.5">
+          {/* Stock Ledger */}
+          <button
+            id="show-stock-ledger-top-btn"
+            onClick={() => {
+              setLedgerInitialItem(null);
+              setShowStockLedgerModal(true);
+            }}
+            className="min-h-[40px] px-3.5 py-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-950/40 hover:shadow-teal-900/60 transition-all active:scale-95 border border-teal-400/40 whitespace-nowrap cursor-pointer"
+            title="Open DrCreate 4-Level Stock Ledger (Category -> SKU -> Timeline -> Vouchers)"
+          >
+            <span className="material-symbols-outlined text-base">menu_book</span>
+            <span>Stock Ledger</span>
+          </button>
+
+          {/* Inventory List Popup */}
+          <button
+            id="show-inventory-list-top-btn"
+            onClick={() => {
+              setModalCategoryFilter("All");
+              setModalSearchQuery("");
+              setShowInventoryListModal(true);
+            }}
+            className="min-h-[40px] px-3.5 py-2 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all hover:border-emerald-400 active:scale-95 shadow-sm whitespace-nowrap cursor-pointer"
+            title="Open Inventory List (DrCreate Format)"
+          >
+            <span className="material-symbols-outlined text-base text-emerald-400">inventory_2</span>
+            <span>Stock Sheet</span>
+          </button>
+
+          {/* Price List Popup */}
+          <button
+            id="show-pricing-list-top-btn"
+            onClick={() => {
+              setModalCategoryFilter("All");
+              setModalSearchQuery("");
+              setShowPricingListModal(true);
+            }}
+            className="min-h-[40px] px-3.5 py-2 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-teal-300 border border-teal-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all hover:border-teal-400 active:scale-95 shadow-sm whitespace-nowrap cursor-pointer"
+            title="Open Product Pricing List (DrCreate Format)"
+          >
+            <span className="material-symbols-outlined text-base text-teal-400">sell</span>
+            <span>Price List</span>
+          </button>
+
+          {/* Bulk CSV Import */}
+          <button
+            id="import-csv-btn"
+            onClick={() => {
+              setCsvImportStatus({ loading: false, result: null, error: "" });
+              setCsvParsedRows([]);
+              setCsvFileName("");
+              setShowCsvModal(true);
+            }}
+            className="min-h-[40px] px-3.5 py-2 rounded-2xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+            title="Upload medicines in bulk from Excel / CSV"
+          >
+            <span className="material-symbols-outlined text-base text-sky-400">upload_file</span>
+            <span>Bulk CSV</span>
+          </button>
+
+          {/* Zero-Pilferage Blind Stock Audit */}
+          <button
+            onClick={() => {
+              setAuditCounts({});
+              setAuditSearchQuery("");
+              setShowBlindAuditModal(true);
+            }}
+            className="min-h-[40px] px-3.5 py-2 rounded-2xl bg-teal-900/40 hover:bg-teal-900/70 text-teal-200 border border-teal-500/40 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm whitespace-nowrap cursor-pointer"
+            title="Zero-Pilferage Blind Physical Stock Audit (Count shelf items without bias)"
+          >
+            <span className="material-symbols-outlined text-base text-teal-400">fact_check</span>
+            <span>Blind Stock Audit</span>
+          </button>
         </div>
       </div>
 
