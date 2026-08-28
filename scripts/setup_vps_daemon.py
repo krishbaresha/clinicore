@@ -1,8 +1,12 @@
+import os
 import paramiko
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect("77.37.45.233", 22, "root", "Keru@11998844", timeout=15)
+host = os.getenv("VPS_HOST", "77.37.45.233")
+user = os.getenv("VPS_USER", "root")
+passwd = os.getenv("VPS_ROOT_PASSWORD", "")
+client.connect(host, 22, user, passwd, timeout=15)
 
 commands = [
     # 1. Create log file with permissions

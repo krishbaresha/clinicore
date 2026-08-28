@@ -7,12 +7,13 @@ use CliniCore\Config\Database;
 use CliniCore\Utils\Response;
 use CliniCore\Utils\Validator;
 use CliniCore\Middleware\AuthMiddleware;
+use CliniCore\Middleware\RBACMiddleware;
 use CliniCore\Services\LedgerService;
 use PDO;
 
 class FinanceController {
     public function getCashbook(): void {
-        $user = AuthMiddleware::authenticate();
+        $user = RBACMiddleware::requireFinancials();
         $whId = $_GET['warehouse_id'] ?? null;
         $date = $_GET['date'] ?? date('Y-m-d');
 
@@ -46,7 +47,7 @@ class FinanceController {
     }
 
     public function recordExpense(): void {
-        $user = AuthMiddleware::authenticate();
+        $user = RBACMiddleware::requireFinancials();
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
         Validator::make($body)

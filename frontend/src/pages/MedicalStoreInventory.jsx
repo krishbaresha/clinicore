@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { verifyAdminPasscode } from "../api/auth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
 import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
-import { formatCurrency } from "../utils/formatters.js";
+import { formatCurrency, downloadCSV } from "../utils/formatters.js";
 import { printInventoryListReceipt, printProductPricingListReceipt } from "../utils/thermalPrinter.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
 import StockLedgerModal from "../components/StockLedgerModal.jsx";
@@ -684,14 +684,7 @@ export default function MedicalStoreInventory() {
 
   function handleDownloadCsvTemplate() {
     const csvContent = exportInventoryTemplateCSV();
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "clinicflow_inventory_template.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadCSV("clinicflow_inventory_template.csv", csvContent);
   }
 
   function handleExportModalList(itemsToExport, filename) {
@@ -707,14 +700,7 @@ export default function MedicalStoreInventory() {
       item.cost_price_per_box || item.purchase_price || 0
     ]);
     const csvStr = `${headers.join(",")}\n${rows.map((r) => r.join(",")).join("\n")}`;
-    const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadCSV(filename, csvStr);
   }
 
   function getItemLocationStock(item) {
@@ -2664,7 +2650,7 @@ export default function MedicalStoreInventory() {
                   <input
                     type={adminAuthModal.showPass ? "text" : "password"}
                     autoFocus
-                    placeholder="Enter Admin Master Passcode (e.g. KB2026)"
+                    placeholder="Enter Admin Master Passcode..."
                     value={adminAuthModal.passcode}
                     onChange={(e) => setAdminAuthModal((prev) => ({ ...prev, passcode: e.target.value, error: "" }))}
                     className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-sm font-bold text-slate-900 placeholder:text-slate-400"

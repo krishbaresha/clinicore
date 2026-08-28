@@ -1,8 +1,253 @@
 /** auth.js — Login and session helpers with security hardening. */
-import { dbUsers, hashPassword } from "./db.js";
+import { dbUsers, hashPassword, verifyPassword, dbAuditLogs } from "./db.js";
 
 const SESSION_KEY = "cf_session";
 const MAX_ATTEMPTS = 5;
+
+export const PERMISSION_MATRIX = {
+  admin: {
+    patients: ["view", "create", "edit", "delete", "export"],
+    visits: ["view", "create", "edit", "delete", "export"],
+    inventory: ["view", "create", "edit", "delete", "stock_adjust", "export"],
+    pos_sales: ["view", "create", "edit", "delete", "financial_view", "export"],
+    b2b_sales: ["view", "create", "edit", "delete", "financial_view", "export"],
+    purchases: ["view", "create", "edit", "delete", "approve", "financial_view", "export"],
+    suppliers: ["view", "create", "edit", "delete", "financial_view", "ledger_adjust", "export"],
+    parties: ["view", "create", "edit", "delete", "financial_view", "ledger_adjust", "export"],
+    warehouses: ["view", "create", "edit", "delete", "stock_adjust", "export"],
+    cashbook: ["view", "create", "edit", "delete", "financial_view", "export"],
+    system_settings: ["view", "create", "edit", "delete", "admin"],
+  },
+  owner: {
+    patients: ["view", "create", "edit", "delete", "export"],
+    visits: ["view", "create", "edit", "delete", "export"],
+    inventory: ["view", "create", "edit", "delete", "stock_adjust", "export"],
+    pos_sales: ["view", "create", "edit", "delete", "financial_view", "export"],
+    b2b_sales: ["view", "create", "edit", "delete", "financial_view", "export"],
+    purchases: ["view", "create", "edit", "delete", "approve", "financial_view", "export"],
+    suppliers: ["view", "create", "edit", "delete", "financial_view", "ledger_adjust", "export"],
+    parties: ["view", "create", "edit", "delete", "financial_view", "ledger_adjust", "export"],
+    warehouses: ["view", "create", "edit", "delete", "stock_adjust", "export"],
+    cashbook: ["view", "create", "edit", "delete", "financial_view", "export"],
+    system_settings: ["view", "create", "edit", "delete", "admin"],
+  },
+  doctor: {
+    patients: ["view", "create", "edit"],
+    visits: ["view", "create", "edit"],
+    inventory: ["view"],
+    pos_sales: ["view"],
+    b2b_sales: [],
+    purchases: [],
+    suppliers: [],
+    parties: [],
+    warehouses: [],
+    cashbook: [],
+    system_settings: [],
+  },
+  pharmacist: {
+    patients: ["view"],
+    visits: ["view"],
+    inventory: ["view", "edit", "stock_adjust"],
+    pos_sales: ["view", "create", "financial_view"],
+    b2b_sales: ["view", "create", "financial_view"],
+    purchases: ["view", "create"],
+    suppliers: ["view"],
+    parties: ["view"],
+    warehouses: ["view"],
+    cashbook: ["view", "create"],
+    system_settings: [],
+  },
+  cashier: {
+    patients: ["view", "create"],
+    visits: ["view", "create"],
+    inventory: ["view"],
+    pos_sales: ["view", "create", "financial_view"],
+    b2b_sales: ["view"],
+    purchases: [],
+    suppliers: [],
+    parties: ["view"],
+    warehouses: [],
+    cashbook: ["view", "create", "financial_view"],
+    system_settings: [],
+  },
+  accountant: {
+    patients: [],
+    visits: [],
+    inventory: ["view", "export"],
+    pos_sales: ["view", "financial_view", "export"],
+    b2b_sales: ["view", "financial_view", "export"],
+    purchases: ["view", "financial_view", "export"],
+    suppliers: ["view", "financial_view", "ledger_adjust", "export"],
+    parties: ["view", "financial_view", "ledger_adjust", "export"],
+    warehouses: ["view"],
+    cashbook: ["view", "create", "edit", "financial_view", "export"],
+    system_settings: [],
+  },
+  b2b_salesman: {
+    patients: [],
+    visits: [],
+    inventory: ["view"],
+    pos_sales: [],
+    b2b_sales: ["view", "create"],
+    purchases: [],
+    suppliers: [],
+    parties: ["view", "create"],
+    warehouses: ["view"],
+    cashbook: [],
+    system_settings: [],
+  },
+  warehouse_incharge: {
+    patients: [],
+    visits: [],
+    inventory: ["view", "stock_adjust", "export"],
+    pos_sales: [],
+    b2b_sales: ["view", "create"],
+    purchases: ["view", "create", "approve"],
+    suppliers: ["view"],
+    parties: ["view"],
+    warehouses: ["view", "stock_adjust"],
+    cashbook: [],
+    system_settings: [],
+  },
+  manager: {
+    patients: ["view", "create", "edit", "export"],
+    visits: ["view", "create", "edit", "export"],
+    inventory: ["view", "edit", "stock_adjust", "export"],
+    pos_sales: ["view", "create", "financial_view", "export"],
+    b2b_sales: ["view", "create", "financial_view", "export"],
+    purchases: ["view", "create", "financial_view", "export"],
+    suppliers: ["view", "create", "financial_view", "export"],
+    parties: ["view", "create", "financial_view", "export"],
+    warehouses: ["view", "stock_adjust"],
+    cashbook: ["view", "create", "financial_view", "export"],
+    system_settings: [],
+  },
+  receptionist: {
+    patients: ["view", "create", "edit"],
+    visits: ["view", "create", "edit"],
+    inventory: ["view"],
+    pos_sales: [],
+    b2b_sales: [],
+    purchases: [],
+    suppliers: [],
+    parties: [],
+    warehouses: [],
+    cashbook: [],
+    system_settings: [],
+  }
+};
+
+/**
+ * Universal Permission Verification Helper
+ * Supports:
+ * - hasPermission(user, 'patients.view')
+ * - hasPermission(user, 'patients', 'view')
+ * - hasPermission(user, 'financial_view')
+ */
+export function hasPermission(userOrSession, entityOrPermission, maybeCapability) {
+  if (!userOrSession) return false;
+
+  // 1. Superuser / Admin / Owner Bypass
+  const isSuper = Boolean(
+    userOrSession.is_owner ||
+    userOrSession.role === "admin" ||
+    userOrSession.role === "owner" ||
+    userOrSession.userId === "user_admin" ||
+    userOrSession.id === "user_admin" ||
+    userOrSession.is_principal_doctor
+  );
+  if (isSuper) return true;
+
+  // 2. Normalize arguments into permission query string (e.g. "patients.view")
+  let permission = "";
+  let capability = "";
+  let entity = "";
+
+  if (maybeCapability !== undefined) {
+    entity = String(entityOrPermission).trim();
+    capability = String(maybeCapability).trim();
+    permission = `${entity}.${capability}`;
+  } else {
+    const str = String(entityOrPermission).trim();
+    if (str.includes(".")) {
+      permission = str;
+      const parts = str.split(".");
+      entity = parts[0];
+      capability = parts[1];
+    } else {
+      capability = str;
+      permission = str;
+    }
+  }
+
+  // 3. Financial clearance override
+  if ((capability === "financial_view" || permission.startsWith("finance.") || capability.endsWith("financial_view")) && userOrSession.can_view_financials) {
+    return true;
+  }
+
+  // 4. Role normalization & permission lookup
+  const role = userOrSession.role || "receptionist";
+  const entityPerms = PERMISSION_MATRIX[role]?.[entity] || [];
+
+  if (entityPerms.includes(capability)) return true;
+
+  // Normalized action alias checking (e.g. stock_adjust -> adjust)
+  const actionAliases = {
+    adjust: "stock_adjust",
+    stock_adjust: "stock_adjust",
+    ledger_adjust: "ledger_adjust",
+  };
+  const mappedAction = actionAliases[capability];
+  if (mappedAction && entityPerms.includes(mappedAction)) return true;
+
+  return false;
+}
+
+/** Assert capability permission or throw Error */
+export function assertPermission(userOrSession, entityOrPermission, maybeCapability) {
+  if (!hasPermission(userOrSession, entityOrPermission, maybeCapability)) {
+    const permName = maybeCapability ? `${entityOrPermission}.${maybeCapability}` : entityOrPermission;
+    throw new Error(`Unauthorized: Role '${userOrSession?.role || 'anonymous'}' lacks '${permName}' permission.`);
+  }
+  return true;
+}
+
+/**
+ * Checks if a user has access to a specific warehouse.
+ * Supports legacy assigned_warehouse_id and multi-warehouse allowed_warehouses array.
+ */
+export function hasWarehouseAccess(userOrSession, targetWarehouseId) {
+  if (!userOrSession) return false;
+
+  const isSuper = Boolean(
+    userOrSession.is_owner ||
+    userOrSession.role === "admin" ||
+    userOrSession.role === "owner" ||
+    userOrSession.role === "doctor" ||
+    userOrSession.userId === "user_admin" ||
+    userOrSession.id === "user_admin" ||
+    userOrSession.is_principal_doctor
+  );
+  if (isSuper) return true;
+
+  if (!targetWarehouseId) return false;
+
+  if (Array.isArray(userOrSession.allowed_warehouses) && userOrSession.allowed_warehouses.length > 0) {
+    return userOrSession.allowed_warehouses.includes(targetWarehouseId);
+  }
+
+  const assigned = userOrSession.assigned_warehouse_id || userOrSession.warehouse_id;
+  return assigned === targetWarehouseId;
+}
+
+/** Asserts warehouse access or throws an authorization error. */
+export function assertWarehouseAccess(userOrSession, targetWarehouseId) {
+  if (!hasWarehouseAccess(userOrSession, targetWarehouseId)) {
+    const userWh = userOrSession?.assigned_warehouse_id || "unassigned";
+    throw new Error(`Unauthorized Warehouse Access: User is assigned to '${userWh}' and cannot access '${targetWarehouseId}'.`);
+  }
+  return true;
+}
 
 function getRateLimitState() {
   try {
@@ -107,15 +352,32 @@ export function login(identifier, password) {
     };
   }
 
-  // Strict password verification — compare against SHA-256 / hashed password
-  const hashedInput = hashPassword(password);
-  const isMatch = Boolean(user.password && (user.password === hashedInput || user.password === password));
+  // Strict password verification — supporting modern salted SHA-256 and legacy hashes
+  const isMatch = verifyPassword(password, user.password || user.password_hash);
 
   if (!isMatch) {
     failedAttempts++;
     lockoutUntil = failedAttempts >= MAX_ATTEMPTS ? Date.now() + 60_000 : lockoutUntil;
     setRateLimitState({ failedAttempts, lockoutUntil });
+    dbAuditLogs.logEvent({
+      actor_id: user.id,
+      actor_name: user.name,
+      role: user.role,
+      action: "LOGIN_FAILED",
+      entity: "auth",
+      entity_id: user.id,
+      reason: "Invalid password attempt",
+    });
     return { success: false, user: null, error: GENERIC_ERROR };
+  }
+
+  // Auto-upgrade legacy password hashes to modern Salted SHA-256 upon successful login
+  const currentPassStr = String(user.password || user.password_hash || "");
+  if (!currentPassStr.startsWith("cf_s256$")) {
+    try {
+      const newSalted = hashPassword(password);
+      dbUsers.update(user.id, { password: newSalted, password_hash: newSalted });
+    } catch {}
   }
 
   // Success — reset rate limiter counter
@@ -139,6 +401,17 @@ export function login(identifier, password) {
     }
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {}
+
+  dbAuditLogs.logEvent({
+    actor_id: user.id,
+    actor_name: user.name,
+    role: user.role,
+    action: "LOGIN_SUCCESS",
+    entity: "auth",
+    entity_id: user.id,
+    session_token: session.sessionToken,
+    reason: "User authenticated successfully",
+  });
 
   return { success: true, user: session, error: null };
 }

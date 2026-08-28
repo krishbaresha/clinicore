@@ -4,6 +4,10 @@ declare(strict_types=1);
 namespace CliniCore\Controllers;
 
 use CliniCore\Config\Database;
+use CliniCore\Config\Env;
+use CliniCore\Middleware\AuthMiddleware;
+use CliniCore\Middleware\RBACMiddleware;
+use CliniCore\Utils\RateLimiter;
 use CliniCore\Utils\Response;
 use PDO;
 
@@ -43,13 +47,17 @@ class SystemController
 
     /**
      * GET /api/v1/system/config
-     * Retrieves centralized clinic configuration, automation keys, and settings
+     * Retrieves centralized clinic configuration, automation keys, and settings.
+     * Sensitive credentials (passcodes, PINs, Resend keys) are redacted for non-admin callers.
      */
     public function getConfig(): void
     {
         try {
             $db = Database::getConnection();
             $this->ensureSettingsTable($db);
+
+            $authUser = AuthMiddleware::optional();
+            $isAdmin = $authUser && ($authUser['role'] === 'admin' || $authUser['role'] === 'owner' || !empty($authUser['is_principal_doctor']));
 
             // 1. Fetch Clinic Profile from `clinics` table
             $stmt = $db->query("SELECT * FROM clinics LIMIT 1");
@@ -72,20 +80,27 @@ class SystemController
                 $settings[$row['setting_key']] = $row['setting_value'];
             }
 
-            // Merge clinic profile with system settings
+            $resendKey = $settings['resend_api_key'] ?? Env::get('RESEND_API_KEY', '');
+            $adminPasscode = $settings['admin_master_passcode'] ?? 'KB2026';
+            $tabPin = $settings['tab_pin'] ?? '7860';
+
+            // Merge clinic profile with system settings — Redact secrets if not admin
+            $clinicPayload = array_merge($clinic, [
+                'notification_email'    => !empty($settings['notification_email']) ? $settings['notification_email'] : 'drasifhosting@gmail.com',
+                'whatsapp_gateway_no'   => !empty($settings['whatsapp_gateway_no']) ? $settings['whatsapp_gateway_no'] : '03473100304',
+                'report_frequency'      => !empty($settings['report_frequency']) ? $settings['report_frequency'] : 'daily_9pm',
+                'resend_api_key'        => $isAdmin ? $resendKey : null,
+                'tab_pin'               => $isAdmin ? $tabPin : null,
+                'admin_master_passcode' => $isAdmin ? $adminPasscode : null,
+                'tab_security_json'     => $isAdmin ? ($settings['tab_security_json'] ?? '') : null,
+                'license_policy'        => $settings['license_policy'] ?? '',
+            ]);
+
             $response = [
-                'clinic' => array_merge($clinic, [
-                    'resend_api_key'        => !empty($settings['resend_api_key']) ? $settings['resend_api_key'] : 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8',
-                    'notification_email'    => !empty($settings['notification_email']) ? $settings['notification_email'] : 'drasifhosting@gmail.com',
-                    'whatsapp_gateway_no'   => !empty($settings['whatsapp_gateway_no']) ? $settings['whatsapp_gateway_no'] : '03473100304',
-                    'report_frequency'      => !empty($settings['report_frequency']) ? $settings['report_frequency'] : 'daily_9pm',
-                    'tab_pin'               => $settings['tab_pin'] ?? '7860',
-                    'admin_master_passcode' => $settings['admin_master_passcode'] ?? 'KB2026',
-                    'tab_security_json'     => $settings['tab_security_json'] ?? '',
-                    'license_policy'        => $settings['license_policy'] ?? '',
-                ]),
-                'has_custom_passcode' => !empty($settings['admin_master_passcode']),
-                'server_time'         => date('c')
+                'clinic'                => $clinicPayload,
+                'has_custom_passcode'   => !empty($settings['admin_master_passcode']),
+                'has_resend_configured' => !empty($resendKey),
+                'server_time'           => date('c')
             ];
 
             Response::success($response);
@@ -101,6 +116,8 @@ class SystemController
     public function saveConfig(): void
     {
         try {
+            RBACMiddleware::requireAdminOrOwner();
+
             $input = json_decode(file_get_contents('php://input'), true) ?? [];
             $db = Database::getConnection();
             $this->ensureSettingsTable($db);
@@ -171,11 +188,13 @@ class SystemController
 
     /**
      * POST /api/v1/system/verify-passcode
-     * Strictly verifies Super Admin master passcode (case-sensitive)
+     * Strictly verifies Super Admin master passcode with server-side rate limiting
      */
     public function verifyPasscode(): void
     {
         try {
+            RateLimiter::check('verify_passcode', 5, 300);
+
             $input = json_decode(file_get_contents('php://input'), true) ?? [];
             $passcode = (string)($input['passcode'] ?? '');
 
@@ -196,8 +215,10 @@ class SystemController
 
             // STRICT CASE-SENSITIVE EQUALITY CHECK
             if ($passcode === $authoritativePasscode) {
+                RateLimiter::clear('verify_passcode');
                 Response::success(['authenticated' => true, 'message' => 'Super Admin authentication successful.']);
             } else {
+                RateLimiter::hit('verify_passcode', 300);
                 Response::error('UNAUTHORIZED', 'Incorrect Super Admin master passcode. Access denied.', 401);
             }
         } catch (\Throwable $e) {
@@ -207,11 +228,13 @@ class SystemController
 
     /**
      * POST /api/v1/system/prepare-backup
-     * Stores the encrypted backup payload on server and generates a 1-click direct download link
+     * Stores the encrypted backup payload on server and generates a 1-click direct download link (Admin/Owner only)
      */
     public function prepareBackup(): void
     {
         try {
+            $user = RBACMiddleware::requireAdminOrOwner();
+
             $input = json_decode(file_get_contents('php://input'), true) ?? [];
             $filename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', (string)($input['filename'] ?? ''));
             $content = (string)($input['content'] ?? '');
@@ -252,10 +275,12 @@ class SystemController
 
     /**
      * GET /api/v1/system/download-backup?file=...
-     * Directly streams and downloads the .cfbak file to the browser with 1 click
+     * Directly streams and downloads the .cfbak file to the browser with 1 click (Admin/Owner only)
      */
     public function downloadBackup(): void
     {
+        RBACMiddleware::requireAdminOrOwner();
+
         $filename = basename((string)($_GET['file'] ?? ''));
         if (empty($filename) || !str_ends_with($filename, '.cfbak')) {
             http_response_code(400);
@@ -303,11 +328,13 @@ class SystemController
 
     /**
      * GET /api/v1/system/sync-state
-     * Returns full application snapshot from MySQL so all browsers share identical live data
+     * Returns full application snapshot from MySQL so all browsers share identical live data (Authenticated Users Only)
      */
     public function getSyncState(): void
     {
         try {
+            AuthMiddleware::authenticate();
+
             $db = Database::getConnection();
             $this->ensureSettingsTable($db);
 
@@ -328,11 +355,13 @@ class SystemController
 
     /**
      * POST /api/v1/system/sync-state
-     * Saves application collections from any browser into central MySQL
+     * Saves application collections from any browser into central MySQL (Authenticated Users Only)
      */
     public function saveSyncState(): void
     {
         try {
+            AuthMiddleware::authenticate();
+
             $input = json_decode(file_get_contents('php://input'), true) ?? [];
             $db = Database::getConnection();
             $this->ensureSettingsTable($db);
@@ -356,20 +385,34 @@ class SystemController
 
     /**
      * POST /api/v1/system/send-email
-     * Relays transactional emails & database backups via Resend API
+     * Relays transactional emails & database backups via Resend API (Authenticated Staff Only)
      */
     public function sendEmail(): void
     {
+        $user = AuthMiddleware::authenticate();
+        if ($user['role'] !== 'admin' && $user['role'] !== 'owner' && empty($user['is_principal_doctor'])) {
+            Response::forbidden('Only clinic administrators can dispatch system email relays.');
+            return;
+        }
+
         $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
         $apiKey = trim($input['api_key'] ?? '');
+        if (empty($apiKey)) {
+            $db = Database::getConnection();
+            $this->ensureSettingsTable($db);
+            $stmt = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'resend_api_key'");
+            $stmt->execute();
+            $apiKey = (string)($stmt->fetchColumn() ?: Env::get('RESEND_API_KEY', ''));
+        }
+
         $to = $input['to'] ?? [];
         $subject = trim($input['subject'] ?? 'CliniCore System Report');
         $html = $input['html'] ?? '';
         $attachments = $input['attachments'] ?? [];
 
         if (empty($apiKey)) {
-            Response::badRequest('Please provide a valid Resend API Key (re_xxxx).');
+            Response::badRequest('No Resend API Key configured on server or in request.');
             return;
         }
 
@@ -434,10 +477,17 @@ class SystemController
 
     /**
      * POST|GET /api/v1/system/trigger-scheduled-backup
-     * Triggers server-side cron evaluation and backup generation
+     * Triggers server-side cron evaluation and backup generation (Admin/Owner or Secret Cron Key)
      */
     public function triggerScheduledBackup(): void
     {
+        $cronKey = $_GET['cron_key'] ?? $_POST['cron_key'] ?? '';
+        $validCronKey = Env::get('CRON_SECRET_KEY', 'cf_cron_2026');
+
+        if ($cronKey !== $validCronKey) {
+            RBACMiddleware::requireAdminOrOwner();
+        }
+
         $script = dirname(__DIR__, 2) . '/cron_daily_backup.php';
         if (!file_exists($script)) {
             Response::error('SCRIPT_NOT_FOUND', 'Cron runner script not found.', 500);

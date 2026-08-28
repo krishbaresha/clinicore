@@ -9,8 +9,10 @@ CLINICORE_DIR="/var/www/clinicore"
 BACKEND_DIR="$CLINICORE_DIR/backend"
 FRONTEND_DIR="$CLINICORE_DIR/frontend"
 DB_NAME="clinicore"
-DB_USER="clinicore_user"
-DB_PASS="CF_Secure2024!"
+DB_PASS="${DB_PASSWORD:-}"
+if [ -z "$DB_PASS" ] && [ -f "$BACKEND_DIR/.env" ]; then
+    DB_PASS=$(grep -E '^DB_PASSWORD=' "$BACKEND_DIR/.env" | cut -d '=' -f2- | tr -d '"' | tr -d "'" || true)
+fi
 
 echo ""
 echo "======================================================"

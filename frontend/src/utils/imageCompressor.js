@@ -1,11 +1,34 @@
 /**
- * High-Performance Client-Side Image Compressor
+ * High-Performance Client-Side Image Compressor & Secure Validator
  * Resizes large smartphone camera photos (e.g. 10MB 4000x3000) down to
  * crisp, readable medical documentation images (~100KB - 150KB)
  */
 
+export const ALLOWED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+export const MAX_IMAGE_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+
+export function validateImageFile(file) {
+  if (!file) return { valid: false, error: "No file provided" };
+  if (typeof file === "object") {
+    if (file.size && file.size > MAX_IMAGE_FILE_SIZE) {
+      return { valid: false, error: `File exceeds maximum allowed size of 15MB (${(file.size / (1024 * 1024)).toFixed(1)}MB)` };
+    }
+    if (file.type && !ALLOWED_IMAGE_MIME_TYPES.includes(file.type.toLowerCase())) {
+      return { valid: false, error: `Unsupported file format: ${file.type}. Allowed formats: JPEG, PNG, WEBP, AVIF` };
+    }
+  }
+  return { valid: true, error: null };
+}
+
 export function compressImageFile(fileOrDataUrl, maxWidth = 1280, maxHeight = 1280, quality = 0.75) {
   return new Promise((resolve, reject) => {
+    if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
+      const check = validateImageFile(fileOrDataUrl);
+      if (!check.valid) {
+        return reject(new Error(check.error));
+      }
+    }
+
     const img = new Image();
 
     img.onload = () => {

@@ -9,10 +9,10 @@ import tarfile
 import tempfile
 import paramiko
 
-HOST = "77.37.45.233"
-PORT = 22
-USER = "root"
-PASS = "Keru@11998844"
+HOST = os.getenv("VPS_HOST", "77.37.45.233")
+PORT = int(os.getenv("VPS_PORT", "22"))
+USER = os.getenv("VPS_USER", "root")
+PASS = os.getenv("VPS_ROOT_PASSWORD", "")
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 

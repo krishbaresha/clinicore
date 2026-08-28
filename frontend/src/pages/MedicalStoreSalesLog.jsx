@@ -15,9 +15,11 @@ export default function MedicalStoreSalesLog() {
   const [returns, setReturns] = useState([]);
   const [expenses, setExpenses] = useState([]);
 
-  // Search & Filter
+  // Search & Filter & Pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [cashierFilter, setCashierFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 30;
 
   // Void Modal State
   const [voidModalSale, setVoidModalSale] = useState(null);
@@ -83,10 +85,10 @@ export default function MedicalStoreSalesLog() {
 
   function handleConfirmVoid(e) {
     e.preventDefault();
-    if (!voidModalSale) return;
     const currentTabPin = typeof localStorage !== "undefined" ? localStorage.getItem("cf_admin_tab_pin") || "7860" : "7860";
-    if (adminPin !== currentTabPin && adminPin !== "7860" && adminPin !== "1234") {
-      setVoidError("Invalid Admin PIN. Only the principal doctor or authorized manager can void sales.");
+    const isMasterValid = adminPin.trim() === currentTabPin.trim() || (typeof localStorage !== "undefined" && adminPin.trim() === (localStorage.getItem("cf_admin_master_passcode") || "KB2026").trim());
+    if (!isMasterValid) {
+      setVoidError("Invalid Admin PIN / Master Passcode. Only the principal doctor or authorized manager can void sales.");
       return;
     }
     if (!voidReason.trim()) {
@@ -355,114 +357,143 @@ export default function MedicalStoreSalesLog() {
               No sales receipts found matching your query.
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredSales.map((sale) => {
-                const saleItems = sale.items || (sale.inventory_id ? [{ medicine_name: sale.inventory_id, quantity: sale.quantity_sold, line_total: sale.sale_amount }] : []);
-                const saleTotal = sale.total_amount || sale.sale_amount || 0;
-                const isCredit = sale.payment_type === "credit";
-                const isVoided = sale.is_voided === true;
+            <>
+              <div className="space-y-3">
+                {filteredSales.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((sale) => {
+                  const saleItems = sale.items || (sale.inventory_id ? [{ medicine_name: sale.inventory_id, quantity: sale.quantity_sold, line_total: sale.sale_amount }] : []);
+                  const saleTotal = sale.total_amount || sale.sale_amount || 0;
+                  const isCredit = sale.payment_type === "credit";
+                  const isVoided = sale.is_voided === true;
 
-                return (
-                  <div
-                    key={sale.id}
-                    className={`bg-white rounded-2xl p-5 border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
-                      isVoided ? "border-rose-300 bg-rose-50/20 opacity-80" : "border-gray-200"
-                    }`}
-                  >
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="font-mono text-xs font-bold bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
-                          #{sale.receipt_no || sale.id}
-                        </span>
-                        <span className="text-xs text-gray-500 flex items-center gap-1 font-medium">
-                          <span className="material-symbols-outlined text-sm">calendar_today</span>
-                          {sale.sale_date ? new Date(sale.sale_date).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
-                        </span>
-                        
-                        {/* Dynamic Cashier Tag */}
-                        <span className="text-xs bg-purple-50 text-purple-900 border border-purple-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs">person</span>
-                          {sale.cashier_name || "Store Staff"}
-                        </span>
-
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          isCredit ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"
-                        }`}>
-                          {isCredit ? "Udhaar Sale" : "Cash Full"}
-                        </span>
-
-                        {isVoided && (
-                          <span className="text-xs bg-rose-600 text-white px-2 py-0.5 rounded-full font-black flex items-center gap-1">
-                            <span className="material-symbols-outlined text-xs">block</span>
-                            VOIDED ({sale.void_reason || "Cancelled"})
+                  return (
+                    <div
+                      key={sale.id}
+                      className={`bg-white rounded-2xl p-5 border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                        isVoided ? "border-rose-300 bg-rose-50/20 opacity-80" : "border-gray-200"
+                      }`}
+                    >
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <span className="font-mono text-xs font-bold bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
+                            #{sale.receipt_no || sale.id}
                           </span>
-                        )}
-
-                        {sale.patient_name && (
-                          <span className="text-xs bg-sky-50 text-sky-800 px-2 py-0.5 rounded-md font-semibold">
-                            {sale.patient_name}
+                          <span className="text-xs text-gray-500 flex items-center gap-1 font-medium">
+                            <span className="material-symbols-outlined text-sm">calendar_today</span>
+                            {sale.sale_date ? new Date(sale.sale_date).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
                           </span>
-                        )}
-                      </div>
-
-                      {/* Line Items */}
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {saleItems.map((item, i) => (
-                          <span key={i} className="text-xs bg-gray-50 text-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 font-medium">
-                            {item.medicine_name} ({item.quantity} {item.unit_label || "unit"}{item.quantity > 1 ? "s" : ""})
+                          
+                          {/* Dynamic Cashier Tag */}
+                          <span className="text-xs bg-purple-50 text-purple-900 border border-purple-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">person</span>
+                            {sale.cashier_name || "Store Staff"}
                           </span>
-                        ))}
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-4 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
-                      <div className="text-right">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase">Receipt Amount</div>
-                        <div className={`text-xl font-black ${isVoided ? "line-through text-gray-400" : "text-teal-700"}`}>
-                          Rs. {saleTotal.toLocaleString()}
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            isCredit ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"
+                          }`}>
+                            {isCredit ? "Udhaar Sale" : "Cash Full"}
+                          </span>
+
+                          {isVoided && (
+                            <span className="text-xs bg-rose-600 text-white px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                              <span className="material-symbols-outlined text-xs">block</span>
+                              VOIDED ({sale.void_reason || "Cancelled"})
+                            </span>
+                          )}
+
+                          {sale.patient_name && (
+                            <span className="text-xs bg-sky-50 text-sky-800 px-2 py-0.5 rounded-md font-semibold">
+                              {sale.patient_name}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Line Items */}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {saleItems.map((item, i) => (
+                            <span key={i} className="text-xs bg-gray-50 text-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 font-medium">
+                              {item.medicine_name} ({item.quantity} {item.unit_label || "unit"}{item.quantity > 1 ? "s" : ""})
+                            </span>
+                          ))}
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => printThermalReceipt(sale, dbClinic.get())}
-                          className="bg-teal-50 text-teal-800 border border-teal-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-base">print</span>
-                          Print (80mm)
-                        </button>
-                        {!isVoided && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenReturnModal(sale)}
-                              className="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors flex items-center gap-1"
-                            >
-                              <span className="material-symbols-outlined text-base">assignment_return</span>
-                              Return
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setVoidModalSale(sale);
-                                setVoidReason("");
-                                setAdminPin("");
-                                setVoidError("");
-                              }}
-                              title="Void / Cancel this invoice (Requires Admin PIN)"
-                              className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-rose-100 transition-colors flex items-center gap-1"
-                            >
-                              <span className="material-symbols-outlined text-base">cancel</span>
-                              Void
-                            </button>
-                          </>
-                        )}
+
+                      <div className="flex items-center gap-4 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
+                        <div className="text-right">
+                          <div className="text-[10px] font-bold text-gray-400 uppercase">Receipt Amount</div>
+                          <div className={`text-xl font-black ${isVoided ? "line-through text-gray-400" : "text-teal-700"}`}>
+                            Rs. {saleTotal.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => printThermalReceipt(sale, dbClinic.get())}
+                            className="bg-teal-50 text-teal-800 border border-teal-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-base">print</span>
+                            Print (80mm)
+                          </button>
+                          {!isVoided && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReturnModal(sale)}
+                                className="bg-amber-50 text-amber-800 border border-amber-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors flex items-center gap-1"
+                              >
+                                <span className="material-symbols-outlined text-base">assignment_return</span>
+                                Return
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setVoidModalSale(sale);
+                                  setVoidReason("");
+                                  setAdminPin("");
+                                  setVoidError("");
+                                }}
+                                title="Void / Cancel this invoice (Requires Admin PIN)"
+                                className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-2 rounded-xl text-xs font-bold hover:bg-rose-100 transition-colors flex items-center gap-1"
+                              >
+                                <span className="material-symbols-outlined text-base">cancel</span>
+                                Void
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination Controls */}
+              {Math.ceil(filteredSales.length / PAGE_SIZE) > 1 && (
+                <div className="flex items-center justify-between bg-white px-4 py-3 rounded-2xl border border-gray-200 shadow-sm mt-4">
+                  <div className="text-xs text-gray-500 font-medium">
+                    Page <strong>{currentPage}</strong> of <strong>{Math.ceil(filteredSales.length / PAGE_SIZE)}</strong>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-200 bg-gray-50 text-gray-700 disabled:opacity-40 hover:bg-gray-100"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      disabled={currentPage >= Math.ceil(filteredSales.length / PAGE_SIZE)}
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-200 bg-gray-50 text-gray-700 disabled:opacity-40 hover:bg-gray-100"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -770,7 +801,7 @@ export default function MedicalStoreSalesLog() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Doctor / Admin Master PIN (Default: 7860) *</label>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Doctor / Admin Master PIN *</label>
               <input
                 type="password"
                 required

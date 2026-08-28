@@ -1,10 +1,25 @@
 import paramiko
+# pyrefly: ignore [missing-import]
+import dotenv
+import os
+
+dotenv.load_dotenv()
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('77.37.45.233', 22, 'root', 'Keru@11998844', timeout=15)
+client.connect(os.getenv("VPS_IP"), 22, os.getenv("VPS_USERNAME"), os.getenv("VPS_PASSWORD"), timeout=15)
 
-env_content = """APP_NAME=CliniCore
+db_pass = os.getenv("DB_PASSWORD")
+if not db_pass:
+    raise RuntimeError("CRITICAL: DB_PASSWORD environment variable must be set.")
+
+jwt_secret = os.getenv("JWT_SECRET")
+if not jwt_secret:
+    import secrets
+    jwt_secret = secrets.token_hex(32)
+resend_key = os.getenv("RESEND_API_KEY", "")
+
+env_content = f"""APP_NAME=CliniCore
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://api.clinicore.me
@@ -13,13 +28,13 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=clinicore
 DB_USERNAME=clinicore_user
-DB_PASSWORD=CF_Secure2024!
+DB_PASSWORD={db_pass}
 
-JWT_SECRET=super_secret_production_jwt_key_2026_clinicore_pk
+JWT_SECRET={jwt_secret}
 JWT_EXPIRY=86400
 
 STORAGE_PATH=/var/www/clinicore/backend/storage/files
-RESEND=re_gbvdQToJ_8dV5uc9bv7TXD1Dr9kZbi2zi
+RESEND={resend_key}
 """
 
 commands = [

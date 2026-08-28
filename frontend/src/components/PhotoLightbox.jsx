@@ -51,21 +51,23 @@ export default function PhotoLightbox({
     const currentSrc = imageList[activeIndex] || imageList[0];
     const win = window.open("", "_blank");
     if (win) {
-      win.document.write(`
-        <html>
-          <head>
-            <title>Print Medical Document</title>
-            <style>
-              body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background: #fff; }
-              img { max-width: 100%; max-height: 100%; object-fit: contain; }
-            </style>
-          </head>
-          <body>
-            <img src="${currentSrc}" onload="window.print();window.close();" />
-          </body>
-        </html>
-      `);
-      win.document.close();
+      win.document.title = "Print Medical Document";
+      const style = win.document.createElement("style");
+      style.textContent = `
+        body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background: #fff; }
+        img { max-width: 100%; max-height: 100%; object-fit: contain; }
+      `;
+      win.document.head.appendChild(style);
+      const img = win.document.createElement("img");
+      img.src = currentSrc;
+      img.onload = () => {
+        win.print();
+        win.close();
+      };
+      img.onerror = () => {
+        win.close();
+      };
+      win.document.body.appendChild(img);
     }
   }
 

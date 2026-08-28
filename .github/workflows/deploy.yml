@@ -1,14 +1,98 @@
-name: Auto Deploy to Hostinger VPS
+name: Production CI/CD Pipeline - CliniCore / ClinicFlow
 
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  # ---------------------------------------------------------------------------
+  # STAGE 1: AST Scan, Lint & Full Master Test Suite Validation
+  # ---------------------------------------------------------------------------
+  validate-and-test:
+    name: Validate & Run Full Test Suite
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Step 0 - Secrets & Credentials Leak Detection
+        run: node scripts/scan_secrets.mjs
+
+      - name: Step 1 - AST Hook & Symbol Scope Verification
+        run: node scripts/scan_imports_and_hooks.mjs
+
+      - name: Step 2 - Oxlint Static Code Analysis
+        working-directory: ./frontend
+        run: npx oxlint --quiet
+
+      - name: Step 3 - Execute Master Verification Suite (42 Suites)
+        working-directory: ./frontend
+        run: node scripts/test_full_suite.mjs
+
+  # ---------------------------------------------------------------------------
+  # STAGE 2: Production Build & Bundle Size Budget Enforcement
+  # ---------------------------------------------------------------------------
+  build-and-budget:
+    name: Vite Production Build & Budget Check
+    needs: [ validate-and-test ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Compile Production Bundle
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Post-Build Production Bundle Secret Scan
+        run: node scripts/scan_secrets.mjs
+
+      - name: Upload Production Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clinicore-dist-bundle
+          path: frontend/dist/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # STAGE 3: Automated Continuous Deployment to Hostinger VPS (Gated)
+  # ---------------------------------------------------------------------------
+  deploy-vps:
+    name: Gated Deployment to Hostinger VPS
+    needs: [ build-and-budget ]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Deploy to Hostinger VPS via SSH
@@ -21,9 +105,11 @@ jobs:
           timeout: 120s
           command_timeout: 15m
           script: |
+            set -e
+            echo "🚀 Starting CliniCore Automated Production Deployment..."
             cd /var/www/clinicore
             git config --global --add safe.directory /var/www/clinicore
             git fetch origin main
             git reset --hard origin/main
             bash /var/www/clinicore/scripts/vps_fix_all.sh
-            echo "Deployment to VPS completed successfully!"
+            echo "🎉 CliniCore VPS Deployment completed and verified successfully!"

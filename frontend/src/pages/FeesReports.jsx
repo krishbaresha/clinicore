@@ -445,6 +445,15 @@ export default function FeesReports() {
       physical_cash: physicalCashTotal,
       cash_variance: cashVariance,
       denominations: { ...denominations },
+      payments_paid: {
+        total: totalDayExpenses,
+        items: dayClosingData?.payments_paid?.items || [],
+      },
+      payments_received: {
+        total: totalInflow,
+        items: dayClosingData?.payments_received?.items || [],
+      },
+      is_locked: true,
       notes: closingNotes,
     });
 
@@ -976,10 +985,19 @@ export default function FeesReports() {
                             : `⚠️ Surplus: +Rs. ${cashVariance.toLocaleString()} (Drawer extra)`}
                         </div>
                       </div>
+                      <div className="w-full sm:w-auto">
+                        <input
+                          type="text"
+                          value={closingNotes}
+                          onChange={(e) => setClosingNotes(e.target.value)}
+                          placeholder="Closing notes / handover remarks..."
+                          className="w-full text-xs border border-slate-300 rounded-xl px-3 py-1.5 focus:outline-none focus:border-teal-500"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={handleSaveShiftClosing}
-                        className="touch-target-44 min-h-[40px] bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md"
+                        className="touch-target-44 min-h-[40px] bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md whitespace-nowrap"
                       >
                         Lock &amp; Save Shift
                       </button>

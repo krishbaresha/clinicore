@@ -66,7 +66,6 @@ export default function Dashboard() {
     netRevenueToday,
     doctorBreakdown,
     lowStockItems,
-    totalVisits,
     repeatRatio,
     newRatio,
     waitingVisits,

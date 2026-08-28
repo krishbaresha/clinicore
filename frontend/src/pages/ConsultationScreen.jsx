@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { dbVisits, dbPatients, dbUsers, dbClinicServices } from "../api/db.js";
+import { dbVisits, dbPatients, dbUsers, dbClinicServices, parseAndValidateVitals } from "../api/db.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { formatPatientAge } from "../utils/formatters.js";
 import { compressImageFile } from "../utils/imageCompressor.js";
@@ -300,15 +300,23 @@ export default function ConsultationScreen() {
 
   async function completeVisit(targetStatus = "completed") {
     setSaving(true);
+    const cleanVitals = parseAndValidateVitals({
+      vitals_bp: vitalsBP,
+      vitals_pulse: vitalsPulse,
+      vitals_temp: vitalsTemp,
+      vitals_spo2: vitalsSpo2,
+      vitals_weight: vitalsWeight,
+    });
+
     const completedVisit = dbVisits.complete(visitId, {
       prescription_image_url: prescriptionPhoto || null,
       report_image_urls: reportPhotos || [],
       notes: notes || "",
-      vitals_bp: vitalsBP.trim(),
-      vitals_pulse: vitalsPulse.trim(),
-      vitals_temp: vitalsTemp.trim(),
-      vitals_spo2: vitalsSpo2.trim(),
-      vitals_weight: vitalsWeight.trim(),
+      vitals_bp: cleanVitals.vitals_bp || vitalsBP.trim(),
+      vitals_pulse: cleanVitals.vitals_pulse || vitalsPulse.trim(),
+      vitals_temp: cleanVitals.vitals_temp || vitalsTemp.trim(),
+      vitals_spo2: cleanVitals.vitals_spo2 || vitalsSpo2.trim(),
+      vitals_weight: cleanVitals.vitals_weight || vitalsWeight.trim(),
       forcedStatus: targetStatus,
     });
     setSaving(false);

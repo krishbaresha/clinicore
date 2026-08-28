@@ -100,12 +100,28 @@ class VisitController {
 
     public function complete(string $id): void {
         $user = AuthMiddleware::authenticate();
-        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        if ($user['role'] !== 'doctor' && $user['role'] !== 'admin' && $user['role'] !== 'owner') {
+            Response::forbidden('Only assigned doctor or administrator can complete medical consultation.');
+            return;
+        }
 
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
         $prescriptionImage = $body['prescription_image_url'] ?? null;
         $status = empty($body['report_image_urls']) ? 'completed' : 'completed';
 
         $db = Database::getConnection();
+
+        // Enforce doctor ownership isolation
+        if ($user['role'] === 'doctor') {
+            $check = $db->prepare("SELECT doctor_id FROM visits WHERE id = :id AND clinic_id = :clinic_id");
+            $check->execute([':id' => $id, ':clinic_id' => $user['clinic_id']]);
+            $assignedDoc = $check->fetchColumn();
+            if ($assignedDoc && $assignedDoc !== $user['id']) {
+                Response::forbidden('You are not authorized to complete consultations for another doctor.');
+                return;
+            }
+        }
+
         $stmt = $db->prepare("
             UPDATE visits 
             SET status = :status,

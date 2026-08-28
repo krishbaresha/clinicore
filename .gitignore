@@ -1,12 +1,14 @@
 # Dependencies
 node_modules/
 .pnpm-store/
+frontend/node_modules/
 
 # Production builds
 dist/
 build/
 out/
 .next/
+frontend/dist/
 
 # IDE / System files
 .vscode/
@@ -14,12 +16,43 @@ out/
 .DS_Store
 Thumbs.db
 
-# Environmental variables
+# Environment and Secrets (CRITICAL: Never commit .env or secrets)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+scripts/.env
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Private Keys, Certificates, and Credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+credentials.*
+secrets.*
+*.secret
+id_rsa*
+*.id_rsa
+
+# Database Dumps, Backups and Uploads
+*.db
+*.sqlite
+*.cfbak
+*.bak
+*.sql.gz
+uploads/
+storage/
+storage/backups/
+storage/uploads/
+Tech-Bill/
+graphify-out/
 
 # Logs
 npm-debug.log*
@@ -27,15 +60,5 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-# Local Database / uploads cache if any
-*.db
-uploads/
-storage/
-storage/backups/
-storage/uploads/
-Tech-Bill/
-backend/.env
-graphify-out/
-
+*.log
 

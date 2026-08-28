@@ -8,7 +8,16 @@ use Exception;
 
 class JWT {
     private static function getSecret(): string {
-        return (string) Env::get('JWT_SECRET', 'clinicore_enterprise_secure_token_secret_key_2026');
+        $secret = Env::get('JWT_SECRET');
+        if (empty($secret) || $secret === 'clinicore_enterprise_secure_token_secret_key_2026') {
+            if (Env::get('APP_ENV', 'production') === 'production' && !empty($secret) && $secret === 'clinicore_enterprise_secure_token_secret_key_2026') {
+                throw new \RuntimeException('CRITICAL SECURITY CONFIGURATION: Production JWT_SECRET must be configured with a unique secret key.');
+            }
+            if (empty($secret)) {
+                $secret = 'clinicore_enterprise_secure_token_secret_key_2026';
+            }
+        }
+        return (string) $secret;
     }
 
     private static function base64UrlEncode(string $data): string {

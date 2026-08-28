@@ -6,6 +6,12 @@
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
     "start": "npm --prefix frontend run preview",
+    "lint": "npm --prefix frontend run lint",
+    "scan": "node scripts/scan_imports_and_hooks.mjs",
+    "scan:secrets": "node scripts/scan_secrets.mjs",
+    "test": "npm --prefix frontend run test",
+    "validate": "node scripts/scan_secrets.mjs && node scripts/scan_imports_and_hooks.mjs && npm --prefix frontend run lint && npm --prefix frontend run test",
+    "ci": "npm run validate && npm --prefix frontend run build",
     "deploy": "python scripts/deploy_vps.py"
   }
 }

@@ -174,7 +174,7 @@ export default function DeveloperAdminPanel() {
   const [expensesList, setExpensesList] = useState([]);
   const [visitsList, setVisitsList] = useState([]);
   const [patientsList, setPatientsList] = useState([]);
-  const [cashBookList, setCashBookList] = useState([]);
+  const [_cashBookList, setCashBookList] = useState([]);
 
   // Audit Filter States
   const [auditRange, setAuditRange] = useState("6_months"); // "30_days" | "6_months" | "1_year" | "all_time" | "custom"
@@ -236,7 +236,7 @@ export default function DeveloperAdminPanel() {
       default_consultation_fee: Number(c.default_consultation_fee) || 300,
       clinic_status: c.clinic_status || "open",
       public_notice: c.public_notice || "",
-      resend_api_key: c.resend_api_key || (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") || "re_W8MESfRA_HrgbjEaM47s2w3XD25tREey8" : "re_W8MESfRA_HrgbjEaM47s2w3XD25tREey8"),
+      resend_api_key: c.resend_api_key || (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") || "" : ""),
       notification_email: c.notification_email || c.backup_email || (typeof window !== "undefined" ? localStorage.getItem("cf_notification_email") || "drasifhosting@gmail.com" : "drasifhosting@gmail.com"),
       report_frequency: c.report_frequency || c.backup_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "daily_9pm" : "daily_9pm"),
       whatsapp_gateway_no: c.whatsapp_gateway_no || (typeof window !== "undefined" ? localStorage.getItem("cf_whatsapp_gateway_no") || "03473100304" : "03473100304"),
@@ -617,6 +617,7 @@ export default function DeveloperAdminPanel() {
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
         can_view_financials: Boolean(staffForm.can_view_financials),
+        assigned_warehouse_id: staffForm.assigned_warehouse_id || "",
         availability_status: staffForm.availability_status,
       });
       showToast(`Updated ${staffForm.name} profile successfully!`);
@@ -631,6 +632,7 @@ export default function DeveloperAdminPanel() {
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
         can_view_financials: Boolean(staffForm.can_view_financials),
+        assigned_warehouse_id: staffForm.assigned_warehouse_id || "",
         is_owner: Boolean(staffForm.is_owner),
         availability_status: "available",
       });
@@ -753,7 +755,7 @@ export default function DeveloperAdminPanel() {
   // ---------------------------------------------------------------------------
   const handleSaveClinicSettings = async (e) => {
     e?.preventDefault?.();
-    const updated = dbClinic.update(clinicForm);
+    dbClinic.update(clinicForm);
     if (clinicForm.resend_api_key) localStorage.setItem("cf_resend_api_key", clinicForm.resend_api_key.trim());
     if (clinicForm.notification_email) localStorage.setItem("cf_notification_email", clinicForm.notification_email.trim());
     if (clinicForm.report_frequency) localStorage.setItem("cf_report_frequency", clinicForm.report_frequency);
@@ -3830,20 +3832,41 @@ export default function DeveloperAdminPanel() {
                     <option value="doctor">Doctor</option>
                     <option value="receptionist">Receptionist / Front Desk</option>
                     <option value="pharmacist">Pharmacist / Counter</option>
-                    <option value="warehouse">Warehouse Manager</option>
+                    <option value="cashier">Cashier</option>
+                    <option value="warehouse_incharge">Warehouse Incharge / Godown</option>
+                    <option value="accountant">Accountant / Finance</option>
+                    <option value="b2b_salesman">B2B Salesman / Order Booker</option>
+                    <option value="manager">Manager</option>
                     <option value="admin">Administrator</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Room / Dept</label>
-                  <input
-                    type="text"
-                    value={staffForm.room_number}
-                    onChange={(e) => setStaffForm({ ...staffForm, room_number: e.target.value })}
+                  <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Assigned Godown / Warehouse</label>
+                  <select
+                    value={staffForm.assigned_warehouse_id || ""}
+                    onChange={(e) => setStaffForm({ ...staffForm, assigned_warehouse_id: e.target.value })}
                     className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold"
-                  />
+                  >
+                    <option value="">All Warehouses (Global Access)</option>
+                    <option value="wh_str">Medical Store Counter (wh_str)</option>
+                    {warehousesList.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name || w.code} ({w.id})
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Room / Dept</label>
+                <input
+                  type="text"
+                  value={staffForm.room_number}
+                  onChange={(e) => setStaffForm({ ...staffForm, room_number: e.target.value })}
+                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold"
+                />
               </div>
 
               {staffForm.role === "doctor" && (

@@ -36,15 +36,36 @@ use CliniCore\Controllers\PurchaseController;
 use CliniCore\Controllers\FinanceController;
 use CliniCore\Controllers\StorageController;
 use CliniCore\Controllers\SystemController;
+use CliniCore\Controllers\SyncController;
+use CliniCore\Controllers\TelemetryController;
 
 // Handle CORS Pre-Flight Requests & Cross-Origin Headers
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header("Access-Control-Allow-Origin: {$origin}");
-if ($origin !== '*') {
+$allowedOrigins = [
+    'https://clinicore.me',
+    'https://www.clinicore.me',
+    'https://api.clinicore.me',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+];
+$customCorsOrigin = Env::get('CORS_ALLOWED_ORIGINS');
+if ($customCorsOrigin) {
+    foreach (explode(',', (string)$customCorsOrigin) as $o) {
+        $trimmed = trim($o);
+        if ($trimmed) $allowedOrigins[] = $trimmed;
+    }
+}
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: {$origin}");
     header("Access-Control-Allow-Credentials: true");
+} else {
+    header("Access-Control-Allow-Origin: https://clinicore.me");
 }
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH");
-header("Access-Control-Allow-Headers: Authorization, Content-Type, Accept, Origin, X-Requested-With");
+header("Access-Control-Allow-Headers: Authorization, Content-Type, Accept, Origin, X-Requested-With, X-Idempotency-Key");
 header("Access-Control-Max-Age: 86400");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -154,6 +175,14 @@ try {
         (new SystemController())->saveSyncState();
     } elseif ($uri === '/api/v1/system/trigger-scheduled-backup' && ($method === 'GET' || $method === 'POST')) {
         (new SystemController())->triggerScheduledBackup();
+    } elseif ($uri === '/api/v1/time' && $method === 'GET') {
+        (new SyncController())->time();
+    } elseif ($uri === '/api/v1/sync/push' && $method === 'POST') {
+        (new SyncController())->push();
+    } elseif ($uri === '/api/v1/sync/pull' && $method === 'GET') {
+        (new SyncController())->pull();
+    } elseif ($uri === '/api/v1/telemetry/events' && $method === 'POST') {
+        (new TelemetryController())->ingestEvents();
     }
 
     // Unmatched Route Fallback

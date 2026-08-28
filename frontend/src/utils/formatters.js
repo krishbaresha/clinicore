@@ -124,3 +124,35 @@ export function formatPatientAge(patient, asOfDate = new Date()) {
   return `${calculated} yrs`;
 }
 
+/**
+ * Sanitizes CSV cell content to protect against CWE-1236 CSV Formula Injection.
+ * Neutralizes leading formula operators (=, +, -, @, \t, \r) with a leading single quote (')
+ * and properly escapes double quotes.
+ */
+export function escapeCSV(val) {
+  if (val === null || val === undefined) return '""';
+  let str = String(val);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Downloads generated CSV content cleanly using Blob and URL.createObjectURL,
+ * automatically revoking the object URL to eliminate memory leaks.
+ */
+export function downloadCSV(filename, csvContent) {
+  if (typeof window === "undefined" || !window.document) return;
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename.endsWith(".csv") ? filename : `${filename}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+

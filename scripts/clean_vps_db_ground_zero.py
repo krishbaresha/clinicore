@@ -1,8 +1,14 @@
+import os
 import paramiko
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('77.37.45.233', 22, 'root', 'Keru@11998844', timeout=15)
+host = os.getenv("VPS_HOST", "77.37.45.233")
+user = os.getenv("VPS_USER", "root")
+passwd = os.getenv("VPS_ROOT_PASSWORD", "")
+db_user = os.getenv("DB_USERNAME", "clinicore_user")
+db_pass = os.getenv("DB_PASSWORD", "")
+client.connect(host, 22, user, passwd, timeout=15)
 
 # MySQL reset commands: truncate all mock data tables and clean app_cloud_state
 sql_commands = """
@@ -43,7 +49,7 @@ TRUNCATE TABLE clinics;
 SET FOREIGN_KEY_CHECKS = 1;
 """
 
-cmd = f'mysql -u clinicore_user -pCF_Secure2024! -e "{sql_commands}"'
+cmd = f'mysql -u {db_user} -p"{db_pass}" -e "{sql_commands}"'
 print("Executing Ground-Zero Database Clean on VPS MySQL...")
 stdin, stdout, stderr = client.exec_command(cmd)
 out = stdout.read().decode('utf-8', errors='replace')
@@ -54,8 +60,8 @@ if err:
     print("Note:", err)
 
 # Check table counts
-check_cmd = """
-mysql -u clinicore_user -pCF_Secure2024! -e "
+check_cmd = f"""
+mysql -u {db_user} -p"{db_pass}" -e "
 USE clinicore;
 SELECT 'app_cloud_state' AS tbl, COUNT(*) AS cnt FROM app_cloud_state
 UNION ALL SELECT 'patients', COUNT(*) FROM patients

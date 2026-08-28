@@ -572,9 +572,14 @@ export default function MedicalStorePOS() {
       return;
     }
 
-    // Check stock: Strict Anti-Theft Guard
+    // Check stock: Strict Anti-Theft Guard & FEFO Expiry Guard
+    const todayStr = new Date().toISOString().split("T")[0];
     for (const cartItem of cart) {
       const inv = dbInventory.getById(cartItem.inventory_id);
+      if (cartItem.expiry_date && cartItem.expiry_date < todayStr) {
+        alert(`🚫 Expiry Quarantine Block: '${cartItem.medicine_name}' (Batch ${cartItem.batch_no || "N/A"}) expired on ${cartItem.expiry_date}. Cannot sell expired medicine.`);
+        return;
+      }
       const available = inv ? (inv.store_stock ?? inv.stock_qty ?? inv.total_base_stock ?? 0) : 0;
       if (available < cartItem.quantity) {
         alert(`🚫 Anti-Theft Guard: '${cartItem.medicine_name}' has only ${available} units available in Store Counter stock. Cannot sell ${cartItem.quantity} units.\n\nPlease request a stock transfer from Main Godown first.`);

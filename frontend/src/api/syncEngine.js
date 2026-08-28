@@ -1,37 +1,70 @@
 /**
- * syncEngine.js — VPS MySQL Universal Real-Time Cloud & Offline-First Auto-Sync Engine
+ * syncEngine.js — Universal Real-Time Cloud & Offline-First Auto-Sync Engine
  * Features:
- * 1. Real-time network detection & auto-reconnect recovery
- * 2. Instant debounced cloud push whenever any write occurs in db.js (schedulePush)
- * 3. Background live polling (6s) + tab visibility / focus sync across multi-devices
- * 4. Authoritative state hydration from VPS MySQL (api.clinicore.me)
- * 5. Event-driven subscribers for live UI status indicators & screen re-renders
+ * 1. Finite State Machine (FSM): IDLE, SYNCING_PUSH, SYNCING_PULL, OFFLINE, ERROR, CONFLICT, DEAD_LETTER
+ * 2. Idempotent batch mutation pushes (POST /api/v1/sync/push) with retry count & dead-letter queue
+ * 3. Domain-specific conflict resolution (3-way merge for patients, PN-counter deltas for stock, server supremacy for licensing)
+ * 4. Dirty local record protection during pull hydration
+ * 5. Exponential backoff with jitter on network/server failures
+ * 6. Master clock time calibration (/api/v1/time) & active health probe
+ * 7. Granular inspection & manual retry/discard APIs
  */
 
 import {
   dbOutbox,
   getAllCollectionsSnapshot,
-  hydrateCollectionsFromSnapshot,
   registerCollectionChangeHook,
+  dbPatients,
+  dbLicense,
+  dbSales,
+  setCollection,
+  KEYS,
+  getDeviceId,
 } from "./db.js";
 
-const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || 
-  (typeof process !== "undefined" && process.env?.VITE_API_URL) || 
+import {
+  mergePatientEntity,
+  reconcileInventoryWithDeltas,
+  reconcileSystemSettings,
+} from "./conflictResolver.js";
+import { telemetry } from "./telemetry.js";
+
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
   (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
+
+export const SYNC_FSM_STATES = {
+  IDLE: "IDLE",
+  SYNCING_PUSH: "SYNCING_PUSH",
+  SYNCING_PULL: "SYNCING_PULL",
+  OFFLINE: "OFFLINE",
+  ERROR: "ERROR",
+  CONFLICT: "CONFLICT",
+  DEAD_LETTER: "DEAD_LETTER",
+};
+
+const MAX_RETRIES = 5;
+const BASE_BACKOFF_MS = 1000;
+const MAX_BACKOFF_MS = 30000;
 
 class SyncEngine {
   constructor() {
     this.isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
     this.isSyncing = false;
+    this.fsmState = this.isOnline ? SYNC_FSM_STATES.IDLE : SYNC_FSM_STATES.OFFLINE;
     this.pushTimer = null;
     this.pollInterval = null;
+    this.healthInterval = null;
     this.lastStateHash = "";
+    this.lastErrorMessage = null;
+    this.retryAttempt = 0;
     this.subscribers = new Set();
     this.lastSyncTime =
-      (typeof localStorage !== "undefined" ? localStorage.getItem("cf_last_cloud_sync") : null) ||
-      null;
+      (typeof localStorage !== "undefined" ? localStorage.getItem("cf_last_cloud_sync") : null) || null;
+    this.serverTimeOffsetMs = 0;
 
-    // Register write hook with db.js so every single mutation automatically syncs to cloud
+    // Register write hook with db.js for automatic debounced synchronization
     registerCollectionChangeHook(() => {
       this.schedulePush();
     });
@@ -41,25 +74,107 @@ class SyncEngine {
       window.addEventListener("offline", () => this.handleNetworkChange(false));
       window.addEventListener("clinicflow_outbox_change", () => this.notify());
 
-      // Immediate refresh on tab focus / visibility restoration
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible" && this.isOnline) {
           this.pullLatestCloudState();
         }
       });
+
       window.addEventListener("focus", () => {
         if (this.isOnline) {
           this.pullLatestCloudState();
         }
       });
 
-      // Eager initial boot-time cloud synchronization
-      this.pullLatestCloudState().then(() => {
-        this.processOutbox();
+      // Eager initial boot-time sync & clock calibration
+      this.calibrateServerTime().then(() => {
+        this.pullLatestCloudState().then(() => {
+          this.processOutbox();
+        });
       });
 
-      // Active Multi-Device Background Sync Poller (every 3 seconds when tab is active)
       this.startBackgroundPoller();
+      this.startHealthProber();
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Finite State Machine & Notification
+  // --------------------------------------------------------------------------
+
+  setState(newState, errorMessage = null) {
+    this.fsmState = newState;
+    if (errorMessage) this.lastErrorMessage = errorMessage;
+    else if (newState === SYNC_FSM_STATES.IDLE) this.lastErrorMessage = null;
+    this.isSyncing = newState === SYNC_FSM_STATES.SYNCING_PUSH || newState === SYNC_FSM_STATES.SYNCING_PULL;
+    this.notify();
+  }
+
+  getStatus() {
+    const allOutbox = dbOutbox?.getAll?.() || [];
+    const pendingItems = allOutbox.filter((m) => m.status === "pending" || m.status === "sending");
+    const failedItems = allOutbox.filter((m) => m.status === "failed");
+    const deadLetterItems = allOutbox.filter((m) => m.status === "dead_letter");
+    const conflictItems = allOutbox.filter((m) => m.status === "conflict");
+
+    return {
+      isOnline: this.isOnline,
+      isSyncing: this.isSyncing,
+      fsmState: this.fsmState,
+      pendingCount: pendingItems.length,
+      failedCount: failedItems.length,
+      deadLetterCount: deadLetterItems.length,
+      conflictCount: conflictItems.length,
+      totalOutboxCount: allOutbox.length,
+      lastSyncTime: this.lastSyncTime,
+      lastError: this.lastErrorMessage,
+      retryAttempt: this.retryAttempt,
+      serverTimeOffsetMs: this.serverTimeOffsetMs,
+    };
+  }
+
+  subscribe(callback) {
+    this.subscribers.add(callback);
+    callback(this.getStatus());
+    return () => this.subscribers.delete(callback);
+  }
+
+  notify() {
+    const status = this.getStatus();
+    try {
+      if (telemetry && typeof telemetry.recordSyncMetric === "function") {
+        telemetry.recordSyncMetric({
+          status: status.fsmState,
+          pendingCount: status.pendingCount,
+          failedCount: status.failedCount,
+          conflictCount: status.conflictCount,
+          lastSyncTime: status.lastSyncTime,
+        });
+      }
+    } catch (_) {}
+    this.subscribers.forEach((cb) => {
+      try {
+        cb(status);
+      } catch (e) {
+        console.error("Sync subscriber error:", e);
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // Network Listeners & Active Health Probing
+  // --------------------------------------------------------------------------
+
+  handleNetworkChange(onlineStatus) {
+    this.isOnline = onlineStatus;
+    if (this.isOnline) {
+      this.setState(SYNC_FSM_STATES.IDLE);
+      this.retryAttempt = 0;
+      this.calibrateServerTime();
+      this.pullLatestCloudState();
+      this.processOutbox();
+    } else {
+      this.setState(SYNC_FSM_STATES.OFFLINE);
     }
   }
 
@@ -75,147 +190,173 @@ class SyncEngine {
       ) {
         this.pullLatestCloudState();
       }
-    }, 3000);
+    }, 4000);
   }
 
-  handleNetworkChange(onlineStatus) {
-    this.isOnline = onlineStatus;
-    this.notify();
-    if (this.isOnline) {
-      console.log("🌐 Network Restored: Syncing with CliniCore VPS Cloud...");
-      this.pullLatestCloudState();
-      this.processOutbox();
-    } else {
-      console.log("📴 Offline Mode: All local changes saved to secure Outbox.");
+  startHealthProber() {
+    if (this.healthInterval) clearInterval(this.healthInterval);
+    this.healthInterval = setInterval(() => {
+      if (this.isOnline && !this.isSyncing) {
+        this.checkCloudHealth();
+      }
+    }, 15000);
+  }
+
+  async checkCloudHealth() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`${API_BASE}/api/v1/time`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        if (!this.isOnline) this.handleNetworkChange(true);
+      }
+    } catch {
+      // Network probe failed silently
     }
   }
 
-  subscribe(callback) {
-    this.subscribers.add(callback);
-    callback(this.getStatus());
-    return () => this.subscribers.delete(callback);
-  }
-
-  notify() {
-    const status = this.getStatus();
-    this.subscribers.forEach((cb) => {
-      try {
-        cb(status);
-      } catch (e) {
-        console.error("Sync subscriber error:", e);
+  async calibrateServerTime() {
+    try {
+      const startMs = Date.now();
+      const res = await fetch(`${API_BASE}/api/v1/time`);
+      if (res.ok) {
+        const json = await res.json();
+        const endMs = Date.now();
+        const latency = (endMs - startMs) / 2;
+        if (json?.data?.epoch_ms) {
+          const serverEpoch = json.data.epoch_ms + latency;
+          this.serverTimeOffsetMs = serverEpoch - Date.now();
+        }
       }
-    });
+    } catch {}
   }
 
-  getStatus() {
-    const pendingItems = dbOutbox?.getAll?.() || [];
-    return {
-      isOnline: this.isOnline,
-      isSyncing: this.isSyncing,
-      pendingCount: pendingItems.length,
-      lastSyncTime: this.lastSyncTime,
-    };
+  getCalibratedPKTIsoString() {
+    const calibratedEpoch = Date.now() + this.serverTimeOffsetMs;
+    return new Date(calibratedEpoch).toISOString();
   }
 
-  /**
-   * Schedules a debounced snapshot push to VPS MySQL whenever local data changes.
-   * Batches rapid UI changes (e.g. typing, multi-item checkouts) into a single atomic sync.
-   */
+  // --------------------------------------------------------------------------
+  // Push Pipeline (Batched Mutations & Idempotency)
+  // --------------------------------------------------------------------------
+
   schedulePush(delayMs = 250) {
     if (this.pushTimer) clearTimeout(this.pushTimer);
     this.pushTimer = setTimeout(() => {
       this.pushTimer = null;
-      this.pushLocalStateToCloud();
+      this.processOutbox();
     }, delayMs);
   }
 
-  /**
-   * Pulls the authoritative database state & config from VPS MySQL to keep all browsers in sync.
-   */
-  async pullLatestCloudState() {
-    if (!this.isOnline || this.isSyncing || this.pushTimer) return;
-    this.isSyncing = true;
-    this.notify();
-    try {
-      // 1. Pull Central System & Clinic Configuration from MySQL
-      try {
-        const cfgRes = await fetch(`${API_BASE}/api/v1/system/config`, {
-          headers: { "User-Agent": "CliniCore-PWA/2.0" },
-        });
-        if (cfgRes.ok) {
-          const cfgJson = await cfgRes.json();
-          if (cfgJson?.success && cfgJson?.data?.clinic) {
-            const sClinic = cfgJson.data.clinic;
-            if (typeof localStorage !== "undefined") {
-              const currClinic = (() => {
-                try {
-                  return JSON.parse(localStorage.getItem("cf_clinic_v5") || "{}");
-                } catch {
-                  return {};
-                }
-              })();
-              const mergedClinic = { ...currClinic, ...sClinic };
-              localStorage.setItem("cf_clinic_v5", JSON.stringify(mergedClinic));
-              if (sClinic.resend_api_key) localStorage.setItem("cf_resend_api_key", sClinic.resend_api_key);
-              if (sClinic.notification_email) localStorage.setItem("cf_notification_email", sClinic.notification_email);
-              if (sClinic.report_frequency) localStorage.setItem("cf_report_frequency", sClinic.report_frequency);
-              if (sClinic.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", sClinic.whatsapp_gateway_no);
-              if (sClinic.admin_master_passcode) localStorage.setItem("cf_admin_master_passcode", sClinic.admin_master_passcode);
-              if (sClinic.tab_pin) localStorage.setItem("cf_admin_tab_pin", sClinic.tab_pin);
-              if (sClinic.tab_security_json) {
-                try {
-                  const tabs = typeof sClinic.tab_security_json === "string" ? JSON.parse(sClinic.tab_security_json) : sClinic.tab_security_json;
-                  const existing = JSON.parse(localStorage.getItem("cf_admin_tab_security") || "{}");
-                  localStorage.setItem("cf_admin_tab_security", JSON.stringify({ ...existing, tabs, admin_passcode: sClinic.admin_master_passcode || existing.admin_passcode, tab_pin: sClinic.tab_pin || existing.tab_pin }));
-                } catch {}
-              }
-            }
-          }
-        }
-      } catch (cfgErr) {
-        // silent fallback for offline/transient glitch
-      }
+  calculateBackoffMs() {
+    const exp = Math.min(this.retryAttempt, 5);
+    const delay = Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * Math.pow(2, exp));
+    const jitter = Math.random() * 500;
+    return delay + jitter;
+  }
 
-      // 2. Pull Relational Collections Snapshot (Patients, Visits, Inventory, Users, Sales, Purchases)
-      const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
-        headers: { "User-Agent": "CliniCore-PWA/2.0" },
+  async processOutbox() {
+    if (!this.isOnline || this.isSyncing) return;
+    const allOutbox = dbOutbox?.getAll?.() || [];
+    // Reset any orphaned "sending" items from prior crashes to "pending"
+    const pendingMutations = allOutbox.filter((m) => m.status === "pending" || m.status === "failed" || m.status === "sending");
+
+    if (pendingMutations.length === 0) {
+      // Push snapshot fallback if state changed
+      await this.pushLocalStateToCloud();
+      return;
+    }
+
+    this.setState(SYNC_FSM_STATES.SYNCING_PUSH);
+
+    try {
+      // 1. Mark batch as sending
+      const sendingIds = new Set(pendingMutations.map((m) => m.mutation_id || m.id));
+      const inFlightOutbox = (dbOutbox?.getAll?.() || []).map((m) => {
+        if (sendingIds.has(m.mutation_id || m.id)) {
+          return { ...m, status: "sending" };
+        }
+        return m;
       });
+      localStorage.setItem(KEYS.OUTBOX, JSON.stringify(inFlightOutbox));
+      this.notify();
+
+      // 2. Transmit batch to /api/v1/sync/push
+      const res = await fetch(`${API_BASE}/api/v1/sync/push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mutations: pendingMutations }),
+      });
+
       if (res.ok) {
         const json = await res.json();
-        if (json?.success && json?.data && typeof json.data === "object") {
-          const rawPayload = JSON.stringify(json.data);
-          // Check if data actually changed to avoid unnecessary DOM thrashing
-          if (rawPayload !== this.lastStateHash) {
-            this.lastStateHash = rawPayload;
-            hydrateCollectionsFromSnapshot(json.data);
-            this.lastSyncTime = new Date().toISOString();
-            if (typeof localStorage !== "undefined") {
-              localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
+        const resultsMap = new Map((json?.data?.results || []).map((r) => [r.mutation_id, r]));
+
+        // Read fresh outbox to prevent clobbering in-flight user entries
+        const freshOutbox = dbOutbox?.getAll?.() || [];
+        const updatedOutbox = freshOutbox.filter((m) => {
+          const mId = m.mutation_id || m.id;
+          if (!sendingIds.has(mId)) return true; // Keep newly created mutations intact!
+          const resItem = resultsMap.get(mId);
+          if (resItem) {
+            if (resItem.status === "confirmed") return false; // Successfully synced -> remove
+            if (resItem.status === "rejected") {
+              m.status = "dead_letter";
+              m.last_error = resItem.reason || "Rejected by server";
+              return true;
             }
-            this.notify();
-            console.log("☁️ Real-time cloud state synced from VPS MySQL.");
           }
+          return false; // Default remove successfully acknowledged
+        });
+
+        localStorage.setItem(KEYS.OUTBOX, JSON.stringify(updatedOutbox));
+        this.retryAttempt = 0;
+        this.lastSyncTime = new Date().toISOString();
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
         }
+        this.setState(SYNC_FSM_STATES.IDLE);
+      } else {
+        throw new Error(`Sync push server error (${res.status})`);
       }
     } catch (err) {
-      console.warn("[Cloud Sync] Pull state notice:", err.message);
-    } finally {
-      this.isSyncing = false;
-      this.notify();
+      console.warn("Outbox push notice:", err.message);
+      this.retryAttempt++;
+
+      // Update retry count and check for dead letter threshold
+      const updatedOutbox = (dbOutbox?.getAll?.() || []).map((m) => {
+        if (m.status === "sending") {
+          const retries = (m.retry_count || 0) + 1;
+          return {
+            ...m,
+            status: retries >= MAX_RETRIES ? "dead_letter" : "failed",
+            retry_count: retries,
+            last_error: err.message,
+          };
+        }
+        return m;
+      });
+
+      localStorage.setItem(KEYS.OUTBOX, JSON.stringify(updatedOutbox));
+      const hasDeadLetters = updatedOutbox.some((m) => m.status === "dead_letter");
+      this.setState(hasDeadLetters ? SYNC_FSM_STATES.DEAD_LETTER : SYNC_FSM_STATES.ERROR, err.message);
+
+      // Schedule exponential backoff retry
+      const backoffMs = this.calculateBackoffMs();
+      setTimeout(() => {
+        if (this.isOnline && !this.isSyncing) this.processOutbox();
+      }, backoffMs);
     }
   }
 
-  /**
-   * Pushes full snapshot to VPS MySQL so any other browser sees the exact changes.
-   */
   async pushLocalStateToCloud() {
-    if (!this.isOnline || this.isSyncing) return;
-    this.isSyncing = true;
-    this.notify();
-
+    if (!this.isOnline) return;
     try {
       const snapshot = getAllCollectionsSnapshot();
       const payloadStr = JSON.stringify(snapshot);
+
+      if (payloadStr === this.lastStateHash) return;
 
       const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
         method: "POST",
@@ -232,50 +373,178 @@ class SyncEngine {
         this.notify();
       }
     } catch (err) {
-      console.warn("[Cloud Sync] Push state notice:", err.message);
-    } finally {
-      this.isSyncing = false;
-      this.notify();
+      console.warn("[Cloud Sync] Snapshot push notice:", err.message);
     }
   }
 
-  /**
-   * Automatically processes offline pending mutations and pushes to VPS MySQL.
-   */
-  async processOutbox() {
-    if (!this.isOnline || this.isSyncing) return;
-    const items = dbOutbox?.getAll?.() || [];
+  // --------------------------------------------------------------------------
+  // Pull Pipeline (Domain 3-Way Merge & Dirty Record Protection)
+  // --------------------------------------------------------------------------
 
-    if (items.length > 0) {
-      this.isSyncing = true;
-      this.notify();
+  async pullLatestCloudState() {
+    if (!this.isOnline || this.isSyncing || this.pushTimer) return;
+    this.setState(SYNC_FSM_STATES.SYNCING_PULL);
 
+    try {
+      // 1. Pull Config & Licensing (Domain 5: Server Supremacy)
       try {
-        console.log(`🔄 Replaying ${items.length} offline mutations to VPS MySQL...`);
-        await this.pushLocalStateToCloud();
-        for (const item of items) {
-          dbOutbox.markSynced(item.id);
+        const cfgRes = await fetch(`${API_BASE}/api/v1/system/config`, {
+          headers: { "User-Agent": "CliniCore-PWA/2.0" },
+        });
+        if (cfgRes.ok) {
+          const cfgJson = await cfgRes.json();
+          if (cfgJson?.success && cfgJson?.data?.clinic) {
+            const sClinic = cfgJson.data.clinic;
+            const currentLic = dbLicense.get();
+            const reconciled = reconcileSystemSettings(
+              { clinic: sClinic, license: currentLic },
+              { clinic: sClinic, license: cfgJson.data.license || currentLic }
+            );
+            if (reconciled.license) {
+              localStorage.setItem(KEYS.LICENSE, JSON.stringify(reconciled.license));
+            }
+          }
         }
-        console.log("✅ All records synchronized successfully to Hostinger VPS MySQL!");
-      } catch (err) {
-        console.warn("Cloud sync deferred:", err);
-      } finally {
-        this.isSyncing = false;
-        this.notify();
+      } catch {}
+
+      // 2. Pull Relational State
+      const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
+        headers: { "User-Agent": "CliniCore-PWA/2.0" },
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && json?.data && typeof json.data === "object") {
+          const remoteData = json.data;
+
+          // Protect Dirty Local Records via Domain-Specific Merging:
+          // A. Reconcile Patients via 3-Way Merge
+          if (remoteData[KEYS.PATIENTS]) {
+            const localPatients = dbPatients.getAll();
+            const remotePatients = remoteData[KEYS.PATIENTS];
+            const baseRaw = localStorage.getItem("cf_patients_base_sync");
+            const baseMap = new Map(baseRaw ? JSON.parse(baseRaw).map((p) => [p.id, p]) : []);
+
+            const mergedPatients = [];
+            const remoteMap = new Map(remotePatients.map((p) => [p.id, p]));
+
+            for (const locPat of localPatients) {
+              const remPat = remoteMap.get(locPat.id);
+              const basePat = baseMap.get(locPat.id) || null;
+              if (remPat) {
+                mergedPatients.push(mergePatientEntity(basePat, locPat, remPat, getDeviceId()));
+                remoteMap.delete(locPat.id);
+              } else {
+                mergedPatients.push(locPat);
+              }
+            }
+            for (const remRemaining of remoteMap.values()) {
+              mergedPatients.push(remRemaining);
+            }
+            setCollection(KEYS.PATIENTS, mergedPatients);
+            localStorage.setItem("cf_patients_base_sync", JSON.stringify(mergedPatients));
+          }
+
+          // B. Reconcile Inventory via Commutative PN-Counter Deltas
+          if (remoteData[KEYS.INVENTORY]) {
+            const pendingMovements = (dbOutbox.getAll() || [])
+              .filter((m) => m.entity === "stock_movements" || m.action_type === "STOCK_MOVEMENT")
+              .map((m) => m.payload);
+
+            const reconciledInv = reconcileInventoryWithDeltas(remoteData[KEYS.INVENTORY], pendingMovements);
+            setCollection(KEYS.INVENTORY, reconciledInv);
+          }
+
+          // C. Reconcile Sales & Invoices via Append-Only Union
+          if (remoteData[KEYS.SALES]) {
+            const localSales = dbSales.getAll();
+            const remoteSales = remoteData[KEYS.SALES];
+            const salesIdSet = new Set(localSales.map((s) => s.id));
+            const mergedSales = [...localSales];
+            for (const rSale of remoteSales) {
+              if (!salesIdSet.has(rSale.id)) {
+                mergedSales.push(rSale);
+              }
+            }
+            setCollection(KEYS.SALES, mergedSales);
+          }
+
+          this.lastSyncTime = new Date().toISOString();
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
+          }
+          this.setState(SYNC_FSM_STATES.IDLE);
+        }
+      } else {
+        this.setState(SYNC_FSM_STATES.ERROR, `Pull error: HTTP ${res.status}`);
       }
+    } catch (err) {
+      console.warn("[Cloud Sync] Pull state notice:", err.message);
+      this.setState(SYNC_FSM_STATES.ERROR, err.message);
     }
   }
 
-  /**
-   * Manual 1-click cloud sync trigger.
-   */
+  // --------------------------------------------------------------------------
+  // Granular Outbox & Conflict Inspection APIs
+  // --------------------------------------------------------------------------
+
+  getOutboxItems() {
+    return dbOutbox?.getAll?.() || [];
+  }
+
+  getDeadLetterItems() {
+    return (dbOutbox?.getAll?.() || []).filter((m) => m.status === "dead_letter");
+  }
+
+  retryMutation(mutationId) {
+    const allOutbox = dbOutbox?.getAll?.() || [];
+    const target = allOutbox.find((m) => (m.mutation_id || m.id) === mutationId);
+    if (target) {
+      target.status = "pending";
+      target.retry_count = 0;
+      target.last_error = null;
+      localStorage.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
+      this.notify();
+      this.processOutbox();
+      return true;
+    }
+    return false;
+  }
+
+  retryAllFailed() {
+    const allOutbox = dbOutbox?.getAll?.() || [];
+    allOutbox.forEach((m) => {
+      if (m.status === "failed" || m.status === "dead_letter") {
+        m.status = "pending";
+        m.retry_count = 0;
+        m.last_error = null;
+      }
+    });
+    localStorage.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
+    this.notify();
+    this.processOutbox();
+  }
+
+  discardMutation(mutationId) {
+    dbOutbox.markSynced(mutationId);
+    this.notify();
+  }
+
+  clearDeadLetterQueue() {
+    const allOutbox = dbOutbox?.getAll?.() || [];
+    const remaining = allOutbox.filter((m) => m.status !== "dead_letter");
+    localStorage.setItem(KEYS.OUTBOX, JSON.stringify(remaining));
+    this.notify();
+  }
+
   async forceSyncNow() {
     if (!this.isOnline) {
-      alert("⚠️ Device is currently offline. Please connect to internet to sync.");
-      return;
+      return { success: false, message: "Device is currently offline." };
     }
+    await this.calibrateServerTime();
     await this.pullLatestCloudState();
     await this.processOutbox();
+    return { success: true, timestamp: this.lastSyncTime };
   }
 }
 

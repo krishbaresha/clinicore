@@ -7,13 +7,14 @@ use CliniCore\Config\Database;
 use CliniCore\Utils\Response;
 use CliniCore\Utils\Validator;
 use CliniCore\Middleware\AuthMiddleware;
+use CliniCore\Middleware\RBACMiddleware;
 use CliniCore\Services\StockService;
 use CliniCore\Services\LedgerService;
 use PDO;
 
 class PurchaseController {
     public function getSuppliers(): void {
-        $user = AuthMiddleware::authenticate();
+        $user = RBACMiddleware::requireWarehouse();
         $db = Database::getConnection();
 
         $stmt = $db->prepare("
@@ -29,7 +30,7 @@ class PurchaseController {
     }
 
     public function createPurchase(): void {
-        $user = AuthMiddleware::authenticate();
+        $user = RBACMiddleware::requireWarehouse();
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
         Validator::make($body)

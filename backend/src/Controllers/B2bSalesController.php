@@ -7,12 +7,13 @@ use CliniCore\Config\Database;
 use CliniCore\Utils\Response;
 use CliniCore\Utils\Validator;
 use CliniCore\Middleware\AuthMiddleware;
+use CliniCore\Middleware\RBACMiddleware;
 use CliniCore\Services\StockService;
 use PDO;
 
 class B2bSalesController {
     public function getParties(): void {
-        $user = AuthMiddleware::authenticate();
+        $user = RBACMiddleware::requireWarehouse();
         $db = Database::getConnection();
 
         $stmt = $db->prepare("
@@ -31,7 +32,7 @@ class B2bSalesController {
     }
 
     public function createParty(): void {
-        $user = AuthMiddleware::authenticate();
+        $user = RBACMiddleware::requireWarehouse();
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
         Validator::make($body)
@@ -44,26 +45,25 @@ class B2bSalesController {
 
         $stmt = $db->prepare("
             INSERT INTO parties (id, clinic_id, party_code, party_name, city, phone, address, salesman_id, credit_limit, current_balance, status, created_at)
-            VALUES (:id, :clinic_id, :code, :name, :city, :phone, :address, :salesman_id, :credit_limit, :opening_bal, 'active', NOW())
+            VALUES (:id, :clinic_id, :code, :name, :city, :phone, :address, :sm_id, :credit_limit, 0.00, 'active', NOW())
         ");
         $stmt->execute([
-            ':id'          => $id,
-            ':clinic_id'   => $user['clinic_id'],
-            ':code'        => strtoupper(trim((string) $body['party_code'])),
-            ':name'        => trim((string) $body['party_name']),
-            ':city'        => trim((string) ($body['city'] ?? 'Hyderabad')),
-            ':phone'       => $body['phone'] ?? null,
-            ':address'     => $body['address'] ?? null,
-            ':salesman_id' => $body['salesman_id'] ?? null,
-            ':credit_limit'=> (float) ($body['credit_limit'] ?? 0.00),
-            ':opening_bal' => (float) ($body['current_balance'] ?? 0.00)
+            ':id'           => $id,
+            ':clinic_id'    => $user['clinic_id'],
+            ':code'         => $body['party_code'],
+            ':name'         => $body['party_name'],
+            ':city'         => $body['city'] ?? null,
+            ':phone'        => $body['phone'] ?? null,
+            ':address'      => $body['address'] ?? null,
+            ':sm_id'        => $body['salesman_id'] ?? null,
+            ':credit_limit' => (float) ($body['credit_limit'] ?? 0.00)
         ]);
 
-        Response::success(['id' => $id, 'party_code' => $body['party_code']], 201);
+        Response::success(['id' => $id, 'message' => 'Party registered successfully.'], 201);
     }
 
     public function checkout(): void {
-        $user = AuthMiddleware::authenticate();
+        $user = RBACMiddleware::requireWarehouse();
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
         Validator::make($body)

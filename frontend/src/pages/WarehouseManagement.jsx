@@ -66,10 +66,10 @@ export default function WarehouseManagement() {
   const [accounts, setAccounts] = useState([]);
   const [godowns, setGodowns] = useState([]);
 
-  const isLocationLocked = Boolean(
+  const _isLocationLocked = Boolean(
     user && !user.is_owner && user.role !== "admin" && user.role !== "doctor" && user.assigned_warehouse_id
   );
-  const userAssignedWh = useMemo(() => godowns.find((w) => w.id === user?.assigned_warehouse_id), [godowns, user]);
+  const _userAssignedWh = useMemo(() => godowns.find((w) => w.id === user?.assigned_warehouse_id), [godowns, user]);
   const canViewFinancials = Boolean(
     user?.is_owner || user?.role === "doctor" || user?.role === "admin" || user?.can_view_financials
   );

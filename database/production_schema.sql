@@ -1,8 +1,8 @@
 -- ============================================================================
--- CliniCore — Production Database Schema (MySQL 8.0 / InnoDB)
+-- CliniCore / ClinicFlow — Enterprise Production Database Schema (MySQL 8.0 / InnoDB)
 -- Clinic & Wholesale Homoeopathic Management System
--- Version: 2.0 (Production Release)
--- Target Server: Hostinger KVM 1 (Ubuntu 24.04 LTS, MySQL 8.0)
+-- Version: 2.5 (Production Release with Strict Integrity Constraints)
+-- Target Server: Hostinger KVM VPS (Ubuntu 24.04 LTS, MySQL 8.0)
 -- ============================================================================
 
 CREATE DATABASE IF NOT EXISTS clinicore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -19,6 +19,8 @@ DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS warehouses;
 DROP TABLE IF EXISTS clinics;
+DROP TABLE IF EXISTS system_settings;
+DROP TABLE IF EXISTS app_cloud_state;
 
 CREATE TABLE clinics (
     id VARCHAR(36) PRIMARY KEY,
@@ -58,13 +60,26 @@ CREATE TABLE users (
     clinic_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
     display_label VARCHAR(100) NULL,
-    role ENUM('owner', 'doctor', 'receptionist', 'pharmacist', 'cashier', 'godown_incharge', 'admin') NOT NULL,
+    role ENUM(
+        'owner',
+        'doctor',
+        'receptionist',
+        'pharmacist',
+        'cashier',
+        'godown_incharge',
+        'warehouse_incharge',
+        'warehouse_manager',
+        'b2b_salesman',
+        'accountant',
+        'manager',
+        'admin'
+    ) NOT NULL,
     phone VARCHAR(50) NULL,
     email VARCHAR(255) NULL,
     password_hash VARCHAR(255) NOT NULL,
     assigned_warehouse_id VARCHAR(36) NULL,
     is_principal_doctor BOOLEAN DEFAULT FALSE,
-    status ENUM('active', 'inactive') DEFAULT 'active',
+    status ENUM('active', 'inactive', 'deactivated') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
@@ -92,23 +107,52 @@ CREATE TABLE audit_logs (
     INDEX idx_audit_entity (entity_type, entity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE system_settings (
+    setting_key VARCHAR(100) PRIMARY KEY,
+    setting_value LONGTEXT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE app_cloud_state (
+    collection_key VARCHAR(100) PRIMARY KEY,
+    data_json LONGTEXT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ----------------------------------------------------------------------------
 -- 2. CLINICAL & OPD QUEUE DOMAIN
 -- ----------------------------------------------------------------------------
 
+DROP TABLE IF EXISTS patient_documents;
 DROP TABLE IF EXISTS visit_attachments;
 DROP TABLE IF EXISTS visits;
 DROP TABLE IF EXISTS patients;
+DROP TABLE IF EXISTS clinic_services;
+
+CREATE TABLE clinic_services (
+    id VARCHAR(36) PRIMARY KEY,
+    clinic_id VARCHAR(36) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100) DEFAULT 'General',
+    price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    description TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+    INDEX idx_service_clinic (clinic_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE patients (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
-    mr_number VARCHAR(50) NULL,
+    mr_number VARCHAR(50) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     relation_name VARCHAR(255) NULL,
     relation_type ENUM('father', 'husband', 'wife', 'guardian', 'other') DEFAULT 'father',
     phone VARCHAR(50) NOT NULL,
-    cnic VARCHAR(30) NULL,
+    cnic VARCHAR(20) NULL,
     age INT NULL,
     gender ENUM('male', 'female', 'other') DEFAULT 'male',
     address TEXT NULL,
@@ -118,8 +162,10 @@ CREATE TABLE patients (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
-    INDEX idx_patient_search (clinic_id, phone, full_name(50), relation_name(50)),
-    INDEX idx_patient_mr (clinic_id, mr_number)
+    UNIQUE KEY uk_patient_mr (clinic_id, mr_number),
+    INDEX idx_patient_phone (phone),
+    INDEX idx_patient_cnic (cnic),
+    INDEX idx_patient_name (full_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE visits (
@@ -130,11 +176,11 @@ CREATE TABLE visits (
     token_number INT NOT NULL,
     queue_date DATE NOT NULL,
     visit_type ENUM('new', 'follow_up', 'emergency') DEFAULT 'new',
-    status ENUM('waiting', 'in_consultation', 'completed', 'completed_reports_pending', 'skipped', 'cancelled') DEFAULT 'waiting',
+    status ENUM('waiting', 'in_consultation', 'completed', 'completed_reports_pending', 'skipped') DEFAULT 'waiting',
     fee_amount DECIMAL(10,2) DEFAULT 0.00,
     discount_amount DECIMAL(10,2) DEFAULT 0.00,
     net_fee DECIMAL(10,2) DEFAULT 0.00,
-    payment_mode ENUM('cash', 'credit', 'free') DEFAULT 'cash',
+    payment_mode ENUM('cash', 'online', 'card', 'free') DEFAULT 'cash',
     symptoms TEXT NULL,
     diagnosis TEXT NULL,
     notes TEXT NULL,
@@ -150,7 +196,7 @@ CREATE TABLE visits (
     FOREIGN KEY (doctor_id) REFERENCES users(id) ON DELETE RESTRICT,
     FOREIGN KEY (registered_by) REFERENCES users(id) ON DELETE SET NULL,
     UNIQUE KEY uk_token_per_doctor_day (clinic_id, doctor_id, queue_date, token_number),
-    INDEX idx_queue_active (clinic_id, doctor_id, queue_date, status)
+    INDEX idx_visit_queue (doctor_id, queue_date, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE visit_attachments (
@@ -161,50 +207,68 @@ CREATE TABLE visit_attachments (
     file_name VARCHAR(255) NOT NULL,
     file_url VARCHAR(500) NOT NULL,
     file_size_kb INT DEFAULT 0,
-    notes VARCHAR(255) NULL,
+    notes TEXT NULL,
     uploaded_by VARCHAR(36) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (visit_id) REFERENCES visits(id) ON DELETE CASCADE,
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
-    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_attachment_visit (visit_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE patient_documents (
+    id VARCHAR(36) PRIMARY KEY,
+    clinic_id VARCHAR(36) NOT NULL,
+    patient_id VARCHAR(36) NOT NULL,
+    visit_id VARCHAR(36) NULL,
+    document_type ENUM('lab_report', 'xray', 'prescription', 'id_card', 'other') DEFAULT 'lab_report',
+    title VARCHAR(255) NOT NULL,
+    file_url VARCHAR(500) NOT NULL,
+    file_size_kb INT DEFAULT 0,
+    notes TEXT NULL,
+    uploaded_by VARCHAR(36) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (visit_id) REFERENCES visits(id) ON DELETE SET NULL,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_doc_patient (patient_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 3. INVENTORY & MULTI-WAREHOUSE STOCK DOMAIN
+-- 3. PHARMACY INVENTORY & MULTI-WAREHOUSE DOMAIN
 -- ----------------------------------------------------------------------------
 
 DROP TABLE IF EXISTS stock_movements;
-DROP TABLE IF EXISTS stock_transfer_items;
-DROP TABLE IF EXISTS stock_transfers;
 DROP TABLE IF EXISTS warehouse_stocks;
 DROP TABLE IF EXISTS inventory;
 
 CREATE TABLE inventory (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
-    item_code VARCHAR(50) NULL,
+    item_code VARCHAR(50) NOT NULL,
     medicine_name VARCHAR(255) NOT NULL,
-    company_name VARCHAR(255) DEFAULT 'Local Market',
-    category VARCHAR(100) DEFAULT 'Tablet',
-    strength VARCHAR(100) NULL,
-    has_multi_unit BOOLEAN DEFAULT TRUE,
-    strips_per_box INT DEFAULT 10,
-    units_per_strip INT DEFAULT 10,
-    box_label VARCHAR(50) DEFAULT 'Box',
-    strip_label VARCHAR(50) DEFAULT 'Strip',
-    unit_label VARCHAR(50) DEFAULT 'Tablet',
+    company_name VARCHAR(100) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    strength VARCHAR(50) NULL,
+    has_multi_unit BOOLEAN DEFAULT FALSE,
+    strips_per_box INT DEFAULT 1,
+    units_per_strip INT DEFAULT 1,
+    box_label VARCHAR(50) DEFAULT 'Pack',
+    strip_label VARCHAR(50) DEFAULT 'Bottle',
+    unit_label VARCHAR(50) DEFAULT 'Bottle',
     box_cost_price DECIMAL(10,2) DEFAULT 0.00,
     box_sale_price DECIMAL(10,2) DEFAULT 0.00,
     strip_sale_price DECIMAL(10,2) DEFAULT 0.00,
     unit_sale_price DECIMAL(10,2) DEFAULT 0.00,
-    low_stock_threshold INT DEFAULT 20,
+    low_stock_threshold INT DEFAULT 6,
     barcode VARCHAR(100) NULL,
     status ENUM('active', 'inactive', 'discontinued') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
-    INDEX idx_inv_search (clinic_id, medicine_name(50), company_name(50)),
-    INDEX idx_inv_barcode (barcode)
+    UNIQUE KEY uk_inventory_code (clinic_id, item_code),
+    INDEX idx_inv_search (company_name, category, medicine_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE warehouse_stocks (
@@ -219,13 +283,51 @@ CREATE TABLE warehouse_stocks (
     UNIQUE KEY uk_item_warehouse (inventory_id, warehouse_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE stock_movements (
+    id VARCHAR(36) PRIMARY KEY,
+    clinic_id VARCHAR(36) NOT NULL,
+    warehouse_id VARCHAR(36) NOT NULL,
+    inventory_id VARCHAR(36) NOT NULL,
+    movement_type ENUM(
+        'opening',
+        'purchase',
+        'pos_sale',
+        'b2b_sale',
+        'transfer_in',
+        'transfer_out',
+        'adjustment',
+        'damage',
+        'expiry',
+        'return_in',
+        'return_out'
+    ) NOT NULL,
+    reference_id VARCHAR(36) NULL,
+    qty_change_base_units INT NOT NULL,
+    balance_after_base_units INT NOT NULL,
+    notes VARCHAR(255) NULL,
+    created_by VARCHAR(36) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT,
+    FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE RESTRICT,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_movement_audit (inventory_id, warehouse_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- 4. STOCK TRANSFERS DOMAIN
+-- ----------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS stock_transfer_items;
+DROP TABLE IF EXISTS stock_transfers;
+
 CREATE TABLE stock_transfers (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     transfer_no VARCHAR(50) NOT NULL,
     from_warehouse_id VARCHAR(36) NOT NULL,
     to_warehouse_id VARCHAR(36) NOT NULL,
-    status ENUM('pending', 'dispatched', 'received', 'cancelled') DEFAULT 'pending',
+    status ENUM('pending', 'dispatched', 'in_transit', 'received', 'completed', 'cancelled') DEFAULT 'pending',
     notes TEXT NULL,
     dispatched_by VARCHAR(36) NULL,
     received_by VARCHAR(36) NULL,
@@ -251,46 +353,28 @@ CREATE TABLE stock_transfer_items (
     FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE stock_movements (
-    id VARCHAR(36) PRIMARY KEY,
-    clinic_id VARCHAR(36) NOT NULL,
-    warehouse_id VARCHAR(36) NOT NULL,
-    inventory_id VARCHAR(36) NOT NULL,
-    movement_type ENUM('purchase', 'pos_sale', 'b2b_sale', 'transfer_in', 'transfer_out', 'adjustment', 'return_in', 'return_out') NOT NULL,
-    reference_id VARCHAR(36) NULL,
-    qty_change_base_units INT NOT NULL,
-    balance_after_base_units INT NOT NULL,
-    notes VARCHAR(255) NULL,
-    created_by VARCHAR(36) NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
-    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT,
-    FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE RESTRICT,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_mov_audit (warehouse_id, inventory_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- ----------------------------------------------------------------------------
--- 4. SUPPLIERS, PURCHASES & GRN DOMAIN
+-- 5. SUPPLIERS & PURCHASES (GRN) DOMAIN
 -- ----------------------------------------------------------------------------
 
-DROP TABLE IF EXISTS supplier_ledger;
 DROP TABLE IF EXISTS purchase_items;
 DROP TABLE IF EXISTS purchases;
+DROP TABLE IF EXISTS supplier_ledger;
 DROP TABLE IF EXISTS suppliers;
 
 CREATE TABLE suppliers (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    company_name VARCHAR(255) NULL,
+    company_name VARCHAR(100) NULL,
     phone VARCHAR(50) NULL,
     address TEXT NULL,
     current_balance DECIMAL(12,2) DEFAULT 0.00,
     status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE
+    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+    INDEX idx_supplier_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE purchases (
@@ -300,15 +384,15 @@ CREATE TABLE purchases (
     supplier_id VARCHAR(36) NOT NULL,
     warehouse_id VARCHAR(36) NOT NULL,
     bill_no VARCHAR(100) NULL,
-    bill_date DATE NOT NULL,
+    bill_date DATE NULL,
     subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    discount_amount DECIMAL(12,2) DEFAULT 0.00,
+    tax_amount DECIMAL(12,2) DEFAULT 0.00,
     net_total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    due_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    paid_amount DECIMAL(12,2) DEFAULT 0.00,
+    due_amount DECIMAL(12,2) DEFAULT 0.00,
     payment_mode ENUM('cash', 'credit', 'cheque', 'bank_transfer') DEFAULT 'credit',
-    cheque_no VARCHAR(100) NULL,
+    cheque_no VARCHAR(50) NULL,
     bank_name VARCHAR(100) NULL,
     cheque_date DATE NULL,
     notes TEXT NULL,
@@ -319,7 +403,8 @@ CREATE TABLE purchases (
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE RESTRICT,
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT,
     FOREIGN KEY (received_by) REFERENCES users(id) ON DELETE SET NULL,
-    UNIQUE KEY uk_purchase_no (clinic_id, purchase_no)
+    UNIQUE KEY uk_purchase_no (clinic_id, purchase_no),
+    INDEX idx_purchase_date (warehouse_id, bill_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE purchase_items (
@@ -351,19 +436,17 @@ CREATE TABLE supplier_ledger (
     created_by VARCHAR(36) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE RESTRICT,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_sup_ledger (supplier_id, created_at)
+    INDEX idx_supplier_ledger (supplier_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 5. PARTIES, SALESMEN, POS & B2B WHOLESALE DOMAIN
+-- 6. WHOLESALE (B2B) DOMAIN
 -- ----------------------------------------------------------------------------
 
 DROP TABLE IF EXISTS b2b_sale_items;
 DROP TABLE IF EXISTS b2b_sales;
-DROP TABLE IF EXISTS pos_sale_items;
-DROP TABLE IF EXISTS pos_sales;
 DROP TABLE IF EXISTS parties;
 DROP TABLE IF EXISTS salesmen;
 
@@ -375,7 +458,6 @@ CREATE TABLE salesmen (
     commission_rate DECIMAL(5,2) DEFAULT 0.00,
     status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -384,11 +466,11 @@ CREATE TABLE parties (
     clinic_id VARCHAR(36) NOT NULL,
     party_code VARCHAR(50) NOT NULL,
     party_name VARCHAR(255) NOT NULL,
-    city VARCHAR(100) DEFAULT 'Hyderabad',
+    city VARCHAR(100) NOT NULL,
     phone VARCHAR(50) NULL,
     address TEXT NULL,
     salesman_id VARCHAR(36) NULL,
-    credit_limit DECIMAL(12,2) DEFAULT 0.00,
+    credit_limit DECIMAL(12,2) DEFAULT 100000.00,
     current_balance DECIMAL(12,2) DEFAULT 0.00,
     status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -396,47 +478,7 @@ CREATE TABLE parties (
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
     FOREIGN KEY (salesman_id) REFERENCES salesmen(id) ON DELETE SET NULL,
     UNIQUE KEY uk_party_code (clinic_id, party_code),
-    INDEX idx_party_search (clinic_id, party_name(50), city)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE pos_sales (
-    id VARCHAR(36) PRIMARY KEY,
-    clinic_id VARCHAR(36) NOT NULL,
-    receipt_no VARCHAR(50) NOT NULL,
-    warehouse_id VARCHAR(36) NOT NULL,
-    cashier_id VARCHAR(36) NOT NULL,
-    linked_visit_id VARCHAR(36) NULL,
-    patient_id VARCHAR(36) NULL,
-    customer_name VARCHAR(255) DEFAULT 'Walk-in Customer',
-    customer_phone VARCHAR(50) NULL,
-    subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    net_total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    change_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    payment_mode ENUM('cash', 'credit_patient', 'card', 'online') DEFAULT 'cash',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
-    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT,
-    FOREIGN KEY (cashier_id) REFERENCES users(id) ON DELETE RESTRICT,
-    FOREIGN KEY (linked_visit_id) REFERENCES visits(id) ON DELETE SET NULL,
-    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL,
-    UNIQUE KEY uk_pos_receipt (clinic_id, receipt_no),
-    INDEX idx_pos_time (clinic_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE pos_sale_items (
-    id VARCHAR(36) PRIMARY KEY,
-    sale_id VARCHAR(36) NOT NULL,
-    inventory_id VARCHAR(36) NOT NULL,
-    unit_type_sold ENUM('box', 'strip', 'unit') NOT NULL DEFAULT 'unit',
-    qty_sold INT NOT NULL,
-    base_units_deducted INT NOT NULL,
-    unit_price DECIMAL(10,2) NOT NULL,
-    line_total DECIMAL(12,2) NOT NULL,
-    FOREIGN KEY (sale_id) REFERENCES pos_sales(id) ON DELETE CASCADE,
-    FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE RESTRICT
+    INDEX idx_party_city (city)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE b2b_sales (
@@ -446,15 +488,15 @@ CREATE TABLE b2b_sales (
     party_id VARCHAR(36) NOT NULL,
     salesman_id VARCHAR(36) NULL,
     warehouse_id VARCHAR(36) NOT NULL,
-    cashier_id VARCHAR(36) NOT NULL,
+    cashier_id VARCHAR(36) NULL,
     subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     trade_discount_pct DECIMAL(5,2) DEFAULT 0.00,
     trade_discount_rs DECIMAL(12,2) DEFAULT 0.00,
     net_total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    due_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    payment_mode ENUM('credit', 'cash', 'cheque', 'bank_transfer') DEFAULT 'credit',
-    cheque_no VARCHAR(100) NULL,
+    paid_amount DECIMAL(12,2) DEFAULT 0.00,
+    due_amount DECIMAL(12,2) DEFAULT 0.00,
+    payment_mode ENUM('Party Udhaar (Credit)', 'Full Cash In Hand', 'Cheque / Bank Transfer') DEFAULT 'Full Cash In Hand',
+    cheque_no VARCHAR(50) NULL,
     bank_name VARCHAR(100) NULL,
     cheque_clearance_date DATE NULL,
     notes TEXT NULL,
@@ -463,9 +505,9 @@ CREATE TABLE b2b_sales (
     FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE RESTRICT,
     FOREIGN KEY (salesman_id) REFERENCES salesmen(id) ON DELETE SET NULL,
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT,
-    FOREIGN KEY (cashier_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (cashier_id) REFERENCES users(id) ON DELETE SET NULL,
     UNIQUE KEY uk_b2b_invoice (clinic_id, invoice_no),
-    INDEX idx_b2b_party (party_id, created_at)
+    INDEX idx_b2b_date (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE b2b_sale_items (
@@ -484,7 +526,93 @@ CREATE TABLE b2b_sale_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 6. FINANCIALS, LEDGERS, EXPENSES & DAY-END CLOSINGS
+-- 7. RETAIL PHARMACY (POS) DOMAIN
+-- ----------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS pos_sale_items;
+DROP TABLE IF EXISTS pos_sales;
+DROP TABLE IF EXISTS sales_return_items;
+DROP TABLE IF EXISTS sales_returns;
+
+CREATE TABLE pos_sales (
+    id VARCHAR(36) PRIMARY KEY,
+    clinic_id VARCHAR(36) NOT NULL,
+    receipt_no VARCHAR(50) NOT NULL,
+    warehouse_id VARCHAR(36) NOT NULL,
+    cashier_id VARCHAR(36) NULL,
+    linked_visit_id VARCHAR(36) NULL,
+    patient_id VARCHAR(36) NULL,
+    customer_name VARCHAR(255) DEFAULT 'Walk-in Customer',
+    customer_phone VARCHAR(50) NULL,
+    subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    discount_amount DECIMAL(12,2) DEFAULT 0.00,
+    tax_amount DECIMAL(12,2) DEFAULT 0.00,
+    net_total DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    change_amount DECIMAL(12,2) DEFAULT 0.00,
+    payment_mode ENUM('Cash', 'Credit', 'Card', 'Online') DEFAULT 'Cash',
+    is_voided BOOLEAN DEFAULT FALSE,
+    void_reason TEXT NULL,
+    voided_by VARCHAR(36) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT,
+    FOREIGN KEY (cashier_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (linked_visit_id) REFERENCES visits(id) ON DELETE SET NULL,
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL,
+    FOREIGN KEY (voided_by) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY uk_pos_receipt (clinic_id, receipt_no),
+    INDEX idx_pos_time (warehouse_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE pos_sale_items (
+    id VARCHAR(36) PRIMARY KEY,
+    sale_id VARCHAR(36) NOT NULL,
+    inventory_id VARCHAR(36) NOT NULL,
+    unit_type_sold ENUM('unit', 'strip', 'box') DEFAULT 'unit',
+    qty_sold INT NOT NULL,
+    base_units_deducted INT NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    disc_pct DECIMAL(5,2) DEFAULT 0.00,
+    disc_flat DECIMAL(10,2) DEFAULT 0.00,
+    line_total DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (sale_id) REFERENCES pos_sales(id) ON DELETE CASCADE,
+    FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE sales_returns (
+    id VARCHAR(36) PRIMARY KEY,
+    clinic_id VARCHAR(36) NOT NULL,
+    return_no VARCHAR(50) NOT NULL,
+    sale_id VARCHAR(36) NULL,
+    sale_type ENUM('pos_sale', 'b2b_sale') DEFAULT 'pos_sale',
+    warehouse_id VARCHAR(36) NOT NULL,
+    refund_type ENUM('cash', 'credit_adjustment', 'replacement') DEFAULT 'cash',
+    refund_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    reason TEXT NULL,
+    processed_by VARCHAR(36) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT,
+    FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY uk_return_no (clinic_id, return_no),
+    INDEX idx_ret_clinic_time (clinic_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE sales_return_items (
+    id VARCHAR(36) PRIMARY KEY,
+    return_id VARCHAR(36) NOT NULL,
+    inventory_id VARCHAR(36) NOT NULL,
+    quantity_returned INT NOT NULL,
+    base_units_restocked INT NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    line_total DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (return_id) REFERENCES sales_returns(id) ON DELETE CASCADE,
+    FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- 8. FINANCE, EXPENSES & DAY CLOSING DOMAIN
 -- ----------------------------------------------------------------------------
 
 DROP TABLE IF EXISTS shift_closings;
@@ -564,7 +692,24 @@ CREATE TABLE shift_closings (
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT,
     FOREIGN KEY (cashier_id) REFERENCES users(id) ON DELETE RESTRICT,
+    UNIQUE KEY uk_shift_closing (clinic_id, warehouse_id, shift_date),
     INDEX idx_shift_audit (warehouse_id, shift_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- 9. CLOUD SYNCHRONIZATION & IDEMPOTENCY DOMAIN
+-- ----------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS idempotency_keys;
+
+CREATE TABLE idempotency_keys (
+    idempotency_key VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    endpoint VARCHAR(100) NOT NULL,
+    response_code INT NOT NULL DEFAULT 200,
+    response_body JSON NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_idempotency_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Re-enable Foreign Key Checks

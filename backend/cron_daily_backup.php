@@ -54,11 +54,7 @@ try {
         $settings[$r['setting_key']] = $r['setting_value'];
     }
 
-    $apiKey = (string)($settings['resend_api_key'] ?? Env::get('RESEND_API_KEY', 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8'));
-    if (empty($apiKey)) {
-        $apiKey = 're_W8MESfRA_HrgbjEaM47s2w3XD25tREey8';
-    }
-
+    $apiKey = (string)($settings['resend_api_key'] ?? Env::get('RESEND_API_KEY', ''));
     $targetEmail = (string)($settings['notification_email'] ?? Env::get('NOTIFICATION_EMAIL', 'drasifhosting@gmail.com'));
     if (empty($targetEmail)) {
         $targetEmail = 'drasifhosting@gmail.com';
@@ -190,12 +186,15 @@ try {
     } catch (\Throwable $e) {}
 
     try {
-        $sStmt = $db->query("SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE DATE(created_at) = CURDATE()");
+        $sStmt = $db->query("SELECT (
+            (SELECT COALESCE(SUM(net_total), 0) FROM pos_sales WHERE DATE(created_at) = CURDATE() AND is_voided = 0) +
+            (SELECT COALESCE(SUM(net_total), 0) FROM b2b_sales WHERE DATE(created_at) = CURDATE())
+        ) AS today_sales");
         if ($sStmt) $salesToday = (float)$sStmt->fetchColumn();
     } catch (\Throwable $e) {}
 
     try {
-        $iStmt = $db->query("SELECT COALESCE(SUM(quantity * sale_price), 0) FROM inventory");
+        $iStmt = $db->query("SELECT COALESCE(SUM(ws.total_base_units * i.unit_sale_price), 0) FROM warehouse_stocks ws JOIN inventory i ON i.id = ws.inventory_id");
         if ($iStmt) $stockValuation = (float)$iStmt->fetchColumn();
     } catch (\Throwable $e) {}
 
@@ -211,9 +210,12 @@ try {
     $filePath = "{$backupDir}/{$filename}";
 
     $tables = [
-        'clinics', 'users', 'patients', 'visits', 'inventory', 'sales',
-        'purchases', 'cashbook', 'parties', 'suppliers', 'expenses', 'warehouses',
-        'system_settings', 'audit_logs'
+        'clinics', 'users', 'patients', 'visits', 'clinic_services', 'patient_documents',
+        'inventory', 'warehouse_stocks', 'medicine_batches', 'stock_movements', 'stock_transfers', 'stock_transfer_items',
+        'pos_sales', 'pos_sale_items', 'b2b_sales', 'b2b_sale_items', 'sales_returns', 'sales_return_items',
+        'purchases', 'purchase_items', 'cashbook', 'parties', 'suppliers', 'supplier_ledger',
+        'patient_ledger', 'expenses', 'shift_closings', 'warehouses', 'salesmen', 'accounts',
+        'transactions', 'approvals', 'system_settings', 'audit_logs', 'app_cloud_state'
     ];
 
     $fullDbExport = [

@@ -5,6 +5,7 @@
 
 import { formatPatientAge } from "./formatters.js";
 import { CLINIC_LOGO_BASE64 } from "./clinicLogoBase64.js";
+import { getShortVersionBadge } from "./version.js";
 
 /**
  * Get user customized receipt branding & layout configuration
@@ -32,9 +33,19 @@ export function getCustomReceiptConfig() {
  * Shared clinic header HTML block for all thermal receipts.
  * Dynamically adheres to user customized titles, addresses, phones, and logo from Receipt Studio.
  */
+function sanitizeLogoSrc(src) {
+  if (!src || typeof src !== "string") return CLINIC_LOGO_BASE64;
+  const clean = src.trim();
+  if (clean.startsWith("data:image/") || clean.startsWith("/") || clean.startsWith("http://") || clean.startsWith("https://")) {
+    return clean.replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  return CLINIC_LOGO_BASE64;
+}
+
 function getLogoHeaderHtml(docTypeLabel = "") {
   const cfg = getCustomReceiptConfig();
-  const logoSrc = (cfg.show_logo !== false && cfg.logo_base64) ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
+  const rawLogo = (cfg.show_logo !== false && cfg.logo_base64) ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
+  const logoSrc = sanitizeLogoSrc(rawLogo);
   
   let headerHtml = "";
   if (cfg.show_logo !== false && logoSrc) {
@@ -58,10 +69,12 @@ function getLogoHeaderHtml(docTypeLabel = "") {
  * Shared software branding watermark for all thermal receipts
  */
 export function getWatermarkFooterHtml() {
+  const versionBadge = typeof getShortVersionBadge === "function" ? getShortVersionBadge() : "v2.5.0";
   return `
     <div style="text-align: center; margin-top: 5px; padding-top: 3px; border-top: 1px dashed #cbd5e1; font-size: 8.5px; font-family: monospace; color: #475569; line-height: 1.35;">
       <div style="font-weight: 800; color: #0f766e; letter-spacing: 0.3px;">*** Powered by CliniCore Software ***</div>
       <div style="color: #334155; font-weight: 700;">www.krishbaresa.tech &nbsp;|&nbsp; 0314-2291356</div>
+      <div style="color: #94a3b8; font-size: 7.5px; margin-top: 1px;">Build: ${versionBadge}</div>
     </div>
   `;
 }

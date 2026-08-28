@@ -61,11 +61,18 @@ class StorageController {
     public function serve(): void {
         AuthMiddleware::authenticate();
 
+        $allowedTypes = ['prescriptions', 'reports', 'xrays', 'documents', 'profiles'];
         $type = $_GET['type'] ?? 'prescriptions';
+        if (!in_array($type, $allowedTypes, true)) {
+            Response::badRequest('Invalid file storage category.');
+            return;
+        }
+
         $name = basename($_GET['name'] ?? '');
 
         if (!$name) {
             Response::notFound('File parameter missing.');
+            return;
         }
 
         $storagePath = (string) Env::get('STORAGE_PATH', __DIR__ . '/../../storage/uploads');

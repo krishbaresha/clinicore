@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbClinic, dbUsers, dbWarehouses, dbClinicServices, exportFullDatabase, importFullDatabase, clearAllTransactionalData, hashPassword } from "../api/db.js";
 

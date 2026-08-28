@@ -5,6 +5,7 @@ namespace CliniCore\Controllers;
 
 use CliniCore\Config\Database;
 use CliniCore\Utils\JWT;
+use CliniCore\Utils\RateLimiter;
 use CliniCore\Utils\Response;
 use CliniCore\Utils\Validator;
 use CliniCore\Middleware\AuthMiddleware;
@@ -22,6 +23,9 @@ class AuthController {
         $username = trim((string) $body['username']);
         $password = (string) $body['password'];
 
+        // Server-Side Rate Limiting (5 attempts per 5 minutes per user/IP)
+        RateLimiter::check('login', 5, 300, $username);
+
         $db = Database::getConnection();
         $stmt = $db->prepare("
             SELECT u.id, u.clinic_id, u.name, u.display_label, u.role, u.phone, u.email, 
@@ -36,8 +40,12 @@ class AuthController {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user || !password_verify($password, $user['password_hash'])) {
+            RateLimiter::hit('login', 300, $username);
             Response::error('INVALID_CREDENTIALS', 'Invalid username or password.', 401);
         }
+
+        // Clear rate limiter upon successful authentication
+        RateLimiter::clear('login', $username);
 
         // Generate JWT Token
         $token = JWT::encode([

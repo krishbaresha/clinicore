@@ -1,4 +1,4 @@
-import { dbInventory, dbSales, dbVisits, dbExpenses, dbReturns, resetDatabaseToDemoData } from "./db.js";
+import { dbInventory, dbSales, dbVisits, dbExpenses, dbReturns, dbStockMovements, resetDatabaseToDemoData, safeMoney, safeMul } from "./db.js";
 import {
   pharmacyExpenseSchema,
   inventoryItemSchema,
@@ -28,6 +28,31 @@ export function deletePharmacyExpense(id) {
 export function processSaleReturn(payload) {
   try {
     const res = dbReturns.processReturn(payload);
+    if (res && res.returned_items) {
+      (res.returned_items || []).forEach((item) => {
+        if (item.inventory_id) {
+          const baseUnits = Number(item.base_units || item.base_units_deducted || item.quantity_returned || item.qty || 1);
+          const inv = dbInventory.getById(item.inventory_id);
+          dbStockMovements.recordMovement({
+            inventory_id: item.inventory_id,
+            medicine_name: item.medicine_name || inv?.medicine_name || "Medicine Item",
+            company_name: inv?.company_name || "",
+            item_code: inv?.item_code || "",
+            movement_type: "return",
+            direction: "IN",
+            source_location_id: "CUSTOMER",
+            destination_location_id: "wh_str",
+            qty_base_units: baseUnits,
+            rate_per_base_unit: item.unit_price || inv?.unit_sale_price || 0,
+            gross_amount: safeMoney(safeMul(baseUnits, item.unit_price || inv?.unit_sale_price || 0)),
+            net_amount: safeMoney(safeMul(baseUnits, item.unit_price || inv?.unit_sale_price || 0)),
+            source_voucher_type: "SALES_RETURN",
+            source_voucher_no: res.return_voucher_no || res.id || "RET-VOUCHER",
+            notes: `Sales return restock: ${payload.reason || "Customer Return"}`,
+          });
+        }
+      });
+    }
     return { success: true, data: res, error: null };
   } catch (err) {
     return { success: false, data: null, error: { code: "RETURN_ERROR", message: err.message } };
@@ -74,6 +99,8 @@ export function recordSale(formData) {
     return { success: false, data: null, error: { code: "INSUFFICIENT_STOCK", message: `Insufficient stock. Only ${currentBaseStock} base ${item.unit_label || "unit"}s available.` } };
   }
 
+  const lineTotal = safeMoney(safeMul(unitPrice, qty));
+
   const sale = dbSales.checkout({
     visit_id: linked_visit_id || null,
     items: [{
@@ -85,9 +112,34 @@ export function recordSale(formData) {
       base_units: baseUnitsNeeded,
       base_units_deducted: baseUnitsNeeded,
       unit_price: unitPrice,
-      line_total: parseFloat((unitPrice * qty).toFixed(2)),
+      line_total: lineTotal,
     }],
   });
+
+  try {
+    dbStockMovements.recordMovement({
+      inventory_id,
+      medicine_name: item.medicine_name,
+      company_name: item.company_name,
+      item_code: item.item_code,
+      movement_type: "sale",
+      direction: "OUT",
+      source_location_id: "wh_str",
+      destination_location_id: "CUSTOMER",
+      selected_unit_type,
+      qty_selected_unit: qty,
+      qty_base_units: baseUnitsNeeded,
+      rate_per_base_unit: unitPrice,
+      gross_amount: lineTotal,
+      discount_amount: 0,
+      net_amount: lineTotal,
+      source_voucher_type: "POS_RECEIPT",
+      source_voucher_no: sale?.receipt_no || sale?.id || "POS-SALE",
+      source_voucher_id: sale?.id || "",
+      notes: `Sold ${qty} ${unitLabel}(s) at counter POS`,
+    });
+  } catch {}
+
   return { success: true, data: sale, error: null };
 }
 
