@@ -1,16 +1,46 @@
-# React + Vite
+# 🏥 ClinicFlow Frontend (React 19 + Vite 8 + Tailwind CSS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This directory contains the production Single Page Application (SPA) and Offline-First Progressive Web App (PWA) client for **ClinicFlow (CliniCore)**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Tech Stack
 
-## React Compiler
+- **Framework:** React 19 SPA (`react`, `react-dom`, `react-router-dom` v7)
+- **Bundler:** Vite 8.2.1 (Ultra-fast Hot Module Replacement & production chunking)
+- **Styling:** Tailwind CSS v4 with Glassmorphism and UI/UX Pro Max tokens
+- **Icons:** Material Symbols Outlined & Lucide React
+- **Linter & Code Quality:** Oxlint (strict AST analysis) & Custom Hook Scan Pipeline
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the Oxlint configuration
+## 🚀 Development Scripts
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+# Start local development server with /api proxy
+npm run dev
+
+# Run oxlint AST static analysis
+npm run lint
+
+# Execute full automated test battery (308 tests across 32 test suites)
+npm test
+
+# Build production distribution bundle to /dist
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+---
+
+## 📁 Key Frontend Directories
+
+- `src/api/db.js` — In-memory memoized cache + $O(1)$ local storage database engine.
+- `src/api/auth.js` — Session authentication, SHA-256 digests, and RBAC guards.
+- `src/api/syncEngine.js` — Offline outbox queue & mutex-locked cloud synchronization.
+- `src/utils/thermalPrinter.js` — Low-ink 80mm ESC/POS thermal receipt formatter.
+- `src/utils/imageCompressor.js` — Client-side canvas JPEG compressor for patient clinical records.
+- `src/pages/` — 20+ modular lazy-loaded screens for OPD, POS, EMR, Inventory, Godowns, Purchases, and Super Admin.
+- `src/components/` — Reusable dialogs, photo lightboxes, stock ledgers, and shortcut cheatsheets.
