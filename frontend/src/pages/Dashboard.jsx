@@ -59,6 +59,8 @@ export default function Dashboard() {
   // Compute live stats efficiently in single-pass O(N) memoized block
   const {
     todayVisits,
+    todaySales,
+    todayExpenses,
     feesToday,
     myTodayVisits,
     myFeesToday,
@@ -130,6 +132,8 @@ export default function Dashboard() {
 
     return {
       todayVisits: tVisits,
+      todaySales: tSales,
+      todayExpenses: tExpenses,
       feesToday: fToday,
       myTodayVisits: myTVisits,
       myFeesToday: myFToday,
