@@ -223,6 +223,7 @@ export function printThermalReceipt(sale, clinicData = null) {
 
   const rawDate = sale.sale_date ? new Date(sale.sale_date) : new Date();
   const dateTimeStr = rawDate.toLocaleString("en-US", {
+    timeZone: "Asia/Karachi",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -394,11 +395,12 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
   const showNote     = isBlockEnabled(_blocks, "custom_note");
   const cfg          = getCustomReceiptConfig();
 
-  // Use the closing date but always display in Pakistan Standard Time (UTC+5)
-  const rawDate  = closing.date || closing.closing_date ? new Date(closing.date || closing.closing_date) : new Date();
   const pkOptions = { timeZone: "Asia/Karachi" };
-  const dateStr  = rawDate.toLocaleDateString("en-CA", pkOptions); // YYYY-MM-DD
-  const timeStr  = rawDate.toLocaleString("en-US", { ...pkOptions, hour: "2-digit", minute: "2-digit", hour12: true });
+  const closingDateRaw = closing.date || closing.closing_date;
+  const dateStr = closingDateRaw
+    ? new Date(closingDateRaw + "T00:00:00").toLocaleDateString("en-CA", pkOptions)
+    : new Date().toLocaleDateString("en-CA", pkOptions);
+  const timeStr = new Date().toLocaleString("en-US", { ...pkOptions, hour: "2-digit", minute: "2-digit", hour12: true });
 
   const closedBy   = escapeHtml(closing.closed_by || closing.cashier_name || "Store Manager");
   const consultant = escapeHtml(closing.consultant || closing.doctor_name || cfg.doctor_name || "Dr. Muhammad Asif Ashraf Khan");
@@ -595,6 +597,7 @@ export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicDa
 
   const rawDate = purchase.purchase_date ? new Date(purchase.purchase_date) : new Date();
   const dateTimeStr = rawDate.toLocaleString("en-US", {
+    timeZone: "Asia/Karachi",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -721,6 +724,7 @@ export function printCashVoucherReceipt(entry, clinicData = null) {
 
   const rawDate = entry.date ? new Date(entry.date) : new Date();
   const dateTimeStr = rawDate.toLocaleString("en-US", {
+    timeZone: "Asia/Karachi",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -863,6 +867,7 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
 
   const rawDate = receipt.registeredAt ? new Date(receipt.registeredAt) : new Date();
   const dateTimeStr = rawDate.toLocaleString("en-US", {
+    timeZone: "Asia/Karachi",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
@@ -997,6 +1002,7 @@ export function printProductStockCard(item, transactions = [], summary = {}, cli
   const clinicPhone = escapeHtml(clinicData?.phone || "0300-1234567");
   const rawDate = new Date();
   const dateTimeStr = rawDate.toLocaleString("en-US", {
+    timeZone: "Asia/Karachi",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: true
   });
