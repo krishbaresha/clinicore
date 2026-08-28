@@ -369,9 +369,7 @@ export function printThermalReceipt(sale, clinicData = null) {
         <div class="dotted-line"></div>` : ""}
 
         <!-- Powered By (permanent — always shown) -->
-        <div style="text-align: center; margin-top: 3px; font-size: 9px; font-weight: 700; color: #6b7280; line-height: 1.3;">
-          <span>K.B Software &nbsp;|&nbsp; <span style="color:#0f766e;font-family:monospace;font-weight:900;">03142291356</span></span>
-        </div>
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
@@ -384,55 +382,35 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
   if (!closing) return;
 
   // Read block visibility saved by Receipt Studio for closing mode
-  const _blocks    = getBlocksConfig("closing");
-  const showLogo   = isBlockEnabled(_blocks, "header_logo");
-  const showTagline= isBlockEnabled(_blocks, "tagline");
-  const showContact= isBlockEnabled(_blocks, "contact_info");
+  const _blocks      = getBlocksConfig("closing");
+  const showLogo     = isBlockEnabled(_blocks, "header_logo");
+  const showTagline  = isBlockEnabled(_blocks, "tagline");
+  const showContact  = isBlockEnabled(_blocks, "contact_info");
+  const showMeta     = isBlockEnabled(_blocks, "meta_info");
+  const showCustomer = isBlockEnabled(_blocks, "customer_info");
+  const showItems    = isBlockEnabled(_blocks, "items_table");
+  const showTotals   = isBlockEnabled(_blocks, "financial_totals");
+  const showUrdu     = isBlockEnabled(_blocks, "urdu_footer");
+  const showNote     = isBlockEnabled(_blocks, "custom_note");
+  const cfg          = getCustomReceiptConfig();
 
-  const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store");
-  const rawDate = closing.date || closing.closing_date ? new Date(closing.date || closing.closing_date) : new Date();
-  const dateStr = rawDate.toISOString().split("T")[0];
-  const dateTimeStr = rawDate.toLocaleString("en-US", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: true
-  });
+  const rawDate  = closing.date || closing.closing_date ? new Date(closing.date || closing.closing_date) : new Date();
+  const dateStr  = rawDate.toISOString().split("T")[0];
+  const timeStr  = rawDate.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
 
-  const openingCash = Number(closing.opening_cash || 0);
+  const closedBy   = escapeHtml(closing.closed_by || closing.cashier_name || "Cashier Desk");
+  const consultant = escapeHtml(closing.consultant || closing.doctor_name || cfg.doctor_name || "Dr. Muhammad Asif Ashraf Khan");
+  const auditScope = escapeHtml(closing.audit_scope || "All Terminals & Godowns");
 
-  // Sales (DrCreate / Retail / B2B)
-  const saleTotal = Number(closing.sales?.total ?? (Number(closing.pharmacy_sales || 0) + Number(closing.wholesale_b2b || closing.wholesale_sales || 0)));
-  const saleCash = Number(closing.sales?.cash ?? saleTotal);
-  const saleCredit = Number(closing.sales?.credit ?? Math.max(0, saleTotal - saleCash));
-
-  // Purchases (GRN)
-  const purchaseTotal = Number(closing.purchases?.total ?? Number(closing.supplier_payments || 0));
-  const purchaseCash = Number(closing.purchases?.cash ?? purchaseTotal);
-  const purchaseCredit = Number(closing.purchases?.credit ?? Math.max(0, purchaseTotal - purchaseCash));
-
-  // Payments Paid Items
-  const paidItems = closing.payments_paid?.items || [];
-  const paidTotal = Number(closing.payments_paid?.total ?? closing.daily_expenses ?? closing.expenses ?? 0);
-
-  // Payments Received Items
-  const recItems = closing.payments_received?.items || [];
-  const recTotal = Number(closing.payments_received?.total ?? (Number(closing.opd_fees || 0) + Number(closing.wholesale_b2b || 0)));
-
-  // Net Closing Cash
-  const closingCash = Number(closing.closing_cash ?? closing.net_cash_in_hand ?? closing.expected_cash ?? (openingCash + saleCash + recTotal - purchaseCash - paidTotal));
-
-  const paidItemsHtml = paidItems.length > 0 ? paidItems.map(it => `
-    <div style="display:flex; justify-content:space-between; padding: 2px 0; font-size: 10px; color: #1f2937;">
-      <span style="font-weight:700; max-width: 48mm; word-break: break-word;">${escapeHtml(it.account_name || 'Expense')} ${it.naration ? `<span style="font-weight:normal;color:#6b7280;">(${escapeHtml(it.naration)})</span>` : ''}</span>
-      <span style="font-weight:900; color:#b91c1c; font-family:monospace; shrink-0;">Rs. ${Number(it.amount || 0).toLocaleString("en-US")}</span>
-    </div>
-  `).join('') : '<div style="font-size: 9.5px; color: #9ca3af; text-align: center; padding: 2px 0;">No payments paid on this date.</div>';
-
-  const recItemsHtml = recItems.length > 0 ? recItems.map(it => `
-    <div style="display:flex; justify-content:space-between; padding: 2px 0; font-size: 10px; color: #1f2937;">
-      <span style="font-weight:700; max-width: 48mm; word-break: break-word;">${escapeHtml(it.account_name || 'Receive')} ${it.naration ? `<span style="font-weight:normal;color:#6b7280;">(${escapeHtml(it.naration)})</span>` : ''}</span>
-      <span style="font-weight:900; color:#047857; font-family:monospace; shrink-0;">Rs. ${Number(it.amount || 0).toLocaleString("en-US")}</span>
-    </div>
-  `).join('') : '<div style="font-size: 9.5px; color: #9ca3af; text-align: center; padding: 2px 0;">No cash payments received on this date.</div>';
+  // Revenue breakdown — map both new-style and legacy field names
+  const opdFees        = Number(closing.opd_fees || closing.payments_received?.total || 0);
+  const retailSales    = Number(closing.retail_sales || closing.pharmacy_sales || closing.sales?.cash || 0);
+  const wholesaleSales = Number(closing.wholesale_sales || closing.wholesale_b2b || 0);
+  const expenses       = Number(closing.daily_expenses || closing.expenses || closing.payments_paid?.total || 0);
+  const netCash        = Number(
+    closing.closing_cash ?? closing.net_cash_in_hand ?? closing.expected_cash ??
+    (opdFees + retailSales + wholesaleSales - expenses)
+  );
 
   const receiptHtml = `
     <!DOCTYPE html>
@@ -453,138 +431,86 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
             font-size: 11px;
             line-height: 1.3;
           }
-          .card-box {
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            padding: 7px;
-            margin: 6px 0;
-            background: #f9fafb;
-          }
-          .card-box-paid {
-            border: 1px solid #fecdd3;
-            border-radius: 10px;
-            padding: 7px;
-            margin: 6px 0;
-            background: #fff1f2;
-          }
-          .card-box-rec {
-            border: 1px solid #a7f3d0;
-            border-radius: 10px;
-            padding: 7px;
-            margin: 6px 0;
-            background: #ecfdf5;
-          }
-          .box-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 900;
-            font-size: 12px;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 3px;
-          }
+          .dotted-line { border-top: 1px dashed #9ca3af; margin: 4px 0; }
+          .meta-text { font-size: 10px; font-weight: 600; color: #374151; line-height: 1.4; }
           @media print { body { width: 76mm; padding: 2px; } }
         </style>
       </head>
       <body>
-        <!-- Clinic Header (blocks: header_logo, tagline, contact_info) -->
-        ${getLogoHeaderHtml("Z-Day Closing Statement", { showLogo, showTagline, showContact })}
+        <!-- Clinic Header (header_logo, clinic_name, tagline, contact_info blocks) -->
+        ${getLogoHeaderHtml("Executive Shift Z-Closing Statement", { showLogo, showTagline, showContact })}
 
-        <!-- Date & Closing Receipt Banner -->
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #111827; font-size: 11px;">
-          <div><strong style="color:#4b5563;">Date:</strong> <span style="font-weight:900; font-family:monospace;">${dateStr}</span></div>
-          <div style="font-weight:900; font-size:12px; text-transform:uppercase; letter-spacing:0.3px;">CLOSSING RECEIPT</div>
+        <div class="dotted-line"></div>
+
+        <!-- Meta Info: Date / Time (meta_info block) -->
+        ${showMeta ? `
+        <div class="meta-text">
+          <div style="display:flex;justify-content:space-between;">
+            <span><strong>Date:</strong> ${dateStr}</span>
+            <span><strong>Time:</strong> ${timeStr}</span>
+          </div>
+        </div>` : ""}
+
+        <!-- Closed By / Consultant (customer_info block) -->
+        ${showCustomer ? `
+        <div class="meta-text" style="margin-top:3px;">
+          <div><strong style="color:#4b5563;">Closed By:</strong> ${closedBy}</div>
+          <div><strong style="color:#4b5563;">Audit Scope:</strong> ${auditScope}</div>
+          <div><strong style="color:#4b5563;">Consultant:</strong> ${consultant}</div>
+        </div>` : ""}
+
+        <div class="dotted-line"></div>
+
+        <!-- Revenue Breakdown (items_table block) -->
+        ${showItems ? `
+        <div style="font-size:10.5px;margin:2px 0;">
+          ${opdFees > 0 ? `
+          <div style="display:flex;justify-content:space-between;padding:2px 0;">
+            <span>• OPD Doctor Consultation Fees:</span>
+            <span style="font-weight:700;">Rs. ${opdFees.toLocaleString("en-US")}</span>
+          </div>` : ""}
+          ${retailSales > 0 ? `
+          <div style="display:flex;justify-content:space-between;padding:2px 0;">
+            <span>• Retail Counter POS Sales:</span>
+            <span style="font-weight:700;">Rs. ${retailSales.toLocaleString("en-US")}</span>
+          </div>` : ""}
+          ${wholesaleSales > 0 ? `
+          <div style="display:flex;justify-content:space-between;padding:2px 0;">
+            <span>• Wholesale Godown Sales:</span>
+            <span style="font-weight:700;">Rs. ${wholesaleSales.toLocaleString("en-US")}</span>
+          </div>` : ""}
+          ${expenses > 0 ? `
+          <div style="display:flex;justify-content:space-between;padding:2px 0;color:#b91c1c;">
+            <span>• Operational Expenses:</span>
+            <span style="font-weight:700;">- Rs. ${expenses.toLocaleString("en-US")}</span>
+          </div>` : ""}
+        </div>` : ""}
+
+        <!-- Net Cash (financial_totals block) -->
+        ${showTotals ? `
+        <div style="margin-top:6px;padding-top:5px;border-top:2px solid #111827;display:flex;justify-content:space-between;font-weight:900;font-size:14px;color:#0f172a;">
+          <span>NET CASH IN HAND:</span>
+          <span>Rs. ${netCash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>` : ""}
+
+        <div class="dotted-line"></div>
+
+        <!-- Urdu Footer (urdu_footer block) -->
+        ${showUrdu && cfg.urdu_footer_text ? `
+        <div style="text-align:center;font-size:9.5px;font-weight:700;color:#374151;direction:rtl;margin:3px 0;">
+          ${escapeHtml(cfg.urdu_footer_text)}
         </div>
+        <div class="dotted-line"></div>` : ""}
 
-        ${openingCash > 0 ? `
-          <div style="display: flex; justify-content: space-between; padding: 3px 0; font-size: 10.5px; font-weight: bold; color: #047857;">
-            <span>Opening Drawer Float:</span>
-            <span>Rs. ${openingCash.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-          </div>
-        ` : ''}
-
-        <!-- 1. SALE BOX -->
-        <div class="card-box">
-          <div class="box-header" style="color: #111827;">
-            <span style="font-family: Georgia, serif; font-size: 13px;">Sale</span>
-            <span style="color: #047857; font-family: monospace; font-size: 13px;">
-              Rs. ${saleTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div style="padding-top: 4px; font-size: 10.5px; color: #374151;">
-            <div style="display: flex; justify-content: space-between; padding: 1px 0;">
-              <span>Cash</span>
-              <span style="font-weight: bold; font-family: monospace;">Rs. ${saleCash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 1px 0;">
-              <span>Credit</span>
-              <span style="font-weight: bold; font-family: monospace; color: #b91c1c;">Rs. ${saleCredit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-          </div>
+        <!-- Custom Policy Note (custom_note block) -->
+        ${showNote && cfg.custom_policy_note ? `
+        <div style="text-align:center;font-size:9.5px;font-weight:700;color:#374151;font-style:italic;margin:3px 0;">
+          ${escapeHtml(cfg.custom_policy_note)}
         </div>
+        <div class="dotted-line"></div>` : ""}
 
-        <!-- 2. PURCHASE BOX -->
-        <div class="card-box">
-          <div class="box-header" style="color: #111827;">
-            <span style="font-family: Georgia, serif; font-size: 13px;">Purchase</span>
-            <span style="color: #111827; font-family: monospace; font-size: 13px;">
-              Rs. ${purchaseTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div style="padding-top: 4px; font-size: 10.5px; color: #374151;">
-            <div style="display: flex; justify-content: space-between; padding: 1px 0;">
-              <span>Cash</span>
-              <span style="font-weight: bold; font-family: monospace;">Rs. ${purchaseCash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 1px 0;">
-              <span>Credit</span>
-              <span style="font-weight: bold; font-family: monospace; color: #4b5563;">Rs. ${purchaseCredit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. PAYMENT PAID (Cash Outflows / Expenses) -->
-        <div class="card-box-paid">
-          <div class="box-header" style="color: #9f1239; border-color: #fecdd3;">
-            <span style="font-family: Georgia, serif; font-size: 13px;">Payment Paid</span>
-            <span style="color: #b91c1c; font-family: monospace; font-size: 13px;">
-              Rs. ${paidTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div style="padding-top: 5px;">
-            ${paidItemsHtml}
-          </div>
-        </div>
-
-        <!-- 4. PAYMENT RECEIVE (Cash Inflows) -->
-        <div class="card-box-rec">
-          <div class="box-header" style="color: #065f46; border-color: #a7f3d0;">
-            <span style="font-family: Georgia, serif; font-size: 13px;">Payment Receive</span>
-            <span style="color: #047857; font-family: monospace; font-size: 13px;">
-              Rs. ${recTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div style="padding-top: 5px;">
-            ${recItemsHtml}
-          </div>
-        </div>
-
-        <!-- 5. CLOSING CASH (Grand Highlighted Dark Box) -->
-        <div style="margin-top: 8px; padding-top: 6px; border-top: 2px dashed #4b5563;">
-          <div style="background: #0f172a; color: #fff; border-radius: 12px; padding: 9px 12px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-family: Georgia, serif; font-weight: 900; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase;">
-              Clossing Cash
-            </span>
-            <span style="font-family: monospace; font-weight: 900; font-size: 18px; color: #6ee7b7;">
-              Rs. ${closingCash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div style="text-align: center; margin-top: 10px; padding-top: 4px; font-size: 9px; font-weight: 700; color: #6b7280; border-top: 1px dotted #9ca3af;">
-          K.B Software Hyderabad &nbsp;|&nbsp; <span style="font-family:monospace; color:#0f766e; font-weight:900;">03142291356</span>
-        </div>
+        <!-- Powered By CliniCore (permanent) -->
+        ${getWatermarkFooterHtml()}
 
         <script>
           window.onload = function() {
@@ -600,6 +526,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
 
   executeThermalPrint(receiptHtml, `DayClosing_${dateStr}`);
 }
+
 
 /** Print Company / Supplier Stock Purchase Thermal Invoice */
 export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicData = null) {
@@ -727,9 +654,7 @@ export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicDa
 
         <div class="dotted-line"></div>
 
-        <div style="text-align: center; margin-top: 3px; font-size: 9px; font-weight: 800; color: #374151;">
-          K.B Software &nbsp;|&nbsp; <span style="color:#0d9488;font-family:monospace;font-weight:900;">03142291356</span>
-        </div>
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
@@ -853,9 +778,7 @@ export function printCashVoucherReceipt(entry, clinicData = null) {
           </div>
         </div>
 
-        <div style="text-align: center; margin-top: 8px; font-size: 9px; font-weight: 800; color: #374151;">
-          K.B Software &nbsp;|&nbsp; <span style="color:#0d9488;font-family:monospace;font-weight:900;">03142291356</span>
-        </div>
+        ${getWatermarkFooterHtml()}
 
         <script>
           window.onload = function() {
@@ -954,6 +877,7 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
           @media print { body { width: 76mm; padding: 2px; } }
         </style>
       </head>
+      <body>
         <div class="text-center">
           ${getLogoHeaderHtml("OPD Consultation Token", { showLogo, showTagline, showContact })}
           <div style="font-size: 10px; color: #555; margin-top: 2px;">${dateTimeStr}</div>
@@ -1009,10 +933,8 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
         </div>
         <div class="divider-single"></div>` : ""}
 
-        <div class="text-center" style="font-size: 9px; margin-top: 3px; font-weight: bold;">
-          <div>Please wait for your turn. Thank you!</div>
-          <div style="font-size: 9px; margin-top: 1px; color: #444;">شکریہ — جزاک اللہ خیرا</div>
-        </div>
+        <!-- Powered By CliniCore (permanent) -->
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
@@ -1129,9 +1051,7 @@ export function printProductStockCard(item, transactions = [], summary = {}, cli
 
         <div class="divider-single"></div>
 
-        <div class="text-center" style="font-size: 9px; margin-top: 4px; color: #333; font-weight: bold;">
-          Software Powered by: K.B Software · 03142291356
-        </div>
+        ${getWatermarkFooterHtml()}
 
         <script>
           window.onload = function() {
@@ -1217,9 +1137,7 @@ export function printInventoryListReceipt(items = [], categoryName = "All Catego
         <div style="text-align: center; font-size: 9px; font-weight: bold; margin-top: 3px;">
           Total Products in List: ${items.length}
         </div>
-        <div style="text-align: center; font-size: 8px; color: #555; margin-top: 2px;">
-          Software Powered by: K.B Software · 03142291356
-        </div>
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
@@ -1300,9 +1218,7 @@ export function printProductPricingListReceipt(items = [], categoryName = "All C
         <div style="text-align: center; font-size: 9px; font-weight: bold; margin-top: 3px;">
           Total Products: ${items.length}
         </div>
-        <div style="text-align: center; font-size: 8px; color: #555; margin-top: 2px;">
-          Software Powered by: K.B Software · 03142291356
-        </div>
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
@@ -1379,9 +1295,7 @@ export function printChartOfAccountsReceipt(accounts = [], filterType = "All", c
         <div style="text-align: center; font-size: 9px; font-weight: bold; margin-top: 3px;">
           Total Registered Accounts: ${accounts.length}
         </div>
-        <div style="text-align: center; font-size: 8px; color: #555; margin-top: 2px;">
-          Software Powered by: K.B Software · 03142291356
-        </div>
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
@@ -1469,9 +1383,7 @@ export function printStockLedgerReceipt(medicineName, timeline = [], clinic = nu
         <div style="font-size: 10px; font-weight: 900; text-align: center; margin-top: 3px; border-top: 1px solid #000; padding-top: 2px;">
           Current Net Stock: ${netBalance} Units
         </div>
-        <div style="text-align: center; font-size: 8px; color: #555; margin-top: 4px;">
-          Software Powered by: K.B Software · 03142291356
-        </div>
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
@@ -1590,10 +1502,7 @@ export function printPurchaseGRNReceipt(purchase, clinic = null) {
         ` : ""}
 
         <div class="divider-dashed"></div>
-        <div style="text-align: center; font-size: 8px; color: #555; margin-top: 3px;">
-          Goods Received & Verified into Godown Stock<br/>
-          Software Powered by: K.B Software · 03142291356
-        </div>
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
@@ -1736,9 +1645,7 @@ export function printSaleInvoiceReceipt(sale, clinic) {
         <div style="text-align: center; font-size: 8px; color: #555; margin-top: 3px;">
           ${escapeHtml(cfg.custom_policy_note || "Thank You for Your Business! Medicines sold are non-refundable without receipt.")}
         </div>` : `
-        <div style="text-align: center; font-size: 8px; color: #555; margin-top: 3px;">
-          Software Powered by: K.B Software · 03142291356
-        </div>`}
+        ${getWatermarkFooterHtml()}`}
       </body>
     </html>
   `;
@@ -1932,10 +1839,7 @@ export function printExecutiveAuditReceipt(auditData, clinicData = null) {
         </div>
 
         <div class="divider-dashed" style="margin-top: 6px;"></div>
-        <div style="text-align: center; font-size: 7.5px; color: #555; margin-top: 2px;">
-          Confidential Executive Audit Slip · System Verified<br/>
-          Software Powered by: K.B Software · 03142291356
-        </div>
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;
