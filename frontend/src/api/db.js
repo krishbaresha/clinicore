@@ -4572,6 +4572,7 @@ export const dbCashBook = {
           created_at: "2026-08-22T08:30:00.000Z"
         }
       ];
+      setCollection(KEYS.CASHBOOK, list);
     }
 
     let filtered = [...list];
