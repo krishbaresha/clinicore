@@ -65,6 +65,14 @@ ClinicFlow/
     - Any AI agent exploring architecture, cross-module connections, data flows, or dependencies MUST query the knowledge graph via:
       `graphify query "<question>"` or `graphify path "<source>" "<target>"`
     - Before modifying core subsystems, the agent queries graph precedents and preserves linked decision traces to guarantee zero architectural drift.
+12. **Rule 17 — Context Engineering, AST Verification & Zero-Side-Effect Guard (Mandatory):**
+    - **Scope Integrity Protocol:** Whenever an agent modifies any component, function, or memoized block, the agent MUST inspect all imports, destructured variables, and JSX references. Never drop or orphan existing variables (e.g. `todaySales`, `useRef`).
+    - **Mandatory Pre-Push Validation Pipeline:** Before finishing any task or pushing to Git, the AI agent MUST execute:
+      1. `node scripts/scan_imports_and_hooks.mjs` (Deep AST Hook & Symbol Validator).
+      2. `npx oxlint` (Undeclared identifier & scope validator).
+      3. `npm test` (Full 257+ test suite).
+      4. `npm run build` (Clean Vite bundle compilation).
+    - **Zero-Guess Code Preservation:** Never delete or alter working legacy logic unless explicitly asked. Verify both the direct change and its surrounding components.
 
 ---
 
@@ -81,4 +89,5 @@ ClinicFlow/
 - **Zero-Regression Rule:** Never break existing working code, thermal print engines, or database collections.
 - **Dual Persistence:** All licensing and system settings must sync both to local `localStorage` and MySQL backend (`system_settings`).
 - **Server-Side Background Autonomy:** Mission-critical automation must run via 24/7 Linux systemd daemons and crontab on the Hostinger VPS, not browser timers.
+
 

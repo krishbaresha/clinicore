@@ -49,6 +49,8 @@ To ensure past mistakes are NEVER repeated, adhere to these hardcoded lessons le
 | 3 | **Local-Only State Drift** | Saving settings (like License Policy or Kill Switches) only in browser `localStorage` leaves server MySQL unaware of policy changes. | **Always dual-persist to both local memory/storage AND MySQL backend (`system_settings`)** via centralized API endpoints. |
 | 4 | **Premature Script Abort on Deploy** | Bash scripts with `set -e` aborting on minor warnings (like npm optional notices) before reaching system service registration steps. | **Wrap non-fatal steps safely with `\|\| true` and place systemd daemon setup before verification checks.** |
 | 5 | **Hardcoded WhatsApp Phone Numbers** | Hardcoding arbitrary contact numbers on WhatsApp CTA buttons prevents dispatching directly to the clinic doctor's real number. | **Always pull dynamically from `activeClinic.phone` or `settings.whatsapp_gateway_no` with fallback to developer phone.** |
+| 6 | **Orphaned Memoized Variables** | Wrapping calculations in `useMemo` without returning all variables rendered in JSX (e.g. `todaySales`, `todayExpenses`) throws runtime `ReferenceError`. | **Every variable referenced in JSX must be in the return object and destructured.** Run `npx oxlint` and `scan_imports_and_hooks.mjs`. |
+| 7 | **Missing Hook Imports** | Adding new hooks (e.g. `useRef`, `useMemo`) without updating the `import { ... } from "react"` header causes runtime crashes. | **Mandatory Pre-Push AST Scan:** Always execute `node scripts/scan_imports_and_hooks.mjs` and `npx oxlint` before reporting any task complete. |
 
 ---
 
