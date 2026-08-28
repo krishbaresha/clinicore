@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { autoCropLogoImage } from "../utils/imageCompressor.js";
 import { Link } from "react-router-dom";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
@@ -58,14 +58,45 @@ export default function ReceiptStudio() {
     };
   });
 
-  // Reorderable & Toggleable Block Structure
-  const [blocks, setBlocks] = useState(() => {
-    try {
-      const saved = localStorage.getItem("cf_receipt_blocks_order");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_BLOCKS;
+  // Per-mode reorderable & toggleable block structures
+  // Each mode (pos, opd, b2b, grn, closing) gets its own independent block array.
+  // localStorage key: cf_receipt_blocks_order_<mode>
+  const [allModeBlocks, setAllModeBlocks] = useState(() => {
+    const result = {};
+    for (const t of TEMPLATE_TYPES) {
+      try {
+        const saved = localStorage.getItem(`cf_receipt_blocks_order_${t.id}`);
+        result[t.id] = saved ? JSON.parse(saved) : [...DEFAULT_BLOCKS];
+      } catch {
+        result[t.id] = [...DEFAULT_BLOCKS];
+      }
+    }
+    return result;
   });
+
+  // Derived: current mode's blocks (mutable view into allModeBlocks)
+  const blocks = allModeBlocks[selectedTemplate] ?? DEFAULT_BLOCKS;
+
+  // Stable setter — only updates the active mode's block array
+  const setBlocks = useCallback(
+    (updater) => {
+      setAllModeBlocks((prev) => ({
+        ...prev,
+        [selectedTemplate]: typeof updater === "function" ? updater(prev[selectedTemplate] ?? DEFAULT_BLOCKS) : updater,
+      }));
+    },
+    [selectedTemplate]
+  );
+
+  // Toast notification state (replaces browser alert())
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  const showToast = useCallback((message, type = "success") => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3200);
+  }, []);
 
   // Mock Dynamic Transaction Data for Live Calculations
   const [posData, setPosData] = useState({
@@ -201,18 +232,23 @@ export default function ReceiptStudio() {
 
   const handleSaveConfig = () => {
     try {
+      // Branding (clinic name, logo, tagline, address, phone) — shared across all modes
       localStorage.setItem("cf_receipt_custom_config", JSON.stringify(clinicConfig));
-      localStorage.setItem("cf_receipt_blocks_order", JSON.stringify(blocks));
-      alert("✅ Custom Receipt Template & Layout Order Saved to Local Storage!");
+      // Block layout (order + visibility) — saved per mode using mode-specific key
+      localStorage.setItem(`cf_receipt_blocks_order_${selectedTemplate}`, JSON.stringify(blocks));
+      const modeName = TEMPLATE_TYPES.find((t) => t.id === selectedTemplate)?.name || selectedTemplate.toUpperCase();
+      showToast(`✅ "${modeName}" receipt layout saved! Changes will apply across all ${selectedTemplate.toUpperCase()} receipts.`);
     } catch (err) {
-      alert("Failed to save: " + err.message);
+      showToast(`❌ Save failed: ${err.message}`, "error");
     }
   };
 
   const handleResetDefaults = () => {
-    if (confirm("Reset receipt layout order back to default factory styling?")) {
+    const modeName = TEMPLATE_TYPES.find((t) => t.id === selectedTemplate)?.name || selectedTemplate.toUpperCase();
+    if (confirm(`Reset "${modeName}" receipt layout back to factory defaults?`)) {
       setBlocks(DEFAULT_BLOCKS);
-      localStorage.removeItem("cf_receipt_blocks_order");
+      localStorage.removeItem(`cf_receipt_blocks_order_${selectedTemplate}`);
+      showToast(`↩ "${modeName}" reset to factory defaults.`, "info");
     }
   };
 
@@ -250,6 +286,27 @@ export default function ReceiptStudio() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* Toast Notification (replaces browser alert) */}
+      {toast && (
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-[92vw] sm:max-w-lg px-4 py-3 rounded-2xl shadow-xl flex items-start gap-2.5 text-sm font-bold animate-fade-in transition-all ${
+            toast.type === "error"
+              ? "bg-red-600 text-white"
+              : toast.type === "info"
+              ? "bg-teal-700 text-white"
+              : "bg-emerald-600 text-white"
+          }`}
+        >
+          <span className="material-symbols-outlined text-base shrink-0 mt-0.5">
+            {toast.type === "error" ? "error" : toast.type === "info" ? "info" : "check_circle"}
+          </span>
+          <span className="leading-snug">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-auto shrink-0 opacity-70 hover:opacity-100 cursor-pointer">
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+      )}
+
       {/* Header Bar matching CliniCore Teal Theme */}
       <header className="sticky top-0 z-30 bg-teal-900 text-white shadow-lg border-b border-teal-800">
         <div className="max-w-7xl mx-auto px-3 py-2.5 sm:px-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -269,7 +326,8 @@ export default function ReceiptStudio() {
                 </span>
               </h1>
               <p className="text-[10px] sm:text-[11px] text-teal-200 font-medium truncate">
-                Thermal canvas customizer &amp; live receipt arithmetic tuner
+                Editing: <strong className="text-white">{TEMPLATE_TYPES.find((t) => t.id === selectedTemplate)?.name ?? selectedTemplate}</strong>
+                {" · "}changes apply to all {selectedTemplate.toUpperCase()} receipts app-wide
               </p>
             </div>
           </div>

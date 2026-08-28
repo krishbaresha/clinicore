@@ -30,6 +30,32 @@ export function getCustomReceiptConfig() {
 }
 
 /**
+ * Get per-mode block visibility/order config saved by Receipt Studio.
+ * Key format: cf_receipt_blocks_order_<mode>  (pos | opd | b2b | grn | closing)
+ * Returns null when no overrides saved — callers treat null as "show everything".
+ */
+export function getBlocksConfig(mode = "pos") {
+  try {
+    const raw =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem(`cf_receipt_blocks_order_${mode}`)
+        : null;
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+/**
+ * Check if a named section block is enabled in the saved blocks array.
+ * When blocks is null (no saved config) every block defaults to enabled.
+ */
+export function isBlockEnabled(blocks, blockId) {
+  if (!blocks || !Array.isArray(blocks)) return true;
+  const found = blocks.find((b) => b.id === blockId);
+  return found ? found.enabled !== false : true;
+}
+
+/**
  * Shared clinic header HTML block for all thermal receipts.
  * Dynamically adheres to user customized titles, addresses, phones, and logo from Receipt Studio.
  */
@@ -42,26 +68,48 @@ function sanitizeLogoSrc(src) {
   return CLINIC_LOGO_BASE64;
 }
 
-function getLogoHeaderHtml(docTypeLabel = "") {
+/**
+ * Build clinic header HTML respecting per-block visibility from Receipt Studio.
+ *
+ * blockFlags shape (all optional, default true when omitted):
+ *   { showLogo, showClinicName, showTagline, showContact }
+ */
+function getLogoHeaderHtml(docTypeLabel = "", blockFlags = {}) {
   const cfg = getCustomReceiptConfig();
-  const rawLogo = (cfg.show_logo !== false && cfg.logo_base64) ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
+  const {
+    showLogo = true,
+    showClinicName = true,
+    showTagline = true,
+    showContact = true,
+  } = blockFlags;
+
+  const rawLogo = showLogo && cfg.logo_base64 ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
   const logoSrc = sanitizeLogoSrc(rawLogo);
-  
+
   let headerHtml = "";
-  if (cfg.show_logo !== false && logoSrc) {
+
+  // Logo image (header_logo block)
+  if (showLogo && logoSrc) {
     headerHtml += `<div style="text-align:center;margin:0 0 2px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:145px;max-height:85px;width:auto;height:auto;display:block;margin:0 auto;object-fit:contain;" /></div>`;
   }
-  
-  headerHtml += `
-    <div style="text-align: center; margin: 2px 0 3px 0; line-height: 1.25;">
-      <div style="font-size: 13px; font-weight: 900; color: #0f172a; text-transform: uppercase;">${escapeHtml(cfg.clinic_name || "Clinic & Store")}</div>
-      ${cfg.tagline ? `<div style="font-size: 9.5px; font-weight: 600; color: #475569; margin-top: 1px;">${escapeHtml(cfg.tagline)}</div>` : ""}
-      <div style="font-size: 9px; font-weight: 500; color: #64748b; margin-top: 1px;">${escapeHtml(cfg.address || "")}</div>
-      <div style="font-size: 9.5px; font-weight: 700; color: #334155;">Phone: ${escapeHtml(cfg.phone || "")}</div>
-      ${docTypeLabel ? `<div style="font-size: 10px; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; padding: 2px 0; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">${escapeHtml(docTypeLabel)}</div>` : ""}
-    </div>
-  `;
-  
+
+  // Text header (clinic_name always shown if present; tagline & contact_info conditional)
+  headerHtml += `<div style="text-align: center; margin: 2px 0 3px 0; line-height: 1.25;">`;
+  if (showClinicName) {
+    headerHtml += `<div style="font-size: 13px; font-weight: 900; color: #0f172a; text-transform: uppercase;">${escapeHtml(cfg.clinic_name || "Clinic & Store")}</div>`;
+  }
+  if (showTagline && cfg.tagline) {
+    headerHtml += `<div style="font-size: 9.5px; font-weight: 600; color: #475569; margin-top: 1px;">${escapeHtml(cfg.tagline)}</div>`;
+  }
+  if (showContact) {
+    headerHtml += `<div style="font-size: 9px; font-weight: 500; color: #64748b; margin-top: 1px;">${escapeHtml(cfg.address || "")}</div>`;
+    headerHtml += `<div style="font-size: 9.5px; font-weight: 700; color: #334155;">Phone: ${escapeHtml(cfg.phone || "")}</div>`;
+  }
+  if (docTypeLabel) {
+    headerHtml += `<div style="font-size: 10px; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; padding: 2px 0; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">${escapeHtml(docTypeLabel)}</div>`;
+  }
+  headerHtml += `</div>`;
+
   return headerHtml;
 }
 
@@ -151,6 +199,21 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
 export function printThermalReceipt(sale, clinicData = null) {
   if (!sale) return;
 
+  // Read block visibility saved by Receipt Studio for POS mode
+  const _blocks = getBlocksConfig("pos");
+  const showLogo     = isBlockEnabled(_blocks, "header_logo");
+  const showTagline  = isBlockEnabled(_blocks, "tagline");
+  const showContact  = isBlockEnabled(_blocks, "contact_info");
+  const showDiv1     = isBlockEnabled(_blocks, "divider_1");
+  const showMeta     = isBlockEnabled(_blocks, "meta_info");
+  const showCustomer = isBlockEnabled(_blocks, "customer_info");
+  const showItems    = isBlockEnabled(_blocks, "items_table");
+  const showDiv2     = isBlockEnabled(_blocks, "divider_2");
+  const showTotals   = isBlockEnabled(_blocks, "financial_totals");
+  const showUrdu     = isBlockEnabled(_blocks, "urdu_footer");
+  const showNote     = isBlockEnabled(_blocks, "custom_note");
+  const cfg          = getCustomReceiptConfig();
+
   const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store");
   const subtotal = Number(sale.subtotal_amount) || Number(sale.total_amount) || 0;
   const discount = Number(sale.discount_amount) || 0;
@@ -167,6 +230,7 @@ export function printThermalReceipt(sale, clinicData = null) {
   const cashierName = escapeHtml(sale.cashier_name || sale.user_name || "Store Staff");
   const customerName = escapeHtml(sale.patient_name || (sale.visit_id ? "Linked OPD Patient" : "Walk-In-Customer"));
   const invoiceId = escapeHtml(sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
+
 
   const itemsHtml = (sale.items || []).map((item) => {
     const discPct = Number(item.disc_pct || item.discount_pct || 0);
@@ -231,27 +295,34 @@ export function printThermalReceipt(sale, clinicData = null) {
         </style>
       </head>
       <body>
-        <!-- Top Clinic Logo -->
-        ${getLogoHeaderHtml("Retail Medical Store Invoice")}
+        <!-- Top Clinic Header (header_logo + clinic_name + tagline + contact_info blocks) -->
+        ${getLogoHeaderHtml("Retail Medical Store Invoice", { showLogo, showTagline, showContact })}
 
-        <div class="dotted-line"></div>
+        ${showDiv1 ? `<div class="dotted-line"></div>` : ""}
 
-        <!-- Relevant Meta Header Details -->
+        <!-- Invoice Meta (meta_info block) -->
+        ${showMeta ? `
         <div class="meta-text">
           <div><span style="color: #6b7280; font-weight: 500;">Date &amp; Time :</span> ${dateTimeStr}</div>
           <div><span style="color: #6b7280; font-weight: 500;">Cashier :</span> ${cashierName}</div>
-          <div><span style="color: #6b7280; font-weight: 500;">Customer :</span> ${customerName}</div>
           <div><span style="color: #6b7280; font-weight: 500;">Invoice # :</span> ${invoiceId}</div>
-        </div>
+        </div>` : ""}
 
-        <div class="dotted-line"></div>
+        <!-- Customer Info (customer_info block) -->
+        ${showCustomer ? `
+        <div class="meta-text">
+          <div><span style="color: #6b7280; font-weight: 500;">Customer :</span> ${customerName}</div>
+        </div>` : ""}
 
-        <!-- Purchased Items List -->
-        <div style="margin: 4px 0;">${itemsHtml}</div>
+        ${showDiv1 ? `<div class="dotted-line"></div>` : ""}
 
-        <div class="dotted-line"></div>
+        <!-- Items Table (items_table block) -->
+        ${showItems ? `<div style="margin: 4px 0;">${itemsHtml}</div>` : ""}
 
-        <!-- Summary Totals -->
+        ${showDiv2 ? `<div class="dotted-line"></div>` : ""}
+
+        <!-- Totals (financial_totals block) -->
+        ${showTotals ? `
         <div style="font-size: 11px; color: #374151; font-weight: 600; line-height: 1.3;">
           <div style="display: flex; justify-content: space-between;">
             <span>Subtotal</span>
@@ -261,8 +332,7 @@ export function printThermalReceipt(sale, clinicData = null) {
           <div style="display: flex; justify-content: space-between; color: #0f766e; font-weight: 700;">
             <span>Discount</span>
             <span>- Rs. ${Number(discount).toFixed(2)}</span>
-          </div>
-          ` : ""}
+          </div>` : ""}
           <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; color: #111827; padding-top: 1px;">
             <span>Grand Total</span>
             <span>Rs. ${Number(netTotal).toFixed(2)}</span>
@@ -275,35 +345,33 @@ export function printThermalReceipt(sale, clinicData = null) {
           <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 800; color: #0f766e;">
             <span>Change Return</span>
             <span>Rs. ${Number(changeDue).toFixed(2)}</span>
-          </div>
-          ` : `
+          </div>` : `
           <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 800; color: #b45309; margin-top: 2px;">
             <span>Payment</span>
             <span>Credit / Udhaar</span>
-          </div>
-          `}
-        </div>
+          </div>`}
+        </div>` : ""}
 
         <div class="dotted-line"></div>
 
+        <!-- Urdu Footer (urdu_footer block) -->
+        ${showUrdu && cfg.urdu_footer_text ? `
+        <div style="text-align: center; font-size: 9.5px; font-weight: 700; color: #374151; direction: rtl; margin: 2px 0;">
+          ${escapeHtml(cfg.urdu_footer_text)}
+        </div>
+        <div class="dotted-line"></div>` : ""}
+
+        <!-- Custom Note (custom_note block) -->
+        ${showNote ? `
         <div style="text-align: center; margin: 4px 0 3px 0; font-size: 10px; font-weight: 700; color: #111827; line-height: 1.3;">
-          Thank You. Please Visit Again.
+          ${escapeHtml(cfg.custom_policy_note || "Thank You. Please Visit Again.")}
         </div>
+        <div class="dotted-line"></div>` : ""}
 
-        <div class="dotted-line"></div>
-
+        <!-- Powered By (permanent — always shown) -->
         <div style="text-align: center; margin-top: 3px; font-size: 9px; font-weight: 700; color: #6b7280; line-height: 1.3;">
           <span>K.B Software &nbsp;|&nbsp; <span style="color:#0f766e;font-family:monospace;font-weight:900;">03142291356</span></span>
         </div>
-
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            }, 250);
-          };
-        </script>
       </body>
     </html>
   `;
@@ -314,6 +382,12 @@ export function printThermalReceipt(sale, clinicData = null) {
 /** Print 80mm Daily Day-End Cash Closure & DrCreate Day Closing Receipt */
 export function printDayEndClosingReceipt(closing, clinicData = null) {
   if (!closing) return;
+
+  // Read block visibility saved by Receipt Studio for closing mode
+  const _blocks    = getBlocksConfig("closing");
+  const showLogo   = isBlockEnabled(_blocks, "header_logo");
+  const showTagline= isBlockEnabled(_blocks, "tagline");
+  const showContact= isBlockEnabled(_blocks, "contact_info");
 
   const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store");
   const rawDate = closing.date || closing.closing_date ? new Date(closing.date || closing.closing_date) : new Date();
@@ -413,12 +487,10 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
         </style>
       </head>
       <body>
-        <!-- Clinic Logo Header (Clean Centered Image) -->
-        <div style="text-align: center; padding: 4px 0 6px 0; border-bottom: 1px solid #e5e7eb;">
-          <img src="${CLINIC_LOGO_BASE64}" alt="" style="max-height: 55px; max-width: 190px; width: auto; height: auto; display: block; margin: 0 auto;" />
-        </div>
+        <!-- Clinic Header (blocks: header_logo, tagline, contact_info) -->
+        ${getLogoHeaderHtml("Z-Day Closing Statement", { showLogo, showTagline, showContact })}
 
-        <!-- Date & Clossing Receipt Banner -->
+        <!-- Date & Closing Receipt Banner -->
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #111827; font-size: 11px;">
           <div><strong style="color:#4b5563;">Date:</strong> <span style="font-weight:900; font-family:monospace;">${dateStr}</span></div>
           <div style="font-weight:900; font-size:12px; text-transform:uppercase; letter-spacing:0.3px;">CLOSSING RECEIPT</div>
@@ -533,6 +605,15 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
 export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicData = null) {
   if (!purchase) return;
 
+  // Read block visibility saved by Receipt Studio for GRN mode
+  const _blocks    = getBlocksConfig("grn");
+  const showLogo   = isBlockEnabled(_blocks, "header_logo");
+  const showTagline= isBlockEnabled(_blocks, "tagline");
+  const showContact= isBlockEnabled(_blocks, "contact_info");
+  const showMeta   = isBlockEnabled(_blocks, "meta_info");
+  const showItems  = isBlockEnabled(_blocks, "items_table");
+  const showTotals = isBlockEnabled(_blocks, "financial_totals");
+
   const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic & Store");
   const supplierName = escapeHtml(supplier?.company_name || purchase.supplier_name || "Company Distributor");
   const totalAmount = Number(purchase.total_amount) || 0;
@@ -595,34 +676,32 @@ export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicDa
         </style>
       </head>
       <body>
-        <!-- Top Clinic Logo -->
-        ${getLogoHeaderHtml("Stock Purchase Voucher")}
+        <!-- Clinic Header (blocks: header_logo, tagline, contact_info) -->
+        ${getLogoHeaderHtml("Stock Purchase Voucher", { showLogo, showTagline, showContact })}
 
         <div class="dotted-line"></div>
 
-        <!-- Relevant Meta Header Details -->
+        <!-- Meta Info (meta_info block) -->
+        ${showMeta ? `
         <div class="meta-text">
           <div><strong style="color: #4b5563;">Date &amp; Time :</strong> ${dateTimeStr}</div>
           <div><strong style="color: #4b5563;">Entered By :</strong> ${cashierName}</div>
           <div><strong style="color: #4b5563;">Supplier :</strong> ${supplierName}</div>
           <div><strong style="color: #4b5563;">Invoice # :</strong> ${invoiceId}</div>
         </div>
+        <div class="dotted-line"></div>` : ""}
 
-        <div class="dotted-line"></div>
+        <!-- Purchased Stock List (items_table block) -->
+        ${showItems ? `<div style="margin: 6px 0;">${itemsHtml}</div><div class="dotted-line"></div>` : ""}
 
-        <!-- Purchased Stock List -->
-        <div style="margin: 6px 0;">${itemsHtml}</div>
-
-        <div class="dotted-line"></div>
-
-        <!-- Summary Totals -->
+        <!-- Summary Totals (financial_totals block) -->
+        ${showTotals ? `
         <div style="margin: 6px 0;">
           <div class="grand-total-row">
             <span>Bill Total</span>
             <span>Rs. ${totalAmount.toFixed(2)}</span>
           </div>
         </div>
-
         <div class="dotted-line"></div>
 
         <!-- Supplier Payment Table -->
@@ -640,8 +719,7 @@ export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicDa
             </tr>
           </tbody>
         </table>
-
-        <div class="dotted-line"></div>
+        <div class="dotted-line"></div>` : ""}
 
         <div style="text-align: center; margin: 4px 0 3px 0;">
           <div style="font-size: 11px; font-weight: 800; color: #111;">Stock Received &amp; Verified</div>
@@ -652,15 +730,6 @@ export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicDa
         <div style="text-align: center; margin-top: 3px; font-size: 9px; font-weight: 800; color: #374151;">
           K.B Software &nbsp;|&nbsp; <span style="color:#0d9488;font-family:monospace;font-weight:900;">03142291356</span>
         </div>
-
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            }, 250);
-          };
-        </script>
       </body>
     </html>
   `;
@@ -807,6 +876,15 @@ export function printCashVoucherReceipt(entry, clinicData = null) {
 export function printOPDTokenReceipt(receipt, clinicData = null) {
   if (!receipt) return;
 
+  // Read block visibility saved by Receipt Studio for OPD mode
+  const _blocks    = getBlocksConfig("opd");
+  const showLogo   = isBlockEnabled(_blocks, "header_logo");
+  const showTagline= isBlockEnabled(_blocks, "tagline");
+  const showContact= isBlockEnabled(_blocks, "contact_info");
+  const showDoctor = isBlockEnabled(_blocks, "doctor_info");
+  const showUrdu   = isBlockEnabled(_blocks, "urdu_footer");
+  const cfg        = getCustomReceiptConfig();
+
   const clinicName = escapeHtml(clinicData?.name || "Dr. Muhammad Asif Ashraf Khan Clinic");
   const tokenNo = escapeHtml(String(receipt.token || receipt.token_number || "01").padStart(2, "0"));
   const patientName = escapeHtml(receipt.patient?.full_name || receipt.patient_name || "Patient");
@@ -876,26 +954,26 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
           @media print { body { width: 76mm; padding: 2px; } }
         </style>
       </head>
-      <body>
         <div class="text-center">
-          ${getLogoHeaderHtml("OPD Consultation Token")}
+          ${getLogoHeaderHtml("OPD Consultation Token", { showLogo, showTagline, showContact })}
           <div style="font-size: 10px; color: #555; margin-top: 2px;">${dateTimeStr}</div>
         </div>
 
         <div class="divider-double"></div>
 
-        <!-- Big Token Box -->
+        <!-- Big Token Box — always shown -->
         <div class="token-box">
           <div style="font-size: 10px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;">PATIENT TOKEN NUMBER</div>
           <div class="token-num">${tokenNo}</div>
         </div>
 
-        <!-- Doctor & Patient Info -->
+        <!-- Doctor & Patient Info (doctor_info + customer_info blocks) -->
         <div style="font-size: 12px; font-weight: bold; margin-top: 4px;">
+          ${showDoctor ? `
           <div class="info-row">
             <span style="color: #444;">Doctor:</span>
             <span style="font-weight: 900;">${doctorName}</span>
-          </div>
+          </div>` : ""}
           <div class="info-row">
             <span style="color: #444;">Patient:</span>
             <span>${patientName}</span>
@@ -904,7 +982,7 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
           <div class="info-row">
             <span style="color: #444;">Relation:</span>
             <span>${relationName}</span>
-          </div>` : ''}
+          </div>` : ""}
           <div class="info-row">
             <span style="color: #444;">Age:</span>
             <span>${age} (${receipt.patient?.gender || "Male"})</span>
@@ -913,7 +991,7 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
           <div class="info-row">
             <span style="color: #444;">Phone:</span>
             <span>${phone}</span>
-          </div>` : ''}
+          </div>` : ""}
         </div>
 
         <div class="divider-single"></div>
@@ -924,6 +1002,12 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
         </div>
 
         <div class="divider-double"></div>
+
+        ${showUrdu && cfg.urdu_footer_text ? `
+        <div style="text-align: center; font-size: 9.5px; font-weight: 700; direction: rtl; color: #374151; margin: 2px 0;">
+          ${escapeHtml(cfg.urdu_footer_text)}
+        </div>
+        <div class="divider-single"></div>` : ""}
 
         <div class="text-center" style="font-size: 9px; margin-top: 3px; font-weight: bold;">
           <div>Please wait for your turn. Thank you!</div>
@@ -1523,6 +1607,18 @@ export function printPurchaseGRNReceipt(purchase, clinic = null) {
 export function printSaleInvoiceReceipt(sale, clinic) {
   if (!sale) return;
 
+  // Read block visibility saved by Receipt Studio for B2B mode
+  const _blocks    = getBlocksConfig("b2b");
+  const showLogo   = isBlockEnabled(_blocks, "header_logo");
+  const showTagline= isBlockEnabled(_blocks, "tagline");
+  const showContact= isBlockEnabled(_blocks, "contact_info");
+  const showMeta   = isBlockEnabled(_blocks, "meta_info");
+  const showCustomer = isBlockEnabled(_blocks, "customer_info");
+  const showItems  = isBlockEnabled(_blocks, "items_table");
+  const showTotals = isBlockEnabled(_blocks, "financial_totals");
+  const showNote   = isBlockEnabled(_blocks, "custom_note");
+  const cfg        = getCustomReceiptConfig();
+
   const voucherNo = escapeHtml(sale.voucher_no || sale.receipt_no || sale.invoice_no || "S-6218");
   const dateStr = escapeHtml((sale.sale_date || sale.created_at || new Date().toISOString()).split("T")[0]);
   const customerName = escapeHtml(sale.account_name || sale.customer_name || "Cash Customer");
@@ -1580,17 +1676,27 @@ export function printSaleInvoiceReceipt(sale, clinic) {
         </style>
       </head>
       <body>
-        ${getLogoHeaderHtml("SALE INVOICE (BILL)")}
+        <!-- Clinic Header (header_logo, tagline, contact_info blocks) -->
+        ${getLogoHeaderHtml("SALE INVOICE (BILL)", { showLogo, showTagline, showContact })}
+
+        <!-- Meta Info (meta_info block) -->
+        ${showMeta ? `
         <div style="font-size: 9px; margin-top: 2px;">
           <div><strong>Voucher #:</strong> ${voucherNo} · <strong>Date:</strong> ${dateStr}</div>
-          <div><strong>Customer:</strong> ${customerName} ${city ? `(${city})` : ""}</div>
           <div><strong>Ref / Booker:</strong> ${reference} · <strong>Mode:</strong> ${paymentMode}</div>
           <div><strong>Transport:</strong> ${transport} · <strong>Bilty:</strong> ${biltyNo}</div>
-        </div>
+        </div>` : ""}
+
+        <!-- Customer Info (customer_info block) -->
+        ${showCustomer ? `
+        <div style="font-size: 9px; margin-top: 1px;">
+          <div><strong>Customer:</strong> ${customerName} ${city ? `(${city})` : ""}</div>
+        </div>` : ""}
 
         <div class="divider-dashed"></div>
 
-
+        <!-- Items Table (items_table block) -->
+        ${showItems ? `
         <table>
           <thead>
             <tr>
@@ -1604,8 +1710,10 @@ export function printSaleInvoiceReceipt(sale, clinic) {
           <tbody>
             ${rowsHtml}
           </tbody>
-        </table>
+        </table>` : ""}
 
+        <!-- Totals (financial_totals block) -->
+        ${showTotals ? `
         <div class="divider-single"></div>
         <div style="font-size: 10px; font-weight: 900; display: flex; justify-content: space-between; margin-top: 2px;">
           <span>TOTAL BILL:</span>
@@ -1619,14 +1727,18 @@ export function printSaleInvoiceReceipt(sale, clinic) {
           <div style="font-size: 9px; font-weight: bold; color: #b91c1c; display: flex; justify-content: space-between; margin-top: 1px;">
             <span>Current Udhaar Balance:</span>
             <span>Rs. ${balanceDue.toLocaleString()}</span>
-          </div>
-        ` : ""}
+          </div>` : ""}` : ""}
 
         <div class="divider-dashed"></div>
+
+        <!-- Custom Note (custom_note block) -->
+        ${showNote ? `
         <div style="text-align: center; font-size: 8px; color: #555; margin-top: 3px;">
-          Thank You for Your Business! Medicines sold are non-refundable without receipt.<br/>
+          ${escapeHtml(cfg.custom_policy_note || "Thank You for Your Business! Medicines sold are non-refundable without receipt.")}
+        </div>` : `
+        <div style="text-align: center; font-size: 8px; color: #555; margin-top: 3px;">
           Software Powered by: K.B Software · 03142291356
-        </div>
+        </div>`}
       </body>
     </html>
   `;
