@@ -220,9 +220,10 @@ ln -sf /etc/nginx/sites-available/clinicore /etc/nginx/sites-enabled/clinicore
 
 nginx -t && echo "  Nginx config: VALID" || { echo "  ERROR: Nginx config invalid!"; nginx -t; }
 
-# Automatically provision or re-deploy Certbot SSL for api.clinicore.me
+# Automatically provision or re-deploy Certbot SSL for clinicore.me & subdomains
 if command -v certbot &> /dev/null; then
-    certbot --nginx -d api.clinicore.me --non-interactive --agree-tos -m admin@clinicore.me --redirect 2>/dev/null || true
+    certbot --nginx -d clinicore.me -d www.clinicore.me -d api.clinicore.me --non-interactive --agree-tos -m admin@clinicore.me 2>/dev/null || \
+    certbot --nginx -d api.clinicore.me --non-interactive --agree-tos -m admin@clinicore.me 2>/dev/null || true
 fi
 
 # ─────────────────────────────────────────────────────────
