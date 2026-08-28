@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { dbVisits, dbPatients, dbClinic, dbUsers } from "../api/db.js";
 import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
