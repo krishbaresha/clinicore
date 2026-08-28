@@ -43,16 +43,23 @@ export default function LoginScreen() {
       {/* Top Floating Navigation Bar */}
       <header className="w-full max-w-4xl mx-auto flex items-center justify-between py-2 px-1 relative z-20">
         <div className="flex items-center gap-2.5">
+        <button
+          onClick={() => navigate("/")}
+          className="cursor-pointer active:scale-95"
+          title="CliniCore Logo"
+        >
           <img
             src="/favicon.svg"
             alt="CliniCore Logo"
             className="w-10 h-10 object-contain rounded-xl drop-shadow-md"
           />
+        </button>
           <div>
             <h1 className="text-base font-black tracking-tight text-teal-950 leading-tight">CliniCore</h1>
             <p className="text-[10px] text-teal-700 font-bold uppercase tracking-wider">Clinical OS</p>
           </div>
         </div>
+
 
         <button
           onClick={() => navigate("/live")}
