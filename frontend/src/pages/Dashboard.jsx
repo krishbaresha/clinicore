@@ -72,6 +72,8 @@ export default function Dashboard() {
     totalVisits,
     repeatRatio,
     newRatio,
+    waitingVisits,
+    completedVisits,
     myWaitingVisits,
     myInRoomVisit,
   } = useMemo(() => {
@@ -127,6 +129,8 @@ export default function Dashboard() {
       : 0;
     const nRatio = 100 - rRatio;
 
+    const totalWait = tVisits.filter((v) => v.status === "waiting");
+    const totalCompleted = tVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending");
     const myWait = myTVisits.filter((v) => v.status === "waiting");
     const myInRoom = myTVisits.find((v) => v.status === "in_consultation");
 
@@ -145,6 +149,8 @@ export default function Dashboard() {
       totalVisits: totVisits,
       repeatRatio: rRatio,
       newRatio: nRatio,
+      waitingVisits: totalWait,
+      completedVisits: totalCompleted,
       myWaitingVisits: myWait,
       myInRoomVisit: myInRoom,
     };
@@ -493,7 +499,7 @@ export default function Dashboard() {
             )}
           </div>
         </section>
-      ) : (
+      ) : isDoctor ? (
         /* Doctor Personal OPD Portal — Sirf apni info */
         <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
@@ -552,6 +558,43 @@ export default function Dashboard() {
                   ? (myInRoomVisit.patient_name || dbPatients.getById(myInRoomVisit.patient_id)?.full_name || "Patient")
                   : "Koi patient nahi"}
               </div>
+            </div>
+          </div>
+        </section>
+      ) : (
+        /* Front Desk / Receptionist / Operational Counter Summary */
+        <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-teal-600 text-2xl">badge</span>
+              <div>
+                <h3 className="font-bold text-gray-900 text-base">Operational Counter Desk</h3>
+                <p className="text-xs text-gray-400">Logged in as {user?.name || "Staff"} • {user?.role ? user.role.toUpperCase() : "COUNTER"}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate("/reception/register")}
+              className="text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">person_add</span>
+              + New Patient Token
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-center">
+              <div className="text-xs text-teal-700 font-bold uppercase mb-1">Today&apos;s Total Patients</div>
+              <div className="text-3xl font-black text-teal-900">{todayVisits.length}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">Tokens issued today</div>
+            </div>
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
+              <div className="text-xs text-amber-700 font-bold uppercase mb-1">Waiting in Queue</div>
+              <div className="text-3xl font-black text-amber-900">{waitingVisits.length}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">OPD waiting room</div>
+            </div>
+            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center sm:col-span-1 col-span-2">
+              <div className="text-xs text-blue-700 font-bold uppercase mb-1">Completed Consultations</div>
+              <div className="text-3xl font-black text-blue-900">{completedVisits.length}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">Visits completed</div>
             </div>
           </div>
         </section>

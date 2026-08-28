@@ -249,7 +249,9 @@ export function registerCollectionChangeHook(cb) {
  * Prevents timezone midnight shift causing tokens to resolve to the previous UTC day.
  */
 function getPKTDateStr(date = new Date()) {
-  const pkt = new Date(date.getTime() + 5 * 60 * 60 * 1000);
+  const d = (date instanceof Date && !isNaN(date.getTime())) ? date : new Date(date);
+  if (!d || isNaN(d.getTime())) return new Date().toISOString().split("T")[0];
+  const pkt = new Date(d.getTime() + 5 * 60 * 60 * 1000);
   return pkt.toISOString().split("T")[0];
 }
 
@@ -595,7 +597,7 @@ export const dbUsers = {
     const users = getCollection(KEYS.USERS);
     const newUser = { 
       ...user, 
-      id: generateId("user"), 
+      id: user.id || generateId("user"), 
       clinic_id: "clinic_001", 
       status: user.status || "active",
       assigned_warehouse_id: user.assigned_warehouse_id || "",
@@ -609,9 +611,17 @@ export const dbUsers = {
   },
   update: (id, data) => {
     const users = getCollection(KEYS.USERS);
-    const updated = users.map((u) => (u.id === id ? { ...u, ...data } : u));
+    let updatedUser = null;
+    const updated = users.map((u) => {
+      if (u.id === id) {
+        updatedUser = { ...u, ...data };
+        return updatedUser;
+      }
+      return u;
+    });
     setCollection(KEYS.USERS, updated);
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return updatedUser;
   },
   updateDoctorStatus: (doctorId, status, note, room) => {
     const users = getCollection(KEYS.USERS);
@@ -857,8 +867,8 @@ export const dbVisits = {
       id: generateId("visit"),
       clinic_id: "clinic_001",
       token_number,
-      status: "waiting",
-      visit_date: new Date().toISOString(),
+      status: visit.status || "waiting",
+      visit_date: visit.visit_date || new Date().toISOString(),
       prescription_image_url: null,
       notes: visit.notes || "",
       doctor_id: visit.doctor_id || "user_001",
@@ -903,19 +913,33 @@ export const dbVisits = {
       notes: `Late Arrival — Re-issued from Token #${originalVisit.token_number}`,
     };
     setCollection(KEYS.VISITS, [...getCollection(KEYS.VISITS), newVisit]);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newVisit;
   },
   complete: (id, payload = {}, optForcedStatus = null) => {
     const visits = getCollection(KEYS.VISITS);
     const data = typeof payload === "string" ? { forcedStatus: payload } : (payload || {});
-    const reports = data.report_image_urls || [];
+    const existing = visits.find((v) => v.id === id);
+    const reports = data.report_image_urls !== undefined ? data.report_image_urls : (existing?.report_image_urls || []);
     const status = optForcedStatus || data.forcedStatus || (reports.length > 0 ? "completed" : (typeof payload === "string" ? payload : "completed_reports_pending"));
     const updated = visits.map((v) =>
       v.id === id
-        ? { ...v, status, prescription_image_url: data.prescription_image_url || v.prescription_image_url, report_image_urls: reports, notes: data.notes || v.notes }
+        ? {
+            ...v,
+            status,
+            prescription_image_url: data.prescription_image_url !== undefined ? data.prescription_image_url : v.prescription_image_url,
+            report_image_urls: reports,
+            notes: data.notes !== undefined ? data.notes : v.notes,
+            vitals_bp: data.vitals_bp !== undefined ? data.vitals_bp : v.vitals_bp,
+            vitals_pulse: data.vitals_pulse !== undefined ? data.vitals_pulse : v.vitals_pulse,
+            vitals_temp: data.vitals_temp !== undefined ? data.vitals_temp : v.vitals_temp,
+            vitals_spo2: data.vitals_spo2 !== undefined ? data.vitals_spo2 : v.vitals_spo2,
+            vitals_weight: data.vitals_weight !== undefined ? data.vitals_weight : v.vitals_weight,
+          }
         : v
     );
     setCollection(KEYS.VISITS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return updated.find((v) => v.id === id);
   },
   addReports: (id, newReportPhotos) => {
@@ -930,6 +954,7 @@ export const dbVisits = {
       };
     });
     setCollection(KEYS.VISITS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return updated.find((v) => v.id === id);
   },
   skip: (id) => {
@@ -961,6 +986,12 @@ export const dbInventory = {
   },
   getById: (id) => {
     return getFromCollectionById(KEYS.INVENTORY, id);
+  },
+  findByName: (name) => {
+    if (!name) return null;
+    const n = name.trim().toLowerCase();
+    const all = dbInventory.getAll();
+    return all.find((i) => (i.medicine_name || "").trim().toLowerCase() === n) || null;
   },
   getLowStock: () => dbInventory.getAll().filter((i) => (i.total_base_stock ?? i.stock_qty) <= (i.low_stock_threshold || 6)),
   getByCompany: (companyName) => {
@@ -995,16 +1026,25 @@ export const dbInventory = {
     return 0;
   },
   // Scoped inventory getter based on user role and assigned location
-  getScopedInventory: (user = null) => {
+  getScopedInventory: (userOrWhId = null) => {
     const all = dbInventory.getAll();
-    if (!user || user.is_owner || user.role === "admin" || user.role === "doctor" || !user.assigned_warehouse_id) {
+    let whId = "";
+    if (typeof userOrWhId === "string") {
+      whId = userOrWhId;
+    } else if (userOrWhId && typeof userOrWhId === "object") {
+      if (userOrWhId.is_owner || userOrWhId.role === "admin" || userOrWhId.role === "doctor") {
+        return all;
+      }
+      whId = userOrWhId.assigned_warehouse_id || "";
+    }
+    if (!whId) {
       return all;
     }
-    const whId = user.assigned_warehouse_id;
     return all.map((item) => {
       const locQty = dbInventory.getLocationStock(item, whId);
       return {
         ...item,
+        scoped_stock: locQty,
         current_location_stock: locQty,
         stock_qty: locQty,
         store_stock: whId === "wh_str" ? locQty : 0,
@@ -2294,8 +2334,16 @@ export const dbWarehouses = {
   },
   update: (id, data) => {
     const list = dbWarehouses.getAll();
-    const updated = list.map((w) => (w.id === id ? { ...w, ...data } : w));
+    let updatedGodown = null;
+    const updated = list.map((w) => {
+      if (w.id === id) {
+        updatedGodown = { ...w, ...data };
+        return updatedGodown;
+      }
+      return w;
+    });
     setCollection(KEYS.WAREHOUSES, updated);
+    return updatedGodown;
   },
   delete: (id) => {
     const list = dbWarehouses.getAll();
@@ -2842,7 +2890,26 @@ export const dbPurchases = {
   },
   deletePurchase: (purchaseId) => {
     const purchases = getCollection(KEYS.PURCHASES);
+    const purchase = purchases.find((p) => p.id === purchaseId);
+    if (purchase) {
+      const dest = purchase.destination_type === "store" ? "store" : "warehouse";
+      (purchase.items || []).forEach((item) => {
+        if (item.inventory_id) {
+          const inv = dbInventory.getById(item.inventory_id);
+          const baseUnits = Number(item.qty_base_units) || (inv ? convertUnitsToBase(Number(item.qty) || 1, item.received_unit_type || "unit", inv) : Number(item.qty) || 1);
+          if (dest === "store") {
+            dbInventory.deductStock(item.inventory_id, baseUnits);
+          } else {
+            dbInventory.deductStockFromLocation(item.inventory_id, baseUnits, purchase.destination_id || "wh_001");
+          }
+        }
+      });
+      if (purchase.supplier_id && Number(purchase.balance_due) > 0) {
+        dbSuppliers.updateBalance(purchase.supplier_id, -Number(purchase.balance_due));
+      }
+    }
     setCollection(KEYS.PURCHASES, purchases.filter((p) => p.id !== purchaseId));
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   },
 
   deleteInvoice: (purchaseId) => {
@@ -2958,7 +3025,13 @@ export const dbStockTransfers = {
     // Deduct stock from source warehouse
     (data.items || []).forEach((it) => {
       if (it.inventory_id) {
-        dbInventory.deductStock(it.inventory_id, Number(it.qty || it.quantity || 1), data.from_location || "warehouse");
+        const qty = Number(it.qty || it.quantity || 1);
+        const fromLoc = data.from_warehouse_id || data.from_location || "wh_001";
+        if (fromLoc === "store" || fromLoc === "wh_str") {
+          dbInventory.deductStock(it.inventory_id, qty);
+        } else {
+          dbInventory.deductStockFromLocation(it.inventory_id, qty, fromLoc);
+        }
       }
     });
     setCollection(KEYS.STOCK_TRANSFERS, [newTransfer, ...transfers]);
@@ -3204,7 +3277,8 @@ export const dbCashBook = {
       const matchedParty = parties.find(
         (p) => p.name.toLowerCase() === accountName.toLowerCase() || p.id === entryData.party_id
       );
-      if (matchedParty && matchedParty.current_balance > 0) {
+      const partyBal = Number(matchedParty?.current_balance ?? matchedParty?.balance_due ?? 0);
+      if (matchedParty && partyBal > 0) {
         dbParties.recordPayment(matchedParty.id, amount);
       }
     } else {
@@ -3320,7 +3394,9 @@ export const dbDayClosing = {
     // 1. Sales (POS + B2B + DrCreate Sale Invoices)
     const allSales = dbSales.getAll() || [];
     const allB2B = dbB2BSales.getAll() || [];
-    const daySales = [...allSales, ...allB2B].filter((s) => (s.sale_date || s.created_at || "").split("T")[0] === targetDate);
+    const daySales = [...allSales, ...allB2B].filter(
+      (s) => !s.is_voided && (s.sale_date || s.created_at || "").split("T")[0] === targetDate
+    );
 
     let totalSale = 0;
     let cashSale = 0;
@@ -3329,7 +3405,7 @@ export const dbDayClosing = {
     daySales.forEach((s) => {
       const tot = Number(s.total_amount) || 0;
       const isCredit = s.payment_mode === "Credit" || Number(s.balance_due) > 0;
-      const paid = isCredit ? (Number(s.paid_amount) || 0) : tot;
+      const paid = isCredit ? (Number(s.paid_amount || s.amount_paid) || 0) : tot;
       totalSale += tot;
       cashSale += paid;
       if (isCredit) {
@@ -3386,7 +3462,9 @@ export const dbDayClosing = {
     // 4. CashBook Payments Received (Inflows) + OPD Consultations
     const dayCashReceive = cashbookAll.filter((c) => (c.date || "").split("T")[0] === targetDate && (c.term || c.type) === "Receive");
     const allVisits = dbVisits.getAll() || [];
-    const dayVisits = allVisits.filter((v) => (v.visit_date || "").split("T")[0] === targetDate && (v.status === "done" || v.status === "waiting" || v.status === "in_consultation"));
+    const dayVisits = allVisits.filter(
+      (v) => (v.visit_date || "").split("T")[0] === targetDate && (v.status === "completed" || v.status === "completed_reports_pending" || v.status === "waiting" || v.status === "in_consultation" || v.status === "done")
+    );
     const totalOpdFees = dayVisits.reduce((sum, v) => sum + (Number(v.fee_amount) || 0), 0);
 
     const paymentsReceiveList = [
@@ -3573,10 +3651,18 @@ export function hydrateCollectionsFromSnapshot(snapshot) {
   Object.entries(snapshot).forEach(([key, val]) => {
     if (val !== undefined && val !== null) {
       const parsed = typeof val === "string" ? (() => { try { return JSON.parse(val); } catch { return val; } })() : val;
-      _COLLECTION_CACHE.set(key, parsed);
+      const raw = typeof val === "string" ? val : JSON.stringify(val);
+      _COLLECTION_CACHE.set(key, { raw, parsed });
+      if (Array.isArray(parsed)) {
+        const idMap = new Map();
+        for (const item of parsed) {
+          if (item && item.id) idMap.set(item.id, item);
+        }
+        _ID_MAP_CACHE.set(key, idMap);
+      }
       if (typeof localStorage !== "undefined") {
         try {
-          localStorage.setItem(key, typeof parsed === "string" ? parsed : JSON.stringify(parsed));
+          localStorage.setItem(key, raw);
         } catch {}
       }
     }

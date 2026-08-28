@@ -550,13 +550,19 @@ export default function WarehouseManagement() {
     const validItems = b2bItems.filter((i) => i.medicine_name.trim() !== "");
     if (validItems.length === 0) { alert("Please add at least 1 medicine item for wholesale supply."); return; }
 
-    // Validate warehouse stock
+    // Validate warehouse stock with aggregated quantities for duplicate rows
+    const itemTotals = new Map();
     for (const item of validItems) {
-      const inv = inventory.find((i) => i.id === item.inventory_id);
+      if (item.inventory_id) {
+        itemTotals.set(item.inventory_id, (itemTotals.get(item.inventory_id) || 0) + Number(item.qty || 1));
+      }
+    }
+    for (const [invId, reqQty] of itemTotals.entries()) {
+      const inv = inventory.find((i) => i.id === invId);
       if (inv) {
         const available = inv.warehouse_stock ?? 0;
-        if (item.qty > available) {
-          alert(`Insufficient Godown stock for "${inv.medicine_name}". Available: ${available}, Requested: ${item.qty}`);
+        if (reqQty > available) {
+          alert(`Insufficient Godown stock for "${inv.medicine_name}". Available: ${available}, Total Requested in Invoice: ${reqQty}`);
           return;
         }
       }

@@ -27,6 +27,14 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
     }
   }
 
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [cameraStream]);
+
   function stopCamera() {
     if (cameraStream) {
       cameraStream.getTracks().forEach((t) => t.stop());
@@ -118,6 +126,13 @@ function PhotoCapture({ label, multiple = false, onCapture, onRemove, photos = [
             <>
               <img src={capturedPreview} alt="Preview" className="w-full max-w-lg rounded-2xl object-contain max-h-[70vh] shadow-2xl border border-white/20" />
               <div className="flex gap-4 mt-6">
+                <button
+                  onClick={stopCamera}
+                  className="bg-red-600/80 hover:bg-red-600 text-white min-h-[44px] px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                  <span>Cancel</span>
+                </button>
                 <button
                   onClick={() => { setCapturedPreview(null); openCamera(); }}
                   className="bg-white/20 hover:bg-white/30 text-white min-h-[44px] px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all active:scale-95"

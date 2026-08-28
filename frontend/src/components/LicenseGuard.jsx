@@ -108,7 +108,9 @@ export default function LicenseGuard({ children }) {
   }
 
   // 2. SELECTIVE FEATURE KILL-SWITCH ENFORCEMENT
-  const currentFeatureKey = ROUTE_FEATURE_MAP[location.pathname];
+  const currentFeatureKey = Object.entries(ROUTE_FEATURE_MAP).find(([route]) =>
+    location.pathname === route || location.pathname.startsWith(route + "/")
+  )?.[1];
   if (currentFeatureKey && licenseState.isFeatureBlocked(currentFeatureKey)) {
     return (
       <div className="p-8 max-w-3xl mx-auto my-12 bg-white border border-rose-200 rounded-3xl p-8 text-center space-y-5 shadow-lg animate-scale-up">

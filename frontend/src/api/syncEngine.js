@@ -15,7 +15,9 @@ import {
   registerCollectionChangeHook,
 } from "./db.js";
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || 
+  (typeof process !== "undefined" && process.env?.VITE_API_URL) || 
+  "https://api.clinicore.me";
 
 class SyncEngine {
   constructor() {
@@ -131,7 +133,9 @@ class SyncEngine {
    * Pulls the authoritative database state & config from VPS MySQL to keep all browsers in sync.
    */
   async pullLatestCloudState() {
-    if (!this.isOnline || this.isSyncing) return;
+    if (!this.isOnline || this.isSyncing || this.pushTimer) return;
+    this.isSyncing = true;
+    this.notify();
     try {
       // 1. Pull Central System & Clinic Configuration from MySQL
       try {
@@ -195,6 +199,9 @@ class SyncEngine {
       }
     } catch (err) {
       console.warn("[Cloud Sync] Pull state notice:", err.message);
+    } finally {
+      this.isSyncing = false;
+      this.notify();
     }
   }
 
@@ -245,11 +252,10 @@ class SyncEngine {
 
       try {
         console.log(`🔄 Replaying ${items.length} offline mutations to VPS MySQL...`);
+        await this.pushLocalStateToCloud();
         for (const item of items) {
-          await new Promise((resolve) => setTimeout(resolve, 50));
           dbOutbox.markSynced(item.id);
         }
-        await this.pushLocalStateToCloud();
         console.log("✅ All records synchronized successfully to Hostinger VPS MySQL!");
       } catch (err) {
         console.warn("Cloud sync deferred:", err);

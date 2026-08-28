@@ -211,8 +211,7 @@ export default function FeesReports() {
   const canViewAllFinancials = Boolean(
     isPrimaryDoctorOrOwner ||
     user?.can_view_financials ||
-    isCashier ||
-    user?.role === "receptionist"
+    isCashier
   );
   const targetDoctorId = canViewAllFinancials ? null : user?.id;
 

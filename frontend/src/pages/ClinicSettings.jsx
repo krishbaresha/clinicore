@@ -204,14 +204,12 @@ export default function ClinicSettings() {
           id="doctor-profile-form"
           onSubmit={(e) => {
             e.preventDefault();
-            const users = JSON.parse(localStorage.getItem("cf_users") || "[]");
-            const updated = users.map((u) => {
-              if (u.id === user.userId) {
-                return { ...u, name: profileForm.name.trim(), email: profileForm.email.trim() };
-              }
-              return u;
+            const activeId = user.userId || user.id;
+            dbUsers.update(activeId, {
+              name: profileForm.name.trim(),
+              email: profileForm.email.trim(),
             });
-            localStorage.setItem("cf_users", JSON.stringify(updated));
+            const updated = dbUsers.getAll();
             // Update session storage
             const session = JSON.parse(sessionStorage.getItem("cf_session") || "{}");
             session.name = profileForm.name.trim();
@@ -392,31 +390,23 @@ export default function ClinicSettings() {
                   setStaffError("Please fill out all fields.");
                   return;
                 }
-                const users = JSON.parse(localStorage.getItem("cf_users") || "[]");
                 
                 if (editingStaff) {
                   // Update
-                  const updated = users.map((u) => {
-                    if (u.id === editingStaff.id) {
-                      const updatedUser = {
-                        ...u,
-                        name: staffForm.name.trim(),
-                        email: staffForm.email.trim(),
-                        phone: staffForm.phone.trim(),
-                        role: staffForm.role,
-                      };
-                      // Only update password if a new one was entered
-                      if (staffForm.password.trim()) {
-                        updatedUser.password = hashPassword(staffForm.password.trim());
-                      }
-                      return updatedUser;
-                    }
-                    return u;
-                  });
-                  localStorage.setItem("cf_users", JSON.stringify(updated));
+                  const payload = {
+                    name: staffForm.name.trim(),
+                    email: staffForm.email.trim(),
+                    phone: staffForm.phone.trim(),
+                    role: staffForm.role,
+                  };
+                  if (staffForm.password && staffForm.password.trim()) {
+                    payload.password = hashPassword(staffForm.password.trim());
+                  }
+                  dbUsers.update(editingStaff.id, payload);
+                  const updated = dbUsers.getAll();
                   setStaff(updated);
                   // If updated user is the active user, refresh their session
-                  if (editingStaff.id === user.userId) {
+                  if (editingStaff.id === (user.userId || user.id)) {
                     const session = JSON.parse(sessionStorage.getItem("cf_session") || "{}");
                     session.name = staffForm.name.trim();
                     sessionStorage.setItem("cf_session", JSON.stringify(session));
@@ -431,10 +421,11 @@ export default function ClinicSettings() {
                     email: staffForm.email.trim(),
                     phone: staffForm.phone.trim(),
                     role: staffForm.role,
-                    password: hashPassword(staffForm.password.trim() || "password")
+                    status: "active",
+                    password: hashPassword(staffForm.password?.trim() || "password")
                   };
-                  const updated = [...users, newUser];
-                  localStorage.setItem("cf_users", JSON.stringify(updated));
+                  dbUsers.add(newUser);
+                  const updated = dbUsers.getAll();
                   setStaff(updated);
                 }
                 setShowStaffForm(false);

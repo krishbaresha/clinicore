@@ -26,6 +26,14 @@ function PhotoCaptureModal({ visit, patient, onClose, onSave }) {
     }
   }
 
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [cameraStream]);
+
   function stopCamera() {
     if (cameraStream) {
       cameraStream.getTracks().forEach((t) => t.stop());
@@ -235,6 +243,13 @@ export default function PendingReports() {
 
   useEffect(() => {
     loadPending();
+    const interval = setInterval(loadPending, 3000);
+    const handleUpdate = () => loadPending();
+    window.addEventListener("clinicflow_status_update", handleUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("clinicflow_status_update", handleUpdate);
+    };
   }, []);
 
   return (

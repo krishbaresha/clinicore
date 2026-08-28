@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -59,8 +59,12 @@ const STATUS_STYLES = {
   },
 };
 
-function getRelLabel(type) {
-  return { father: "S/O", husband: "W/O", wife: "H/O", mother: "D/O" }[type] || "";
+function getRelLabel(type, gender) {
+  if (type === "father") return gender === "female" ? "D/O" : "S/O";
+  if (type === "husband") return "W/O";
+  if (type === "wife") return "H/O";
+  if (type === "mother") return gender === "female" ? "D/O" : "S/O";
+  return "";
 }
 
 export default function DoctorQueue() {
@@ -73,10 +77,13 @@ export default function DoctorQueue() {
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [customNote, setCustomNote] = useState("");
 
-  const [selectedDoctorId, setSelectedDoctorId] = useState(user?.userId || user?.id || "user_001");
-  const doctors = dbUsers.getAll().filter((u) => u.role === "doctor");
+  const doctors = useMemo(() => dbUsers.getAll().filter((u) => u.role === "doctor"), []);
   const isDoctorUser = user?.role === "doctor";
-  const doctorId = isDoctorUser ? (user?.userId || user?.id || "user_001") : selectedDoctorId;
+  const [selectedDoctorId, setSelectedDoctorId] = useState(() => {
+    if (isDoctorUser) return user?.userId || user?.id || "user_owner";
+    return doctors[0]?.id || "user_owner";
+  });
+  const doctorId = isDoctorUser ? (user?.userId || user?.id || "user_owner") : selectedDoctorId;
   const [selectedQueueIndex, setSelectedQueueIndex] = useState(0);
 
   const loadQueue = useCallback(() => {
@@ -90,6 +97,7 @@ export default function DoctorQueue() {
     });
     setPatients(pMap);
 
+    // Load doctor profile
     if (doctorId) {
       const p = dbUsers.getById(doctorId);
       setDocProfile(p);
@@ -110,12 +118,13 @@ export default function DoctorQueue() {
     setShowNoteInput(false);
   }
 
-  function callNext() {
-    const nextWaiting = queue.find((v) => v.status === "waiting");
+  const callNext = useCallback(() => {
+    const { queue: curQueue } = navStateRef.current;
+    const nextWaiting = curQueue.find((v) => v.status === "waiting");
     if (!nextWaiting) return;
     dbVisits.updateStatus(nextWaiting.id, "in_consultation");
     loadQueue();
-  }
+  }, [loadQueue]);
 
   function skipVisit(visitId) {
     dbVisits.skip(visitId);
@@ -178,7 +187,7 @@ export default function DoctorQueue() {
 
     window.addEventListener("keydown", handleDoctorQueueKeyDown);
     return () => window.removeEventListener("keydown", handleDoctorQueueKeyDown);
-  }, []);
+  }, [callNext]);
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-6 zero-horizontal-overflow">

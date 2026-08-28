@@ -162,7 +162,7 @@ export function printThermalReceipt(sale, clinicData = null) {
     <div style="margin-bottom: 5px;">
       <div style="font-weight: 700; font-size: 12px; color: #111827;">${escapeHtml(item.medicine_name)}${discBadge}</div>
       <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 500; color: #4b5563; margin-top: 1px;">
-        <span>${item.quantity || 1} ${escapeHtml(item.unit_label || "Unit")} × Rs. ${Number(item.unit_price || 0).toFixed(2)}</span>
+        <span>${item.qty || item.quantity || 1} ${escapeHtml(item.unit_label || "Unit")} × Rs. ${Number(item.unit_price || 0).toFixed(2)}</span>
         <span style="font-weight: 800; color: #111827;">Rs. ${Number(item.line_total || 0).toFixed(2)}</span>
       </div>
     </div>
@@ -402,7 +402,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
       <body>
         <!-- Clinic Logo Header (Clean Centered Image) -->
         <div style="text-align: center; padding: 4px 0 6px 0; border-bottom: 1px solid #e5e7eb;">
-          <img src="${clinicLogoPng}" alt="" style="max-height: 55px; max-width: 190px; width: auto; height: auto; display: block; margin: 0 auto;" />
+          <img src="${CLINIC_LOGO_BASE64}" alt="" style="max-height: 55px; max-width: 190px; width: auto; height: auto; display: block; margin: 0 auto;" />
         </div>
 
         <!-- Date & Clossing Receipt Banner -->

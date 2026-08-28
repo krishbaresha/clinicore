@@ -27,7 +27,7 @@ export function getFeesSummary(range = "monthly", doctorId = null) {
   const now = new Date();
 
   const filtered = visits.filter((v) => {
-    if (doctorId && v.doctor_id && v.doctor_id !== doctorId) return false;
+    if (doctorId && v.doctor_id !== doctorId) return false;
     const d = typeof v.visit_date === "string" ? parseISO(v.visit_date) : new Date(v.visit_date);
     if (!isValid(d)) return false;
 

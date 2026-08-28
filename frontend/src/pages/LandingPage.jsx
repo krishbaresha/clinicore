@@ -107,8 +107,8 @@ export default function LandingPage() {
       availability_status: "available",
     },
     {
-      id: "doc_asif",
-      name: "Dr. Asif Ashraf",
+      id: "doc_kashif",
+      name: "Dr. Muhammad Kashif Khan",
       specialization: "Associate Consultant & Chronic Care Specialist",
       room_number: "Chamber 2",
       consultation_fee: 400,

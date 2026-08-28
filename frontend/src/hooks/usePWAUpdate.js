@@ -14,7 +14,7 @@ export function usePWAUpdate() {
   const [newVersion, setNewVersion] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const registrationRef = useRef(null);
-  const currentVersionRef = useRef(typeof __APP_BUILD_VERSION__ !== "undefined" ? __APP_BUILD_VERSION__ : null);
+  const currentVersionRef = useRef(typeof globalThis !== "undefined" && globalThis.__APP_BUILD_VERSION__ ? globalThis.__APP_BUILD_VERSION__ : null);
 
   const applyUpdate = useCallback(() => {
     setIsUpdating(true);

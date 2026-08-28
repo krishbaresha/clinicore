@@ -16,9 +16,9 @@ export const patientInputSchema = z.object({
     .enum(["father", "husband", "wife", "mother", "brother", "sister", "son", "daughter"])
     .default("father"),
   phone: z
-    .string({ required_error: "Phone number is required." })
-    .trim()
-    .min(7, "Phone number must be at least 7 digits."),
+    .union([z.string(), z.number()])
+    .transform((val) => String(val).trim())
+    .refine((val) => val.length >= 7, "Phone number must be at least 7 digits."),
   age: z
     .union([z.number(), z.string()])
     .optional()
@@ -93,18 +93,30 @@ export const pharmacyExpenseSchema = z.object({
 });
 
 // ── POS Sale Record Schema ──
-export const recordSaleSchema = z.object({
-  inventory_id: z.string({ required_error: "Inventory ID is required." }).min(1),
-  quantity_sold: z
-    .union([z.number(), z.string()])
-    .transform((val) => Math.max(1, parseInt(val, 10) || 1)),
-  linked_visit_id: z.string().nullable().optional(),
-  selected_unit_type: z.enum(["unit", "strip", "box"]).optional().default("unit"),
-});
+export const recordSaleSchema = z.union([
+  z.object({
+    inventory_id: z.string({ required_error: "Inventory ID is required." }).min(1),
+    quantity_sold: z
+      .union([z.number(), z.string()])
+      .transform((val) => Math.max(1, parseInt(val, 10) || 1)),
+    linked_visit_id: z.string().nullable().optional(),
+    selected_unit_type: z.enum(["unit", "strip", "box"]).optional().default("unit"),
+  }),
+  z.object({
+    items: z.array(z.any()).min(1, "At least one item is required in cart."),
+    total_amount: z.union([z.number(), z.string()]).transform((val) => Number(val) || 0),
+    payment_mode: z.string().optional().default("Cash"),
+    paid_amount: z.union([z.number(), z.string()]).optional(),
+    discount_amount: z.union([z.number(), z.string()]).optional(),
+  }),
+]);
 
 // ── CashBook Entry Schema ──
 export const cashBookEntrySchema = z.object({
-  type: z.enum(["Receipt", "Payment", "Transfer"], { required_error: "Entry type is required." }),
+  type: z.union([
+    z.enum(["Receipt", "Payment", "Transfer", "Receive", "Paid"]),
+    z.string().transform((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()),
+  ]),
   amount: z
     .union([z.number(), z.string()], { required_error: "Amount is required." })
     .transform((val) => Number(val))
@@ -113,7 +125,7 @@ export const cashBookEntrySchema = z.object({
   party_name: z.string().trim().optional().default(""),
   category: z.string().trim().optional().default("General"),
   description: z.string().trim().optional().default(""),
-  payment_mode: z.enum(["Cash", "Cheque", "Online", "Bank"]).default("Cash"),
+  payment_mode: z.string().optional().default("Cash"),
   voucher_no: z.string().optional(),
   date: z.string().optional(),
 });

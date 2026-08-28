@@ -2,12 +2,23 @@
 import { dbUsers, hashPassword } from "./db.js";
 
 const SESSION_KEY = "cf_session";
-
-/** Rate-limiter state (client-side brute-force mitigation) */
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 60_000; // 1 minute lockout after max failures
-let failedAttempts = 0;
-let lockoutUntil = 0;
+
+function getRateLimitState() {
+  try {
+    const raw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("cf_auth_rate_limit") : null;
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { failedAttempts: 0, lockoutUntil: 0 };
+}
+
+function setRateLimitState(state) {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem("cf_auth_rate_limit", JSON.stringify(state));
+    }
+  } catch {}
+}
 
 export function getAdminPasscode() {
   if (typeof window !== "undefined" && window.localStorage) {
@@ -19,13 +30,14 @@ export function getAdminPasscode() {
 export function verifyAdminPasscode(passcode) {
   if (!passcode) return false;
   const current = getAdminPasscode();
-  return passcode.trim() === current.trim() || passcode.trim() === "KB2026";
+  return passcode.trim() === current.trim();
 }
 
 /** Attempt login. Returns { success, user, error }. */
 export function login(identifier, password) {
   // Rate limit check
   const now = Date.now();
+  let { failedAttempts, lockoutUntil } = getRateLimitState();
   if (failedAttempts >= MAX_ATTEMPTS && now < lockoutUntil) {
     const secsLeft = Math.ceil((lockoutUntil - now) / 1000);
     return {
@@ -38,6 +50,7 @@ export function login(identifier, password) {
   // Reset counter if lockout period has passed
   if (now >= lockoutUntil && failedAttempts >= MAX_ATTEMPTS) {
     failedAttempts = 0;
+    setRateLimitState({ failedAttempts: 0, lockoutUntil: 0 });
   }
 
   const idLower = (identifier || "").toString().trim().toLowerCase();
@@ -80,7 +93,8 @@ export function login(identifier, password) {
 
   if (!user) {
     failedAttempts++;
-    if (failedAttempts >= MAX_ATTEMPTS) lockoutUntil = Date.now() + LOCKOUT_MS;
+    lockoutUntil = failedAttempts >= MAX_ATTEMPTS ? Date.now() + 60_000 : lockoutUntil;
+    setRateLimitState({ failedAttempts, lockoutUntil });
     return { success: false, user: null, error: GENERIC_ERROR };
   }
 
@@ -99,12 +113,13 @@ export function login(identifier, password) {
 
   if (!isMatch) {
     failedAttempts++;
-    if (failedAttempts >= MAX_ATTEMPTS) lockoutUntil = Date.now() + LOCKOUT_MS;
+    lockoutUntil = failedAttempts >= MAX_ATTEMPTS ? Date.now() + 60_000 : lockoutUntil;
+    setRateLimitState({ failedAttempts, lockoutUntil });
     return { success: false, user: null, error: GENERIC_ERROR };
   }
 
   // Success — reset rate limiter counter
-  failedAttempts = 0;
+  setRateLimitState({ failedAttempts: 0, lockoutUntil: 0 });
 
   const session = {
     userId: user.id,
@@ -138,11 +153,6 @@ export function getSession() {
       if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     }
     if (!session || !session.userId) return null;
-
-    // Bootstrap admin bypass DB lookup
-    if (session.userId === "user_admin") {
-      return session;
-    }
 
     // Validate session against actual stored user record to prevent tampering & zombie sessions
     const dbUser = dbUsers.getById(session.userId);

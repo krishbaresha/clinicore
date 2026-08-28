@@ -505,7 +505,7 @@ export default function SupplierPurchases() {
       qty: String(qty),
       rate: String(rate),
       gross: String(gross),
-      disc_pct: grnCart.disc_pct || "40",
+      disc_pct: grnCart.disc_pct === "" || grnCart.disc_pct === undefined ? "40" : String(grnCart.disc_pct),
       disc_flat: grnCart.disc_flat || "0",
       net_amount: String(net),
     });

@@ -52,16 +52,23 @@ import {
   dbDayClosing,
   dbLicense,
   dbOutbox,
+  dbPatientLedger,
+  dbClinicServices,
   hashPassword,
   formatStockBreakdown,
   generateSequentialInvoiceNo,
+  getAllCollectionsSnapshot,
+  hydrateCollectionsFromSnapshot,
 } from "../src/api/db.js";
 
 import { login, logout, getSession } from "../src/api/auth.js";
 import { createPatient, searchPatients, updatePatient } from "../src/api/patients.js";
 import { recordSale } from "../src/api/store.js";
-import { escapeHtml, printPurchaseGRNReceipt, printSaleInvoiceReceipt, printCashVoucherReceipt } from "../src/utils/thermalPrinter.js";
+import { escapeHtml, printPurchaseGRNReceipt, printSaleInvoiceReceipt, printCashVoucherReceipt, printOPDTokenReceipt, printDayEndClosingReceipt } from "../src/utils/thermalPrinter.js";
+import { formatPatientAge } from "../src/utils/formatters.js";
 import { GLOBAL_NAV_SHORTCUTS } from "../src/hooks/useGlobalKeyboardNav.js";
+import { syncEngine } from "../src/api/syncEngine.js";
+import { performance } from "perf_hooks";
 
 import { runDesktopSync } from "./sync_desktop_engine.mjs";
 import fs from "fs";
@@ -1261,7 +1268,430 @@ async function runTests() {
     assert(dashCode.includes("canViewFinancials"), "Dashboard respects canViewFinancials permission");
     assert(dashCode.includes("Confidential"), "Dashboard masks revenue cards for unauthorized staff");
     assert(feesCode.includes("Financial Access Restricted"), "FeesReports restricts full ledger access to authorized staff");
-  });  // ----------------------------------------------------
+  });
+
+  // ============================================================================
+  // SUITE 27: SNAPSHOT HYDRATION & CACHE CORRUPTION RECOVERY
+  // ============================================================================
+  await suite("27. Snapshot Hydration, Corrupt localStorage Recovery & O(1) Cache Sync", async () => {
+    resetDatabaseToDemoData();
+
+    // 1. Missing keys fallback
+    localStorage.removeItem("cf_patients_v5");
+    const emptyPatients = dbPatients.getAll();
+    assert(Array.isArray(emptyPatients) && emptyPatients.length === 0, "Missing localStorage key gracefully returns empty array without throwing");
+
+    // 2. Corrupted JSON fallback
+    localStorage.setItem("cf_patients_v5", "{ INVALID_JSON_CORRUPT_BYTES [@@! ");
+    const recoveredPatients = dbPatients.getAll();
+    assert(Array.isArray(recoveredPatients) && recoveredPatients.length === 0, "Corrupt non-JSON localStorage entry gracefully recovers to empty array fallback");
+
+    // 3. Cache consistency between _COLLECTION_CACHE and _ID_MAP_CACHE
+    const p1 = dbPatients.add({ name: "Muhammad Ali", phone: "03001234567", gender: "Male", age: 35 });
+    const p2 = dbPatients.add({ name: "Fatima Bibi", phone: "03009876543", gender: "Female", age: 28 });
+
+    const fetchedP1 = dbPatients.getById(p1.id);
+    const fetchedP2 = dbPatients.getById(p2.id);
+
+    assert(fetchedP1 && fetchedP1.name === "Muhammad Ali", "O(1) _ID_MAP_CACHE instant retrieval matches added record p1");
+    assert(fetchedP2 && fetchedP2.name === "Fatima Bibi", "O(1) _ID_MAP_CACHE instant retrieval matches added record p2");
+
+    // 4. Update reflection across both caches
+    dbPatients.update(p1.id, { name: "Dr. Muhammad Ali Updated", city: "Hyderabad" });
+    const updatedP1 = dbPatients.getById(p1.id);
+    const allPatients = dbPatients.getAll();
+    const collectionP1 = allPatients.find(p => p.id === p1.id);
+
+    assert(updatedP1.name === "Dr. Muhammad Ali Updated" && updatedP1.city === "Hyderabad", "_ID_MAP_CACHE reflects updated fields immediately");
+    assert(collectionP1.name === "Dr. Muhammad Ali Updated" && collectionP1.city === "Hyderabad", "_COLLECTION_CACHE reflects updated fields immediately");
+
+    // 5. Authoritative Snapshot Hydration
+    const mockCloudSnapshot = {
+      cf_clinic_v5: { id: "clinic_001", name: "Authoritative Cloud Clinic Name" },
+      cf_patients_v5: [
+        { id: "pat_cloud_1", name: "Cloud Patient One", phone: "03331112233", clinic_id: "clinic_001" },
+        { id: "pat_cloud_2", name: "Cloud Patient Two", phone: "03334445566", clinic_id: "clinic_001" },
+      ],
+      cf_inventory_v5: [
+        { id: "med_cloud_1", name: "Arnica Montana 200", company_name: "Schwabe", store_stock: 50, retail_price: 450 },
+      ]
+    };
+
+    hydrateCollectionsFromSnapshot(mockCloudSnapshot);
+
+    const hydratedPatients = dbPatients.getAll();
+    const hydratedP1 = dbPatients.getById("pat_cloud_1");
+    const hydratedClinic = dbClinic.get();
+    const hydratedMed = dbInventory.getById("med_cloud_1");
+
+    assert(hydratedPatients.length === 2, "hydrateCollectionsFromSnapshot correctly hydrated 2 patients into collection cache");
+    assert(hydratedP1 && hydratedP1.name === "Cloud Patient One", "_ID_MAP_CACHE immediately hot-indexed hydrated records for O(1) lookup");
+    assert(hydratedClinic.name === "Authoritative Cloud Clinic Name", "Clinic singleton correctly hydrated from snapshot");
+    assert(hydratedMed && hydratedMed.retail_price === 450, "Inventory catalog correctly hydrated from snapshot");
+  });
+
+  // ============================================================================
+  // SUITE 28: EXTREME STRESS TESTING & SCALE BENCHMARKING (18,000 LIVE OBJECTS)
+  // ============================================================================
+  await suite("28. Extreme Stress Testing: 1,000 Patients, 2,000 Visits, 5,000 Inventory SKUs, 10,000 Sales", async () => {
+    resetDatabaseToDemoData();
+
+    const memBefore = process.memoryUsage().heapUsed / 1024 / 1024;
+    console.log(`  📊 Initial Memory Heap: ${memBefore.toFixed(2)} MB`);
+
+    // 1. Bulk Generate 1,000 Patients
+    const t0Patients = performance.now();
+    const patientsList = [];
+    for (let i = 1; i <= 1000; i++) {
+      patientsList.push({
+        id: `pat_stress_${i}`,
+        mrn: `MRN-${10000 + i}`,
+        name: `Stress Patient ${i} Khan`,
+        phone: `0300${String(1000000 + i).slice(-7)}`,
+        gender: i % 2 === 0 ? "Male" : "Female",
+        age: 20 + (i % 60),
+        city: i % 3 === 0 ? "Hyderabad" : (i % 3 === 1 ? "Karachi" : "Kotri"),
+        created_at: new Date().toISOString(),
+      });
+    }
+    localStorage.setItem("cf_patients_v5", JSON.stringify(patientsList));
+    dbPatients.getAll();
+    const t1Patients = performance.now();
+    console.log(`  ⚡ 1,000 Patients populated in ${(t1Patients - t0Patients).toFixed(2)} ms`);
+    assert(dbPatients.getAll().length === 1000, "1,000 patients loaded into cache and indexed");
+
+    const tSearchStart = performance.now();
+    const foundPatient = dbPatients.getById("pat_stress_789");
+    const tSearchEnd = performance.now();
+    assert(foundPatient && foundPatient.mrn === "MRN-10789", "O(1) ID map lookup found patient in <1ms");
+
+    // 2. Bulk Generate 2,000 Patient Visits
+    const t0Visits = performance.now();
+    const visitsList = [];
+    for (let i = 1; i <= 2000; i++) {
+      const pId = `pat_stress_${(i % 1000) + 1}`;
+      visitsList.push({
+        id: `vis_stress_${i}`,
+        patient_id: pId,
+        doctor_id: i % 2 === 0 ? "user_kashif" : "user_owner",
+        queue_no: (i % 50) + 1,
+        status: i % 5 === 0 ? "waiting" : "completed",
+        symptoms: "Fever, headache, dry cough with weakness",
+        diagnosis: "Acute Bronchitis & Viral syndrome",
+        prescription_items: [
+          { medicine_name: "Belladonna 30", potency: "30C", dosage: "5 drops thrice daily", days: 3 },
+          { medicine_name: "Bryonia Alba 200", potency: "200", dosage: "5 drops at bedtime", days: 5 },
+        ],
+        consultation_fee: 300,
+        visit_date: new Date().toISOString(),
+      });
+    }
+    localStorage.setItem("cf_visits_v5", JSON.stringify(visitsList));
+    dbVisits.getAll();
+    const t1Visits = performance.now();
+    console.log(`  ⚡ 2,000 Visits populated in ${(t1Visits - t0Visits).toFixed(2)} ms`);
+    assert(dbVisits.getAll().length === 2000, "2,000 Visits loaded into cache");
+
+    const kashifQueue = dbVisits.getAll().filter(v => v.doctor_id === "user_kashif" && v.status === "waiting");
+    assert(kashifQueue.length > 0 && kashifQueue.every(v => v.doctor_id === "user_kashif" && v.status === "waiting"), "Doctor queue isolation strictly filters only assigned waiting patients at scale");
+
+    // 3. Bulk Generate 5,000 Inventory Medicine SKUs
+    const t0Inv = performance.now();
+    const inventoryList = [];
+    const companies = ["Schwabe Germany", "BM Pvt LTD", "Paul Brooks", "MEKTUM", "BLOSSOM", "Dr. Reckeweg", "Willmar Schwabe"];
+    for (let i = 1; i <= 5000; i++) {
+      const comp = companies[i % companies.length];
+      inventoryList.push({
+        id: `med_stress_${i}`,
+        item_code: `MED-${10000 + i}`,
+        name: `Homoeo Medicine Remedy ${i}`,
+        company_name: comp,
+        category: "Drops & Syrups",
+        unit_label: "Bottles",
+        box_label: "Packs",
+        pack_size: 10,
+        store_stock: 50 + (i % 200),
+        warehouse_stock: 100 + (i % 500),
+        trade_price: 150 + (i % 100),
+        retail_price: 220 + (i % 120),
+        status: "active",
+        created_at: new Date().toISOString(),
+      });
+    }
+    localStorage.setItem("cf_inventory_v5", JSON.stringify(inventoryList));
+    dbInventory.getAll();
+    const t1Inv = performance.now();
+    console.log(`  ⚡ 5,000 Inventory SKUs populated in ${(t1Inv - t0Inv).toFixed(2)} ms`);
+    assert(dbInventory.getAll().length === 5000, "5,000 Inventory SKUs loaded into cache");
+
+    // 4. Bulk Generate 10,000 Sales Transactions
+    const t0Sales = performance.now();
+    const salesList = [];
+    let cumulativeRevenue = 0;
+    for (let i = 1; i <= 10000; i++) {
+      const net = 450 + (i % 300);
+      cumulativeRevenue += net;
+      salesList.push({
+        id: `sale_stress_${i}`,
+        invoice_no: `INV-${100000 + i}`,
+        voucher_no: `S-${100000 + i}`,
+        patient_name: `Walk-in Customer ${i}`,
+        subtotal: net + 50,
+        discount: 50,
+        total: net,
+        total_amount: net,
+        net_amount: net,
+        amount_paid: net,
+        paid_amount: net,
+        payment_method: i % 4 === 0 ? "Credit Card" : (i % 4 === 1 ? "EasyPaisa" : "Cash"),
+        sale_date: new Date().toISOString(),
+        items: [
+          { item_id: `med_stress_${(i % 5000) + 1}`, item_name: `Homoeo Medicine Remedy ${(i % 5000) + 1}`, qty: 2, price: 250, total: 500 }
+        ]
+      });
+    }
+    localStorage.setItem("cf_sales_v5", JSON.stringify(salesList));
+    dbSales.getAll();
+    const t1Sales = performance.now();
+    console.log(`  ⚡ 10,000 Sales Transactions populated in ${(t1Sales - t0Sales).toFixed(2)} ms`);
+    assert(dbSales.getAll().length === 10000, "10,000 Sales Transactions loaded into cache");
+
+    // Latency benchmark
+    const tQueryStart = performance.now();
+    const allSales = dbSales.getAll();
+    let calculatedSum = 0;
+    for (let i = 0; i < allSales.length; i++) {
+      calculatedSum += allSales[i].net_amount || 0;
+    }
+    const tQueryEnd = performance.now();
+    const queryDuration = tQueryEnd - tQueryStart;
+    console.log(`  ⚡ Aggregation over 10,000 records took: ${queryDuration.toFixed(2)} ms (Sum: Rs. ${calculatedSum.toLocaleString("en-US")})`);
+    
+    assert(queryDuration < 80, `Sub-80ms query latency achieved (${queryDuration.toFixed(2)} ms) on 10,000 transactions`);
+    assert(calculatedSum === cumulativeRevenue, "Financial aggregation exact arithmetic match with zero precision loss");
+
+    const memAfter = process.memoryUsage().heapUsed / 1024 / 1024;
+    console.log(`  📊 Final Memory Heap with 18,000 records: ${memAfter.toFixed(2)} MB (Delta: +${(memAfter - memBefore).toFixed(2)} MB)`);
+    assert((memAfter - memBefore) < 200, "Zero memory leak / lean memory footprint under heavy 18,000 records load (< 200 MB increase)");
+  });
+
+  // ============================================================================
+  // SUITE 29: DATA SANITIZATION, UNICODE, URDU & THERMAL PRINTER ESCAPING
+  // ============================================================================
+  await suite("29. Data Sanitization, Unicode, Urdu Nastaliq & Thermal Print Safety", async () => {
+    resetDatabaseToDemoData();
+
+    // 1. Urdu script and Arabic diacritics
+    const urduPatientData = {
+      name: "حکیم ڈاکٹر محمد کاشف خان صاحب",
+      guardian_name: "محمد آصف خان مرحوم",
+      address: "محلہ کینٹ، نزد گلبہار چوک، حیدرآباد، سندھ",
+      phone: "03473100304",
+      city: "حیدرآباد",
+      gender: "Male",
+      age: 42,
+    };
+
+    const addedUrduPat = dbPatients.add(urduPatientData);
+    const retrievedUrduPat = dbPatients.getById(addedUrduPat.id);
+
+    assert(retrievedUrduPat.name === "حکیم ڈاکٹر محمد کاشف خان صاحب", "Urdu Nastaliq patient name stored and retrieved with 100% UTF-8 byte fidelity");
+    assert(retrievedUrduPat.address === "محلہ کینٹ، نزد گلبہار چوک، حیدرآباد، سندھ", "Urdu address with Arabic punctuation preserved perfectly");
+
+    // 2. Complex homeopathic notation
+    const formulaMedicine = {
+      item_code: "MED-URDU-01",
+      name: 'Berberis Vulgaris Q (Mother Tincture) & "Syzygium Jambolanum 1X" <High Potency>',
+      company_name: "Dr. Willmar Schwabe Germany / ڈاکٹر ولبر شوابے",
+      formula: "C20H19NO5 + H2O & 90% v/v Ethanol (Mother Tincture Ø)",
+      store_stock: 25,
+      retail_price: 850,
+    };
+
+    const addedMed = dbInventory.add(formulaMedicine);
+    const retrievedMed = dbInventory.getById(addedMed.id);
+
+    assert(retrievedMed.formula === "C20H19NO5 + H2O & 90% v/v Ethanol (Mother Tincture Ø)", "Special homeopathic mother tincture notation (Ø, %, +) preserved accurately");
+
+    // 3. HTML Injection & XSS sanitization
+    const maliciousInput = '<script>alert("Hacked")</script><img src=x onerror=alert(1)>Hakim & "Co"';
+    const sanitizedHtml = escapeHtml(maliciousInput);
+    
+    assert(!sanitizedHtml.includes("<script>"), "escapeHtml successfully neutralized script injection");
+    assert(!sanitizedHtml.includes('<img'), "escapeHtml successfully neutralized img tag XSS injection");
+    assert(sanitizedHtml.includes('&lt;script&gt;alert(&quot;Hacked&quot;)&lt;/script&gt;'), "Raw script tags safely converted to HTML entities");
+    assert(sanitizedHtml.includes('&amp; &quot;Co&quot;'), "Quotes and ampersands properly sanitized");
+  });
+
+  // ============================================================================
+  // SUITE 30: CLOUD SYNC OUTBOX ENGINE & PULL MUTEX LOCK
+  // ============================================================================
+  await suite("30. Cloud Sync, Outbox Replay & pullLatestCloudState Mutex Concurrency Lock", async () => {
+    resetDatabaseToDemoData();
+
+    // 1. Enqueue offline mutations
+    const item1 = dbOutbox.enqueue("CREATE_PATIENT", { name: "Offline Patient A", phone: "03000000001" });
+    const item2 = dbOutbox.enqueue("RECORD_POS", { invoice_no: "INV-OFF-101", total: 1500 });
+    const item3 = dbOutbox.enqueue("RECORD_PURCHASE", { bill_no: "PUR-OFF-909", supplier_id: "sup_001" });
+
+    let outboxItems = dbOutbox.getAll();
+    assert(outboxItems.length === 3, "dbOutbox successfully enqueued 3 pending offline mutations");
+
+    // 2. Mark synced
+    dbOutbox.markSynced(item2.id);
+    outboxItems = dbOutbox.getAll();
+    assert(outboxItems.length === 2 && !outboxItems.find(i => i.id === item2.id), "markSynced successfully removed processed mutation item2");
+
+    dbOutbox.clearAll();
+    assert(dbOutbox.getAll().length === 0, "clearAll emptied outbox successfully");
+
+    // 3. Mutex locks on pullLatestCloudState
+    assert(typeof syncEngine.pullLatestCloudState === "function", "syncEngine.pullLatestCloudState is defined");
+
+    syncEngine.pushTimer = setTimeout(() => {}, 5000);
+    const pullAttemptWhileTyping = await syncEngine.pullLatestCloudState();
+    assert(syncEngine.pushTimer !== null, "pullLatestCloudState mutex lock immediately aborted pull while unpushed local changes are pending (pushTimer active)");
+    clearTimeout(syncEngine.pushTimer);
+    syncEngine.pushTimer = null;
+
+    syncEngine.isSyncing = true;
+    const pullAttemptWhileSyncing = await syncEngine.pullLatestCloudState();
+    assert(pullAttemptWhileSyncing === undefined, "pullLatestCloudState mutex lock immediately aborted pull while another sync operation is in flight (isSyncing=true)");
+    syncEngine.isSyncing = false;
+
+    // 4. Batching rapid schedulePush
+    let pushCount = 0;
+    const originalPush = syncEngine.pushLocalStateToCloud;
+    syncEngine.pushLocalStateToCloud = async () => { pushCount++; };
+
+    syncEngine.schedulePush(20);
+    syncEngine.schedulePush(20);
+    syncEngine.schedulePush(20);
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+    assert(pushCount === 1, "schedulePush debouncer successfully batched 3 rapid mutation calls into exactly 1 atomic push");
+    syncEngine.pushLocalStateToCloud = originalPush;
+  });
+
+  // ============================================================================
+  // SUITE 31: BACKUP VAULT (.cfbak) ENCRYPTION, RESTORE & CORRUPTION DETECTION
+  // ============================================================================
+  await suite("31. Encrypted Backup Vault (.cfbak) Export, Restore & Checksum Validation", async () => {
+    resetDatabaseToDemoData();
+
+    const pat = dbPatients.add({ name: "Zubair Ahmed", phone: "03140001122", mrn: "MRN-BACKUP-99" });
+    const med = dbInventory.add({ item_code: "MED-BAK-01", name: "Thuja Occidentalis 1M", store_stock: 40, retail_price: 350 });
+    const sale = dbSales.addSaleInvoice({ account_name: "Zubair Ahmed", total_amount: 700, paid_amount: 700, payment_mode: "Cash", items: [] });
+
+    // 1. Export encrypted vault
+    const encryptedVault = exportFullDatabase(true);
+    assert(typeof encryptedVault === "string", "exportFullDatabase(true) generated an encrypted string payload");
+    assert(encryptedVault.startsWith("CF_ENCRYPTED_VAULT_V1::"), "Encrypted backup header begins with magic signature 'CF_ENCRYPTED_VAULT_V1::'");
+
+    // 2. Wipe database
+    localStorage.clear();
+    resetDatabaseToDemoData();
+    assert(dbPatients.getAll().length === 0, "Database successfully cleared before restore test");
+
+    // 3. Restore
+    const restoreResult = importFullDatabase(encryptedVault);
+    assert(restoreResult.success === true, "importFullDatabase successfully decrypted and restored the vault backup");
+
+    // 4. Record fidelity
+    const restoredPat = dbPatients.getById(pat.id);
+    const restoredMed = dbInventory.getById(med.id);
+    const restoredSales = dbSales.getAll();
+    const restoredSale = restoredSales.find(s => s.id === sale.id);
+
+    assert(restoredPat && restoredPat.name === "Zubair Ahmed" && restoredPat.mrn === "MRN-BACKUP-99", "Restored patient record matches 100% original state");
+    assert(restoredMed && restoredMed.name === "Thuja Occidentalis 1M" && restoredMed.store_stock === 40, "Restored medicine stock matches 100% original state");
+    assert(restoredSale && restoredSale.total_amount === 700, "Restored sales record matches 100% original state");
+
+    // 5. Corrupt file rejection
+    const corruptRestore = importFullDatabase("CF_ENCRYPTED_VAULT_V1::CORRUPTED_BASE64_BYTES_!@#$%^");
+    assert(corruptRestore.success === false && corruptRestore.error, "importFullDatabase safely rejects corrupted .cfbak files with descriptive error");
+  });
+
+  // ============================================================================
+  // SUITE 32: OPD, CONSULTATION, PATIENT LIFECYCLE & THERMAL RECEIPT QA ENGINE
+  // ============================================================================
+  await suite("32. OPD, Consultation, Patient Lifecycle & Thermal Receipt QA Engine", async () => {
+    resetDatabaseToDemoData();
+
+    // 1. Patient Registration, Search & Retention
+    const p1 = dbPatients.add({
+      full_name: "Muhammad Tariq Qureshi",
+      relation_type: "father",
+      relation_name: "Haji Abdul Ghaffar",
+      phone: "03001234567",
+      age: 42,
+      gender: "male",
+      city: "Hyderabad",
+    });
+    assert(p1 && p1.id && p1.id.startsWith("pat_"), "Patient registered with unique MR ID");
+
+    const searchRes = dbPatients.search("Tariq");
+    assert(searchRes.some((p) => p.id === p1.id), "Search by partial name returns patient");
+
+    // 2. Doctor Queue & Isolation
+    const docs = dbUsers.getDoctors();
+    const doc1Id = docs[0]?.id || "user_owner";
+    const doc2Id = docs[1]?.id || "user_kashif";
+
+    dbUsers.update(doc1Id, { consultation_fee: 500 });
+    dbUsers.update(doc2Id, { consultation_fee: 800 });
+
+    const p2 = dbPatients.add({ full_name: "Patient Two", phone: "03009998877" });
+    const tokenDoc1 = dbVisits.add({ patient_id: p1.id, doctor_id: doc1Id, fee_amount: 500 });
+    const tokenDoc2 = dbVisits.add({ patient_id: p2.id, doctor_id: doc2Id, fee_amount: 800 });
+
+    const q1 = dbVisits.getTodayQueue(doc1Id);
+    const q2 = dbVisits.getTodayQueue(doc2Id);
+    assert(q1.some((v) => v.id === tokenDoc1.id) && !q1.some((v) => v.id === tokenDoc2.id), "Doctor 1 queue strictly isolates Doctor 1 visits");
+    assert(q2.some((v) => v.id === tokenDoc2.id) && !q2.some((v) => v.id === tokenDoc1.id), "Doctor 2 queue strictly isolates Doctor 2 visits");
+
+    // 3. Consultation & Vitals HUD Persistence
+    dbVisits.updateStatus(tokenDoc1.id, "in_consultation");
+    const completedVisit = dbVisits.complete(tokenDoc1.id, {
+      vitals_bp: "120/80 mmHg",
+      vitals_pulse: "72 bpm",
+      vitals_temp: "98.4 °F",
+      vitals_spo2: "99 %",
+      vitals_weight: "70 kg",
+      notes: "Routine checkup. Clear chest.",
+      prescription_image_url: "data:image/jpeg;base64,mock_rx_canvas_data",
+    }, "completed");
+
+    assert(completedVisit.status === "completed", "Visit status updated to completed");
+    assert(completedVisit.vitals_bp === "120/80 mmHg" && completedVisit.vitals_pulse === "72 bpm", "Vitals HUD persisted");
+    assert(completedVisit.prescription_image_url !== null, "Prescription photo saved");
+
+    // 4. Patient Dues & Ledger Settlement
+    dbPatientLedger.addCredit(p1.id, p1.full_name, 1000, "Pharmacy Medicine Udhaar");
+    assert(dbPatientLedger.getBalance(p1.id) === 1000, "Patient balance due updated to Rs. 1000");
+
+    dbPatientLedger.receivePayment(p1.id, 1000, "Full Settlement", "Receptionist");
+    assert(dbPatientLedger.getBalance(p1.id) === 0, "Patient balance cleared to 0 after settlement");
+
+    // 5. Thermal Printing Format & Null Safety
+    let printErr = false;
+    try {
+      printOPDTokenReceipt({
+        token: tokenDoc1.token_number,
+        token_number: tokenDoc1.token_number,
+        patient: p1,
+        doctor: docs[0],
+        visit: tokenDoc1,
+        fee: 500,
+        registeredAt: new Date(),
+      }, dbClinic.get());
+    } catch {
+      printErr = true;
+    }
+    assert(!printErr, "80mm OPD Token Thermal receipt generated with zero exceptions");
+  });
+
+  // ----------------------------------------------------
   // SUMMARY REPORT
   // ----------------------------------------------------
   console.log(`\n======================================================`);

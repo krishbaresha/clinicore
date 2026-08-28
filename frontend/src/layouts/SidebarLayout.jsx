@@ -609,7 +609,8 @@ export default function SidebarLayout({ children }) {
           // Dynamic translation lookup
           let displayLabel = item.label;
           if (item.path === "/dashboard") displayLabel = t("nav.dashboard", item.label);
-          else if (item.path === "/reception/queue" || item.path === "/reception/register") displayLabel = t("nav.receptionQueue", item.label);
+          else if (item.path === "/reception/register") displayLabel = t("nav.patientRegistration", item.label);
+          else if (item.path === "/reception/queue") displayLabel = t("nav.receptionQueue", item.label);
           else if (item.path === "/doctor/queue") displayLabel = t("nav.doctorQueue", item.label);
           else if (item.path === "/store/pos") displayLabel = t("nav.storePos", item.label);
           else if (item.path === "/store/warehouse") displayLabel = t("nav.warehouse", item.label);

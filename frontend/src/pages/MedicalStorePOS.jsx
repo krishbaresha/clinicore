@@ -199,11 +199,11 @@ export default function MedicalStorePOS() {
 
   // Active POS Operator Switcher (Single-login multi-cashier workflow)
   const [activeOperator, setActiveOperator] = useState(() => {
-    if (user?.name) return { id: user.userId || user.id, name: user.name, role: user.role || "Cashier" };
     try {
-      const saved = localStorage.getItem("cf_pos_active_operator");
+      const saved = typeof localStorage !== "undefined" ? localStorage.getItem("cf_pos_active_operator") : null;
       if (saved) return JSON.parse(saved);
     } catch {}
+    if (user?.name) return { id: user.userId || user.id, name: user.name, role: user.role || "Cashier" };
     return { id: "op_default", name: "Counter Staff", role: "Cashier" };
   });
 
@@ -874,7 +874,7 @@ export default function MedicalStorePOS() {
                 onKeyDown={handleSearchInputKeyDown}
                 placeholder={searchMode === "company" && posCompanyFilter
                   ? `Search inside ${posCompanyFilter}... (↑↓ to navigate, Enter to add)`
-                  : "Search medicine by name or code (F2)... [↑ / ↓ to navigate, Enter to add]"}
+                  : "Search medicine by name or code (F1)... [↑ / ↓ to navigate, Enter to add]"}
                 className="w-full min-h-[46px] bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-600 rounded-xl pl-11 pr-4 py-2.5 text-sm font-medium focus:outline-none transition-all shadow-2xs"
               />
             </div>
@@ -1209,10 +1209,26 @@ export default function MedicalStorePOS() {
                     )}
                   </div>
                 ) : (
-                  <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
-                    <div className="font-black">Patient Credit / Udhaar Sale</div>
+                  <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div className="font-black">Patient Credit / Udhaar Sale</div>
+                      <span className="text-[10px] font-bold bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-md">Udhaar</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-amber-200/60">
+                      <span className="font-bold text-slate-700">Down Payment (Rs):</span>
+                      <input
+                        id="pos-credit-paid-input"
+                        type="number"
+                        min="0"
+                        max={finalTotal}
+                        value={amountPaidInput}
+                        onChange={(e) => setAmountPaidInput(e.target.value)}
+                        placeholder="0"
+                        className="w-28 bg-white border border-amber-300 rounded-lg px-2.5 py-1 text-right text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono shadow-2xs"
+                      />
+                    </div>
                     <p className="text-[11px] text-amber-700 font-medium">
-                      Balance will be automatically posted to {linkedPatient ? linkedPatient.full_name : "Linked Patient"}&apos;s credit ledger.
+                      Remaining balance of Rs. {Math.max(0, finalTotal - (Number(amountPaidInput) || 0)).toLocaleString()} will be posted to {linkedPatient ? linkedPatient.full_name : "Linked Patient"}&apos;s credit ledger.
                     </p>
                   </div>
                 )}

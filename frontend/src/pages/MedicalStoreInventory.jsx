@@ -68,6 +68,7 @@ export default function MedicalStoreInventory() {
     if (effectiveLocationId === "all") return null;
     return allWarehouses.find((w) => w.id === effectiveLocationId) || null;
   }, [allWarehouses, effectiveLocationId]);
+  const userAssignedWh = currentWarehouseInfo;
 
   const canViewFinancials = Boolean(
     user?.is_owner || user?.role === "doctor" || user?.role === "admin" || user?.can_view_financials

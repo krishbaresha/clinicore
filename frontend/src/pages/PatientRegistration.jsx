@@ -312,19 +312,6 @@ function toTitleCase(str) {
     printOPDTokenReceipt(receipt, clinic || dbClinic.get());
   }
 
-  function newRegistration() {
-    setShowReceipt(false);
-    setReceipt(null);
-    setQuery("");
-    setResults(null);
-    setSelected(null);
-    setShowAddForm(false);
-    setForm({ full_name: "", relation_type: "father", relation_name: "", phone: "", age: "", gender: "male" });
-    const autoFee = getDoctorFee(selectedDoctorId);
-    setFeeAmount(String(autoFee));
-    setTimeout(() => searchRef.current?.focus(), 100);
-  }
-
   // ── Receipt view ──
   if (showReceipt && receipt) {
     const relLabel =
@@ -713,6 +700,7 @@ function toTitleCase(str) {
                 Cancel
               </button>
               <button
+                id="save-patient-btn"
                 type="submit"
                 className="flex-1 bg-teal-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-700 transition-colors"
               >
@@ -889,7 +877,7 @@ function toTitleCase(str) {
                       key={srv.id}
                       type="button"
                       onClick={() => {
-                        const currentFee = Number(feeAmount) || Number(feeDefault) || 0;
+                        const currentFee = Number(feeAmount) || Number(getDoctorFee(selectedDoctorId)) || 0;
                         setFeeAmount(String(currentFee + Number(srv.price)));
                       }}
                       className="text-xs bg-white text-teal-900 border border-teal-200 hover:bg-teal-100 px-2.5 py-1 rounded-xl font-bold transition-all shadow-sm flex items-center gap-1"
@@ -903,6 +891,7 @@ function toTitleCase(str) {
             )}
 
             <button
+              id="register-visit-btn"
               type="submit"
               className="w-full bg-teal-600 text-white py-3.5 rounded-xl font-bold text-base hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/25 flex items-center justify-center gap-2"
             >

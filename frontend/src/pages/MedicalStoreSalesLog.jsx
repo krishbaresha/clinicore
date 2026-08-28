@@ -179,20 +179,22 @@ export default function MedicalStoreSalesLog() {
     }
   }
 
-  // Financial Calculations
-  const totalSalesRevenue = sales.reduce((sum, s) => sum + (s.total_amount || s.sale_amount || 0), 0);
+  // Financial Calculations (Excluding voided sales)
+  const validSales = sales.filter((s) => !s.is_voided);
+  const totalSalesRevenue = validSales.reduce((sum, s) => sum + (s.total_amount || s.sale_amount || 0), 0);
   const totalRefundsValue = returns.reduce((sum, r) => sum + (r.refund_amount || 0), 0);
   const totalExpensesValue = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
   // Cash drawer calculation
-  const cashSalesTotal = sales.reduce((sum, s) => {
-    if (s.payment_type === "credit") {
-      return sum + (Number(s.amount_paid) || 0);
+  const cashSalesTotal = validSales.reduce((sum, s) => {
+    const paid = Number(s.paid_amount ?? s.amount_paid);
+    if (s.payment_type === "credit" || s.payment_mode === "Credit") {
+      return sum + (isNaN(paid) ? 0 : paid);
     }
-    return sum + (Number(s.amount_paid) || Number(s.total_amount) || Number(s.sale_amount) || 0);
+    return sum + (!isNaN(paid) ? paid : (Number(s.total_amount) || Number(s.sale_amount) || 0));
   }, 0);
 
-  const creditSalesTotal = sales.reduce((sum, s) => sum + (Number(s.balance_due) || 0), 0);
+  const creditSalesTotal = validSales.reduce((sum, s) => sum + (Number(s.balance_due) || 0), 0);
   const cashRefundsTotal = returns.filter(r => r.refund_type === "cash").reduce((sum, r) => sum + (Number(r.refund_amount) || 0), 0);
 
   const expectedCashInDrawer = Math.max(0, cashSalesTotal - cashRefundsTotal - totalExpensesValue);

@@ -136,21 +136,25 @@ self.addEventListener('fetch', (event) => {
         if (cachedResponse) {
           return cachedResponse;
         }
-        return fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          } else if (networkResponse && (networkResponse.status === 404 || networkResponse.status === 403)) {
-            // New deployment removed old asset hash -> purge outdated cache
-            console.warn(`[SW] Missing asset detected (${request.url}), purging outdated cache.`);
-            caches.keys().then((keys) => {
-              keys.forEach((k) => {
-                if (k.startsWith('clinicflow-pwa-')) caches.delete(k);
+        return fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const responseClone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+            } else if (networkResponse && (networkResponse.status === 404 || networkResponse.status === 403)) {
+              // New deployment removed old asset hash -> purge outdated cache
+              console.warn(`[SW] Missing asset detected (${request.url}), purging outdated cache.`);
+              caches.keys().then((keys) => {
+                keys.forEach((k) => {
+                  if (k.startsWith('clinicflow-pwa-')) caches.delete(k);
+                });
               });
-            });
-          }
-          return networkResponse;
-        });
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            return new Response('', { status: 404, statusText: 'Asset Not Available Offline' });
+          });
       })
     );
     return;
@@ -167,7 +171,10 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => caches.match(request))
+        .catch(async () => {
+          const cached = await caches.match(request);
+          return cached || new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+        })
     );
     return;
   }
@@ -175,7 +182,20 @@ self.addEventListener('fetch', (event) => {
   // Tier D: General static icons, fonts, public files -> Stale-While-Revalidate
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
+      if (cachedResponse) {
+        // Serve from cache immediately, update cache in background
+        fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const responseClone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+            }
+          })
+          .catch(() => {});
+        return cachedResponse;
+      }
+
+      return fetch(request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
@@ -183,9 +203,9 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
+        .catch(() => {
+          return new Response('', { status: 503, statusText: 'Offline' });
+        });
     })
   );
 });

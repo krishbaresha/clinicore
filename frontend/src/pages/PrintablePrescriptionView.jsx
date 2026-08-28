@@ -54,7 +54,7 @@ export default function PrintablePrescriptionView() {
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back
         </button>
-        <button id="print-btn" onClick={() => window.open(`/print/prescription/${id}`, '_blank')} className="btn-primary">
+        <button id="print-btn" onClick={() => window.print()} className="btn-primary">
           <span className="material-symbols-outlined text-[18px]">print</span>
           Print
         </button>
@@ -147,7 +147,7 @@ export default function PrintablePrescriptionView() {
           <div className="flex flex-col gap-1 font-body-sm text-body-sm text-on-surface-variant">
             <div className="flex justify-between">
               <span>Consultation Fee</span>
-              <span>Rs. {clinic?.default_consultation_fee || 800}</span>
+              <span>Rs. {clinic?.default_consultation_fee || 300}</span>
             </div>
             {visit.services?.map((ser) => (
               <div key={ser.id} className="flex justify-between">
@@ -235,7 +235,7 @@ export default function PrintablePrescriptionView() {
         <div className="receipt-info-block" style={{ fontSize: "12px", lineHeight: "1.4" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>Consultation Fee:</span>
-            <span>Rs. {clinic?.default_consultation_fee || 800}</span>
+            <span>Rs. {clinic?.default_consultation_fee || 300}</span>
           </div>
           {visit.services?.map((ser) => (
             <div key={ser.id} style={{ display: "flex", justifyContent: "space-between" }}>

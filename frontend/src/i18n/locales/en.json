@@ -1,7 +1,8 @@
 {
   "nav": {
     "dashboard": "Dashboard",
-    "receptionQueue": "Reception Queue",
+    "patientRegistration": "Register Patient",
+    "receptionQueue": "Today's Queue",
     "doctorQueue": "Doctor Consultation",
     "storePos": "Medical Store (POS)",
     "warehouse": "Godown & Wholesale",

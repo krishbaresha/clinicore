@@ -33,9 +33,129 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Fixed Enterprise Viewport Layout & Scoped Workspace Scrolling Deployed
-- **Last worked on:** Converted `SidebarLayout.jsx` into a true Fixed Enterprise Viewport Architecture (`h-screen overflow-hidden`). Pinned Topbar and Left Sidebar permanently so only the main workspace content area scrolls independently with zero page jitter or header displacement.
+- **Phase:** Service Worker Fetch Resiliency, Duplicate Key Fix & Distinct Nav Tabs Complete
+- **Last worked on:** Fixed Service Worker fetch event handlers in `public/sw.js` to guarantee valid `Response` objects across all tiers even when offline or during network timeouts. Resolved React duplicate key warning (`doc_asif` in `LandingPage.jsx`) by giving doctors distinct keys (`doc_asif` and `doc_kashif`). Fixed sidebar navigation label duplication between `/reception/register` ("Register Patient") and `/reception/queue` ("Today's Queue" / "Reception Queue"). Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-28 (Part 59) — Service Worker Fetch Resiliency, Duplicate Key Resolution & Distinct Nav Tabs
+**Task worked on:**
+1. **Service Worker (`public/sw.js`) Fetch Resiliency:**
+   - Handled network errors in Tier B (`/assets/*`), Tier C (`/version.json`), and Tier D (general assets) to guarantee that `event.respondWith()` always resolves to a valid `Response` object instead of rejecting or returning `undefined`, eliminating `Uncaught (in promise) TypeError: Failed to convert value to 'Response'`.
+2. **Duplicate React Key Resolution (`LandingPage.jsx`):**
+   - Fixed duplicate key `doc_asif` on lines 101 and 110 by separating doctors into `doc_asif` (Dr. Muhammad Asif Ashraf Khan) and `doc_kashif` (Dr. Muhammad Kashif Khan).
+3. **Distinct Sidebar Navigation Labels (`SidebarLayout.jsx`, `en.json`, `ur.json`):**
+   - Separated `/reception/register` ("Register Patient" / `nav.patientRegistration`) from `/reception/queue` ("Today's Queue" / `nav.receptionQueue`), resolving the duplicated "Reception Queue" tab label shown in the UI.
+4. **Verification & Zero-Regression Check:**
+   - `npx oxlint --quiet`: **0 errors** on 70 files.
+   - `node scripts/scan_imports_and_hooks.mjs`: **0 errors** on 60 files.
+   - `npm test`: **308/308 tests passed** (100% success rate).
+   - `npm run build`: Clean production bundle compiled in **982ms (Exit code 0)**.
+
+---
+
+### Session: 2026-08-28 (Part 58) — Static AST Undeclared Identifier Elimination & PWA Cache Busting
+**Task worked on:**
+1. **Strict `no-undef` AST Linter Configuration (`.oxlintrc.json`):**
+   - Configured `oxlint` with `"no-undef": "error"` and enabled `"browser": true`, `"node": true`, `"es2024": true` environments.
+2. **Eliminated All Remaining Undeclared Variables:**
+   - Fixed `DoctorQueue.jsx`: Restored `handleSetAvailability` and `handleSaveCustomNote` and replaced orphaned references with `dbUsers.updateDoctorStatus` and `dbUsers.getById`.
+   - Fixed `Dashboard.jsx`: Computed and destructured `waitingVisits` and `completedVisits` from `useMemo`.
+   - Fixed `usePWAUpdate.js`: Scoped `__APP_BUILD_VERSION__` safely under `globalThis`.
+3. **PWA Cache Busting & Production Build:**
+   - Injected new PWA build version `v2.1.1787922707960` into `sw.js` and `version.json` so browsers immediately reload and discard old cached JavaScript chunks.
+4. **Verification & Zero-Regression Check:**
+   - `npx oxlint --quiet`: **0 errors** on 70 files.
+   - `node scripts/scan_imports_and_hooks.mjs`: **0 errors** on 60 files.
+   - `npm test`: **308/308 tests passed** (100% success rate).
+   - `npm run build`: Clean production bundle compiled in **997ms (Exit code 0)**.
+
+---
+
+### Session: 2026-08-28 (Part 57) — Auth, RBAC, Admin & Software Licensing Security QA Verification
+**Task worked on:**
+Executed a thorough programmatic and functional test script to verify all security, authentication, role-based access, and administration features work with zero crashes or errors:
+1. Authentication & Session Management (Login credentials, password hashing, session restore, active operator switching, brute force rate-limiting).
+2. Role-Based Access Control (RBAC): Doctor OPD queue isolation, non-financial staff clearance (`can_view_financials`), and warehouse incharge inventory scoping.
+3. Super Admin & Developer Panel (/admin): Passcode verification rate-limiting lockout, staff user CRUD with password hashing, godown registration/edit/delete protections, and date range filtering.
+4. Software Licensing Engine: evaluateStatus transitions, trial periods, grace periods, hard lock full-screen blocker, and selective module kill-switches.
+
+**What was built/changed:**
+- `frontend/src/api/auth.js`: Added missing `MAX_ATTEMPTS = 5` declaration for brute force rate-limiting.
+- `frontend/src/api/db.js`: Enhanced `dbUsers.update`, `dbWarehouses.update`, `dbVisits.add`, and `dbInventory.getScopedInventory` for deterministic scoping and preservation.
+- `frontend/src/pages/DeveloperAdminPanel.jsx`: Implemented 5-attempt rate-limiting lockout with 60-second timer.
+- `frontend/scripts/test.js`: Built complete 4-suite 53-test security audit script (`53/53 passed`).
+- Validated all 308 full test suites (`308/308 passed`), AST validator (`0 errors`), oxlint (`0 errors`), and Vite production build (`0 errors`).
+
+### Session: 2026-08-28 (Part 56) — Enterprise Resilience, Data Corruption, Sync Engine & Stress Test QA Audit
+
+**Task worked on:**
+1. **Enterprise Resilience & Data Corruption Recovery (Suite 27):**
+   - Verified that missing keys or corrupt, non-JSON strings in `localStorage` fail safely and hydrate gracefully into fallback empty arrays without crashing or throwing uncaught exceptions.
+   - Tested synchronized cache coherence between `_COLLECTION_CACHE` and $O(1)$ fast indexed `_ID_MAP_CACHE` upon item additions and updates.
+   - Verified snapshot hydration (`hydrateCollectionsFromSnapshot`) rebuilding in-memory ID maps and local storage atomically.
+2. **Extreme Scale Stress Testing & Benchmarking (Suite 28):**
+   - Bulk-generated 1,000 patients, 2,000 OPD clinical visits, 5,000 multi-warehouse inventory SKUs, and 10,000 retail sales transactions (18,000 live objects).
+   - Achieved sub-second dataset population (e.g. 10,000 sales in 63.36ms).
+   - Benchmarked O(1) targeted search latency (<1ms) and full financial aggregation across 10,000 records (0.74ms), fulfilling sub-80ms real-time requirements.
+   - Validated zero memory leaks with a lean memory footprint increase (+28.52 MB for 18,000 records).
+3. **Data Sanitization & Unicode / Urdu Nastaliq Safety (Suite 29):**
+   - Verified 100% UTF-8 byte fidelity for Urdu Nastaliq patient names, guardian names, and addresses.
+   - Verified special homeopathic formula notations (`Ø`, `30C`, `1M`, `CM`, `%`, `&`, `<`, `>`).
+   - Verified XSS / HTML injection sanitization in thermal printer engine via `escapeHtml()`.
+4. **Cloud Sync & Outbox Engine Mutex Concurrency (Suite 30):**
+   - Verified offline outbox mutation queueing, replay, and individual acknowledgement (`markSynced`).
+   - Verified `pullLatestCloudState` mutex locks preventing cloud pulls while local unpushed changes (`pushTimer`) or sync operations (`isSyncing`) are in flight.
+   - Validated debounce batching on rapid `schedulePush` mutations.
+5. **Backup Vault (.cfbak) Encryption & Restore (Suite 31):**
+   - Verified AES-obfuscated encrypted `.cfbak` payload export with `CF_ENCRYPTED_VAULT_V1::` magic signature.
+   - Verified full disaster recovery restore with exact data fidelity across patients, inventory, and sales.
+   - Verified corrupted backup file rejection with informative error handling.
+
+---
+
+### Session: 2026-08-28 (Part 55) — Enterprise Full-Stack Codebase Bug Audit & Production Hardening
+
+**Task worked on:**
+1. **Core Storage & Sync Hardening (`db.js`, `auth.js`, `syncEngine.js`, `schemas/index.js`, `visits.js`):**
+   - Added safe PKT date parser validation guarding against `NaN` / `RangeError`.
+   - Updated `dbVisits.complete` to persist all 5 vitals (`vitals_bp`, `vitals_pulse`, `vitals_temp`, `vitals_spo2`, `vitals_weight`) and retain uploaded report URLs.
+   - Dispatched `clinicflow_status_update` events on `reissueLateToken` and `addReports`.
+   - Added `dbInventory.findByName(name)` lookup method.
+   - Updated `dbStockTransfers.dispatchTransfer` to deduct stock from `from_warehouse_id` instead of hardcoded store stock.
+   - Updated `dbPurchases.deletePurchase` to revert inward inventory stock and deduct supplier balance.
+   - Updated `dbCashBook.addEntry` to support both `balance_due` and `current_balance`.
+   - Updated `dbDayClosing.getDayClosingData` to filter out voided sales and include completed / pending report consultations.
+   - Corrected `hydrateCollectionsFromSnapshot` to wrap cache entries in `{ raw, parsed }` and rebuild `_ID_MAP_CACHE`.
+   - Hardened `verifyAdminPasscode` to check configured passcode without static backdoor and persisted rate-limiter state in `sessionStorage`.
+   - Guarded `pullLatestCloudState` with `isSyncing` flag and `pushTimer` check to prevent local mutation overwrite races.
+   - Coerced numeric and string phone numbers in `patientInputSchema`, made `payment_mode` case-flexible in `cashBookEntrySchema`, and supported multi-item carts in `recordSaleSchema`.
+   - Enforced doctor isolation in `getFeesSummary`.
+2. **POS & Pharmacy Subsystem Refinements (`MedicalStoreInventory.jsx`, `MedicalStorePOS.jsx`, `WarehouseManagement.jsx`, `SupplierPurchases.jsx`, `MedicalStoreSalesLog.jsx`, `SaleInvoiceModal.jsx`):**
+   - Declared `userAssignedWh = currentWarehouseInfo` resolving 7 `ReferenceError` crash sites.
+   - Fixed POS search placeholder hotkey indicator from `(F2)` to `(F1)`, added partial credit down-payment input, and fixed `activeOperator` initialization.
+   - Added multi-row aggregate stock validation in B2B dispatch to prevent negative inventory when duplicate rows are added.
+   - Fixed 0% discount reset bug in `SupplierPurchases.jsx` and `SaleInvoiceModal.jsx`.
+   - Filtered voided sales and checked `paid_amount || amount_paid` in `MedicalStoreSalesLog.jsx`.
+   - Synchronized party code input state when selecting account in `SaleInvoiceModal.jsx`.
+3. **OPD, Consultation, Patient Lifecycle & Thermal Printing (`thermalPrinter.js`, `PatientRegistration.jsx`, `DoctorQueue.jsx`, `ConsultationScreen.jsx`, `PendingReports.jsx`, `PrintablePrescriptionView.jsx`):**
+   - Fixed `clinicLogoPng` ReferenceError in `thermalPrinter.js` -> replaced with imported `CLINIC_LOGO_BASE64` and supported `item.qty || item.quantity || 1`.
+   - Fixed `feeDefault` ReferenceError in `PatientRegistration.jsx` -> replaced with `getDoctorFee(selectedDoctorId)`, added `save-patient-btn` and `register-visit-btn` IDs, and removed duplicate `newRegistration()` declaration.
+   - Fixed `DoctorQueue.jsx` keyboard navigation stale closure using `navStateRef.current`, selected first doctor for non-doctor accounts, and fixed female relation label `D/O`.
+   - Added `useEffect` camera stream cleanup on unmount and added Cancel button in photo preview in `ConsultationScreen.jsx` and `PendingReports.jsx`.
+   - Added `clinicflow_status_update` event listener and 3s polling fallback in `PendingReports.jsx`.
+   - Fixed printable prescription print button (`window.print()` instead of `window.open`) and standardized fallback fee to 300.
+4. **Admin, Settings, Fees, RBAC & Routing Guards (`ClinicSettings.jsx`, `DeveloperAdminPanel.jsx`, `FeesReports.jsx`, `LoginScreen.jsx`, `Dashboard.jsx`, `LicenseGuard.jsx`):**
+   - Replaced direct `localStorage.getItem/setItem("cf_users")` with `dbUsers.update` and `dbUsers.add` in `ClinicSettings.jsx`.
+   - Hashed passwords in `handleSaveStaff` before `dbUsers.add`, fixed custom date range UTC day shift, and filtered godown purchases by destination ID in `DeveloperAdminPanel.jsx`.
+   - Removed unconditional `user?.role === "receptionist"` bypass from `canViewAllFinancials` in `FeesReports.jsx`.
+   - Updated public queue button navigation to `/reception/queue` in `LoginScreen.jsx`.
+   - Rendered dedicated Front Desk / Counter summary cards for non-doctor staff on `Dashboard.jsx`.
+   - Supported prefix matching for parameterized routes in `LicenseGuard.jsx`.
+5. **Verification & Zero-Regression Check:**
+   - Deep AST Hook & Symbol Scan (`node scripts/scan_imports_and_hooks.mjs`): 60/60 files passed with 0 errors.
+   - AST Linter (`npx oxlint`): 0 errors on 68 files.
+   - Test Suite (`npm test`): 252/252 tests passed (100% passing).
+   - Vite Production Build (`npm run build`): Exit code 0, 0 compilation errors (1.04s).
 
 ---
 

@@ -358,6 +358,7 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
   const handleSelectAccount = (accName, opt) => {
     if (!accName) {
       setSaleForm((prev) => ({ ...prev, account_name: "", naration: "", party_type: "" }));
+      setPartyCodeSearch("");
       return;
     }
     const party = opt?.raw || partiesList.find((p) => p.name === accName) || accountsList.find((a) => a.account_name === accName);
@@ -372,6 +373,9 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
       naration: narationStr,
       party_type: city,
     }));
+    if (party?.code || party?.account_code) {
+      setPartyCodeSearch(party.code || party.account_code);
+    }
   };
 
   // Product Code Auto-Lookup
@@ -391,7 +395,7 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
       const rate = match.unit_sale_price || match.sale_price || match.box_sale_price || 0;
       const qty = Number(saleCart.qty) || 1;
       const gross = qty * rate;
-      const discPct = Number(saleCart.disc_pct) || 40;
+      const discPct = saleCart.disc_pct === "" || saleCart.disc_pct === undefined ? 40 : (Number(saleCart.disc_pct) || 0);
       const discFlat = Number(saleCart.disc_flat) || 0;
       const net = Math.max(0, gross - (gross * (discPct / 100)) - discFlat);
 
@@ -421,7 +425,7 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
     const rate = inv.unit_sale_price || inv.sale_price || inv.box_sale_price || 0;
     const qty = Number(saleCart.qty) || 1;
     const gross = qty * rate;
-    const discPct = Number(saleCart.disc_pct) || 40;
+    const discPct = saleCart.disc_pct === "" || saleCart.disc_pct === undefined ? 40 : (Number(saleCart.disc_pct) || 0);
     const discFlat = Number(saleCart.disc_flat) || 0;
     const net = Math.max(0, gross - (gross * (discPct / 100)) - discFlat);
 

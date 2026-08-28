@@ -18,6 +18,7 @@ import {
   importFullDatabase,
   resetDatabaseToDemoData,
   clearAllTransactionalData,
+  hashPassword,
 } from "../api/db.js";
 import { syncEngine } from "../api/syncEngine.js";
 import {
@@ -379,6 +380,31 @@ export default function DeveloperAdminPanel() {
       return;
     }
 
+    const now = Date.now();
+    let failedAttempts = 0;
+    let lockoutUntil = 0;
+    try {
+      const rlRaw = sessionStorage.getItem("cf_admin_passcode_ratelimit");
+      if (rlRaw) {
+        const parsed = JSON.parse(rlRaw);
+        failedAttempts = parsed.failedAttempts || 0;
+        lockoutUntil = parsed.lockoutUntil || 0;
+      }
+    } catch {}
+
+    if (failedAttempts >= 5 && now < lockoutUntil) {
+      const secsLeft = Math.ceil((lockoutUntil - now) / 1000);
+      setAuthError(`Too many failed attempts. Super Admin access locked for ${secsLeft} seconds.`);
+      return;
+    }
+
+    if (now >= lockoutUntil && failedAttempts >= 5) {
+      failedAttempts = 0;
+      try {
+        sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
+      } catch {}
+    }
+
     // 1. Authoritative Server Verification (Strict Case-Sensitive)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
@@ -391,13 +417,21 @@ export default function DeveloperAdminPanel() {
 
       if (res.ok && data?.success) {
         sessionStorage.setItem("cf_dev_auth", "true");
+        try {
+          sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
+        } catch {}
         setIsAuthenticated(true);
         setAuthError("");
         loadData();
         return;
       } else {
         // If server rejected the passcode, stop here immediately!
-        setAuthError(data?.error?.message || "Incorrect Super Admin master passcode. Access denied.");
+        failedAttempts++;
+        const lockTime = failedAttempts >= 5 ? Date.now() + 60_000 : lockoutUntil;
+        try {
+          sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts, lockoutUntil: lockTime }));
+        } catch {}
+        setAuthError(data?.error?.message || (failedAttempts >= 5 ? "Too many failed attempts. Super Admin access locked for 60 seconds." : "Incorrect Super Admin master passcode. Access denied."));
         return;
       }
     } catch (netErr) {
@@ -405,6 +439,9 @@ export default function DeveloperAdminPanel() {
       const currentAdminPasscode = (getAdminPasscode() || DEFAULT_ADMIN_PASSCODE).trim();
       if (input === currentAdminPasscode) {
         sessionStorage.setItem("cf_dev_auth", "true");
+        try {
+          sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
+        } catch {}
         setIsAuthenticated(true);
         setAuthError("");
         loadData();
@@ -413,7 +450,12 @@ export default function DeveloperAdminPanel() {
     }
 
     // Zero Information Leakage: Never expose default or configured passwords
-    setAuthError("Incorrect Super Admin master passcode. Access denied.");
+    failedAttempts++;
+    const lockTime = failedAttempts >= 5 ? Date.now() + 60_000 : lockoutUntil;
+    try {
+      sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts, lockoutUntil: lockTime }));
+    } catch {}
+    setAuthError(failedAttempts >= 5 ? "Too many failed attempts. Super Admin access locked for 60 seconds." : "Incorrect Super Admin master passcode. Access denied.");
   };
 
   const showToast = (msg) => {
@@ -438,8 +480,12 @@ export default function DeveloperAdminPanel() {
     } else if (auditRange === "all_time") {
       start = new Date("2020-01-01");
     } else if (auditRange === "custom") {
-      start = new Date(auditCustomStart + "T00:00:00");
-      now.setTime(new Date(auditCustomEnd + "T23:59:59").getTime());
+      return {
+        startISO: auditCustomStart ? new Date(auditCustomStart + "T00:00:00").toISOString() : start.toISOString(),
+        endISO: auditCustomEnd ? new Date(auditCustomEnd + "T23:59:59").toISOString() : now.toISOString(),
+        startDateStr: auditCustomStart || start.toISOString().split("T")[0],
+        endDateStr: auditCustomEnd || now.toISOString().split("T")[0],
+      };
     }
     return {
       startISO: start.toISOString(),
@@ -477,7 +523,11 @@ export default function DeveloperAdminPanel() {
       const matchDate = d >= auditDates.startDateStr && d <= auditDates.endDateStr;
       if (!matchDate) return false;
       if (auditGodown !== "all") {
-        return p.destination_type === (auditGodown === "wh_str" ? "store" : "warehouse");
+        return (
+          p.destination_id === auditGodown ||
+          p.destination_warehouse_id === auditGodown ||
+          p.destination_type === (auditGodown === "wh_str" ? "store" : "warehouse")
+        );
       }
       return true;
     });
@@ -574,7 +624,7 @@ export default function DeveloperAdminPanel() {
         role: staffForm.role,
         email: staffForm.email || `${staffForm.name.toLowerCase().replace(/\s+/g, "")}@example.com`,
         phone: staffForm.phone,
-        password: staffForm.password || "123456",
+        password: hashPassword(staffForm.password || "123456"),
         specialization: staffForm.specialization,
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
