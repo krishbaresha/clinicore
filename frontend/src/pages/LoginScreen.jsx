@@ -55,8 +55,9 @@ export default function LoginScreen() {
         </div>
 
         <button
-          onClick={() => navigate("/reception/queue")}
-          className="text-xs font-bold text-teal-800 hover:text-teal-950 bg-white hover:bg-teal-50/80 border border-teal-200/80 px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+          onClick={() => navigate("/live")}
+          className="text-xs font-bold text-teal-800 hover:text-teal-950 bg-white hover:bg-teal-50/80 border border-teal-200/80 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+          title="Open Public Waiting Room Live TV Display"
         >
           <span className="material-symbols-outlined text-sm text-teal-600">live_tv</span>
           <span>Live Queue Display</span>

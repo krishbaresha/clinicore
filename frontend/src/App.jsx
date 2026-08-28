@@ -144,13 +144,10 @@ function AppRoutes() {
         {/* ─── Disabled Pages (Can be re-enabled in future if needed) ─── */}
         {/* <Route path="/clinic"      element={<ClinicPublicPage />} /> */}
         {/* <Route path="/dr-asif"     element={<ClinicPublicPage />} /> */}
-        {/* <Route path="/live"        element={<PublicLiveQueue />} /> */}
-        {/* <Route path="/display"     element={<PublicLiveQueue />} /> */}
-        <Route path="/clinic"      element={<Navigate to="/login" replace />} />
-        <Route path="/dr-asif"     element={<Navigate to="/login" replace />} />
-        <Route path="/live"        element={<Navigate to="/dashboard" replace />} />
-        <Route path="/display"     element={<Navigate to="/dashboard" replace />} />
-        <Route path="/public/queue" element={<Navigate to="/dashboard" replace />} />
+        {/* ─── Public Waiting Room Live Queue Display (TV / Fullscreen Lounge) ─── */}
+        <Route path="/live"         element={<PublicLiveQueue />} />
+        <Route path="/display"      element={<PublicLiveQueue />} />
+        <Route path="/public/queue" element={<PublicLiveQueue />} />
 
         {/* ─── Reception / Counter Flow ─────────────────────────── */}
         <Route path="/reception/register"        element={<AuthenticatedLayout><PatientRegistration /></AuthenticatedLayout>} />

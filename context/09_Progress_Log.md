@@ -33,9 +33,27 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Executive Clinic Financial Revenue & Doctor Breakdown RBAC Privacy Isolation Complete
-- **Last worked on:** Strictly restricted the Executive **Clinic Financial Revenue Breakdown** and **Doctor-by-Doctor OPD Revenue Breakdown** on `Dashboard.jsx` exclusively to the Principal Clinic Owner (`is_owner: true` / Owner Doctor `H/Dr Asif Ashraf Khan`) or accounts explicitly granted `can_view_financials: true`. Added an interactive 1-click **Financials Permission Toggle** and modal permission checkbox in `/admin` (`DeveloperAdminPanel.jsx`). Replaced financial numbers on non-owner doctor dashboards with personal completed consultation statistics. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
+- **Phase:** Public Live Queue TV Waiting Room Route & Navigation Restoration Complete
+- **Last worked on:** Diagnosed and fixed the "Live Queue Display" button issue on `LoginScreen.jsx`. Root cause was that the button routed to `/reception/queue` (an internal authenticated route) which forced an immediate redirect back to `/login` for unauthenticated users, and the public waiting TV display routes (`/live`, `/display`, `/public/queue`) in `App.jsx` were redirecting to `/dashboard`. Unblocked `/live`, `/display`, and `/public/queue` to render `PublicLiveQueue.jsx`, updated the Login screen button to target `/live`, and added a "Staff Portal" return button in the TV display header. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-28 (Part 64) — Public Live Queue TV Waiting Room Route & Navigation Restoration
+**Task worked on:**
+1. **Root Cause Analysis:**
+   - In `LoginScreen.jsx`, the "Live Queue Display" button executed `navigate("/reception/queue")`.
+   - Since `/reception/queue` is an internal route wrapped in `AuthenticatedLayout` & `ProtectedRoute`, any unauthenticated user was intercepted and bounced back to `/login`.
+   - In `App.jsx`, the dedicated public waiting room display routes (`/live`, `/display`, `/public/queue`) were redirecting to `/dashboard` instead of rendering `<PublicLiveQueue />`.
+2. **Implementation & Fix:**
+   - **`App.jsx`:** Mounted `<PublicLiveQueue />` on `/live`, `/display`, and `/public/queue` as publicly accessible, unauthenticated TV waiting lounge screens.
+   - **`LoginScreen.jsx`:** Updated `Live Queue Display` button `onClick` handler to `navigate("/live")`.
+   - **`PublicLiveQueue.jsx`:** Added a `[Staff Portal]` return button in the header bar allowing receptionists and staff to easily switch back to the login terminal.
+3. **Verification & Zero-Regression Check:**
+   - `npx oxlint --quiet`: **0 errors** on 70 files.
+   - `node scripts/scan_imports_and_hooks.mjs`: **0 errors** on 60 files.
+   - `npm test`: **308/308 tests passed** (100% success rate).
+   - `npm run build`: Clean production bundle compiled in **939ms (Exit code 0)**.
+
+---
 
 ### Session: 2026-08-28 (Part 63) — Executive Clinic Financial Revenue & Doctor Breakdown RBAC Privacy Isolation
 **Task worked on:**

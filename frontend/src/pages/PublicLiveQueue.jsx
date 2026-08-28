@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { dbClinic, dbUsers, dbVisits } from "../api/db.js";
 
 // Audio Context singleton
@@ -55,6 +56,7 @@ function playTokenCallChime() {
 }
 
 export default function PublicLiveQueue() {
+  const navigate = useNavigate();
   const [clinic, setClinic] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [doctorQueues, setDoctorQueues] = useState({});
@@ -305,7 +307,7 @@ export default function PublicLiveQueue() {
           <button
             onClick={toggleFullscreen}
             title="Toggle Waiting Area TV Fullscreen Mode"
-            className={`p-2.5 rounded-xl border transition-all flex items-center justify-center ${
+            className={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
               isDark
                 ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300"
                 : "bg-white hover:bg-teal-50 border-teal-200 text-teal-800 shadow-sm"
@@ -314,6 +316,20 @@ export default function PublicLiveQueue() {
             <span className="material-symbols-outlined text-xl">
               {isFullscreen ? "fullscreen_exit" : "fullscreen"}
             </span>
+          </button>
+
+          {/* Return / Staff Login Button */}
+          <button
+            onClick={() => navigate("/login")}
+            title="Return to Staff & Doctor Login Portal"
+            className={`px-3 py-2 rounded-xl border transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer active:scale-95 ${
+              isDark
+                ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-teal-300"
+                : "bg-teal-700 hover:bg-teal-800 border-teal-700 text-white shadow-sm"
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">login</span>
+            <span>Staff Portal</span>
           </button>
         </div>
       </header>
