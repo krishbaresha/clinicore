@@ -33,9 +33,30 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Inventory Item Edit & Delete with Admin Passcode Permission Guard Complete
-- **Last worked on:** Implemented `dbInventory.delete(id)` in `src/api/db.js`, added dedicated `[Edit]` and `[Delete]` action buttons to both Table View and Card Grid View in `MedicalStoreInventory.jsx`. Built a secure `Admin Authorization Modal` requiring the Clinic Admin / Supervisor Passcode (`KB2026`) when staff users attempt to modify or delete inventory items. Added full-featured `Edit Medicine Details Modal` and `Permanently Delete Item Confirmation Modal`. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
+- **Phase:** Executive Clinic Financial Revenue & Doctor Breakdown RBAC Privacy Isolation Complete
+- **Last worked on:** Strictly restricted the Executive **Clinic Financial Revenue Breakdown** and **Doctor-by-Doctor OPD Revenue Breakdown** on `Dashboard.jsx` exclusively to the Principal Clinic Owner (`is_owner: true` / Owner Doctor `H/Dr Asif Ashraf Khan`) or accounts explicitly granted `can_view_financials: true`. Added an interactive 1-click **Financials Permission Toggle** and modal permission checkbox in `/admin` (`DeveloperAdminPanel.jsx`). Replaced financial numbers on non-owner doctor dashboards with personal completed consultation statistics. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-28 (Part 63) — Executive Clinic Financial Revenue & Doctor Breakdown RBAC Privacy Isolation
+**Task worked on:**
+1. **Executive Financial Privacy Architecture (`Dashboard.jsx`):**
+   - Redefined `canViewFinancials` strictly to `Boolean(user?.is_owner || user?.role === "admin" || user?.can_view_financials === true)` — completely removing unconditional cashier or doctor access.
+   - For non-owner doctors without financial permission:
+     - Top Bento Grid: Replaced clinic revenue with **"Completed Consultations"** (`myTodayVisits.filter(...).length Done` with `task_alt` icon).
+     - Bottom Section: Completely hides the executive "Clinic Financial Revenue Breakdown" and "Doctor-by-Doctor Breakdown", replacing it with the doctor's focused personal OPD Chamber portal.
+2. **Super Admin Staff Control Center (`DeveloperAdminPanel.jsx`):**
+   - Added interactive 1-click **"Financials: ON / OFF"** toggle button directly on the Staff Management table.
+   - Added a dedicated **"Grant Financials & Revenue Breakdown Access"** permission card with checkbox inside the Add/Edit Staff Modal (default: `false` for non-owner staff).
+3. **Ledgers & Core Data Engine (`FeesReports.jsx`, `db.js`):**
+   - Hardened `canViewAllFinancials` in `FeesReports.jsx` to enforce identical strict RBAC rules.
+   - Set seed `user_kashif` and staff defaults to `can_view_financials: false` so only `user_owner` holds full executive visibility out-of-the-box.
+4. **Verification & Zero-Regression Check:**
+   - `npx oxlint --quiet`: **0 errors** on 70 files.
+   - `node scripts/scan_imports_and_hooks.mjs`: **0 errors** on 60 files.
+   - `npm test`: **308/308 tests passed** (100% success rate).
+   - `npm run build`: Clean production bundle compiled in **887ms (Exit code 0)**.
+
+---
 
 ### Session: 2026-08-28 (Part 62) — Inventory Item Edit & Delete with Admin Permission Guard
 **Task worked on:**

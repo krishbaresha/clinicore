@@ -206,12 +206,10 @@ export default function FeesReports() {
   const [cbHistorySearch, setCbHistorySearch] = useState("");
   const [cbViewMode, setCbViewMode] = useState("daily"); // "daily" | "all"
 
-  const isPrimaryDoctorOrOwner = Boolean(user?.is_owner || user?.role === "admin" || (user?.role === "doctor" && user?.is_owner));
-  const isCashier = user?.role === "cashier";
+  const isPrimaryDoctorOrOwner = Boolean(user?.is_owner || user?.role === "admin");
   const canViewAllFinancials = Boolean(
     isPrimaryDoctorOrOwner ||
-    user?.can_view_financials ||
-    isCashier
+    user?.can_view_financials === true
   );
   const targetDoctorId = canViewAllFinancials ? null : user?.id;
 

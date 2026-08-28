@@ -64,7 +64,7 @@ const SEED_DATA = {
       role: "doctor",
       specialization: "Consultant Homeopath",
       is_owner: false,
-      can_view_financials: true,
+      can_view_financials: false,
       assigned_warehouse_id: "",
       email: "kashif@clinicore.pk",
       phone: "03473100304",

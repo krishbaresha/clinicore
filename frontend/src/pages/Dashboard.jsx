@@ -47,13 +47,10 @@ export default function Dashboard() {
     return () => window.removeEventListener("clinicflow_status_update", handleSync);
   }, []);
 
-  const isPrimaryDoctorOrOwner = Boolean(user?.is_owner || user?.role === "admin" || (isDoctor && user?.is_owner));
-  const isCashier = user?.role === "cashier";
+  const isPrimaryDoctorOrOwner = Boolean(user?.is_owner || user?.role === "admin");
   const canViewFinancials = Boolean(
     isPrimaryDoctorOrOwner ||
-    user?.can_view_financials ||
-    isCashier ||
-    (isDoctor && user?.can_view_financials)
+    user?.can_view_financials === true
   );
 
   // Compute live stats efficiently in single-pass O(N) memoized block
@@ -225,11 +222,11 @@ export default function Dashboard() {
 
           <SwiperSlide className="h-auto">
             <StatCard
-              label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : "Revenue Status"}
-              value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : "🔒 Confidential"}
-              icon="payments"
-              iconBg="bg-primary-container/10"
-              subline={canViewFinancials ? null : "Owner / Doctor Role Required"}
+              label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : (isDoctor ? "Completed Consultations" : "Revenue Status")}
+              value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : (isDoctor ? `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Done` : "🔒 Confidential")}
+              icon={canViewFinancials ? "payments" : (isDoctor ? "task_alt" : "lock")}
+              iconBg={canViewFinancials ? "bg-primary-container/10" : (isDoctor ? "bg-emerald-500/10 text-emerald-700" : "bg-primary-container/10")}
+              subline={canViewFinancials ? null : (isDoctor ? "Chamber Consultations Done" : "Owner / Admin Role Required")}
             />
           </SwiperSlide>
 
@@ -324,13 +321,13 @@ export default function Dashboard() {
           }
         />
 
-        {/* Fees Collected Today */}
+        {/* Fees Collected Today / Consultations Completed */}
         <StatCard
-          label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : "Revenue Status"}
-          value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : "🔒 Confidential"}
-          icon="payments"
-          iconBg="bg-primary-container/10"
-          subline={canViewFinancials ? null : "Owner / Doctor Role Required"}
+          label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : (isDoctor ? "Completed Consultations" : "Revenue Status")}
+          value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : (isDoctor ? `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Done` : "🔒 Confidential")}
+          icon={canViewFinancials ? "payments" : (isDoctor ? "task_alt" : "lock")}
+          iconBg={canViewFinancials ? "bg-primary-container/10" : (isDoctor ? "bg-emerald-500/10 text-emerald-700" : "bg-primary-container/10")}
+          subline={canViewFinancials ? null : (isDoctor ? "Chamber Consultations Done" : "Owner / Admin Role Required")}
         />
 
         {/* 3rd Card */}
@@ -527,9 +524,17 @@ export default function Dashboard() {
               <div className="text-[11px] text-gray-400 mt-0.5">Mere chamber me</div>
             </div>
             <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center">
-              <div className="text-xs text-emerald-700 font-bold uppercase mb-1">Aaj ki Fees</div>
-              <div className="text-3xl font-black text-emerald-900">Rs. {myFeesToday.toLocaleString()}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">OPD collection</div>
+              <div className="text-xs text-emerald-700 font-bold uppercase mb-1">
+                {canViewFinancials ? "Aaj ki Fees" : "Completed OPD"}
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-900">
+                {canViewFinancials
+                  ? `Rs. ${myFeesToday.toLocaleString()}`
+                  : `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Treated`}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-0.5">
+                {canViewFinancials ? "OPD collection" : "Consultations completed"}
+              </div>
             </div>
             <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
               <div className="text-xs text-amber-700 font-bold uppercase mb-1">Queue Waiting</div>

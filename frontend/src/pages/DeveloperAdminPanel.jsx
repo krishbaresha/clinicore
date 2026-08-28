@@ -202,7 +202,7 @@ export default function DeveloperAdminPanel() {
     specialization: "General Physician / Homeopath",
     room_number: "Room 1",
     consultation_fee: 500,
-    can_view_financials: true,
+    can_view_financials: false,
     is_owner: false,
     availability_status: "available",
   });
@@ -648,7 +648,7 @@ export default function DeveloperAdminPanel() {
       specialization: "General Physician / Homeopath",
       room_number: "Room 1",
       consultation_fee: 500,
-      can_view_financials: true,
+      can_view_financials: false,
       is_owner: false,
       availability_status: "available",
     });
@@ -3043,11 +3043,37 @@ export default function DeveloperAdminPanel() {
                           <div className="text-[11px] text-slate-500 font-mono">{u.phone || "No phone"}</div>
                         </td>
                         <td className="px-5 py-3.5">
-                          {u.role === "doctor" ? (
-                            <span className="font-bold text-teal-800 font-mono">Rs. {u.consultation_fee || 300}</span>
-                          ) : (
-                            <span className="text-slate-600 font-semibold">{u.can_view_financials ? "Financial Access" : "Standard Role"}</span>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {u.role === "doctor" && (
+                              <span className="font-bold text-teal-800 font-mono text-xs">Fee: Rs. {u.consultation_fee || 300}</span>
+                            )}
+                            {u.is_owner ? (
+                              <span className="inline-flex items-center gap-1 text-[10.5px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 w-fit">
+                                👑 Owner (Full Access)
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updatedVal = !u.can_view_financials;
+                                  dbUsers.update(u.id, { can_view_financials: updatedVal });
+                                  setUsersList(dbUsers.getAll());
+                                  showToast(`${u.name}: Financial revenue access ${updatedVal ? "ENABLED" : "REVOKED"}`);
+                                }}
+                                className={`inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-xl border transition-all cursor-pointer w-fit active:scale-95 ${
+                                  u.can_view_financials
+                                    ? "bg-emerald-100 text-emerald-950 border-emerald-300 hover:bg-emerald-200 shadow-2xs"
+                                    : "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200"
+                                }`}
+                                title="Click to toggle financial revenue access for this account"
+                              >
+                                <span className="material-symbols-outlined text-sm">
+                                  {u.can_view_financials ? "visibility" : "visibility_off"}
+                                </span>
+                                <span>{u.can_view_financials ? "Financials: ON" : "Financials: OFF"}</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5 flex-nowrap">
@@ -3876,6 +3902,28 @@ export default function DeveloperAdminPanel() {
                   />
                 </div>
               )}
+
+              {/* Clinic Financials & Revenue Visibility Permission Card */}
+              <div className="bg-teal-50/70 border border-teal-200 rounded-2xl p-4 space-y-2">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="staff_can_view_financials_toggle"
+                    checked={Boolean(staffForm.can_view_financials)}
+                    onChange={(e) => setStaffForm({ ...staffForm, can_view_financials: e.target.checked })}
+                    className="mt-1 w-4 h-4 rounded border-teal-300 text-teal-700 focus:ring-teal-500 cursor-pointer"
+                  />
+                  <label htmlFor="staff_can_view_financials_toggle" className="cursor-pointer">
+                    <div className="font-extrabold text-teal-950 text-xs flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm text-teal-700">account_balance_wallet</span>
+                      <span>Grant Financials &amp; Revenue Breakdown Access</span>
+                    </div>
+                    <p className="text-[11px] text-teal-800/80 mt-0.5 leading-relaxed">
+                      When enabled, this user (Doctor or Cashier/Staff) will be able to see Total Clinic OPD Fees, Pharmacy Sales, Daily Expenses, Net Revenue, and Doctor-by-Doctor earnings on their Dashboard. (Default: <strong>OFF</strong> - only Principal Owner sees full clinic financials).
+                    </p>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t border-teal-50">
