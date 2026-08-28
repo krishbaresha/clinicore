@@ -226,7 +226,7 @@ export default function LandingPage() {
         <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
 
           {/* Brand Logo & Name */}
-          <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0 max-w-[50%] xs:max-w-[60%] sm:max-w-none">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0 max-w-[40%] xxs:max-w-[45%] xs:max-w-[55%] md:max-w-none">
             <img
               src="/favicon.svg"
               alt="CliniCore Logo"
@@ -235,7 +235,7 @@ export default function LandingPage() {
 
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-xs xs:text-sm sm:text-base md:text-lg font-black tracking-tight text-slate-900 truncate">
+                <span className="text-[11px] xs:text-sm sm:text-base md:text-lg font-black tracking-tight text-slate-900 truncate">
                   {clinicName}
                 </span>
                 <span className="hidden 2xl:inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
