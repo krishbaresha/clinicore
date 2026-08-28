@@ -3688,6 +3688,42 @@ export default function DeveloperAdminPanel() {
 
                 <div className="flex flex-wrap gap-3 pt-2">
                   <button
+                    onClick={async () => {
+                      const passcode = prompt("⚠️ WARNING: This will permanently wipe ALL transactional data (Patients, Sales, Bills, CashBook, Purchases, etc.) from BOTH the VPS database and your local browser storage!\n\nThis action cannot be undone.\n\nEnter your Super Admin Master Passcode to confirm:");
+                      if (!passcode) return;
+
+                      try {
+                        const apiUrl = DEFAULT_API_URL;
+                        const res = await fetch(`${apiUrl}/api/v1/system/factory-reset`, {
+                          method: "POST",
+                          headers: { 
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${localStorage.getItem("cf_vps_jwt") || ""}`
+                          },
+                          body: JSON.stringify({ passcode }),
+                        });
+                        const data = await res.json().catch(() => null);
+
+                        if (res.ok && data?.success) {
+                          // Wipe local cache
+                          const { factoryResetAllData } = await import("../api/db.js");
+                          factoryResetAllData();
+                          alert("🎉 SUCCESS: Entire database (VPS + Local Storage) has been permanently wiped clean!\n\nSystem will now reload.");
+                          window.location.reload();
+                        } else {
+                          alert("❌ Factory Reset Denied: " + (data?.error?.message || "Incorrect passcode or connection failed."));
+                        }
+                      } catch (err) {
+                        alert("❌ System Error during reset: " + err.message);
+                      }
+                    }}
+                    className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base text-red-600">delete_forever</span>
+                    Wipe Entire App Data (VPS + Local Reset)
+                  </button>
+
+                  <button
                     onClick={() => {
                       if (confirm("🧹 Detach all mock transactions and activate Clean Production Setup (0 dummy queue patients/bills)?\n\nYour Clinic Profile, Staff Users, Accounts, and Medicine Catalog will stay 100% intact.")) {
                         clearAllTransactionalData();
@@ -3717,6 +3753,7 @@ export default function DeveloperAdminPanel() {
               </div>
             </div>
           )}
+
         </>
       )}
     </main>
