@@ -17,9 +17,8 @@ const CORE_STATIC_ASSETS = [
   '/clinic-logo.png'
 ];
 
-// 1. Install Event: Pre-cache core shell and immediately skip waiting
+// 1. Install Event: Pre-cache core shell
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       // Use no-cache to ensure freshly fetched core assets
@@ -146,7 +145,9 @@ self.addEventListener('fetch', (event) => {
               console.warn(`[SW] Missing asset detected (${request.url}), purging outdated cache.`);
               caches.keys().then((keys) => {
                 keys.forEach((k) => {
-                  if (k.startsWith('clinicflow-pwa-')) caches.delete(k);
+                  if (k !== CACHE_NAME && k.startsWith('clinicflow-pwa-')) {
+                    caches.delete(k);
+                  }
                 });
               });
             }
