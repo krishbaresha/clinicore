@@ -33,9 +33,23 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Service Worker Fetch Resiliency, Duplicate Key Fix & Distinct Nav Tabs Complete
-- **Last worked on:** Fixed Service Worker fetch event handlers in `public/sw.js` to guarantee valid `Response` objects across all tiers even when offline or during network timeouts. Resolved React duplicate key warning (`doc_asif` in `LandingPage.jsx`) by giving doctors distinct keys (`doc_asif` and `doc_kashif`). Fixed sidebar navigation label duplication between `/reception/register` ("Register Patient") and `/reception/queue` ("Today's Queue" / "Reception Queue"). Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
+- **Phase:** Localhost Vite Dev Proxy & Same-Origin Cloud Sync Gateway Complete
+- **Last worked on:** Configured Vite dev server proxy for `/api` targeting `https://api.clinicore.me` with `changeOrigin: true` to prevent browser CORS blocks during local development when remote VPS backend returns 502/bad gateway. Unified `DEFAULT_API_URL` across `DeveloperAdminPanel.jsx`, `syncEngine.js`, `SidebarLayout.jsx`, and `ClinicSettings.jsx`. Verified with 308/308 tests passing, 0 oxlint errors, and clean Vite build.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-28 (Part 60) — Localhost Vite Dev Proxy & Same-Origin Cloud Sync Gateway
+**Task worked on:**
+1. **Vite Dev Server Proxy (`vite.config.js`):**
+   - Added `/api` proxy configuration targeting `https://api.clinicore.me` with `changeOrigin: true` and `secure: false`.
+2. **Unified API Gateway Resolution (`DeveloperAdminPanel.jsx`, `syncEngine.js`, `SidebarLayout.jsx`, `ClinicSettings.jsx`):**
+   - Scoped `DEFAULT_API_URL` to route requests to `/api` when running in local development mode on `localhost:5173`, avoiding cross-origin network errors if the VPS backend is temporarily undergoing maintenance or returning 502 Bad Gateway.
+3. **Verification & Zero-Regression Check:**
+   - `npx oxlint --quiet`: **0 errors** on 70 files.
+   - `node scripts/scan_imports_and_hooks.mjs`: **0 errors** on 60 files.
+   - `npm test`: **308/308 tests passed** (100% success rate).
+   - `npm run build`: Clean production bundle compiled in **1.05s (Exit code 0)**.
+
+---
 
 ### Session: 2026-08-28 (Part 59) — Service Worker Fetch Resiliency, Duplicate Key Resolution & Distinct Nav Tabs
 **Task worked on:**

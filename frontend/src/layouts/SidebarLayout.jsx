@@ -403,7 +403,7 @@ export default function SidebarLayout({ children }) {
         const sizeBytes = new Blob([encryptedBackupStr]).size;
         const timestampStr = now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" });
 
-        const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+        const apiUrl = import.meta.env.VITE_API_URL || (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
 
         // 1. Stage backup on server to create authoritative 1-click download link
         let downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;

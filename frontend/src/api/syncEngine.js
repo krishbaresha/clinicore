@@ -17,7 +17,7 @@ import {
 
 const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || 
   (typeof process !== "undefined" && process.env?.VITE_API_URL) || 
-  "https://api.clinicore.me";
+  (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
 
 class SyncEngine {
   constructor() {

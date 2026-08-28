@@ -28,6 +28,8 @@ import {
 
 const DEFAULT_ADMIN_PASSCODE = "KB2026"; // Default Developer Passcode
 const DEFAULT_TAB_PIN = "7860"; // Default Tab Lock PIN
+const DEFAULT_API_URL = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
 
 export function getAdminPasscode() {
   try {
@@ -251,7 +253,7 @@ export default function DeveloperAdminPanel() {
   const loadData = async (preserveForm = false) => {
     // 1. Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const apiUrl = DEFAULT_API_URL;
       const res = await fetch(`${apiUrl}/api/v1/system/config`);
       if (res.ok) {
         const json = await res.json();
@@ -407,7 +409,7 @@ export default function DeveloperAdminPanel() {
 
     // 1. Authoritative Server Verification (Strict Case-Sensitive)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const apiUrl = DEFAULT_API_URL;
       const res = await fetch(`${apiUrl}/api/v1/system/verify-passcode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -758,7 +760,7 @@ export default function DeveloperAdminPanel() {
     if (clinicForm.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", clinicForm.whatsapp_gateway_no.trim());
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const apiUrl = DEFAULT_API_URL;
       await fetch(`${apiUrl}/api/v1/system/config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -812,7 +814,7 @@ export default function DeveloperAdminPanel() {
       const sizeBytes = new Blob([encryptedBackupStr]).size;
       const timestampStr = now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" });
 
-      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const apiUrl = DEFAULT_API_URL;
 
       // 1. Stage backup on server to create authoritative 1-click download link
       let downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
@@ -899,7 +901,7 @@ export default function DeveloperAdminPanel() {
     const dateStr = now.toISOString().split("T")[0];
     const timeTag = now.toTimeString().split(" ")[0].replace(/:/g, "");
     const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
-    const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+    const apiUrl = DEFAULT_API_URL;
     const downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
     
     let sizeBytes = 145000;
@@ -952,7 +954,7 @@ export default function DeveloperAdminPanel() {
         isTestPing: true,
       });
 
-      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const apiUrl = DEFAULT_API_URL;
       const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
         method: "POST",
         headers: {
@@ -1111,7 +1113,7 @@ export default function DeveloperAdminPanel() {
 
     // Persist to VPS MySQL database so all devices and browsers sync automatically
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+      const apiUrl = DEFAULT_API_URL;
       await fetch(`${apiUrl}/api/v1/system/config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1661,7 +1663,7 @@ export default function DeveloperAdminPanel() {
                     setLicenseForm(updated);
 
                     // Dual persist to VPS MySQL cloud backend
-                    const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+                    const apiUrl = DEFAULT_API_URL;
                     await fetch(`${apiUrl}/api/v1/system/config`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },

@@ -977,7 +977,7 @@ export default function ClinicSettings() {
 
                           let res;
                           try {
-                            const apiUrl = import.meta.env.VITE_API_URL || "https://api.clinicore.me";
+                            const apiUrl = import.meta.env.VITE_API_URL || (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
                             res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
                               method: "POST",
                               headers: {

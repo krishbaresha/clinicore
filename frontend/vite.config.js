@@ -52,4 +52,13 @@ export default defineConfig({
     react(),
     pwaVersionPlugin(),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://api.clinicore.me',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
 })
