@@ -394,23 +394,47 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
   const showNote     = isBlockEnabled(_blocks, "custom_note");
   const cfg          = getCustomReceiptConfig();
 
+  // Use the closing date but always display in Pakistan Standard Time (UTC+5)
   const rawDate  = closing.date || closing.closing_date ? new Date(closing.date || closing.closing_date) : new Date();
-  const dateStr  = rawDate.toISOString().split("T")[0];
-  const timeStr  = rawDate.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+  const pkOptions = { timeZone: "Asia/Karachi" };
+  const dateStr  = rawDate.toLocaleDateString("en-CA", pkOptions); // YYYY-MM-DD
+  const timeStr  = rawDate.toLocaleString("en-US", { ...pkOptions, hour: "2-digit", minute: "2-digit", hour12: true });
 
-  const closedBy   = escapeHtml(closing.closed_by || closing.cashier_name || "Cashier Desk");
+  const closedBy   = escapeHtml(closing.closed_by || closing.cashier_name || "Store Manager");
   const consultant = escapeHtml(closing.consultant || closing.doctor_name || cfg.doctor_name || "Dr. Muhammad Asif Ashraf Khan");
   const auditScope = escapeHtml(closing.audit_scope || "All Terminals & Godowns");
 
-  // Revenue breakdown — map both new-style and legacy field names
-  const opdFees        = Number(closing.opd_fees || closing.payments_received?.total || 0);
-  const retailSales    = Number(closing.retail_sales || closing.pharmacy_sales || closing.sales?.cash || 0);
-  const wholesaleSales = Number(closing.wholesale_sales || closing.wholesale_b2b || 0);
-  const expenses       = Number(closing.daily_expenses || closing.expenses || closing.payments_paid?.total || 0);
-  const netCash        = Number(
-    closing.closing_cash ?? closing.net_cash_in_hand ?? closing.expected_cash ??
-    (opdFees + retailSales + wholesaleSales - expenses)
-  );
+  // Structured sale / purchase / payments data (matches DayClosingReceiptModal shape)
+  const sales     = closing.sales     || {};
+  const purchases = closing.purchases || {};
+  const paidItems = (closing.payments_paid?.items)     || [];
+  const recItems  = (closing.payments_received?.items) || [];
+  const saleTotal      = Number(sales.total    ?? (Number(closing.pharmacy_sales || 0) + Number(closing.wholesale_b2b || closing.wholesale_sales || 0)));
+  const saleCash       = Number(sales.cash     ?? saleTotal);
+  const saleCredit     = Number(sales.credit   ?? Math.max(0, saleTotal - saleCash));
+  const purchaseTotal  = Number(purchases.total  ?? Number(closing.supplier_payments || 0));
+  const purchaseCash   = Number(purchases.cash   ?? purchaseTotal);
+  const purchaseCredit = Number(purchases.credit ?? Math.max(0, purchaseTotal - purchaseCash));
+  const paidTotal      = Number(closing.payments_paid?.total     ?? closing.daily_expenses ?? closing.expenses ?? 0);
+  const recTotal       = Number(closing.payments_received?.total ?? (Number(closing.opd_fees || 0) + Number(closing.wholesale_b2b || 0)));
+  const openingCash    = Number(closing.opening_cash || 0);
+  const closingCash    = Number(closing.closing_cash ?? closing.net_cash_in_hand ?? closing.expected_cash ?? (openingCash + saleCash + recTotal - purchaseCash - paidTotal));
+
+  const paidItemsHtml = paidItems.length > 0
+    ? paidItems.map(it => `
+      <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:9.5px;color:#1f2937;">
+        <span style="font-weight:700;max-width:46mm;word-break:break-word;">${escapeHtml(it.account_name || "Expense")}${it.naration ? ` <span style="font-weight:normal;color:#6b7280;">(${escapeHtml(it.naration)})</span>` : ""}</span>
+        <span style="font-weight:900;color:#b91c1c;font-family:monospace;">Rs. ${Number(it.amount || 0).toLocaleString("en-US")}</span>
+      </div>`).join("")
+    : `<div style="font-size:9px;color:#9ca3af;text-align:center;padding:2px 0;">No payments paid on this date.</div>`;
+
+  const recItemsHtml = recItems.length > 0
+    ? recItems.map(it => `
+      <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:9.5px;color:#1f2937;">
+        <span style="font-weight:700;max-width:46mm;word-break:break-word;">${escapeHtml(it.account_name || "Receipt")}${it.naration ? ` <span style="font-weight:normal;color:#6b7280;">(${escapeHtml(it.naration)})</span>` : ""}</span>
+        <span style="font-weight:900;color:#047857;font-family:monospace;">Rs. ${Number(it.amount || 0).toLocaleString("en-US")}</span>
+      </div>`).join("")
+    : `<div style="font-size:9px;color:#9ca3af;text-align:center;padding:2px 0;">No cash payments received on this date.</div>`;
 
   const receiptHtml = `
     <!DOCTYPE html>
@@ -431,83 +455,105 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
             font-size: 11px;
             line-height: 1.3;
           }
-          .dotted-line { border-top: 1px dashed #9ca3af; margin: 4px 0; }
-          .meta-text { font-size: 10px; font-weight: 600; color: #374151; line-height: 1.4; }
+          .dotted { border-top: 1px dashed #9ca3af; margin: 4px 0; }
+          .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px; margin: 5px 0; background: #f9fafb; }
+          .card-paid { border: 1px solid #fecdd3; border-radius: 8px; padding: 6px; margin: 5px 0; background: #fff1f2; }
+          .card-rec  { border: 1px solid #a7f3d0; border-radius: 8px; padding: 6px; margin: 5px 0; background: #ecfdf5; }
+          .box-hd { display:flex;justify-content:space-between;align-items:center;font-weight:900;font-size:11.5px;border-bottom:1px solid #e5e7eb;padding-bottom:3px;margin-bottom:4px; }
           @media print { body { width: 76mm; padding: 2px; } }
         </style>
       </head>
       <body>
-        <!-- Clinic Header (header_logo, clinic_name, tagline, contact_info blocks) -->
+        <!-- Clinic Header -->
         ${getLogoHeaderHtml("Executive Shift Z-Closing Statement", { showLogo, showTagline, showContact })}
 
-        <div class="dotted-line"></div>
+        <div class="dotted"></div>
 
         <!-- Meta Info: Date / Time (meta_info block) -->
         ${showMeta ? `
-        <div class="meta-text">
+        <div style="font-size:10px;font-weight:700;color:#374151;">
           <div style="display:flex;justify-content:space-between;">
             <span><strong>Date:</strong> ${dateStr}</span>
             <span><strong>Time:</strong> ${timeStr}</span>
           </div>
         </div>` : ""}
 
-        <!-- Closed By / Consultant (customer_info block) -->
+        <!-- Closed By / Consultant / Audit (customer_info block) -->
         ${showCustomer ? `
-        <div class="meta-text" style="margin-top:3px;">
+        <div style="font-size:10px;font-weight:600;color:#374151;margin-top:3px;">
           <div><strong style="color:#4b5563;">Closed By:</strong> ${closedBy}</div>
           <div><strong style="color:#4b5563;">Audit Scope:</strong> ${auditScope}</div>
           <div><strong style="color:#4b5563;">Consultant:</strong> ${consultant}</div>
         </div>` : ""}
 
-        <div class="dotted-line"></div>
+        <div class="dotted"></div>
 
-        <!-- Revenue Breakdown (items_table block) -->
+        <!-- items_table block = Sale / Purchase / Payments boxes -->
         ${showItems ? `
-        <div style="font-size:10.5px;margin:2px 0;">
-          ${opdFees > 0 ? `
-          <div style="display:flex;justify-content:space-between;padding:2px 0;">
-            <span>• OPD Doctor Consultation Fees:</span>
-            <span style="font-weight:700;">Rs. ${opdFees.toLocaleString("en-US")}</span>
-          </div>` : ""}
-          ${retailSales > 0 ? `
-          <div style="display:flex;justify-content:space-between;padding:2px 0;">
-            <span>• Retail Counter POS Sales:</span>
-            <span style="font-weight:700;">Rs. ${retailSales.toLocaleString("en-US")}</span>
-          </div>` : ""}
-          ${wholesaleSales > 0 ? `
-          <div style="display:flex;justify-content:space-between;padding:2px 0;">
-            <span>• Wholesale Godown Sales:</span>
-            <span style="font-weight:700;">Rs. ${wholesaleSales.toLocaleString("en-US")}</span>
-          </div>` : ""}
-          ${expenses > 0 ? `
-          <div style="display:flex;justify-content:space-between;padding:2px 0;color:#b91c1c;">
-            <span>• Operational Expenses:</span>
-            <span style="font-weight:700;">- Rs. ${expenses.toLocaleString("en-US")}</span>
-          </div>` : ""}
+
+        <!-- 1. SALE BOX -->
+        ${openingCash > 0 ? `<div style="display:flex;justify-content:space-between;font-size:10px;font-weight:bold;color:#047857;padding:2px 0;"><span>Opening Drawer Float:</span><span>Rs. ${openingCash.toLocaleString("en-US",{minimumFractionDigits:2})}</span></div>` : ""}
+        <div class="card">
+          <div class="box-hd" style="color:#111827;">
+            <span style="font-family:Georgia,serif;font-size:12px;">Sale</span>
+            <span style="color:#047857;font-family:monospace;font-size:12px;">Rs. ${saleTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>
+          <div style="font-size:10px;color:#374151;">
+            <div style="display:flex;justify-content:space-between;padding:1px 0;"><span>Cash</span><span style="font-weight:bold;font-family:monospace;">Rs. ${saleCash.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:1px 0;"><span>Credit</span><span style="font-weight:bold;font-family:monospace;color:#b91c1c;">Rs. ${saleCredit.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+          </div>
+        </div>
+
+        <!-- 2. PURCHASE BOX -->
+        <div class="card">
+          <div class="box-hd" style="color:#111827;">
+            <span style="font-family:Georgia,serif;font-size:12px;">Purchase</span>
+            <span style="font-family:monospace;font-size:12px;">Rs. ${purchaseTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>
+          <div style="font-size:10px;color:#374151;">
+            <div style="display:flex;justify-content:space-between;padding:1px 0;"><span>Cash</span><span style="font-weight:bold;font-family:monospace;">Rs. ${purchaseCash.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:1px 0;"><span>Credit</span><span style="font-weight:bold;font-family:monospace;color:#4b5563;">Rs. ${purchaseCredit.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+          </div>
+        </div>
+
+        <!-- 3. PAYMENT PAID BOX -->
+        <div class="card-paid">
+          <div class="box-hd" style="color:#9f1239;border-color:#fecdd3;">
+            <span style="font-family:Georgia,serif;font-size:12px;">Payment Paid</span>
+            <span style="color:#b91c1c;font-family:monospace;font-size:12px;">Rs. ${paidTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>
+          ${paidItemsHtml}
+        </div>
+
+        <!-- 4. PAYMENT RECEIVE BOX -->
+        <div class="card-rec">
+          <div class="box-hd" style="color:#065f46;border-color:#a7f3d0;">
+            <span style="font-family:Georgia,serif;font-size:12px;">Payment Receive</span>
+            <span style="color:#047857;font-family:monospace;font-size:12px;">Rs. ${recTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>
+          ${recItemsHtml}
         </div>` : ""}
 
-        <!-- Net Cash (financial_totals block) -->
+        <!-- financial_totals block = dark Closing Cash box -->
         ${showTotals ? `
-        <div style="margin-top:6px;padding-top:5px;border-top:2px solid #111827;display:flex;justify-content:space-between;font-weight:900;font-size:14px;color:#0f172a;">
-          <span>NET CASH IN HAND:</span>
-          <span>Rs. ${netCash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <div style="margin-top:8px;padding-top:6px;border-top:2px dashed #4b5563;">
+          <div style="background:#0f172a;color:#fff;border-radius:10px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-family:Georgia,serif;font-weight:900;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;">Closing Cash In Hand</span>
+            <span style="font-family:monospace;font-weight:900;font-size:17px;color:#6ee7b7;">Rs. ${closingCash.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>
         </div>` : ""}
 
-        <div class="dotted-line"></div>
+        <div class="dotted"></div>
 
         <!-- Urdu Footer (urdu_footer block) -->
         ${showUrdu && cfg.urdu_footer_text ? `
-        <div style="text-align:center;font-size:9.5px;font-weight:700;color:#374151;direction:rtl;margin:3px 0;">
-          ${escapeHtml(cfg.urdu_footer_text)}
-        </div>
-        <div class="dotted-line"></div>` : ""}
+        <div style="text-align:center;font-size:9.5px;font-weight:700;color:#374151;direction:rtl;margin:3px 0;">${escapeHtml(cfg.urdu_footer_text)}</div>
+        <div class="dotted"></div>` : ""}
 
         <!-- Custom Policy Note (custom_note block) -->
         ${showNote && cfg.custom_policy_note ? `
-        <div style="text-align:center;font-size:9.5px;font-weight:700;color:#374151;font-style:italic;margin:3px 0;">
-          ${escapeHtml(cfg.custom_policy_note)}
-        </div>
-        <div class="dotted-line"></div>` : ""}
+        <div style="text-align:center;font-size:9.5px;font-weight:700;color:#374151;font-style:italic;margin:3px 0;">${escapeHtml(cfg.custom_policy_note)}</div>
+        <div class="dotted"></div>` : ""}
 
         <!-- Powered By CliniCore (permanent) -->
         ${getWatermarkFooterHtml()}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { dbDayClosing, dbClinic } from "../api/db.js";
+import { getSession } from "../api/auth.js";
 import { printDayEndClosingReceipt } from "../utils/thermalPrinter.js";
 import clinicLogoPng from "../assets/clinic-logo.png";
 
 /**
- * DrCreate & MS Access Day Clossing _Receipt (UserForm12) Engine
+ * DrCreate & MS Access Day Closing Receipt (UserForm12) Engine
  */
 export default function DayClosingReceiptModal({ isOpen, onClose }) {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -42,10 +43,13 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
   // Handle Print 80mm Thermal Receipt
   const handlePrint = () => {
     if (!closingData) return;
+    const session = getSession();
     const printPayload = {
       date: closingData.date,
       closing_date: closingData.date,
-      closed_by: typeof localStorage !== "undefined" ? (JSON.parse(localStorage.getItem("cf_session_v5") || "{}")?.name || "Store Manager") : "Store Manager",
+      closed_by: session?.name || session?.full_name || "Store Manager",
+      audit_scope: "All Terminals & Godowns",
+      consultant: dbClinic.get()?.doctor_name || "Dr. Muhammad Asif Ashraf Khan",
       sales: closingData.sales,
       purchases: closingData.purchases,
       payments_paid: closingData.payments_paid,
@@ -90,7 +94,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase drop-shadow-sm">
-                  Day Clossing _Receipt
+                  Day Closing Receipt
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-wider border border-white/30">
                   Daily Z-Report
@@ -139,7 +143,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                   <span className="font-mono font-black text-gray-900">{date}</span>
                 </div>
                 <div className="font-serif font-black text-sm text-gray-900 uppercase">
-                  Clossing Receipt
+                  Day Closing Receipt
                 </div>
               </div>
 
@@ -247,7 +251,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                   {/* 5. CLOSING CASH IN HAND (Grand Highlighted Box) */}
                   <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-400 flex items-center justify-between bg-slate-900 text-white p-3.5 rounded-xl shadow-inner">
                     <span className="font-serif font-black text-base uppercase tracking-wide">
-                      Clossing Cash
+                      Closing Cash In Hand
                     </span>
                     <span className="font-mono font-black text-xl text-emerald-300">
                       Rs. {closingData.closing_cash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
@@ -262,8 +266,8 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
               )}
 
               {/* Watermark Footer */}
-              <div className="text-center pt-2 text-[9px] font-bold text-gray-400 border-t border-gray-200 mt-2">
-                K.B Software Hyderabad &nbsp;|&nbsp; 03142291356
+              <div className="text-center pt-2 text-[9px] font-bold text-teal-800 border-t border-gray-200 mt-2">
+                *** POWERED BY CLINICORE SOFTWARE *** &nbsp;|&nbsp; www.krishbaresa.tech
               </div>
             </div>
 
@@ -357,7 +361,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
         <div className="bg-gray-100 px-6 py-3 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500 font-bold shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-600" />
-            <span>K.B Software • Day-End Clossing Receipt Module</span>
+            <span>CliniCore Software • Day-End Closing Receipt Module</span>
           </div>
           <button
             type="button"
