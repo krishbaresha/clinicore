@@ -33,9 +33,30 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 1 — Master Architecture Context Package & Decision Gate Completed
-- **Last worked on:** Enforced Phase 0 Preservation (zero database destruction/reset); executed empirical audit of 2 years of legacy production data in `Cache/AshrafKhan.accdb` (29,009 financial transactions, 25,765 stock entries, 4,237 SKUs) and `Cache/DrCreate.xlsm`; compiled full 20-file Master Architecture Context Package under `CLINICORE_NEW_ARCHITECTURE/`; finalized Architecture Decision Gate (`19_DECISIONS.md`) specifying Node.js/TypeScript + PostgreSQL server authority, Tauri + React + SQLite WAL desktop client, React Native Expo doctor mobile app, and staged legacy ETL pipeline.
+- **Phase:** Phase 2 — Backend Scaffold, Service Architecture & API Gateway (Step 3 Complete)
+- **Last worked on:** Built Phase 2 Step 3 API Endpoints, Mutation Gateway & Sync Cursor Scaffold under `PHASE_2_STEP_3/api_scaffold/` with full route handlers (`POST /api/v1/auth/login`, `GET /api/v1/sync/pull?cursor=N`, `POST /api/v1/sync/push`, `POST /api/v1/approvals/request`), `SyncCursorStore` monotonic cursor engine, `MutationGateway` idempotency key deduplication, `AuthMiddleware` JWT token verifier, `ValidationMiddleware` schema validator, and executed automated verification test suite `step_3_verification.ts` with 100% pass rate.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-30 (Part 75) — Phase 2 Step 3: API Endpoints, Mutation Gateway & Sync Cursor Scaffold
+**Task worked on:**
+1. **API Scaffold & Gateway Architecture (`PHASE_2_STEP_3/api_scaffold/`):**
+   - Engineered TypeScript API routes:
+     - `POST /api/v1/auth/login` — Authentication handler returning signed JWT bearer token.
+     - `GET /api/v1/sync/pull?cursor=N` — Monotonic change pull engine filtering change records with `cursor > N`.
+     - `POST /api/v1/sync/push` — Client outbox mutation gateway with idempotency key caching.
+     - `POST /api/v1/approvals/request` — Doctor approval request queue handler broadcasting to sync log.
+   - Built `SyncCursorStore` (`src/cursor/sync_cursor.ts`) providing strictly monotonic integer change sequences (`sequence++`).
+   - Built `MutationGateway` (`src/gateway/mutation_gateway.ts`) caching idempotency keys to deduplicate retry attempts.
+   - Built `AuthMiddleware` (`src/middleware/auth.middleware.ts`) and `ValidationMiddleware` (`src/middleware/validation.middleware.ts`).
+2. **Automated Verification Execution (`step_3_verification.ts`):**
+   - Verified 400 Bad Request payload validation & 404 route matching.
+   - Verified 401 Unauthorized token enforcement & JWT signature checks.
+   - Verified 200 OK login & protected route authorization.
+   - Verified outbox idempotency key deduplication (returns `status: DUPLICATE` on re-push).
+   - Verified monotonic change cursor delta pulls (`cursor > N`).
+   - Verified live HTTP server wire execution over local port 3456 (`fetch`).
+   - Executed `node --experimental-strip-types PHASE_2_STEP_3/step_3_verification.ts` — 100% tests passed.
+
 
 ### Session: 2026-08-29 (Part 74) — Phase 0 Preservation & Phase 1 Master Architecture Context Package Completion
 **Task worked on:**
