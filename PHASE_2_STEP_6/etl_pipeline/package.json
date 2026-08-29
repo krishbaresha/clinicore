@@ -1,0 +1,13 @@
+{
+  "name": "clinicflow-etl-pipeline",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Legacy MS Access & Excel Staged ETL Pipeline for ClinicFlow",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "node --experimental-strip-types ../step_6_verification.ts"
+  },
+  "keywords": ["etl", "accdb", "staging", "validator", "canonical-mapper"],
+  "author": "Antigravity Senior Harness Engineering",
+  "license": "ISC"
+}
