@@ -33,11 +33,33 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 2 — Backend Scaffold, Service Architecture & API Gateway (Step 3 Complete)
-- **Last worked on:** Built Phase 2 Step 3 API Endpoints, Mutation Gateway & Sync Cursor Scaffold under `PHASE_2_STEP_3/api_scaffold/` with full route handlers (`POST /api/v1/auth/login`, `GET /api/v1/sync/pull?cursor=N`, `POST /api/v1/sync/push`, `POST /api/v1/approvals/request`), `SyncCursorStore` monotonic cursor engine, `MutationGateway` idempotency key deduplication, `AuthMiddleware` JWT token verifier, `ValidationMiddleware` schema validator, and executed automated verification test suite `step_3_verification.ts` with 100% pass rate.
+- **Phase:** Phase 2 — Backend Scaffold, Service Architecture & API Gateway (Step 4 Complete)
+- **Last worked on:** Built Phase 2 Step 4 Tauri Desktop Shell & Local SQLite WAL Outbox Scaffold under `PHASE_2_STEP_4/desktop_scaffold/` with `SqliteOutboxEngine` (`src/db/sqlite_outbox.ts`) enforcing `PRAGMA journal_mode = WAL;`, `TauriAppShell` (`src/tauri/app_shell.ts`) Tauri desktop IPC bridge and 80mm thermal receipt hardware hooks, executed automated verification test suite `step_4_verification.ts` with 100% pass rate (6/6 test suites passed), and generated `step_4_verification_report.md`.
 - **Currently blocked on:** None.
 
-### Session: 2026-08-30 (Part 75) — Phase 2 Step 3: API Endpoints, Mutation Gateway & Sync Cursor Scaffold
+### Session: 2026-08-30 (Part 76) — Phase 2 Step 4: Tauri Desktop Shell & Local SQLite WAL Outbox Scaffold
+**Task worked on:**
+1. **Desktop Shell & SQLite WAL Outbox Engine (`PHASE_2_STEP_4/desktop_scaffold/`):**
+   - Built `SqliteOutboxEngine` (`src/db/sqlite_outbox.ts`) using Node 22 `node:sqlite` (`DatabaseSync`):
+     - Configured durable outbox queue table `outbox_mutations` storing `mutation_id`, `idempotency_key`, `entity_type`, `payload`, `status` (`PENDING` | `SYNCING` | `SYNCED`), `retry_count`, `error_message`, `created_at`, `updated_at`.
+     - Enforced `PRAGMA journal_mode = WAL;` and `PRAGMA synchronous = NORMAL;` for WAL write performance and transaction safety.
+     - Implemented state transitions, FIFO pending queries, idempotency deduplication, and clean database lifecycle hooks.
+   - Built `TauriAppShell` (`src/tauri/app_shell.ts`):
+     - Implemented Tauri IPC bridge protocol (`invoke(command, payload)`).
+     - Built IPC handlers: `init_offline_db`, `enqueue_outbox_mutation`, `get_outbox_pending`, `mark_mutation_synced`, `print_thermal_receipt`, `get_hardware_status`.
+     - Built 80mm thermal printer hardware interface hooks simulating ESC/POS receipt rendering and byte stream calculation.
+     - Built Tauri shell event bus (`listen`, `emit`) for real-time IPC notifications.
+   - Configured ESM Node project `package.json` & `tsconfig.json`.
+2. **Automated Verification Suite (`step_4_verification.ts`):**
+   - Verified SQLite initialization and `PRAGMA journal_mode = WAL`.
+   - Verified outbox mutation insertion and idempotency key deduplication.
+   - Verified state machine status transitions (`PENDING` -> `SYNCING` -> `SYNCED`).
+   - Verified offline queue persistence across simulated application restarts (closing DB file and reopening from disk with 100% payload integrity).
+   - Verified Tauri IPC bridge commands and event bus.
+   - Verified 80mm thermal receipt printer ESC/POS command generation and hardware status reporting.
+   - Executed `node --experimental-strip-types PHASE_2_STEP_4/step_4_verification.ts` — 6/6 test suites passed cleanly (100%).
+3. **Verification Report (`step_4_verification_report.md`):**
+   - Compiled verification report detailing architecture, table schema, IPC bridge commands, test suite breakdown, and raw console output.
 **Task worked on:**
 1. **API Scaffold & Gateway Architecture (`PHASE_2_STEP_3/api_scaffold/`):**
    - Engineered TypeScript API routes:
