@@ -567,41 +567,104 @@ export default function Dashboard() {
         </section>
       ) : (
         /* Front Desk / Receptionist / Operational Counter Summary */
-        <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-600 text-2xl">badge</span>
-              <div>
-                <h3 className="font-bold text-gray-900 text-base">Operational Counter Desk</h3>
-                <p className="text-xs text-gray-400">Logged in as {user?.name || "Staff"} • {user?.role ? user.role.toUpperCase() : "COUNTER"}</p>
+        user?.role === "warehouse" ? (
+          <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 text-2xl">warehouse</span>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Warehouse Status Overview</h3>
+                  <p className="text-xs text-gray-400">Logged in as {user?.name || "Staff"} • {user?.assigned_warehouse_id ? `Warehouse ID: ${user.assigned_warehouse_id.toUpperCase()}` : "Global Inventory Incharge"}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/store/warehouse")}
+                className="text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">swap_horiz</span>
+                Manage Stock &amp; Transfers
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-center">
+                <div className="text-xs text-teal-700 font-bold uppercase mb-1">My Godown Stock Valuation</div>
+                <div className="text-2xl font-black text-teal-900">
+                  {(() => {
+                    const whId = user?.assigned_warehouse_id || "wh_001";
+                    const value = (dbInventory.getAll() || []).reduce((sum, item) => {
+                      const qty = Number(item.location_quantities?.[whId] || (whId === "wh_001" ? item.warehouse_stock || 0 : 0));
+                      return sum + (qty * Number(item.sale_price || item.unit_sale_price || 0));
+                    }, 0);
+                    return formatCurrency(value);
+                  })()}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-0.5">Valued at local store retail price</div>
+              </div>
+              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
+                <div className="text-xs text-amber-700 font-bold uppercase mb-1">Low Stock SKUs in Godown</div>
+                <div className="text-2xl font-black text-amber-900">
+                  {(() => {
+                    const whId = user?.assigned_warehouse_id || "wh_001";
+                    return (dbInventory.getAll() || []).filter((item) => {
+                      const qty = Number(item.location_quantities?.[whId] || (whId === "wh_001" ? item.warehouse_stock || 0 : 0));
+                      return qty > 0 && qty <= (item.low_stock_threshold || 6);
+                    }).length;
+                  })()}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-0.5">Threshold level alerts</div>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center">
+                <div className="text-xs text-blue-700 font-bold uppercase mb-1">Pending Stock Transfers</div>
+                <div className="text-2xl font-black text-blue-900">
+                  {(() => {
+                    const whId = user?.assigned_warehouse_id || "wh_001";
+                    return (dbStockTransfers.getAll() || []).filter((t) => 
+                      t.status === "in_transit" && (t.from_warehouse_id === whId || t.to_warehouse_id === whId)
+                    ).length;
+                  })()}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-0.5">In Transit transfers</div>
               </div>
             </div>
-            <button
-              onClick={() => navigate("/reception/register")}
-              className="text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-sm">person_add</span>
-              + New Patient Token
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-center">
-              <div className="text-xs text-teal-700 font-bold uppercase mb-1">Today&apos;s Total Patients</div>
-              <div className="text-3xl font-black text-teal-900">{todayVisits.length}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">Tokens issued today</div>
+          </section>
+        ) : (
+          /* Front Desk / Receptionist / Operational Counter Summary */
+          <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600 text-2xl">badge</span>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Operational Counter Desk</h3>
+                  <p className="text-xs text-gray-400">Logged in as {user?.name || "Staff"} • {user?.role ? user.role.toUpperCase() : "COUNTER"}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/reception/register")}
+                className="text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">person_add</span>
+                + New Patient Token
+              </button>
             </div>
-            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
-              <div className="text-xs text-amber-700 font-bold uppercase mb-1">Waiting in Queue</div>
-              <div className="text-3xl font-black text-amber-900">{waitingVisits.length}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">OPD waiting room</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-center">
+                <div className="text-xs text-teal-700 font-bold uppercase mb-1">Today&apos;s Total Patients</div>
+                <div className="text-3xl font-black text-teal-900">{todayVisits.length}</div>
+                <div className="text-[11px] text-gray-400 mt-0.5">Tokens issued today</div>
+              </div>
+              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
+                <div className="text-xs text-amber-700 font-bold uppercase mb-1">Waiting in Queue</div>
+                <div className="text-3xl font-black text-amber-900">{waitingVisits.length}</div>
+                <div className="text-[11px] text-gray-400 mt-0.5">OPD waiting room</div>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center sm:col-span-1 col-span-2">
+                <div className="text-xs text-blue-700 font-bold uppercase mb-1">Completed Consultations</div>
+                <div className="text-3xl font-black text-blue-900">{completedVisits.length}</div>
+                <div className="text-[11px] text-gray-400 mt-0.5">Visits completed</div>
+              </div>
             </div>
-            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center sm:col-span-1 col-span-2">
-              <div className="text-xs text-blue-700 font-bold uppercase mb-1">Completed Consultations</div>
-              <div className="text-3xl font-black text-blue-900">{completedVisits.length}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">Visits completed</div>
-            </div>
-          </div>
-        </section>
+          </section>
+        )
       )}
 
       {/* Quick Actions — Doctor: sirf OPD + EMR, no settings */}

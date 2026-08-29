@@ -370,6 +370,10 @@ export function getFromCollectionById(key, id) {
 export function setCollection(key, data) {
   try {
     const raw = JSON.stringify(data);
+    const cached = _COLLECTION_CACHE.get(key);
+    if (cached && cached.raw === raw) {
+      return; // Deduplicate writes to prevent infinite event loop triggers!
+    }
     _COLLECTION_CACHE.set(key, { raw, parsed: data });
 
     if (Array.isArray(data)) {
