@@ -557,6 +557,19 @@ export function initDB() {
       localStorage.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
     }
   }
+  // PERMANENT PURGE: Remove legacy admin@clinicore.pk / user_admin bootstrap user from local storage
+  try {
+    const rawUsers = localStorage.getItem(KEYS.USERS);
+    if (rawUsers) {
+      const parsedUsers = JSON.parse(rawUsers);
+      const cleanedUsers = parsedUsers.filter(u => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
+      if (cleanedUsers.length !== parsedUsers.length) {
+        localStorage.setItem(KEYS.USERS, JSON.stringify(cleanedUsers));
+        _COLLECTION_CACHE.delete(KEYS.USERS);
+      }
+    }
+  } catch (err) {}
+
   localStorage.setItem(KEYS.LICENSE, JSON.stringify({
     license_status: "active", // "active" | "warning" | "grace_period" | "restricted" | "locked"
     monthly_fee: 5000,
@@ -1154,7 +1167,7 @@ export const dbVisits = {
   add: (visit) => {
     const visits = getCollection(KEYS.VISITS);
     const token_number = dbVisits.nextTokenNumber();
-    const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
+    const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
     const cashierId = visit.cashier_id || visit.active_cashier_id || activeCashier?.id || "user_admin";
     const cashierName = visit.cashier_name || visit.active_cashier_name || activeCashier?.name || "Front Desk";
 
@@ -2383,7 +2396,7 @@ export const dbStockMovements = {
     const seq = movements.length + 1;
     const movId = movementData.movement_id || `mov_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-    const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
+    const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
     const actorId = movementData.actor_id || movementData.active_cashier_id || activeCashier?.id || "system";
     const actorName = movementData.actor_name || movementData.active_cashier_name || activeCashier?.name || "System";
 
@@ -4106,7 +4119,7 @@ export const dbSales = {
       ? Number(sale.paid_amount)
       : total;
 
-    const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
+    const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
     const cashierId = sale.cashier_id || sale.active_cashier_id || activeCashier?.id || "user_admin";
     const cashierName = sale.cashier_name || sale.active_cashier_name || activeCashier?.name || "Counter Staff";
 

@@ -98,24 +98,10 @@ class AuthController {
 
     public static function ensureBootstrapAdminUser(PDO $db): void {
         try {
-            $count = (int) ($db->query("SELECT COUNT(*) FROM users")->fetchColumn() ?: 0);
-            if ($count === 0) {
-                // Ensure default clinic exists
-                $db->exec("INSERT IGNORE INTO clinics (id, name, logo_url, address, phone, default_consultation_fee, clinic_status, public_notice) 
-                           VALUES ('clinic_001', 'Dr. Muhammad Kashif Khan Clinic', '', 'Hyderabad, Interior Sindh', '03000000000', 500, 'open', '')");
-
-                // Salted SHA-256 hash for default passcode 'KB2026'
-                $salt = 'cf_salt_2026_master';
-                $hash = 'cf_s256$' . $salt . '$' . hash('sha256', $salt . '::' . 'KB2026');
-
-                $stmt = $db->prepare("
-                    INSERT IGNORE INTO users (id, clinic_id, name, display_label, role, phone, email, password_hash, is_principal_doctor, status)
-                    VALUES ('user_admin', 'clinic_001', 'Administrator (Clinic Owner)', 'Administrator', 'admin', '03000000000', 'admin@clinicore.pk', :pass, 1, 'active')
-                ");
-                $stmt->execute([':pass' => $hash]);
-            }
+            // PERMANENT PURGE: Remove legacy admin@clinicore.pk / user_admin user from VPS MySQL database
+            $db->exec("DELETE FROM users WHERE email = 'admin@clinicore.pk' OR id = 'user_admin'");
         } catch (\Throwable $e) {
-            error_log("Bootstrap Admin Notice: " . $e->getMessage());
+            error_log("Purge Admin Notice: " . $e->getMessage());
         }
     }
 }

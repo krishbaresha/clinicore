@@ -419,26 +419,7 @@ export async function login(identifier, password) {
     return false;
   });
 
-  // Bootstrap initial Admin user only when database has zero users AND VPS is unreachable
-  if (!user && allUsers.length === 0 && (idLower === "admin" || idLower === "admin@clinicore.pk" || idLower === "admin@clinicflow.com")) {
-    const adminPasscode = getAdminPasscode();
-    if (password === adminPasscode || password === "KB2026") {
-      const bootstrapAdmin = {
-        id: "user_admin",
-        clinic_id: "clinic_001",
-        name: "Administrator (Clinic Owner)",
-        role: "admin",
-        is_owner: true,
-        can_view_financials: true,
-        email: "admin@clinicore.pk",
-        phone: "",
-        status: "active",
-        password: hashPassword(password),
-      };
-      dbUsers.add(bootstrapAdmin);
-      user = bootstrapAdmin;
-    }
-  }
+  // Legacy default bootstrap admin user disabled by user request
 
   if (!user) {
     failedAttempts++;
