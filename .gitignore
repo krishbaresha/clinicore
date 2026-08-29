@@ -53,6 +53,7 @@ storage/backups/
 storage/uploads/
 Tech-Bill/
 graphify-out/
+Cache/
 
 # Logs
 npm-debug.log*
