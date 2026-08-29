@@ -283,9 +283,14 @@ class SyncEngine {
       this.notify();
 
       // 2. Transmit batch to /api/v1/sync/push
+      const token = localStorage.getItem("cf_vps_jwt");
+      const headers = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_BASE}/api/v1/sync/push`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ mutations: pendingMutations }),
       });
 
@@ -358,9 +363,14 @@ class SyncEngine {
 
       if (payloadStr === this.lastStateHash) return;
 
+      const token = localStorage.getItem("cf_vps_jwt");
+      const headers = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: payloadStr,
       });
 
@@ -388,8 +398,15 @@ class SyncEngine {
     try {
       // 1. Pull Config & Licensing (Domain 5: Server Supremacy)
       try {
+        const token = localStorage.getItem("cf_vps_jwt");
+        const headers = {
+          "User-Agent": "CliniCore-PWA/2.0",
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
         const cfgRes = await fetch(`${API_BASE}/api/v1/system/config`, {
-          headers: { "User-Agent": "CliniCore-PWA/2.0" },
+          headers,
         });
         if (cfgRes.ok) {
           const cfgJson = await cfgRes.json();
@@ -408,8 +425,15 @@ class SyncEngine {
       } catch {}
 
       // 2. Pull Relational State
+      const token = localStorage.getItem("cf_vps_jwt");
+      const headers = {
+        "User-Agent": "CliniCore-PWA/2.0",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
-        headers: { "User-Agent": "CliniCore-PWA/2.0" },
+        headers,
       });
 
       if (res.ok) {
