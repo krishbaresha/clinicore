@@ -19,6 +19,7 @@ const CORE_STATIC_ASSETS = [
 
 // 1. Install Event: Pre-cache core shell
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       // Use no-cache to ensure freshly fetched core assets
