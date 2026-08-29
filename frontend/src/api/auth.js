@@ -367,12 +367,9 @@ export async function login(identifier, password) {
           return { success: true, user: session, error: null };
         }
 
-        // VPS rejected credentials (401)
+        // VPS returned 401 — check if account exists in local restored cache before outright rejecting
         if (res.status === 401) {
-          failedAttempts++;
-          lockoutUntil = failedAttempts >= MAX_ATTEMPTS ? Date.now() + 60_000 : lockoutUntil;
-          setRateLimitState({ failedAttempts, lockoutUntil });
-          return { success: false, user: null, error: GENERIC_ERROR };
+          console.warn("[Auth] VPS rejected credentials (401), checking local restored database...");
         }
       }
     } catch (networkErr) {
