@@ -258,7 +258,8 @@ class SyncEngine {
   }
 
   async processOutbox() {
-    if (!this.isOnline || this.isSyncing) return;
+    const token = localStorage.getItem("cf_vps_jwt");
+    if (!this.isOnline || this.isSyncing || (!token && !this.enableSnapshotSyncFallback)) return;
     const allOutbox = dbOutbox?.getAll?.() || [];
     // Reset any orphaned "sending" items from prior crashes to "pending"
     const pendingMutations = allOutbox.filter((m) => m.status === "pending" || m.status === "failed" || m.status === "sending");
@@ -426,14 +427,18 @@ class SyncEngine {
         }
       } catch {}
 
-      // 2. Pull Relational State
+      // 2. Pull Relational State (Requires Active Authenticated Session)
       const token = localStorage.getItem("cf_vps_jwt");
+      if (!token) {
+        // Client is not authenticated yet — skip sync-state pull until login
+        this.setState(SYNC_FSM_STATES.IDLE);
+        return;
+      }
+
       const headers = {
         "User-Agent": "CliniCore-PWA/2.0",
+        "Authorization": `Bearer ${token}`
       };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
       const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
         headers,
       });
@@ -527,7 +532,12 @@ class SyncEngine {
           this.setState(SYNC_FSM_STATES.IDLE);
         }
       } else {
-        this.setState(SYNC_FSM_STATES.ERROR, `Pull error: HTTP ${res.status}`);
+        if (res.status === 401) {
+          localStorage.removeItem("cf_vps_jwt");
+          this.setState(SYNC_FSM_STATES.IDLE);
+        } else {
+          this.setState(SYNC_FSM_STATES.ERROR, `Pull error: HTTP ${res.status}`);
+        }
       }
     } catch (err) {
       console.warn("[Cloud Sync] Pull state notice:", err.message);

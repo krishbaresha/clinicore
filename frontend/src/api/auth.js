@@ -364,6 +364,22 @@ export async function login(identifier, password) {
           } catch {}
 
           setRateLimitState({ failedAttempts: 0, lockoutUntil: 0 });
+
+          // ── IMMEDIATE POST-LOGIN SYNC ──────────────────────────────────────
+          // JWT is now in localStorage. Trigger pull immediately so MySQL data
+          // hydrates into the browser without waiting for the 4-second poller.
+          // This is what makes "clear localStorage → login → data appears" work.
+          try {
+            const { syncEngine } = await import("./syncEngine.js");
+            // Small tick so session storage write settles first
+            setTimeout(() => {
+              syncEngine.pullLatestCloudState().then(() => {
+                syncEngine.processOutbox();
+              });
+            }, 100);
+          } catch (_) {}
+          // ──────────────────────────────────────────────────────────────────
+
           return { success: true, user: session, error: null };
         }
 
@@ -506,8 +522,24 @@ export function getSession() {
 
     // Validate session against actual stored user record to prevent tampering & zombie sessions
     const dbUser = dbUsers.getById(session.userId);
-    if (!dbUser || dbUser.status === "disabled" || dbUser.status === "deactivated" || dbUser.status === "inactive") {
-      // User was deleted or disabled — immediately purge session
+
+    if (!dbUser) {
+      // ── VPS-issued session trust ───────────────────────────────────────────
+      // If the session was issued by the VPS (auth_source="vps") but the local
+      // user cache is empty (e.g. localStorage was just cleared and a fresh VPS
+      // login was done), trust the session as-is.
+      // The pull triggered after login will repopulate the local user cache.
+      // We must NOT invalidate here or the user gets logged out immediately.
+      if (session.auth_source === "vps" && session.userId && session.role) {
+        return session; // Trust VPS-issued session while local cache repopulates
+      }
+      // Local-only session with no user record → purge
+      sessionStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+
+    if (dbUser.status === "disabled" || dbUser.status === "deactivated" || dbUser.status === "inactive") {
       sessionStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(SESSION_KEY);
       return null;

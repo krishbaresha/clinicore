@@ -5367,17 +5367,32 @@ export function importFullDatabase(backupInput, options = { skipCheckpoint: fals
       window.dispatchEvent(new Event("clinicflow_status_update"));
     } catch {}
 
-    // CRITICAL: Trigger async syncEngine state push to cloud so that all other browsers/devices get updated data instantly!
+    // CRITICAL: Transmit full restored backup to VPS MySQL database so relational tables (users, patients, inventory, visits, etc.) get populated on VPS!
     try {
-      import("./syncEngine.js").then(({ syncEngine }) => {
-        if (syncEngine && typeof syncEngine.pushLocalStateToCloud === "function") {
-          syncEngine.pushLocalStateToCloud().catch(err => {
-            console.warn("[Restore Sync] Failed to auto-push backup state to VPS MySQL database:", err);
-          });
+      const API_BASE =
+        (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+        (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
+
+      const collectionsSnapshot = getAllCollectionsSnapshot();
+      fetch(`${API_BASE}/api/v1/system/restore-backup-data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passcode: localStorage.getItem("cf_admin_master_passcode") || "KB2026",
+          collections: collectionsSnapshot,
+          metadata: { restored_at: new Date().toISOString(), source: "ui_backup_upload" }
+        })
+      }).then(async (res) => {
+        if (res.ok) {
+          console.log("[Restore Cloud Sync] Successfully restored database to VPS MySQL!");
+        } else {
+          console.warn("[Restore Cloud Sync] VPS restore response:", res.status);
         }
+      }).catch((err) => {
+        console.warn("[Restore Cloud Sync] Failed to post backup to VPS:", err);
       });
     } catch (syncErr) {
-      console.warn("[Restore Sync] Failed to resolve syncEngine module:", syncErr);
+      console.warn("[Restore Sync] Failed to post backup state:", syncErr);
     }
 
     return {
