@@ -70,9 +70,14 @@ echo ""
 echo "[4/8] Importing production schema..."
 
 if [ -f "$CLINICORE_DIR/database/production_schema.sql" ]; then
-    mysql -u root "$DB_NAME" < "$CLINICORE_DIR/database/production_schema.sql"
-    TABLE_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME';")
-    echo "  Schema imported. Tables: $TABLE_COUNT"
+    TABLE_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME';" 2>/dev/null || echo "0")
+    if [ "${TABLE_COUNT:-0}" -eq 0 ]; then
+        mysql -u root "$DB_NAME" < "$CLINICORE_DIR/database/production_schema.sql"
+        TABLE_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME';")
+        echo "  Schema imported. Tables: $TABLE_COUNT"
+    else
+        echo "  SKIP: Schema import skipped (database already initialized with $TABLE_COUNT tables)."
+    fi
 else
     echo "  SKIP: Schema file not found."
 fi
@@ -84,9 +89,14 @@ echo ""
 echo "[5/8] Importing seed data..."
 
 if [ -f "$CLINICORE_DIR/database/production_seed.sql" ]; then
-    mysql -u root "$DB_NAME" < "$CLINICORE_DIR/database/production_seed.sql"
     USER_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM \`$DB_NAME\`.users;" 2>/dev/null || echo "0")
-    echo "  Seed imported. Users: $USER_COUNT"
+    if [ "${USER_COUNT:-0}" -eq 0 ]; then
+        mysql -u root "$DB_NAME" < "$CLINICORE_DIR/database/production_seed.sql"
+        USER_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM \`$DB_NAME\`.users;" 2>/dev/null || echo "0")
+        echo "  Seed imported. Users: $USER_COUNT"
+    else
+        echo "  SKIP: Seed import skipped (users already present: $USER_COUNT)."
+    fi
 else
     echo "  SKIP: Seed file not found."
 fi
