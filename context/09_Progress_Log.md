@@ -33,11 +33,36 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 3 Module B — Pharmacy POS, Wholesale B2B Distribution & FEFO Batch Engine (Complete)
-- **Last worked on:** Built Phase 3 Module B under `PHASE_3_MODULE_B/pharmacy_wholesale_engine/` including `pos_engine.ts` for keyboard-driven POS control deck & cart math, `batch_allocator.ts` for FEFO ascending expiry sorting & 30/60/90-day tiered risk alerts with dual-PIN quarantine, `b2b_service.ts` for wholesale party code auto-fill, salesman tracking, bilty transport metadata & credit limit checking, and `thermal_printer.ts` for 80mm ESC/POS thermal printing. Verified cleanly via `module_b_verification.ts` (100% pass rate) and compiled `module_b_verification_report.md`.
+- **Phase:** Phase 4 Step B — Desktop Installer & Doctor Mobile App Package Builder Scaffold (Complete)
+- **Last worked on:** Built Phase 4 Step B under `PHASE_4_STEP_B/packaging_suite/` including `tauri_installer_builder.ts` for Tauri Windows desktop installer build specs (`ClinicFlow_Setup.exe`), single-instance lock spec, system tray icon handler, and offline SQLite DB path resolution; `expo_bundle_builder.ts` for Doctor mobile app Expo packaging specs (`ClinicFlow_Doctor.apk` / iOS Bundle), push notification channel initializer (`urgent_patient_alerts`), and biometric authentication guard; `zero_data_loss_tester.ts` for Zero-Data-Loss resilience simulation testing app uninstall/reinstall and local cache wipe recovery from canonical server. Verified cleanly via `step_b_verification.ts` (8/8 passed) and created `step_b_verification_report.md`.
 - **Currently blocked on:** None.
 
-### Session: 2026-08-30 (Part 79) — Phase 3 Module B: Pharmacy POS, Wholesale B2B Distribution & FEFO Batch Engine
+### Session: 2026-08-30 (Part 80) — Phase 4 Step B: Desktop Installer & Doctor Mobile App Package Builder Scaffold
+
+**Task worked on:**
+Build Phase 4 Step B: Desktop Installer & Doctor Mobile App Package Builder Scaffold under directory `PHASE_4_STEP_B/`.
+
+**What was built/changed:**
+- Created `PHASE_4_STEP_B/packaging_suite/package.json` & `tsconfig.json`.
+- Created `PHASE_4_STEP_B/packaging_suite/src/desktop/tauri_installer_builder.ts`: Desktop Tauri installer builder (`ClinicFlow_Setup.exe`), single-instance lock spec (`clinicflow_single_instance_mutex_v1`), system tray icon handler (`assets/tray_icon.png`), and offline SQLite DB path resolution.
+- Created `PHASE_4_STEP_B/packaging_suite/src/mobile/expo_bundle_builder.ts`: Doctor mobile app Expo packager (`ClinicFlow_Doctor.apk` / iOS bundle `com.clinicflow.doctormobile`), push notification channel initializer (`urgent_patient_alerts` MAX priority), and biometric security guard (Fingerprint/Face ID).
+- Created `PHASE_4_STEP_B/packaging_suite/src/resilience/zero_data_loss_tester.ts`: Zero-Data-Loss resilience simulator testing app uninstall/reinstall and local cache wipe recovery from canonical server.
+- Created `PHASE_4_STEP_B/step_b_verification.ts`: Verification test assertions for installer configuration, mobile packaging, push notifications, biometrics, and zero-data-loss recovery.
+- Executed `node --experimental-strip-types PHASE_4_STEP_B/step_b_verification.ts` verifying all 8 tests pass cleanly.
+- Created `PHASE_4_STEP_B/step_b_verification_report.md`: Complete markdown report detailing all verification assertions and execution output log.
+
+**Decisions made / assumptions taken:**
+- Preserved strict local execution standard without touching production servers or remote VPS.
+
+**Known issues / incomplete:**
+- None.
+
+**Blocked on / needs human input:**
+- None.
+
+**Next recommended step:**
+- Proceed to Phase 4 Step C / Phase 5.
+
 **Task worked on:**
 1. **Pharmacy POS, Wholesale B2B & FEFO Engine (`PHASE_3_MODULE_B/pharmacy_wholesale_engine/`):**
    - Built `POSEngine` (`src/pos/pos_engine.ts`): Declarative F1-F11 hotkey actions, 2D navigation grid state for item search/selection, cart line-item math, percentage/flat discounts, tax calculations, hold/recall cart maps, and cash/credit checkout handlers.

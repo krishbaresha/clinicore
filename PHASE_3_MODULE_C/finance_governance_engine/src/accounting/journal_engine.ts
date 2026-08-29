@@ -231,6 +231,15 @@ export class JournalEngine {
   }
 
   /**
+   * Returns net balance for a specific account_code from Trial Balance
+   */
+  public getAccountBalance(accountCode: string): number {
+    const tb = this.getTrialBalance();
+    const item = tb.items.find((i) => i.account_code === accountCode);
+    return item ? item.net_balance : 0;
+  }
+
+  /**
    * Retrieves an entry by ID
    */
   public getEntry(id: string): JournalEntry | undefined {
