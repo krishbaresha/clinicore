@@ -85,7 +85,6 @@ const WAREHOUSE_NAV = [
   { label: "Godown & Wholesale", icon: "warehouse", path: "/store/warehouse" },
   { label: "Company Purchases (GRN)", icon: "add_business", path: "/store/purchases" },
   { label: "Store Counter Inventory", icon: "inventory_2", path: "/store" },
-  { label: "Fees & CashBook", icon: "payments", path: "/fees" },
 ];
 
 // 3. Doctor — Strict Consultation-Only Portal (3 tabs only)

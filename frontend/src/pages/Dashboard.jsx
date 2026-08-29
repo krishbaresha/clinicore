@@ -180,6 +180,14 @@ export default function Dashboard() {
                 Patients &amp; EMR
               </button>
             </>
+          ) : user?.role === "warehouse" ? (
+            <button
+              onClick={() => navigate("/store/warehouse")}
+              className="btn-primary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/20"
+            >
+              <span className="material-symbols-outlined text-base">warehouse</span>
+              Open Warehouse Dashboard
+            </button>
           ) : (
             <button
               id="dashboard-add-patient-btn"
@@ -296,117 +304,119 @@ export default function Dashboard() {
       </div>
 
       {/* Desktop Grid — doctor ke liye sirf 3 card: My Patients, My Fees, My Queue */}
-      <section
-        className={
-          isDoctor
-            ? "hidden md:grid md:grid-cols-3 gap-4"
-            : "hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4"
-        }
-        aria-label="Key metrics"
-      >
-        {/* Patients Today */}
-        <StatCard
-          label={canViewFinancials ? t("dashboard.todayPatients") : "My Patients Today"}
-          value={canViewFinancials ? todayVisits.length : myTodayVisits.length}
-          icon="group"
-          iconBg="bg-secondary-container/50"
-          subline={
-            <>
-              <span className="material-symbols-outlined text-sm">calendar_today</span>
-              {canViewFinancials
-                ? `${todayVisits.length} total OPD visit${todayVisits.length === 1 ? "" : "s"}`
-                : `${myTodayVisits.length} visit${myTodayVisits.length === 1 ? "" : "s"} in my OPD chamber`}
-            </>
+      {user?.role !== "warehouse" && (
+        <section
+          className={
+            isDoctor
+              ? "hidden md:grid md:grid-cols-3 gap-4"
+              : "hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4"
           }
-        />
+          aria-label="Key metrics"
+        >
+          {/* Patients Today */}
+          <StatCard
+            label={canViewFinancials ? t("dashboard.todayPatients") : "My Patients Today"}
+            value={canViewFinancials ? todayVisits.length : myTodayVisits.length}
+            icon="group"
+            iconBg="bg-secondary-container/50"
+            subline={
+              <>
+                <span className="material-symbols-outlined text-sm">calendar_today</span>
+                {canViewFinancials
+                  ? `${todayVisits.length} total OPD visit${todayVisits.length === 1 ? "" : "s"}`
+                  : `${myTodayVisits.length} visit${myTodayVisits.length === 1 ? "" : "s"} in my OPD chamber`}
+              </>
+            }
+          />
 
-        {/* Fees Collected Today / Consultations Completed */}
-        <StatCard
-          label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : (isDoctor ? "Completed Consultations" : "Revenue Status")}
-          value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : (isDoctor ? `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Done` : "🔒 Confidential")}
-          icon={canViewFinancials ? "payments" : (isDoctor ? "task_alt" : "lock")}
-          iconBg={canViewFinancials ? "bg-primary-container/10" : (isDoctor ? "bg-emerald-500/10 text-emerald-700" : "bg-primary-container/10")}
-          subline={canViewFinancials ? null : (isDoctor ? "Chamber Consultations Done" : "Owner / Admin Role Required")}
-        />
+          {/* Fees Collected Today / Consultations Completed */}
+          <StatCard
+            label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : (isDoctor ? "Completed Consultations" : "Revenue Status")}
+            value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : (isDoctor ? `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Done` : "🔒 Confidential")}
+            icon={canViewFinancials ? "payments" : (isDoctor ? "task_alt" : "lock")}
+            iconBg={canViewFinancials ? "bg-primary-container/10" : (isDoctor ? "bg-emerald-500/10 text-emerald-700" : "bg-primary-container/10")}
+            subline={canViewFinancials ? null : (isDoctor ? "Chamber Consultations Done" : "Owner / Admin Role Required")}
+          />
 
-        {/* 3rd Card */}
-        {isDoctor ? (
-          <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-teal-200/60 bg-teal-50/40">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-label-md text-label-md text-teal-800 mb-1 uppercase tracking-wider font-bold">
-                  Waiting In Chamber Queue
-                </p>
-                <h3 className="text-3xl sm:text-4xl font-black text-teal-950">
-                  {myWaitingVisits.length} <span className="text-sm font-semibold text-gray-500">Patients</span>
-                </h3>
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
-                <span className="material-symbols-outlined text-2xl">hourglass_top</span>
-              </div>
-            </div>
-            <div className="pt-2 border-t border-teal-100 flex items-center justify-between">
-              <span className="text-xs font-semibold text-teal-800">
-                {myInRoomVisit
-                  ? `In Room: #${myInRoomVisit.token_number} (${myInRoomVisit.patient_name || dbPatients.getById(myInRoomVisit.patient_id)?.full_name || "Patient"})`
-                  : myWaitingVisits.length > 0
-                  ? `Next: Token #${myWaitingVisits[0].token_number}`
-                  : "Queue is Clear"}
-              </span>
-              <button
-                onClick={() => navigate("/doctor/queue")}
-                className="text-xs font-extrabold text-teal-700 hover:text-teal-900 underline flex items-center gap-0.5"
-              >
-                Call Next →
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
-              <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">{t("dashboard.newVsRepeat")}</p>
-              <div>
-                <div className="flex items-end gap-2 mb-1">
-                  <span className="text-2xl font-black text-primary">{newRatio}%</span>
-                  <span className="text-xs text-outline pb-0.5">New</span>
-                </div>
-                <div className="flex items-end gap-2">
-                  <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
-                  <span className="text-xs text-outline pb-0.5">Repeat</span>
-                </div>
-              </div>
-              <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
-                <div className="bg-primary" style={{ width: `${newRatio}%` }} />
-                <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
-              </div>
-            </div>
-
-            {/* 4th Card: Low Stock — sirf staff/owner dekhega */}
-            <div className="glass-card p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-error-container/50 bg-error-container/10">
+          {/* 3rd Card */}
+          {isDoctor ? (
+            <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-teal-200/60 bg-teal-50/40">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">{t("dashboard.lowStockAlerts")}</p>
-                  <h3 className="text-3xl font-black text-error">{lowStockItems.length}</h3>
+                  <p className="font-label-md text-label-md text-teal-800 mb-1 uppercase tracking-wider font-bold">
+                    Waiting In Chamber Queue
+                  </p>
+                  <h3 className="text-3xl sm:text-4xl font-black text-teal-950">
+                    {myWaitingVisits.length} <span className="text-sm font-semibold text-gray-500">Patients</span>
+                  </h3>
                 </div>
-                <div className="w-11 h-11 rounded-2xl bg-error-container flex items-center justify-center text-error">
-                  <span className="material-symbols-outlined text-2xl">warning</span>
+                <div className="w-11 h-11 rounded-2xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
+                  <span className="material-symbols-outlined text-2xl">hourglass_top</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-1">
-                {lowStockItems.slice(0, 2).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between text-xs">
-                    <span className="text-on-surface truncate max-w-[120px]">{item.medicine_name}</span>
-                    <span className="text-error font-semibold">{item.stock_qty} left</span>
-                  </div>
-                ))}
-                {lowStockItems.length === 0 && (
-                  <p className="text-xs text-outline">{t("dashboard.allStockOk")}</p>
-                )}
+              <div className="pt-2 border-t border-teal-100 flex items-center justify-between">
+                <span className="text-xs font-semibold text-teal-800">
+                  {myInRoomVisit
+                    ? `In Room: #${myInRoomVisit.token_number} (${myInRoomVisit.patient_name || dbPatients.getById(myInRoomVisit.patient_id)?.full_name || "Patient"})`
+                    : myWaitingVisits.length > 0
+                    ? `Next: Token #${myWaitingVisits[0].token_number}`
+                    : "Queue is Clear"}
+                </span>
+                <button
+                  onClick={() => navigate("/doctor/queue")}
+                  className="text-xs font-extrabold text-teal-700 hover:text-teal-900 underline flex items-center gap-0.5"
+                >
+                  Call Next →
+                </button>
               </div>
             </div>
-          </>
-        )}
-      </section>
+          ) : (
+            <>
+              <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+                <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">{t("dashboard.newVsRepeat")}</p>
+                <div>
+                  <div className="flex items-end gap-2 mb-1">
+                    <span className="text-2xl font-black text-primary">{newRatio}%</span>
+                    <span className="text-xs text-outline pb-0.5">New</span>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
+                    <span className="text-xs text-outline pb-0.5">Repeat</span>
+                  </div>
+                </div>
+                <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
+                  <div className="bg-primary" style={{ width: `${newRatio}%` }} />
+                  <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
+                </div>
+              </div>
+
+              {/* 4th Card: Low Stock — sirf staff/owner dekhega */}
+              <div className="glass-card p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-error-container/50 bg-error-container/10">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">{t("dashboard.lowStockAlerts")}</p>
+                    <h3 className="text-3xl font-black text-error">{lowStockItems.length}</h3>
+                  </div>
+                  <div className="w-11 h-11 rounded-2xl bg-error-container flex items-center justify-center text-error">
+                    <span className="material-symbols-outlined text-2xl">warning</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {lowStockItems.slice(0, 2).map((item) => (
+                    <div key={item.id} className="flex items-center justify-between text-xs">
+                      <span className="text-on-surface truncate max-w-[120px]">{item.medicine_name}</span>
+                      <span className="text-error font-semibold">{item.stock_qty} left</span>
+                    </div>
+                  ))}
+                  {lowStockItems.length === 0 && (
+                    <p className="text-xs text-outline">{t("dashboard.allStockOk")}</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {/* Executive Financial Revenue Breakdown — Available for Staff and Owner */}
       {canViewFinancials ? (
@@ -684,6 +694,30 @@ export default function Dashboard() {
             >
               <span className="material-symbols-outlined">group</span>
               <span className="font-label-md text-label-md font-bold">Patients &amp; EMR Records</span>
+            </button>
+          </>
+        ) : user?.role === "warehouse" ? (
+          <>
+            <button
+              onClick={() => navigate("/store/warehouse")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">warehouse</span>
+              <span className="font-label-md text-label-md font-bold">Godown &amp; Wholesale</span>
+            </button>
+            <button
+              onClick={() => navigate("/store/purchases")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">add_business</span>
+              <span className="font-label-md text-label-md font-bold">Company Purchases (GRN)</span>
+            </button>
+            <button
+              onClick={() => navigate("/store")}
+              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+            >
+              <span className="material-symbols-outlined">inventory_2</span>
+              <span className="font-label-md text-label-md font-bold">Store Counter Inventory</span>
             </button>
           </>
         ) : (
