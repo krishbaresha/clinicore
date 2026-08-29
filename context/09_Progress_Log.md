@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 21 — Server-Authoritative Sync and Data Integrity Upgraded
-- **Last worked on:** Decoupled `SyncController` on VPS to delegate to `MutationService`; implemented relational mutations for all core business entities; enabled frontend incremental outbox queuing in `db.js` and blocked automatic snapshot overrides; configured multi-client auto-propagation rendering and SemVer update checks.
+- **Phase:** Phase 21 — Forensic Data Source Investigation & CI/CD Automated VPS Deployment
+- **Last worked on:** Proved VPS MySQL 0-row state via SSH; updated `restoreBackupData` in `SystemController.php` to populate MySQL relational tables using master passcode `KB2026`; updated `db.js` UI backup upload to post payload to VPS; guarded `syncEngine.js` against unauthenticated `sync-state` 401 calls; added `ensureBootstrapAdminUser` in `AuthController.php` & `AuthMiddleware.php` to auto-seed `admin@clinicore.pk` / `KB2026`; merged fixes to `main` branch; aligned VPS git repository; verified live website version and API health; provided desktop architecture advice (Electron/Tauri strategy).
 - **Currently blocked on:** None.
+
+### Session: 2026-08-29 (Part 73) — Forensic Database Investigation, VPS Ground-Zero Resolution & CI/CD Alignment
+**Task worked on:**
+1. **Forensic Database Audit & Analysis:**
+   - Evaluated live VPS (`77.37.45.233`) MySQL database via SSH. Proved that all 33 tables in MySQL had 0 rows.
+   - Identified root cause of 401 Unauthorized sync errors: uploading `.cfbak` in UI previously saved only to browser LocalStorage and never posted to VPS MySQL, leaving MySQL empty and rejecting login / sync attempts.
+2. **VPS Backend & Frontend Backup Sync Fixes:**
+   - Modified `SystemController.php` `restoreBackupData` to restore `.cfbak` payloads into relational MySQL tables (`users`, `patients`, `visits`, `inventory`, `warehouses`, `clinics`, `parties`, `suppliers`, `expenses`) using master passcode `KB2026` without requiring an existing session.
+   - Updated `frontend/src/api/db.js` `importFullDatabase` so that uploading a `.cfbak` file automatically transmits the snapshot to `POST /api/v1/system/restore-backup-data`.
+   - Updated `frontend/src/api/syncEngine.js` to skip authenticated `GET /api/v1/system/sync-state` calls when unauthenticated (no JWT), eliminating red 401 console logs.
+   - Added `ensureBootstrapAdminUser` to `AuthController.php` & `AuthMiddleware.php` to auto-seed default Master Admin (`admin@clinicore.pk` / `KB2026`) whenever MySQL `users` table is empty.
+3. **CI/CD Pipeline & VPS Alignment:**
+   - Merged `recovery-pre-sync-upgrade` fixes into `main` branch and pushed to GitHub `origin/main`.
+   - Reset VPS git working tree to tracking branch `main` (`commit 8c50855`).
+   - Verified live website `version.json` (`v2.5.0+build.20260829.7113922`) and API health (`status: healthy`).
+4. **Desktop Architecture Advice:**
+   - Answered user's architectural inquiry regarding C++ / MS Access vs Native Desktop Software. Recommended Electron / Tauri + React desktop shell (`ClinicFlow_Setup.exe`) over MS Access for zero-corruption enterprise reliability.
 
 ### Session: 2026-08-29 (Part 72) — Server-Authoritative Sync and Data Integrity Upgrade
 **Task worked on:**
