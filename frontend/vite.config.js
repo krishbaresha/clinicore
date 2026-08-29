@@ -75,7 +75,7 @@ export default defineConfig({
   },
   server: {
     watch: {
-      ignored: ['**/src-tauri/**'],
+      ignored: ['**/src-tauri/**', '**/target/**', '**/.git/**'],
     },
     proxy: {
       '/api': {
