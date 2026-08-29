@@ -152,69 +152,28 @@ EOF
 chmod 600 "${APP_ROOT}/backend/.env"
 chown -R www-data:www-data "${APP_ROOT}"
 chmod -R 755 "${APP_ROOT}"
-# Create bootstrap index.php if not present
-cat <<'EOF' > "${APP_ROOT}/backend/public/index.php"
-<?php
-declare(strict_types=1);
+# Create systemd Node.js service unit
+cat <<EOF > /etc/systemd/system/clinicore-api.service
+[Unit]
+Description=ClinicFlow Pure Node.js API Service
+After=network.target postgresql.service
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Authorization, Content-Type');
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=${APP_ROOT}/backend
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production PORT=5000
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-
-if ($uri === '/api/health' || $uri === '/api/v1/health' || $uri === '/api') {
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'status'    => 'healthy',
-            'app'       => 'CliniCore Enterprise Engine',
-            'version'   => '2.0.0',
-            'runtime'   => 'PHP ' . PHP_VERSION,
-            'timestamp' => date('c')
-        ],
-        'error' => null
-    ]);
-    exit;
-}
-
-// Load full API if files exist
-$gatewayFile = __DIR__ . '/../src/Config/Database.php';
-if (file_exists($gatewayFile)) {
-    // Registered routes
-    spl_autoload_register(function ($class) {
-        $prefix = 'CliniCore\\';
-        $baseDir = __DIR__ . '/../src/';
-        $len = strlen($prefix);
-        if (strncmp($prefix, $class, $len) !== 0) return;
-        $relativeClass = substr($class, $len);
-        $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
-        if (file_exists($file)) require_once $file;
-    });
-    
-    echo json_encode([
-        'success' => true,
-        'data' => ['message' => 'CliniCore API Ready', 'endpoint' => $uri],
-        'error' => null
-    ]);
-    exit;
-}
-
-echo json_encode([
-    'success' => true,
-    'data' => [
-        'status'  => 'healthy',
-        'message' => 'CliniCore Server Online. Please sync backend source files.'
-    ],
-    'error' => null
-]);
+[Install]
+WantedBy=multi-user.target
 EOF
+
+systemctl daemon-reload
+systemctl enable clinicore-api.service
+systemctl restart clinicore-api.service
 
 chown -R www-data:www-data "${APP_ROOT}"
 chmod -R 755 "${APP_ROOT}"
