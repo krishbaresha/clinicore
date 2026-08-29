@@ -110,12 +110,12 @@ class SyncController {
 
                     if ($existing) {
                         $duplicateCount++;
-                        $results[] = [
+                        $cachedBody = json_decode((string)($existing['response_body'] ?? '{}'), true) ?: [];
+                        $results[] = array_merge([
                             'mutation_id' => $mutationId,
                             'status'      => 'confirmed',
-                            'idempotent'  => true,
-                            'message'     => 'Already committed previously'
-                        ];
+                            'idempotent'  => true
+                        ], $cachedBody);
                         continue;
                     }
 
@@ -227,143 +227,6 @@ class SyncController {
         string $operation,
         array $payload
     ): void {
-        switch ($entity) {
-            case 'patients':
-                self::mutatePatient($pdo, $clinicId, $entityId, $operation, $payload);
-                break;
-            case 'visits':
-                self::mutateVisit($pdo, $clinicId, $userId, $entityId, $operation, $payload);
-                break;
-            case 'stock_movements':
-                self::mutateStockMovement($pdo, $clinicId, $userId, $entityId, $payload);
-                break;
-            case 'expenses':
-                self::mutateExpense($pdo, $clinicId, $userId, $entityId, $operation, $payload);
-                break;
-            default:
-                // Fallback to updating cloud state json
-                $saveState = $pdo->prepare("
-                    INSERT INTO app_cloud_state (collection_key, data_json)
-                    VALUES (:k, :v)
-                    ON DUPLICATE KEY UPDATE data_json = VALUES(data_json)
-                ");
-                $saveState->execute([
-                    ':k' => "cf_{$entity}_v5",
-                    ':v' => json_encode($payload)
-                ]);
-                break;
-        }
-    }
-
-    private static function mutatePatient(PDO $pdo, string $clinicId, string $id, string $op, array $p): void {
-        if ($op === 'DELETE') {
-            $stmt = $pdo->prepare("UPDATE patients SET deleted_at = NOW() WHERE id = :id AND clinic_id = :cid");
-            $stmt->execute([':id' => $id, ':cid' => $clinicId]);
-            return;
-        }
-
-        $stmt = $pdo->prepare("
-            INSERT INTO patients (id, clinic_id, mr_number, full_name, relation_name, relation_type, phone, cnic, age, gender, address, city, notes)
-            VALUES (:id, :cid, :mr, :name, :rname, :rtype, :phone, :cnic, :age, :gender, :address, :city, :notes)
-            ON DUPLICATE KEY UPDATE
-                full_name = VALUES(full_name),
-                relation_name = VALUES(relation_name),
-                phone = VALUES(phone),
-                address = VALUES(address),
-                city = VALUES(city),
-                notes = VALUES(notes),
-                updated_at = NOW()
-        ");
-
-        $stmt->execute([
-            ':id'      => $id ?: bin2hex(random_bytes(16)),
-            ':cid'     => $clinicId,
-            ':mr'      => $p['mr_number'] ?? ('MR-' . rand(10000, 99999)),
-            ':name'    => (string) ($p['full_name'] ?? $p['name'] ?? 'Unnamed'),
-            ':rname'   => $p['relation_name'] ?? null,
-            ':rtype'   => $p['relation_type'] ?? 'father',
-            ':phone'   => (string) ($p['phone'] ?? '03000000000'),
-            ':cnic'    => $p['cnic'] ?? null,
-            ':age'     => (int) ($p['age'] ?? 30),
-            ':gender'  => $p['gender'] ?? 'male',
-            ':address' => $p['address'] ?? null,
-            ':city'    => $p['city'] ?? 'Hyderabad',
-            ':notes'   => $p['notes'] ?? null,
-        ]);
-    }
-
-    private static function mutateVisit(PDO $pdo, string $clinicId, string $userId, string $id, string $op, array $p): void {
-        $stmt = $pdo->prepare("
-            INSERT INTO visits (id, clinic_id, patient_id, doctor_id, token_number, queue_date, status, fee_amount, net_fee, symptoms, diagnosis, notes)
-            VALUES (:id, :cid, :pid, :did, :tok, :qdate, :status, :fee, :nfee, :sym, :diag, :notes)
-            ON DUPLICATE KEY UPDATE
-                status = VALUES(status),
-                diagnosis = VALUES(diagnosis),
-                notes = VALUES(notes),
-                updated_at = NOW()
-        ");
-
-        $stmt->execute([
-            ':id'     => $id ?: bin2hex(random_bytes(16)),
-            ':cid'    => $clinicId,
-            ':pid'    => $p['patient_id'] ?? 'pat_unknown',
-            ':did'    => $p['doctor_id'] ?? $userId,
-            ':tok'    => (int) ($p['token_number'] ?? 1),
-            ':qdate'  => $p['queue_date'] ?? date('Y-m-d'),
-            ':status' => $p['status'] ?? 'waiting',
-            ':fee'    => (float) ($p['fee_amount'] ?? 500.0),
-            ':nfee'   => (float) ($p['net_fee'] ?? 500.0),
-            ':sym'    => $p['symptoms'] ?? null,
-            ':diag'   => $p['diagnosis'] ?? null,
-            ':notes'  => $p['notes'] ?? null,
-        ]);
-    }
-
-    private static function mutateStockMovement(PDO $pdo, string $clinicId, string $userId, string $id, array $p): void {
-        $stmt = $pdo->prepare("
-            INSERT INTO stock_movements (id, clinic_id, warehouse_id, inventory_id, movement_type, reference_id, qty_change_base_units, balance_after_base_units, notes, created_by)
-            VALUES (:id, :cid, :wid, :iid, :mtype, :ref, :qty, :bal, :notes, :uid)
-        ");
-
-        $stmt->execute([
-            ':id'    => $id ?: bin2hex(random_bytes(16)),
-            ':cid'   => $clinicId,
-            ':wid'   => $p['destination_location_id'] ?? $p['source_location_id'] ?? 'wh_str',
-            ':iid'   => $p['inventory_id'] ?? '',
-            ':mtype' => $p['movement_type'] ?? 'adjustment',
-            ':ref'   => $p['source_voucher_no'] ?? null,
-            ':qty'   => (int) ($p['qty_base_units'] ?? 0),
-            ':bal'   => (int) ($p['running_balance_snapshot'] ?? 0),
-            ':notes' => $p['notes'] ?? null,
-            ':uid'   => $userId
-        ]);
-    }
-
-    private static function mutateExpense(PDO $pdo, string $clinicId, string $userId, string $id, string $op, array $p): void {
-        if ($op === 'DELETE') {
-            $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = :id AND clinic_id = :cid");
-            $stmt->execute([':id' => $id, ':cid' => $clinicId]);
-            return;
-        }
-
-        $stmt = $pdo->prepare("
-            INSERT INTO expenses (id, clinic_id, warehouse_id, category, description, amount, payment_mode, expense_date)
-            VALUES (:id, :cid, :wid, :cat, :desc, :amt, :pmode, :edate)
-            ON DUPLICATE KEY UPDATE
-                amount = VALUES(amount),
-                description = VALUES(description),
-                category = VALUES(category)
-        ");
-
-        $stmt->execute([
-            ':id'    => $id ?: bin2hex(random_bytes(16)),
-            ':cid'   => $clinicId,
-            ':wid'   => $p['warehouse_id'] ?? null,
-            ':cat'   => $p['category'] ?? 'General',
-            ':desc'  => $p['description'] ?? 'Expense',
-            ':amt'   => (float) ($p['amount'] ?? 0.0),
-            ':pmode' => $p['payment_mode'] ?? 'cash',
-            ':edate' => $p['date'] ?? date('Y-m-d')
-        ]);
+        \CliniCore\Services\MutationService::mutate($pdo, $clinicId, $userId, $entity, $entityId, $operation, $payload);
     }
 }

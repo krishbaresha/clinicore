@@ -1677,6 +1677,7 @@ async function runTests() {
     syncEngine.setState(SYNC_FSM_STATES.IDLE);
     syncEngine.isOnline = true;
     syncEngine.isSyncing = false;
+    syncEngine.enableSnapshotSyncFallback = true;
 
     syncEngine.schedulePush(10);
     syncEngine.schedulePush(10);
@@ -1685,6 +1686,7 @@ async function runTests() {
     await new Promise(resolve => setTimeout(resolve, 100));
     assert(pushCount === 1, "schedulePush debouncer successfully batched 3 rapid mutation calls into exactly 1 atomic push");
     syncEngine.pushLocalStateToCloud = originalPush;
+    syncEngine.enableSnapshotSyncFallback = false;
   });
 
   // ============================================================================

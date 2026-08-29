@@ -717,6 +717,10 @@ export const dbUsers = {
     const users = getCollection(KEYS.USERS);
     const updated = users.map((u) => (u.id === id ? { ...u, status: "inactive", deactivated_at: new Date().toISOString() } : u));
     setCollection(KEYS.USERS, updated);
+    const updatedRecord = updated.find((u) => u.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("users", updatedRecord, "UPDATE", id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return true;
   },
@@ -724,6 +728,10 @@ export const dbUsers = {
     const users = getCollection(KEYS.USERS);
     const updated = users.map((u) => (u.id === id ? { ...u, status: "active", deactivated_at: null } : u));
     setCollection(KEYS.USERS, updated);
+    const updatedRecord = updated.find((u) => u.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("users", updatedRecord, "UPDATE", id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return true;
   },
@@ -740,6 +748,9 @@ export const dbUsers = {
       created_at: new Date().toISOString()
     };
     setCollection(KEYS.USERS, [...users, newUser]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("users", newUser, "CREATE", newUser.id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newUser;
   },
@@ -755,6 +766,9 @@ export const dbUsers = {
       return u;
     });
     setCollection(KEYS.USERS, updated);
+    if (updatedUser && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("users", updatedUser, "UPDATE", id);
+    }
     if (existingUser) {
       const sanitizedBefore = { ...existingUser };
       delete sanitizedBefore.password;
@@ -823,6 +837,9 @@ export const dbUsers = {
     const existing = dbUsers.getById(id);
     const users = getCollection(KEYS.USERS);
     setCollection(KEYS.USERS, users.filter((u) => u.id !== id));
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("users", { id }, "DELETE", id);
+    }
     if (existing) {
       const sanitized = { ...existing };
       delete sanitized.password;
@@ -958,18 +975,28 @@ export const dbPatients = {
       created_at: new Date().toISOString(),
     };
     setCollection(KEYS.PATIENTS, [newPat, ...patients]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("patients", newPat, "CREATE", newPat.id);
+    }
     return newPat;
   },
   update: (id, data) => {
     const patients = getCollection(KEYS.PATIENTS);
     const updated = patients.map((p) => (p.id === id ? { ...p, ...data } : p));
     setCollection(KEYS.PATIENTS, updated);
-    return updated.find((p) => p.id === id) || null;
+    const updatedRecord = updated.find((p) => p.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("patients", updatedRecord, "UPDATE", id);
+    }
+    return updatedRecord || null;
   },
   delete: (id) => {
     // 1. Remove patient record
     const patients = getCollection(KEYS.PATIENTS);
     setCollection(KEYS.PATIENTS, patients.filter((p) => p.id !== id));
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("patients", { id }, "DELETE", id);
+    }
 
     // 2. Cascade delete visits and prescription photos
     const visits = getCollection(KEYS.VISITS);
@@ -1052,6 +1079,9 @@ export const dbVisits = {
     const visits = getCollection(KEYS.VISITS);
     const updated = visits.filter((v) => v.id !== id);
     setCollection(KEYS.VISITS, updated);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("visits", { id }, "DELETE", id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return updated;
   },
@@ -1059,8 +1089,12 @@ export const dbVisits = {
     const visits = getCollection(KEYS.VISITS);
     const updated = visits.map((v) => (v.id === id ? { ...v, ...data } : v));
     setCollection(KEYS.VISITS, updated);
+    const updatedRecord = updated.find((v) => v.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("visits", updatedRecord, "UPDATE", id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
-    return updated.find((v) => v.id === id);
+    return updatedRecord || null;
   },
   getById: (id) => getFromCollectionById(KEYS.VISITS, id),
   getByPatient: (patientId) => dbVisits.getAll().filter((v) => v.patient_id === patientId),
@@ -1133,6 +1167,9 @@ export const dbVisits = {
       fee_status: visit.fee_status || (visit.fee_amount > 0 ? "paid" : "unpaid"),
     };
     setCollection(KEYS.VISITS, [newVisit, ...visits]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("visits", newVisit, "CREATE", newVisit.id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newVisit;
   },
@@ -1142,8 +1179,12 @@ export const dbVisits = {
     const visits = getCollection(KEYS.VISITS);
     const updated = visits.map((v) => (v.id === id ? { ...v, status } : v));
     setCollection(KEYS.VISITS, updated);
+    const updatedRecord = updated.find((v) => v.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("visits", updatedRecord, "UPDATE", id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
-    return updated.find((v) => v.id === id);
+    return updatedRecord || null;
   },
   amendVisit: (id, { notes, vitals, diagnosis, reason, actor_id, actor_name } = {}) => {
     const visits = getCollection(KEYS.VISITS);
@@ -1200,8 +1241,12 @@ export const dbVisits = {
     );
 
     setCollection(KEYS.VISITS, updated);
+    const updatedRecord = updated.find((v) => v.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("visits", updatedRecord, "UPDATE", id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
-    return { success: true, data: updated.find((v) => v.id === id) };
+    return { success: true, data: updatedRecord };
   },
   reissueLateToken: (visitId) => {
     const visits = getCollection(KEYS.VISITS);
@@ -1544,6 +1589,9 @@ export const dbInventory = {
       low_stock_threshold: Number(item.low_stock_threshold) || 6,
     };
     setCollection(KEYS.INVENTORY, [...inventory, newItem]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("inventory", newItem, "CREATE", newItem.id);
+    }
     return newItem;
   },
 
@@ -1551,7 +1599,11 @@ export const dbInventory = {
     const inventory = getCollection(KEYS.INVENTORY);
     const updated = inventory.map((i) => (i.id === id ? { ...i, ...data } : i));
     setCollection(KEYS.INVENTORY, updated);
-    return updated.find((i) => i.id === id) || null;
+    const updatedRecord = updated.find((i) => i.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("inventory", updatedRecord, "UPDATE", id);
+    }
+    return updatedRecord || null;
   },
 
   delete: (id, reason = "Inventory SKU deleted") => {
@@ -1559,6 +1611,9 @@ export const dbInventory = {
     const inventory = getCollection(KEYS.INVENTORY);
     const updated = inventory.filter((i) => i.id !== id);
     setCollection(KEYS.INVENTORY, updated);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("inventory", { id }, "DELETE", id);
+    }
     if (existing) {
       dbAuditLogs.logEvent({
         action: "DELETE_INVENTORY_ITEM",
@@ -3472,13 +3527,20 @@ export const dbParties = {
     const list = getCollection(KEYS.PARTIES);
     const newP = { ...party, id: generateId("pty"), balance_due: Number(party.balance_due) || 0 };
     setCollection(KEYS.PARTIES, [newP, ...list]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("parties", newP, "CREATE", newP.id);
+    }
     return newP;
   },
   update: (id, data) => {
     const list = getCollection(KEYS.PARTIES);
     const updated = list.map((p) => (p.id === id ? { ...p, ...data } : p));
     setCollection(KEYS.PARTIES, updated);
-    return updated.find((p) => p.id === id) || null;
+    const updatedRecord = updated.find((p) => p.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("parties", updatedRecord, "UPDATE", id);
+    }
+    return updatedRecord || null;
   },
   updateBalance: (id, delta) => {
     const list = getCollection(KEYS.PARTIES);
@@ -3491,6 +3553,10 @@ export const dbParties = {
       return p;
     });
     setCollection(KEYS.PARTIES, updated);
+    const updatedRecord = updated.find((p) => p.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("parties", updatedRecord, "UPDATE", id);
+    }
   },
   recordPayment: (partyId, amount) => {
     dbParties.updateBalance(partyId, -Number(amount));
@@ -3553,13 +3619,20 @@ export const dbSuppliers = {
       created_at: supplier.created_at || new Date().toISOString(),
     };
     setCollection(KEYS.SUPPLIERS, [...list, newS]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("suppliers", newS, "CREATE", newS.id);
+    }
     return newS;
   },
   update: (id, data) => {
     const list = dbSuppliers.getAll();
     const updated = list.map((s) => (s.id === id ? { ...s, ...data } : s));
     setCollection(KEYS.SUPPLIERS, updated);
-    return updated.find((s) => s.id === id) || null;
+    const updatedRecord = updated.find((s) => s.id === id);
+    if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("suppliers", updatedRecord, "UPDATE", id);
+    }
+    return updatedRecord || null;
   },
   updateBalance: (supplierId, delta) => {
     const list = dbSuppliers.getAll();
@@ -3609,6 +3682,9 @@ export const dbWarehouses = {
       created_at: new Date().toISOString(),
     };
     setCollection(KEYS.WAREHOUSES, [...list, newW]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("warehouses", newW, "CREATE", newW.id);
+    }
     return newW;
   },
   update: (id, data) => {
@@ -3622,6 +3698,9 @@ export const dbWarehouses = {
       return w;
     });
     setCollection(KEYS.WAREHOUSES, updated);
+    if (updatedGodown && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("warehouses", updatedGodown, "UPDATE", id);
+    }
     return updatedGodown;
   },
   delete: (id) => {
@@ -3630,6 +3709,9 @@ export const dbWarehouses = {
     const target = list.find((w) => w.id === id);
     if (!target || target.is_store_counter || target.is_default) return false;
     setCollection(KEYS.WAREHOUSES, list.filter((w) => w.id !== id));
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("warehouses", { id }, "DELETE", id);
+    }
     return true;
   },
   // Get aggregated stock valuation per warehouse
@@ -3654,6 +3736,9 @@ export const dbSalesmen = {
     const list = getCollection(KEYS.SALESMEN);
     const newSm = { ...sm, id: generateId("sm") };
     setCollection(KEYS.SALESMEN, [...list, newSm]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("salesmen", newSm, "CREATE", newSm.id);
+    }
     return newSm;
   },
 };
@@ -3971,6 +4056,9 @@ export const dbSales = {
     }
 
     setCollection(KEYS.SALES, [newSale, ...sales]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("pos_sales", newSale, "CREATE", newSale.id);
+    }
     return newSale;
   },
   checkout: (sale) => {
@@ -4011,6 +4099,9 @@ export const dbSales = {
     if (deductions.length > 0) dbInventory.bulkDeductStock(deductions, "store");
 
     setCollection(KEYS.SALES, [newSale, ...sales]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("pos_sales", newSale, "CREATE", newSale.id);
+    }
     return newSale;
   },
   voidSale: (saleId, voidReason, authorizedBy = "Doctor / Admin") => {
@@ -4038,17 +4129,20 @@ export const dbSales = {
           }
         : s
     );
-    setCollection(KEYS.SALES, updated);
-    dbAuditLogs.logEvent({
-      action: "VOID_SALE_INVOICE",
-      entity: "sales",
-      entity_id: target.id,
-      before: target,
-      after: { ...target, is_voided: true, void_reason: voidReason, voided_by: authorizedBy },
-      reason: voidReason || `Voided invoice ${target.receipt_no || target.id}`,
-    });
-    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
-    return { success: true, data: target };
+     setCollection(KEYS.SALES, updated);
+     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+       dbOutbox.enqueue("pos_sales", { id: target.id, is_voided: true, void_reason: voidReason }, "DELETE", target.id);
+     }
+     dbAuditLogs.logEvent({
+       action: "VOID_SALE_INVOICE",
+       entity: "sales",
+       entity_id: target.id,
+       before: target,
+       after: { ...target, is_voided: true, void_reason: voidReason, voided_by: authorizedBy },
+       reason: voidReason || `Voided invoice ${target.receipt_no || target.id}`,
+     });
+     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+     return { success: true, data: target };
   },
   add: (sale) => {
     return dbSales.checkout(sale);
@@ -4140,6 +4234,9 @@ export const dbPurchases = {
     }
 
     setCollection(KEYS.PURCHASES, [newPurchase, ...purchases]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("purchases", newPurchase, "CREATE", newPurchase.id);
+    }
     return newPurchase;
   },
   getNextVoucherNo: () => {
@@ -4289,6 +4386,9 @@ export const dbB2BSales = {
     }
 
     setCollection(KEYS.B2B_SALES, [newB2BSale, ...sales]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("b2b_sales", newB2BSale, "CREATE", newB2BSale.id);
+    }
     return newB2BSale;
   },
   add: (saleData) => {
@@ -4310,6 +4410,9 @@ export const dbStockTransfers = {
       transfer_date: new Date().toISOString(),
     };
     setCollection(KEYS.STOCK_TRANSFERS, [newTransfer, ...transfers]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("stock_movements", newTransfer, "CREATE", newTransfer.id);
+    }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newTransfer;
   },
@@ -4388,11 +4491,17 @@ export const dbExpenses = {
       expense_date: expDate,
     };
     setCollection(KEYS.EXPENSES, [newExp, ...list]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("expenses", newExp, "CREATE", newExp.id);
+    }
     return newExp;
   },
   delete: (id) => {
     const list = getCollection(KEYS.EXPENSES);
     setCollection(KEYS.EXPENSES, list.filter((e) => e.id !== id));
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("expenses", { id }, "DELETE", id);
+    }
   },
 };
 
