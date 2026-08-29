@@ -106,15 +106,6 @@ export default function LandingPage() {
       is_owner: true,
       availability_status: "available",
     },
-    {
-      id: "doc_kashif",
-      name: "Dr. Muhammad Kashif Khan",
-      specialization: "Associate Consultant & Chronic Care Specialist",
-      room_number: "Chamber 2",
-      consultation_fee: 400,
-      is_owner: false,
-      availability_status: "available",
-    },
   ];
 
   const displayDoctors = doctorsList.length > 0 ? doctorsList : defaultDoctors;

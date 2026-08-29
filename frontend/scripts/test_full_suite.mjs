@@ -194,7 +194,7 @@ async function runTests() {
 
     // Ensure users are provisioned
     let users = dbUsers.getAll();
-    if (users.length === 0) {
+    if (users.length <= 4) {
       dbUsers.add({
         username: "kashif",
         name: "Dr. Muhammad Kashif Khan",
