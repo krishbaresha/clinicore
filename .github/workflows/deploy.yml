@@ -97,7 +97,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy Backend + Config to VPS via SSH
+      - name: Deploy Backend + Config to VPS via SSH (Attempt 1)
         id: deploy_backend_attempt_1
         continue-on-error: true
         uses: appleboy/ssh-action@v1.0.3
