@@ -33,9 +33,27 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 2 — Legacy MS Access & Excel Staged ETL Pipeline (Step 6 Complete)
-- **Last worked on:** Built Phase 2 Step 6 Legacy MS Access & Excel Staged ETL Pipeline under `PHASE_2_STEP_6/etl_pipeline/` including `accdb_extractor.ts` for extracting raw MS Access records, `staging_validator.ts` for validating SKU codes, financial debit/credit balance invariants, and party codes, and `canonical_mapper.ts` for mapping staging data to canonical PostgreSQL schemas with 100% `_legacy_id` lineage. Verified cleanly via `step_6_verification.ts` (100% pass rate) and compiled `step_6_verification_report.md`.
+- **Phase:** Phase 3 Module B — Pharmacy POS, Wholesale B2B Distribution & FEFO Batch Engine (Complete)
+- **Last worked on:** Built Phase 3 Module B under `PHASE_3_MODULE_B/pharmacy_wholesale_engine/` including `pos_engine.ts` for keyboard-driven POS control deck & cart math, `batch_allocator.ts` for FEFO ascending expiry sorting & 30/60/90-day tiered risk alerts with dual-PIN quarantine, `b2b_service.ts` for wholesale party code auto-fill, salesman tracking, bilty transport metadata & credit limit checking, and `thermal_printer.ts` for 80mm ESC/POS thermal printing. Verified cleanly via `module_b_verification.ts` (100% pass rate) and compiled `module_b_verification_report.md`.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-30 (Part 79) — Phase 3 Module B: Pharmacy POS, Wholesale B2B Distribution & FEFO Batch Engine
+**Task worked on:**
+1. **Pharmacy POS, Wholesale B2B & FEFO Engine (`PHASE_3_MODULE_B/pharmacy_wholesale_engine/`):**
+   - Built `POSEngine` (`src/pos/pos_engine.ts`): Declarative F1-F11 hotkey actions, 2D navigation grid state for item search/selection, cart line-item math, percentage/flat discounts, tax calculations, hold/recall cart maps, and cash/credit checkout handlers.
+   - Built `FEFOBatchAllocator` (`src/fefo/batch_allocator.ts`): FEFO ascending expiry sorting (`expiry_date ASC`), 30/60/90-day tiered risk stratification (`CRITICAL_30`, `NEAR_60`, `WARNING_90`, `STABLE`), FEFO multi-batch order allocation, and dual-PIN quarantine write-off protocol.
+   - Built `WholesaleB2BService` (`src/wholesale/b2b_service.ts`): Instant party code auto-fill (`001`, `PTY-108`, `Muslim`, etc.), salesman tracking, bilty transport metadata, bill-level trade discounts (% and flat Rs.), and real-time credit limit checker (`currentBalance + invoiceTotal <= creditLimit`).
+   - Built `ThermalPrinter80mm` (`src/printer/thermal_printer.ts`): 48-column low-ink 80mm thermal plain text formatter, ESC/POS binary buffer generator (`ESC @` init, PC437 codepage, `GS V` paper cut command), XSS-sanitized HTML DOM preview generator, and software version watermark footers.
+   - Configured ESM Node project `package.json` & `tsconfig.json`.
+2. **Automated Verification Suite (`module_b_verification.ts`):**
+   - Executed via `node --experimental-strip-types PHASE_3_MODULE_B/module_b_verification.ts`.
+   - Test 1 (POS Engine): Verified hotkeys, 2D grid navigation, cart math, bill trade discount, and cash checkout with change calculation.
+   - Test 2 (FEFO Engine): Verified ascending expiry batch sorting, 30/60/90-day tiered risk alerts, stock allocation across batches, and dual-PIN quarantine write-offs.
+   - Test 3 (Wholesale B2B): Verified party code auto-fill, credit limit validation (pass & breach detection), salesman tracking, and bilty transport metadata.
+   - Test 4 (80mm Thermal Printer): Verified 48-col plain text formatting, ESC/POS binary byte buffer generation, and sanitized HTML DOM preview with watermarks.
+   - 100% test suite passed cleanly in 3ms.
+3. **Verification Report (`module_b_verification_report.md`):**
+   - Compiled verification report detailing architecture, capabilities, test matrix, and console output.
 
 ### Session: 2026-08-30 (Part 78) — Phase 2 Step 6: Legacy MS Access & Excel Staged ETL Pipeline
 **Task worked on:**

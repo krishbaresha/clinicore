@@ -1,0 +1,13 @@
+{
+  "name": "pharmacy-wholesale-engine",
+  "version": "1.0.0",
+  "description": "Pharmacy POS, Wholesale B2B Distribution & FEFO Batch Engine for ClinicFlow",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "node --experimental-strip-types ../module_b_verification.ts"
+  },
+  "keywords": ["pharmacy", "pos", "fefo", "wholesale", "b2b", "clinicflow"],
+  "author": "Dr. Muhammad Kashif Khan Clinic & Wholesale Medical Store",
+  "license": "UNLICENSED"
+}

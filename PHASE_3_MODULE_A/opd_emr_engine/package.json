@@ -1,0 +1,19 @@
+{
+  "name": "clinicflow-phase3-module-a-opd-emr-engine",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ClinicFlow Phase 3 Module A: OPD, Patient Lifecycle & Doctor Chamber EMR Engine",
+  "scripts": {
+    "test": "node --experimental-strip-types ../module_a_verification.ts"
+  },
+  "keywords": [
+    "clinicflow",
+    "opd",
+    "emr",
+    "patient-lifecycle",
+    "doctor-chamber",
+    "vitals"
+  ],
+  "author": "ClinicFlow Engineering Team",
+  "license": "ISC"
+}
