@@ -552,11 +552,22 @@ class SystemController
                 return;
             }
 
+            // Disable foreign key checks to allow truncating tables
+            $db->exec("SET FOREIGN_KEY_CHECKS = 0");
+
             // 1. Wipe all transactional data from app_cloud_state (JSON blob store)
             $db->exec("DELETE FROM app_cloud_state WHERE collection_key NOT IN ('system_settings', 'license')");
 
-            // 2. Wipe dedicated relational tables
-            $tables = ['patients', 'visits', 'expenses', 'stock_movements', 'idempotency_keys'];
+            // 2. Wipe ALL relational tables to ensure absolute zero-start
+            $tables = [
+                'visit_attachments', 'visits', 'patients', 'patient_ledger',
+                'pos_sale_items', 'pos_sales', 'b2b_sale_items', 'b2b_sales',
+                'purchase_items', 'purchases', 'supplier_ledger', 
+                'stock_transfer_items', 'stock_transfers', 'stock_movements', 
+                'warehouse_stocks', 'inventory', 'expenses', 'cashbook', 
+                'shift_closings', 'audit_logs', 'parties', 'suppliers', 
+                'salesmen', 'users', 'warehouses', 'clinics'
+            ];
             foreach ($tables as $table) {
                 try {
                     $db->exec("TRUNCATE TABLE `$table`");
@@ -565,10 +576,48 @@ class SystemController
                 }
             }
 
-            // 3. Reset invoice counters
+            // 3. Reset invoice/sequential counters
             try { $db->exec("DELETE FROM app_cloud_state WHERE collection_key LIKE 'cf_seq_%'"); } catch (\Throwable) {}
 
-            // 4. Clear backup files older than reset
+            // 4. Re-seed exactly ONE default clinic
+            $stmtClinic = $db->prepare("INSERT INTO clinics (id, name, logo_url, address, created_at) VALUES (:id, :name, :logo_url, :address, :created_at)");
+            $stmtClinic->execute([
+                ':id' => 'clinic_001',
+                ':name' => 'H/Dr.Asif Ashraf Khan Clinic',
+                ':logo_url' => '/clinic-logo.png',
+                ':address' => 'Lajpat Road, Hyderabad, Sindh',
+                ':created_at' => date('Y-m-d H:i:s')
+            ]);
+
+            // 5. Re-seed exactly ONE default primary owner/doctor user (password: 'password')
+            $stmtUser = $db->prepare("INSERT INTO users (id, clinic_id, name, role, phone, email, password_hash, status, is_principal_doctor) VALUES (:id, :clinic_id, :name, :role, :phone, :email, :password_hash, :status, :is_principal_doctor)");
+            $stmtUser->execute([
+                ':id' => 'user_001',
+                ':clinic_id' => 'clinic_001',
+                ':name' => 'Dr. Muhammad Asif Ashraf Khan',
+                ':role' => 'owner',
+                ':phone' => '03473100304',
+                ':email' => 'doctor@clinicore.pk',
+                // bcrypt hash for 'password'
+                ':password_hash' => '$2y$10$TKh8H1.PfQx37YgCzwiKb.9jY0UPPfUM7yALTRWqKo18./g/3NwmS',
+                ':status' => 'active',
+                ':is_principal_doctor' => 1
+            ]);
+
+            // 6. Re-seed exactly ONE default primary warehouse
+            $stmtWh = $db->prepare("INSERT INTO warehouses (id, clinic_id, name, code, status) VALUES (:id, :clinic_id, :name, :code, :status)");
+            $stmtWh->execute([
+                ':id' => 'wh_001',
+                ':clinic_id' => 'clinic_001',
+                ':name' => 'Main Godown (Lajpat Road)',
+                ':code' => 'GDW-01',
+                ':status' => 'active'
+            ]);
+
+            // Re-enable foreign key checks
+            $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+
+            // 7. Clear backup files older than reset
             $backupDir = $this->getBackupStorageDir();
             foreach (glob($backupDir . '/*.cfbak') ?: [] as $file) {
                 @unlink($file);

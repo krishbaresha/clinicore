@@ -34,8 +34,18 @@ be specific so a human or next AI can correct it if wrong]
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
 - **Phase:** Phase 9 — Enterprise Backup, Restore, Version Compatibility & Disaster Recovery Engine Complete
-- **Last worked on:** Optimized production deploy pipeline (Stage 3) to download pre-built dist artifacts via SCP instead of running live `npm build` on the VPS, resolving white screen Nginx freezes. Fixed Factory Reset API authorization by replacing `RBACMiddleware` with direct passcode verification, and storing JWT on admin authentication.
+- **Last worked on:** Optimized production deploy pipeline (Stage 3) to download pre-built dist artifacts via SCP instead of running live `npm build` on the VPS, resolving white screen Nginx freezes. Fixed Factory Reset API authorization. Fixed critical PWA service worker cache eviction bug where 404s on deleted chunks caused it to purge the new active cache (causing white screens).
 - **Currently blocked on:** None.
+
+### Session: 2026-08-29 (Part 66) — PWA Service Worker White Screen Fix
+
+**Task worked on:**
+1. **PWA Cache Eviction & White Page Diagnosis:**
+   - Audited `frontend/public/sw.js` fetch handlers.
+   - Identified a critical bug: when a new build is deployed and old chunk files are deleted on the VPS, navigating users encounter 404s for the old chunks. The service worker intercepted 404s and automatically deleted *all* caches starting with `clinicflow-pwa-`. This accidentally deleted the *currently active* cache (`CACHE_NAME`), leaving the user with a completely empty cache. On refresh, a white screen appeared.
+2. **Resolution Applied:**
+   - Modified `sw.js` cache-eviction check to explicitly protect the active cache: `if (k !== CACHE_NAME && k.startsWith('clinicflow-pwa-'))`. Only older cached folders are deleted.
+   - Removed `self.skipWaiting()` from the install listener in `sw.js` to prevent silent, aggressive session hijacking/auto-reloads mid-work. Updates now wait for explicit user click on the PWA update banner.
 
 ### Session: 2026-08-29 (Part 65) — VPS Deploy Optimization & Factory Reset Auth
 
