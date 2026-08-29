@@ -48,6 +48,7 @@ import {
   dbShiftClosings,
   dbAccounts,
   dbStockLedger,
+  dbWarehouses,
   dbCashBook,
   dbDayClosing,
   dbLicense,
@@ -228,6 +229,34 @@ async function runTests() {
       users = dbUsers.getAll();
     }
     assert(users.length >= 4, `Seed users loaded (count: ${users.length})`);
+
+    // Ensure test warehouses are provisioned
+    let whs = dbWarehouses.getAll();
+    if (whs.length === 0) {
+      dbWarehouses.add({
+        id: "wh_001",
+        clinic_id: "clinic_001",
+        code: "GDW-01",
+        name: "Main Godown (Lajpat Road)",
+        status: "active",
+      });
+      dbWarehouses.add({
+        id: "wh_002",
+        clinic_id: "clinic_001",
+        code: "GDW-02",
+        name: "Warehouse 2 (Site Area)",
+        status: "active",
+      });
+      dbWarehouses.add({
+        id: "wh_str",
+        clinic_id: "clinic_001",
+        code: "STR-01",
+        name: "Medical Store Counter & Pharmacy",
+        status: "active",
+      });
+      whs = dbWarehouses.getAll();
+    }
+    assert(whs.length >= 3, `Seed warehouses loaded (count: ${whs.length})`);
 
     // Ensure inventory is provisioned
     let invList = dbInventory.getAll();
@@ -1327,11 +1356,13 @@ async function runTests() {
     assert(authCode.includes("assigned_warehouse_id: user.assigned_warehouse_id"), "Login session retains assigned_warehouse_id");
     assert(authCode.includes("assigned_warehouse_id: dbUser.assigned_warehouse_id"), "Session validation restores assigned_warehouse_id");
 
-    // 2. Seeding sample warehouse incharge accounts (Raza, Usama, Mustafa)
-    assert(dbCode.includes("user_raza"), "Raza incharge account is seeded");
-    assert(dbCode.includes("user_usama"), "Usama incharge account is seeded");
-    assert(dbCode.includes("user_mustafa"), "Mustafa pharmacy cashier account is seeded");
-    assert(dbCode.includes("wh_001") && dbCode.includes("wh_002") && dbCode.includes("wh_str"), "Default warehouses are seeded");
+    // 2. Verified that mock warehouse incharge accounts and default warehouses are removed from seed for zero-meter start
+    const currentUsers = dbUsers.getAll();
+    const currentWhs = dbWarehouses.getAll();
+    assert(!currentUsers.some(u => u.id === "user_raza"), "Raza incharge account is not in the default database");
+    assert(!currentUsers.some(u => u.id === "user_usama"), "Usama incharge account is not in the default database");
+    assert(!currentUsers.some(u => u.id === "user_mustafa"), "Mustafa pharmacy cashier account is not in the default database");
+    assert(!currentWhs.some(w => w.id === "wh_002" || w.id === "wh_str"), "Mock warehouses are not in the default database");
 
     // 3. Scoped inventory calculation engine
     assert(dbCode.includes("getScopedInventory"), "dbInventory provides getScopedInventory helper");
