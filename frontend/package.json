@@ -8,6 +8,9 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "npx @tauri-apps/cli dev",
+    "tauri:build": "npx @tauri-apps/cli build",
     "sync:desktop": "node scripts/sync_desktop_engine.mjs",
     "test": "node scripts/test_full_suite.mjs"
   },

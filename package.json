@@ -10,6 +10,9 @@
     "scan": "node scripts/scan_imports_and_hooks.mjs",
     "scan:secrets": "node scripts/scan_secrets.mjs",
     "test": "npm --prefix frontend run test",
+    "tauri": "npm --prefix frontend run tauri",
+    "tauri:dev": "npm --prefix frontend run tauri:dev",
+    "tauri:build": "npm --prefix frontend run tauri:build",
     "validate": "node scripts/scan_secrets.mjs && node scripts/scan_imports_and_hooks.mjs && npm --prefix frontend run lint && npm --prefix frontend run test",
     "ci": "npm run validate && npm --prefix frontend run build",
     "deploy": "python scripts/deploy_vps.py"
