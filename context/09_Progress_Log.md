@@ -33,9 +33,25 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 9 — Enterprise Backup, Restore, Version Compatibility & Disaster Recovery Engine Complete
-- **Last worked on:** Optimized production deploy pipeline (Stage 3) to download pre-built dist artifacts via SCP instead of running live `npm build` on the VPS, resolving white screen Nginx freezes. Fixed Factory Reset API authorization. Fixed critical PWA service worker cache eviction bug where 404s on deleted chunks caused it to purge the new active cache (causing white screens).
+- **Phase:** Phase 12 — Complete Secrets Audit, Supply-Chain Security & Final Production Polish Complete
+- **Last worked on:** Cleared all mock users and mock warehouses from SEED_DATA to enforce a true zero-meter startup state. Verified all 616 tests pass and Vite build completes cleanly. Re-enabled Service Worker skipWaiting() to force cache clearing and solve client-side white screens.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-29 (Part 68) — Zero-Meter Configuration & Service Worker Hardening
+
+**Task worked on:**
+1. **Zero-Meter App Slate:**
+   - Wiped all mock users and default warehouses from `SEED_DATA` in `db.js`. Now only the core clinic shell remains in seed, enabling administrators to build staff and warehouses from scratch via `/admin`.
+2. **Service Worker Auto-Activation:**
+   - Restored `self.skipWaiting()` in `sw.js` install listener. This ensures that new service workers activate immediately, automatically purging old caches and solving client-side ChunkLoadError white screens without requiring manual browser clearing.
+3. **Master Verification Adjustments:**
+   - Imported `dbWarehouses` into `test_full_suite.mjs` and dynamically initialized test warehouses inside the setup pipeline so that inventory allocation and batch logic tests continue to pass.
+   - Refactored Suite 26 assertions to check actual database counts and status instead of doing string matching on `db.js` code contents.
+
+**What was built/changed:**
+- `frontend/src/api/db.js`: Emptied `users` and `warehouses` lists in `SEED_DATA`.
+- `frontend/public/sw.js`: Restored `self.skipWaiting()` on install.
+- `frontend/scripts/test_full_suite.mjs`: Imported `dbWarehouses`, seeded test locations dynamically, and updated Suite 26 assertions.
 
 ### Session: 2026-08-29 (Part 66) — PWA Service Worker White Screen Fix
 
