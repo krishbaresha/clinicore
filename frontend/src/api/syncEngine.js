@@ -197,7 +197,7 @@ class SyncEngine {
   startHealthProber() {
     if (this.healthInterval) clearInterval(this.healthInterval);
     this.healthInterval = setInterval(() => {
-      if (this.isOnline && !this.isSyncing) {
+      if (!this.isSyncing) {
         this.checkCloudHealth();
       }
     }, 15000);
@@ -211,9 +211,11 @@ class SyncEngine {
       clearTimeout(timeoutId);
       if (res.ok) {
         if (!this.isOnline) this.handleNetworkChange(true);
+      } else {
+        if (this.isOnline) this.handleNetworkChange(false);
       }
     } catch {
-      // Network probe failed silently
+      if (this.isOnline) this.handleNetworkChange(false);
     }
   }
 
