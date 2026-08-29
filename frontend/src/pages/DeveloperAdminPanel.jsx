@@ -1008,12 +1008,21 @@ export default function DeveloperAdminPanel() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       const jsonStr = evt.target?.result;
       if (typeof jsonStr === "string") {
         const result = importFullDatabase(jsonStr);
         if (result.success) {
-          alert("Database snapshot restored successfully! Reloading system...");
+          // Force sync to VPS immediately before reloading the window!
+          try {
+            const { syncEngine } = await import("../api/syncEngine.js");
+            if (syncEngine && typeof syncEngine.pushLocalStateToCloud === "function") {
+              await syncEngine.pushLocalStateToCloud();
+            }
+          } catch (syncErr) {
+            console.warn("[Restore] Auto-push notice:", syncErr);
+          }
+          alert("Database snapshot restored successfully and synchronized to Cloud! Reloading system...");
           window.location.reload();
         } else {
           alert("Failed to restore backup: " + result.error);

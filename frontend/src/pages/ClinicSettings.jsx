@@ -1093,13 +1093,22 @@ export default function ClinicSettings() {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     const reader = new FileReader();
-                    reader.onload = (event) => {
+                    reader.onload = async (event) => {
                       try {
                         const content = event.target?.result;
                         if (typeof content === "string") {
                           const result = importFullDatabase(content);
                           if (result.success) {
-                            alert("✅ Database restored successfully! Reloading...");
+                            // Force sync to VPS immediately before reloading the window!
+                            try {
+                              const { syncEngine } = await import("../api/syncEngine.js");
+                              if (syncEngine && typeof syncEngine.pushLocalStateToCloud === "function") {
+                                await syncEngine.pushLocalStateToCloud();
+                              }
+                            } catch (syncErr) {
+                              console.warn("[Restore] Auto-push notice:", syncErr);
+                            }
+                            alert("✅ Database restored successfully and synchronized to Cloud! Reloading...");
                             window.location.reload();
                           } else {
                             alert("⚠️ Failed to restore backup: " + (result.error || "Corrupted file"));
