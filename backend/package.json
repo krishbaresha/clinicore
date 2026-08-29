@@ -1,0 +1,14 @@
+{
+  "name": "clinicflow-backend-node",
+  "version": "2.5.0",
+  "description": "ClinicFlow Pure Node.js Backend API & Database Service",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}
