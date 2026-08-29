@@ -5258,6 +5258,19 @@ export function importFullDatabase(backupInput, options = { skipCheckpoint: fals
       window.dispatchEvent(new Event("clinicflow_status_update"));
     } catch {}
 
+    // CRITICAL: Trigger async syncEngine state push to cloud so that all other browsers/devices get updated data instantly!
+    try {
+      import("./syncEngine.js").then(({ syncEngine }) => {
+        if (syncEngine && typeof syncEngine.pushLocalStateToCloud === "function") {
+          syncEngine.pushLocalStateToCloud().catch(err => {
+            console.warn("[Restore Sync] Failed to auto-push backup state to VPS MySQL database:", err);
+          });
+        }
+      });
+    } catch (syncErr) {
+      console.warn("[Restore Sync] Failed to resolve syncEngine module:", syncErr);
+    }
+
     return {
       success: true,
       checkpoint_id: checkpointId,
