@@ -33,11 +33,24 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 19 — CI/CD Pipeline & Idempotent Schema Migration Hardened
-- **Last worked on:** Fixed GitHub Actions VPS deployment failure by making all MySQL DDL table creations `IF NOT EXISTS` idempotent and wrapping schema import in non-fatal verification; fixed Vite ESM config directory resolver; verified 616/616 tests and 0-secret scan.
+- **Phase:** Phase 20 — Real-Time Backup Restore & Scoped Portals Deploy Hardened
+- **Last worked on:** Scoped WAREHOUSE_NAV (removed fees) & Dashboard elements (removed queue metrics, token registers, financial cards) for warehouse staff; fixed syncEngine unauthorized (401) errors by injecting JWT Authorization headers; resolved backup reload race condition by awaiting syncEngine pushes before page refresh.
 - **Currently blocked on:** None.
 
-### Session: 2026-08-29 (Part 70) — CI/CD Pipeline & Idempotent Schema Migration Hardening
+### Session: 2026-08-29 (Part 71) — Real-Time Backup Restore & Scoped Portals Deploy
+**Task worked on:**
+1. **Warehouse Dashboard & Sidebar Scoping:**
+   - Updated `SidebarLayout.jsx` to completely remove the "Fees & CashBook" navigation tab from `WAREHOUSE_NAV`.
+   - Updated `Dashboard.jsx` to hide standard clinical statistics (Today's Patients, Completed Consultations), register patient token buttons, and financial cards if the user's role is `warehouse`.
+   - Added warehouse-specific dashboard layout quick-actions (Godown, GRN, Store Inventory).
+2. **SyncEngine 401 Unauthorized Fix:**
+   - Modified `syncEngine.js` to dynamically inject the JWT bearer token (`cf_vps_jwt`) into headers for `pullLatestCloudState()`, `processOutbox()`, and `pushLocalStateToCloud()` requests.
+3. **Backup Restore Reload Race Condition Resolution:**
+   - Updated `handleImportBackup` in `DeveloperAdminPanel.jsx` and `ClinicSettings.jsx` to use `await` on `syncEngine.pushLocalStateToCloud()` prior to running `window.location.reload()`. This guarantees the restored data pushes to the cloud database before the local page state reloads.
+4. **Validation:**
+   - 0 AST symbol and Oxlint errors.
+   - 616/616 tests passed across 42 suites.
+   - Live deploy completed on Hostinger VPS.
 
 **Task worked on:**
 1. **GitHub Actions VPS CI/CD Failure Diagnosis & Fix:**
