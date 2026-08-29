@@ -33,9 +33,25 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 21 — Forensic Data Source Investigation & CI/CD Automated VPS Deployment
-- **Last worked on:** Proved VPS MySQL 0-row state via SSH; updated `restoreBackupData` in `SystemController.php` to populate MySQL relational tables using master passcode `KB2026`; updated `db.js` UI backup upload to post payload to VPS; guarded `syncEngine.js` against unauthenticated `sync-state` 401 calls; added `ensureBootstrapAdminUser` in `AuthController.php` & `AuthMiddleware.php` to auto-seed `admin@clinicore.pk` / `KB2026`; merged fixes to `main` branch; aligned VPS git repository; verified live website version and API health; provided desktop architecture advice (Electron/Tauri strategy).
+- **Phase:** Phase 1 — Master Architecture Context Package & Decision Gate Completed
+- **Last worked on:** Enforced Phase 0 Preservation (zero database destruction/reset); executed empirical audit of 2 years of legacy production data in `Cache/AshrafKhan.accdb` (29,009 financial transactions, 25,765 stock entries, 4,237 SKUs) and `Cache/DrCreate.xlsm`; compiled full 20-file Master Architecture Context Package under `CLINICORE_NEW_ARCHITECTURE/`; finalized Architecture Decision Gate (`19_DECISIONS.md`) specifying Node.js/TypeScript + PostgreSQL server authority, Tauri + React + SQLite WAL desktop client, React Native Expo doctor mobile app, and staged legacy ETL pipeline.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-29 (Part 74) — Phase 0 Preservation & Phase 1 Master Architecture Context Package Completion
+**Task worked on:**
+1. **Phase 0 Preservation Protocol Execution:**
+   - Enforced zero-destruction rule: preserved all existing production code, MySQL schemas, and historical datasets (`AshrafKhan.accdb`, `DrCreate.xlsm`).
+2. **Empirical Legacy Data Forensics:**
+   - Audited MS Access database (`Cache/AshrafKhan.accdb` — 12.29 MB) via OLEDB 16.0: extracted exact row counts and schemas for 29,009 financial journal records (`MainAc`), 25,765 stock line-items (`Mainpro`), 12,757 vouchers (`Vou`), 7,590 invoice headers (`Invextra`), 4,237 inventory SKUs (`Inventory`), 4,236 cashbook entries (`CashBook`), and 263 accounts (`Accounts`).
+   - Audited Excel VBA workbook (`Cache/DrCreate.xlsm`): unpacked shared strings and table definitions for account and SKU catalogues.
+3. **Master Architecture Context Package Compilation (`CLINICORE_NEW_ARCHITECTURE/`):**
+   - Created all 20 authoritative project context files (`00_EXECUTIVE_CONTEXT.md` to `19_DECISIONS.md`).
+   - Finalized Architecture Decision Gate (`19_DECISIONS.md`) answering all 15 core architectural questions:
+     - **Database**: PostgreSQL (Node.js/TypeScript + NestJS/Fastify) for ACID accounting/stock integrity.
+     - **Desktop App**: Tauri 2.0 + React 19 + TypeScript + local SQLite WAL database.
+     - **Mobile App**: React Native + Expo for doctor remote queue monitoring & biometric approvals.
+     - **Sync Engine**: Monotonic change cursor (`?cursor=N`) + durable SQLite outbox queue (`mutation_id`, `idempotency_key`).
+     - **Legacy ETL**: Staged migration pipeline (`staging_legacy`) preserving 2 years of production data with `_legacy_id` lineage tracking.
 
 ### Session: 2026-08-29 (Part 73) — Forensic Database Investigation, VPS Ground-Zero Resolution & CI/CD Alignment
 **Task worked on:**
