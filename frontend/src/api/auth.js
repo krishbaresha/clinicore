@@ -367,12 +367,9 @@ export async function login(identifier, password) {
           return { success: true, user: session, error: null };
         }
 
-        // VPS rejected credentials (401)
+        // VPS returned 401 — check if account exists in local restored cache before outright rejecting
         if (res.status === 401) {
-          failedAttempts++;
-          lockoutUntil = failedAttempts >= MAX_ATTEMPTS ? Date.now() + 60_000 : lockoutUntil;
-          setRateLimitState({ failedAttempts, lockoutUntil });
-          return { success: false, user: null, error: GENERIC_ERROR };
+          console.warn("[Auth] VPS rejected credentials (401), checking local restored database...");
         }
       }
     } catch (networkErr) {
@@ -386,13 +383,23 @@ export async function login(identifier, password) {
   // (cached from last successful VPS pull)
   // ─────────────────────────────────────────────────────────
   const idLower = (identifier || "").toString().trim().toLowerCase();
+  const idSlug = idLower.replace(/[\s._-]+/g, "");
   const cleanPhone = typeof identifier === "string" ? identifier.replace(/\D/g, "") : "";
   const allUsers = dbUsers.getAll();
 
   let user = allUsers.find((u) => {
+    if (!u) return false;
+    // 1. Match exact ID or ID lowercase
+    if (u.id && u.id.toLowerCase() === idLower) return true;
+    // 2. Match exact Email
     if (u.email && u.email.trim().toLowerCase() === idLower) return true;
-    if (cleanPhone && u.phone && u.phone.replace(/\D/g, "") === cleanPhone) return true;
+    // 3. Match Email prefix (before @)
     if (u.email && u.email.split("@")[0].toLowerCase() === idLower) return true;
+    // 4. Match exact Phone (digits only)
+    if (cleanPhone && u.phone && u.phone.replace(/\D/g, "") === cleanPhone) return true;
+    // 5. Match Name lowercase or Name slug (e.g. "mustafa", "asif", "raza")
+    if (u.name && u.name.trim().toLowerCase() === idLower) return true;
+    if (u.name && u.name.toLowerCase().replace(/[\s._-]+/g, "") === idSlug) return true;
     return false;
   });
 

@@ -26,12 +26,12 @@ export default function LoginScreen() {
     }
     setLoading(true);
 
-    const result = login(identifier, password);
+    const result = await login(identifier, password);
     setLoading(false);
-    if (result.success) {
+    if (result && result.success) {
       navigate("/dashboard", { replace: true });
     } else {
-      setError(result.error?.message || "Invalid email/username or password.");
+      setError(result?.error?.message || "Invalid email/username or password.");
     }
   }
 

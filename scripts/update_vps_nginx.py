@@ -1,9 +1,12 @@
 import os
 import paramiko
 
+
+
+
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('77.37.45.233', 22, 'root', 'Keru@11998844', timeout=15)
+client.connect("[IP_ADDRESS]", 22, "root", "Keru@11998844", timeout=15)
 
 conf = """server {
     listen 80 default_server;

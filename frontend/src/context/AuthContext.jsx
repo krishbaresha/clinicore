@@ -36,8 +36,8 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  function login(identifier, password) {
-    const result = apiLogin(identifier, password);
+  async function login(identifier, password) {
+    const result = await apiLogin(identifier, password);
     if (result.success) {
       setUser(result.user);
       setClinic(dbClinic.get());

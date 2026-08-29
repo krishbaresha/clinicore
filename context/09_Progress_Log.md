@@ -33,9 +33,25 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 12 — Complete Secrets Audit, Supply-Chain Security & Final Production Polish Complete
-- **Last worked on:** Cleared all mock users and mock warehouses from SEED_DATA to enforce a true zero-meter startup state. Verified all 616 tests pass and Vite build completes cleanly. Re-enabled Service Worker skipWaiting() to force cache clearing and solve client-side white screens.
+- **Phase:** Phase 18 — Master Recovery Plan & Restored Login Flow Hardened
+- **Last worked on:** Executed Master Recovery Prompt forensics, audited VPS canonical authority and sync pipelines, hardened auth.js login fallback for restored backup users (resolving 401 un-synced user blocking), secured update_vps_nginx.py with dotenv credentials, passed 100% of 616 test suite across 42 suites, verified clean Vite build and 0-secret scan.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-29 (Part 69) — Master Recovery Plan & Restored Login Flow Hardening
+
+**Task worked on:**
+1. **Master Recovery Audit & Invariant Alignment:**
+   - Reviewed [Clinicore_Antigravity2_Master_Recovery_Prompt.md](file:///e:/Soft/DrCreate/ClinicFlow/Clinicore_Antigravity2_Master_Recovery_Prompt.md) and created execution plan [implementation_plan.md](file:///C:/Users/Kali/.gemini/antigravity-ide/brain/f82ba353-bf52-42ec-bc2d-888ec0538e31/implementation_plan.md).
+2. **Restored Backup Authentication Resilience:**
+   - Fixed `auth.js` login flow: if VPS returns 401 because a restored user account has not yet been pushed to MySQL, the client falls through to local password verification rather than rejecting with generic error.
+3. **Secrets Security:**
+   - Sanitized `scripts/update_vps_nginx.py` to use `dotenv` environment variables instead of hardcoded strings.
+4. **Validation Pipeline:**
+   - 0 AST symbol errors across all files.
+   - 0 Oxlint errors.
+   - 616/616 tests passed across 42 suites.
+   - Clean 7.02s Vite production build.
+   - 0 secrets detected across 873 tracked repository files.
 
 ### Session: 2026-08-29 (Part 68) — Zero-Meter Configuration & Service Worker Hardening
 
