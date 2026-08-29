@@ -106,7 +106,7 @@ jobs:
           username: root
           password: ${{ secrets.VPS_PASSWORD }}
           port: 22
-          timeout: 120s
+          timeout: 180s
           command_timeout: 10m
           envs: GH_TOKEN
           script: |
@@ -128,15 +128,47 @@ jobs:
         if: steps.deploy_backend_attempt_1.outcome == 'failure'
         run: sleep 15
 
-      - name: Deploy Backend + Config to VPS via SSH (Retry)
+      - name: Deploy Backend + Config to VPS via SSH (Attempt 2)
         if: steps.deploy_backend_attempt_1.outcome == 'failure'
+        id: deploy_backend_attempt_2
+        continue-on-error: true
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 77.37.45.233
           username: root
           password: ${{ secrets.VPS_PASSWORD }}
           port: 22
-          timeout: 120s
+          timeout: 180s
+          command_timeout: 10m
+          envs: GH_TOKEN
+          script: |
+            set -e
+            echo "🚀 Deploying CliniCore backend & config..."
+            cd /var/www/clinicore
+
+            git config --global --add safe.directory /var/www/clinicore
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/krishbaresha/clinicore.git"
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Lightweight VPS fix: nginx reload, php-fpm restart, DB migrations only
+            # (No live npm build — dist/ delivered via artifact SCP below)
+            bash /var/www/clinicore/scripts/vps_fix_all.sh
+            echo "✅ Backend deployed!"
+
+      - name: Wait briefly before final retry
+        if: steps.deploy_backend_attempt_2.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy Backend + Config to VPS via SSH (Attempt 3)
+        if: steps.deploy_backend_attempt_2.outcome == 'failure'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 77.37.45.233
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          timeout: 180s
           command_timeout: 10m
           envs: GH_TOKEN
           script: |
