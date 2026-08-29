@@ -103,6 +103,11 @@
 - Cleaned up obsolete documentation files (`05_Stitch_UI_Prompts.md`, `06_AI_Review_Brief.md`, `07_Mock_Data.json`, `10_Code_Standards.md`, etc.) from the context directory.
 - Consolidated coding standards and constraints into `08_AI_Rules_and_Constraints.md`.
 
+### Milestone 19 — Absolute Zero-Meter Slate & Service Worker Recovery
+- **Mock Data Wipe:** Removed all default mock users (Asif, Raza, Usama, Mustafa) and warehouses (wh_001, wh_002, wh_str) from `SEED_DATA` in `db.js`. Software now starts completely empty, allowing custom staff and warehouse setup from `/admin`.
+- **SW Skip Waiting:** Restored `self.skipWaiting()` on service worker installation to instantly activate deployments and clear client-side cache white screens.
+- **Test Integrity:** Refactored unit tests to dynamically initialize test databases for inventory validations, keeping 100% test coverage green.
+
 ---
 
 ## 🔒 3. Golden Rules for Future AI Coding Sessions
