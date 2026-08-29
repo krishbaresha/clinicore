@@ -5,7 +5,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
+const __filename = fileURLToPath(import.meta.url);
+const rootDir = path.dirname(__filename);
+const pkg = JSON.parse(fs.readFileSync(path.resolve(rootDir, 'package.json'), 'utf-8'));
 const SEMVER = pkg.version || '2.5.0';
 const BUILD_DATE = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 const BUILD_HASH = '7113922';
@@ -28,7 +30,7 @@ function pwaVersionPlugin() {
       __MIN_SERVER_SCHEMA_VERSION__: JSON.stringify(3),
     },
     closeBundle() {
-      const distDir = path.resolve(__dirname, 'dist')
+      const distDir = path.resolve(rootDir, 'dist')
       if (fs.existsSync(distDir)) {
         // 1. Generate dist/version.json
         const versionData = {

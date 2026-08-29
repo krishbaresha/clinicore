@@ -22,7 +22,7 @@ DROP TABLE IF EXISTS clinics;
 DROP TABLE IF EXISTS system_settings;
 DROP TABLE IF EXISTS app_cloud_state;
 
-CREATE TABLE clinics (
+CREATE TABLE IF NOT EXISTS clinics (
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     logo_url VARCHAR(500) NULL,
@@ -37,7 +37,7 @@ CREATE TABLE clinics (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE warehouses (
+CREATE TABLE IF NOT EXISTS warehouses (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     code VARCHAR(50) NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE warehouses (
     UNIQUE KEY uk_clinic_wh_code (clinic_id, code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -89,7 +89,7 @@ CREATE TABLE users (
     INDEX idx_user_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     user_id VARCHAR(36) NULL,
@@ -107,13 +107,13 @@ CREATE TABLE audit_logs (
     INDEX idx_audit_entity (entity_type, entity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE system_settings (
+CREATE TABLE IF NOT EXISTS system_settings (
     setting_key VARCHAR(100) PRIMARY KEY,
     setting_value LONGTEXT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE app_cloud_state (
+CREATE TABLE IF NOT EXISTS app_cloud_state (
     collection_key VARCHAR(100) PRIMARY KEY,
     data_json LONGTEXT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -129,7 +129,7 @@ DROP TABLE IF EXISTS visits;
 DROP TABLE IF EXISTS patients;
 DROP TABLE IF EXISTS clinic_services;
 
-CREATE TABLE clinic_services (
+CREATE TABLE IF NOT EXISTS clinic_services (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -144,7 +144,7 @@ CREATE TABLE clinic_services (
     INDEX idx_service_clinic (clinic_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE patients (
+CREATE TABLE IF NOT EXISTS patients (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     mr_number VARCHAR(50) NOT NULL,
@@ -168,7 +168,7 @@ CREATE TABLE patients (
     INDEX idx_patient_name (full_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE visits (
+CREATE TABLE IF NOT EXISTS visits (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     patient_id VARCHAR(36) NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE visits (
     INDEX idx_visit_queue (doctor_id, queue_date, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE visit_attachments (
+CREATE TABLE IF NOT EXISTS visit_attachments (
     id VARCHAR(36) PRIMARY KEY,
     visit_id VARCHAR(36) NOT NULL,
     clinic_id VARCHAR(36) NOT NULL,
@@ -216,7 +216,7 @@ CREATE TABLE visit_attachments (
     INDEX idx_attachment_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE patient_documents (
+CREATE TABLE IF NOT EXISTS patient_documents (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     patient_id VARCHAR(36) NOT NULL,
@@ -243,7 +243,7 @@ DROP TABLE IF EXISTS stock_movements;
 DROP TABLE IF EXISTS warehouse_stocks;
 DROP TABLE IF EXISTS inventory;
 
-CREATE TABLE inventory (
+CREATE TABLE IF NOT EXISTS inventory (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     item_code VARCHAR(50) NOT NULL,
@@ -271,7 +271,7 @@ CREATE TABLE inventory (
     INDEX idx_inv_search (company_name, category, medicine_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE warehouse_stocks (
+CREATE TABLE IF NOT EXISTS warehouse_stocks (
     id VARCHAR(36) PRIMARY KEY,
     inventory_id VARCHAR(36) NOT NULL,
     warehouse_id VARCHAR(36) NOT NULL,
@@ -283,7 +283,7 @@ CREATE TABLE warehouse_stocks (
     UNIQUE KEY uk_item_warehouse (inventory_id, warehouse_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE stock_movements (
+CREATE TABLE IF NOT EXISTS stock_movements (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     warehouse_id VARCHAR(36) NOT NULL,
@@ -321,7 +321,7 @@ CREATE TABLE stock_movements (
 DROP TABLE IF EXISTS stock_transfer_items;
 DROP TABLE IF EXISTS stock_transfers;
 
-CREATE TABLE stock_transfers (
+CREATE TABLE IF NOT EXISTS stock_transfers (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     transfer_no VARCHAR(50) NOT NULL,
@@ -343,7 +343,7 @@ CREATE TABLE stock_transfers (
     UNIQUE KEY uk_transfer_no (clinic_id, transfer_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE stock_transfer_items (
+CREATE TABLE IF NOT EXISTS stock_transfer_items (
     id VARCHAR(36) PRIMARY KEY,
     transfer_id VARCHAR(36) NOT NULL,
     inventory_id VARCHAR(36) NOT NULL,
@@ -362,7 +362,7 @@ DROP TABLE IF EXISTS purchases;
 DROP TABLE IF EXISTS supplier_ledger;
 DROP TABLE IF EXISTS suppliers;
 
-CREATE TABLE suppliers (
+CREATE TABLE IF NOT EXISTS suppliers (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -377,7 +377,7 @@ CREATE TABLE suppliers (
     INDEX idx_supplier_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE purchases (
+CREATE TABLE IF NOT EXISTS purchases (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     purchase_no VARCHAR(50) NOT NULL,
@@ -407,7 +407,7 @@ CREATE TABLE purchases (
     INDEX idx_purchase_date (warehouse_id, bill_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE purchase_items (
+CREATE TABLE IF NOT EXISTS purchase_items (
     id VARCHAR(36) PRIMARY KEY,
     purchase_id VARCHAR(36) NOT NULL,
     inventory_id VARCHAR(36) NOT NULL,
@@ -423,7 +423,7 @@ CREATE TABLE purchase_items (
     FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE supplier_ledger (
+CREATE TABLE IF NOT EXISTS supplier_ledger (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     supplier_id VARCHAR(36) NOT NULL,
@@ -450,7 +450,7 @@ DROP TABLE IF EXISTS b2b_sales;
 DROP TABLE IF EXISTS parties;
 DROP TABLE IF EXISTS salesmen;
 
-CREATE TABLE salesmen (
+CREATE TABLE IF NOT EXISTS salesmen (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -461,7 +461,7 @@ CREATE TABLE salesmen (
     FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE parties (
+CREATE TABLE IF NOT EXISTS parties (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     party_code VARCHAR(50) NOT NULL,
@@ -481,7 +481,7 @@ CREATE TABLE parties (
     INDEX idx_party_city (city)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE b2b_sales (
+CREATE TABLE IF NOT EXISTS b2b_sales (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     invoice_no VARCHAR(50) NOT NULL,
@@ -510,7 +510,7 @@ CREATE TABLE b2b_sales (
     INDEX idx_b2b_date (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE b2b_sale_items (
+CREATE TABLE IF NOT EXISTS b2b_sale_items (
     id VARCHAR(36) PRIMARY KEY,
     b2b_sale_id VARCHAR(36) NOT NULL,
     inventory_id VARCHAR(36) NOT NULL,
@@ -534,7 +534,7 @@ DROP TABLE IF EXISTS pos_sales;
 DROP TABLE IF EXISTS sales_return_items;
 DROP TABLE IF EXISTS sales_returns;
 
-CREATE TABLE pos_sales (
+CREATE TABLE IF NOT EXISTS pos_sales (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     receipt_no VARCHAR(50) NOT NULL,
@@ -565,7 +565,7 @@ CREATE TABLE pos_sales (
     INDEX idx_pos_time (warehouse_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE pos_sale_items (
+CREATE TABLE IF NOT EXISTS pos_sale_items (
     id VARCHAR(36) PRIMARY KEY,
     sale_id VARCHAR(36) NOT NULL,
     inventory_id VARCHAR(36) NOT NULL,
@@ -580,7 +580,7 @@ CREATE TABLE pos_sale_items (
     FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE sales_returns (
+CREATE TABLE IF NOT EXISTS sales_returns (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     return_no VARCHAR(50) NOT NULL,
@@ -599,7 +599,7 @@ CREATE TABLE sales_returns (
     INDEX idx_ret_clinic_time (clinic_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE sales_return_items (
+CREATE TABLE IF NOT EXISTS sales_return_items (
     id VARCHAR(36) PRIMARY KEY,
     return_id VARCHAR(36) NOT NULL,
     inventory_id VARCHAR(36) NOT NULL,
@@ -620,7 +620,7 @@ DROP TABLE IF EXISTS cashbook;
 DROP TABLE IF EXISTS expenses;
 DROP TABLE IF EXISTS patient_ledger;
 
-CREATE TABLE patient_ledger (
+CREATE TABLE IF NOT EXISTS patient_ledger (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     patient_id VARCHAR(36) NOT NULL,
@@ -638,7 +638,7 @@ CREATE TABLE patient_ledger (
     INDEX idx_patient_ledger (patient_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE expenses (
+CREATE TABLE IF NOT EXISTS expenses (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     warehouse_id VARCHAR(36) NULL,
@@ -656,7 +656,7 @@ CREATE TABLE expenses (
     INDEX idx_expense_date (clinic_id, expense_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE cashbook (
+CREATE TABLE IF NOT EXISTS cashbook (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     warehouse_id VARCHAR(36) NOT NULL,
@@ -674,7 +674,7 @@ CREATE TABLE cashbook (
     INDEX idx_cashbook_time (warehouse_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE shift_closings (
+CREATE TABLE IF NOT EXISTS shift_closings (
     id VARCHAR(36) PRIMARY KEY,
     clinic_id VARCHAR(36) NOT NULL,
     warehouse_id VARCHAR(36) NOT NULL,
@@ -702,7 +702,7 @@ CREATE TABLE shift_closings (
 
 DROP TABLE IF EXISTS idempotency_keys;
 
-CREATE TABLE idempotency_keys (
+CREATE TABLE IF NOT EXISTS idempotency_keys (
     idempotency_key VARCHAR(64) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,
     endpoint VARCHAR(100) NOT NULL,

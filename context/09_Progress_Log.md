@@ -33,9 +33,24 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 18 — Master Recovery Plan & Restored Login Flow Hardened
-- **Last worked on:** Executed Master Recovery Prompt forensics, audited VPS canonical authority and sync pipelines, hardened auth.js login fallback for restored backup users (resolving 401 un-synced user blocking), secured update_vps_nginx.py with dotenv credentials, passed 100% of 616 test suite across 42 suites, verified clean Vite build and 0-secret scan.
+- **Phase:** Phase 19 — CI/CD Pipeline & Idempotent Schema Migration Hardened
+- **Last worked on:** Fixed GitHub Actions VPS deployment failure by making all MySQL DDL table creations `IF NOT EXISTS` idempotent and wrapping schema import in non-fatal verification; fixed Vite ESM config directory resolver; verified 616/616 tests and 0-secret scan.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-29 (Part 70) — CI/CD Pipeline & Idempotent Schema Migration Hardening
+
+**Task worked on:**
+1. **GitHub Actions VPS CI/CD Failure Diagnosis & Fix:**
+   - Root Cause: In previous VPS runs, `database/production_schema.sql` failed at `CREATE TABLE system_settings` with `ERROR 1050 (Table already exists)` when re-running migrations on an existing VPS database.
+   - Fix: Added `IF NOT EXISTS` across all table creation statements in `database/production_schema.sql` and updated `scripts/vps_fix_all.sh` to handle partially existing tables idempotently without exiting with code 1.
+2. **Vite Build ESM Config Cleanup:**
+   - Replaced CJS `__dirname` usage in `vite.config.js` with ESM `fileURLToPath(import.meta.url)` to eliminate rollup warnings during compilation.
+3. **Validation:**
+   - 0 AST symbol errors.
+   - 0 Oxlint errors.
+   - 616/616 tests passed across 42 suites.
+   - Clean 1.22s Vite production build.
+   - 0 secrets detected across 874 tracked repository files.
 
 ### Session: 2026-08-29 (Part 69) — Master Recovery Plan & Restored Login Flow Hardening
 

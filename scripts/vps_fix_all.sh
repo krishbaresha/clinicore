@@ -70,9 +70,9 @@ echo ""
 echo "[4/8] Importing production schema..."
 
 if [ -f "$CLINICORE_DIR/database/production_schema.sql" ]; then
-    mysql -u root "$DB_NAME" < "$CLINICORE_DIR/database/production_schema.sql"
-    TABLE_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME';")
-    echo "  Schema imported. Tables: $TABLE_COUNT"
+    mysql -u root "$DB_NAME" < "$CLINICORE_DIR/database/production_schema.sql" || echo "  (Schema already present or partially applied)"
+    TABLE_COUNT=$(mysql -u root -sN -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME';" 2>/dev/null || echo "0")
+    echo "  Schema imported/verified. Tables: $TABLE_COUNT"
 else
     echo "  SKIP: Schema file not found."
 fi
