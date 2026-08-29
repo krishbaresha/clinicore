@@ -579,7 +579,7 @@ class SystemController
             // 3. Reset invoice/sequential counters
             try { $db->exec("DELETE FROM app_cloud_state WHERE collection_key LIKE 'cf_seq_%'"); } catch (\Throwable) {}
 
-            // 4. Re-seed exactly ONE default clinic
+            // 4. Re-seed exactly ONE default clinic (required for tenant scoping)
             $stmtClinic = $db->prepare("INSERT INTO clinics (id, name, logo_url, address, created_at) VALUES (:id, :name, :logo_url, :address, :created_at)");
             $stmtClinic->execute([
                 ':id' => 'clinic_001',
@@ -587,31 +587,6 @@ class SystemController
                 ':logo_url' => '/clinic-logo.png',
                 ':address' => 'Lajpat Road, Hyderabad, Sindh',
                 ':created_at' => date('Y-m-d H:i:s')
-            ]);
-
-            // 5. Re-seed exactly ONE default primary owner/doctor user (password: 'password')
-            $stmtUser = $db->prepare("INSERT INTO users (id, clinic_id, name, role, phone, email, password_hash, status, is_principal_doctor) VALUES (:id, :clinic_id, :name, :role, :phone, :email, :password_hash, :status, :is_principal_doctor)");
-            $stmtUser->execute([
-                ':id' => 'user_001',
-                ':clinic_id' => 'clinic_001',
-                ':name' => 'Dr. Muhammad Asif Ashraf Khan',
-                ':role' => 'owner',
-                ':phone' => '03473100304',
-                ':email' => 'doctor@clinicore.pk',
-                // bcrypt hash for 'password'
-                ':password_hash' => '$2y$10$TKh8H1.PfQx37YgCzwiKb.9jY0UPPfUM7yALTRWqKo18./g/3NwmS',
-                ':status' => 'active',
-                ':is_principal_doctor' => 1
-            ]);
-
-            // 6. Re-seed exactly ONE default primary warehouse
-            $stmtWh = $db->prepare("INSERT INTO warehouses (id, clinic_id, name, code, status) VALUES (:id, :clinic_id, :name, :code, :status)");
-            $stmtWh->execute([
-                ':id' => 'wh_001',
-                ':clinic_id' => 'clinic_001',
-                ':name' => 'Main Godown (Lajpat Road)',
-                ':code' => 'GDW-01',
-                ':status' => 'active'
             ]);
 
             // Re-enable foreign key checks
