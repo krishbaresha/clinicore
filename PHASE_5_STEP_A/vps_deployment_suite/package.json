@@ -1,0 +1,20 @@
+{
+  "name": "vps_deployment_suite",
+  "version": "1.0.0",
+  "description": "Production Infrastructure & VPS Deployment Auditor Suite for ClinicFlow",
+  "main": "src/vps/nginx_config_builder.ts",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types ../step_5a_verification.ts"
+  },
+  "keywords": [
+    "clinicflow",
+    "nginx",
+    "systemd",
+    "postgresql",
+    "backup",
+    "vps"
+  ],
+  "author": "ClinicFlow Core Systems Team",
+  "license": "ISC"
+}
