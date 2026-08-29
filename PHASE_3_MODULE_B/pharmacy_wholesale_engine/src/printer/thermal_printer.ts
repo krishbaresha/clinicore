@@ -33,6 +33,7 @@ export interface ESCPOSReceiptData {
   change?: number;
   biltyNo?: string;
   transportCo?: string;
+  cashierName?: string;
   versionWatermark: string;
 }
 
@@ -88,6 +89,9 @@ export class ThermalPrinter80mm {
     // Invoice Meta
     lines.push(this.padBetween(`Invoice: ${data.invoiceNo}`, `Date: ${data.date}`));
     lines.push(this.padBetween(`Party/Cust: ${data.customerOrParty}`, `Mode: ${data.paymentMode}`));
+    if (data.cashierName) {
+      lines.push(`Cashier: ${data.cashierName}`);
+    }
     if (data.salesman) {
       lines.push(`Salesman: ${data.salesman}`);
     }
@@ -190,6 +194,7 @@ export class ThermalPrinter80mm {
         <div><strong>Date:</strong> ${s(data.date)}</div>
         <div><strong>Party/Cust:</strong> ${s(data.customerOrParty)}</div>
         <div><strong>Payment Mode:</strong> ${s(data.paymentMode)}</div>
+        ${data.cashierName ? `<div><strong>Cashier:</strong> ${s(data.cashierName)}</div>` : ''}
         ${data.salesman ? `<div><strong>Salesman:</strong> ${s(data.salesman)}</div>` : ''}
         ${data.biltyNo ? `<div><strong>Bilty #:</strong> ${s(data.biltyNo)} (${s(data.transportCo || '')})</div>` : ''}
         <hr style="border: top 1px dashed #000; margin: 6px 0;"/>

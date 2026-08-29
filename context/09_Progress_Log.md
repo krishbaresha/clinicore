@@ -33,9 +33,76 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** FINAL_AUDIT_STEP_A — Grand Test Runner & Regression Auditor (Complete)
-- **Last worked on:** Built `FINAL_AUDIT_STEP_A/src/grand_audit_runner.ts` executing all 14 system verification test suites (Phase 2 Step 2 to Step 7, Phase 3 Modules A-D, Phase 4 Steps A-B, Phase 5 Steps A-B). Verified 100% passage across all 180 verification assertions with zero regressions in 2.35s total execution time. Generated `FINAL_AUDIT_STEP_A/grand_audit_report.md`.
+- **Phase:** Milestone 83 — ClinicFlow Desktop Software Transformation, Shared Single-Counter Quick Staff Switcher & God-Level Admin Audit Panel
+- **Last worked on:** Transformed ClinicFlow into dedicated Desktop App mode with public page bypass, built Shared Single-Counter Quick Staff Switcher widget, integrated God-Level Admin Audit Panel in Super Admin, updated thermal printer engines with Cashier attribution, attached active cashier to all sales, OPD receipts, and stock movements, and enforced strict user role portal access.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-30 (Part 84) — Tauri 2.0 Bundler, Valid Icons & Desktop Execution Fix
+
+**Task worked on:**
+Fix Tauri 2.0 Bundler icon error ("Couldn't find a .ico icon"), generate valid desktop icon suite, configure `tauri.conf.json` bundle icons and `capabilities/default.json`, and verify local `tauri dev` and `tauri build` compilation.
+
+**What was built/changed:**
+- Generated clean, valid icon set using Tauri CLI from `favicon.svg` into `frontend/src-tauri/icons/`: `icon.ico` (40KB valid Windows icon), `icon.png` (66KB), `32x32.png`, `128x128.png`, `128x128@2x.png`, `icon.icns`, and Windows Appx logos.
+- Updated `frontend/src-tauri/tauri.conf.json`: Added `bundle.icon` array referencing `icons/icon.ico`, `icons/32x32.png`, `icons/128x128.png`, `icons/128x128@2x.png`, and `icons/icon.icns`.
+- Verified `frontend/src-tauri/capabilities/default.json` main window target, `devUrl` (`http://localhost:5173`), and `beforeDevCommand` (`npm run dev`).
+- Verified `cargo check` and `npm run tauri:build`: Compiled release binary `clinicflow.exe` (target/release) and produced both `ClinicFlow_1.4.0_x64_en-US.msi` and `ClinicFlow_1.4.0_x64-setup.exe` bundles cleanly.
+
+**Decisions made / assumptions taken:**
+- Regenerated full transparent desktop icon suite from `public/favicon.svg` via `npx @tauri-apps/cli icon` to ensure multi-resolution Windows ICO encoding.
+
+**Known issues / incomplete:**
+- None.
+
+### Session: 2026-08-30 (Part 83) — Desktop Software UI, Quick Staff Counter Switcher & God-Level Admin Audit Panel
+
+**Task worked on:**
+Transform ClinicFlow Desktop into a Dedicated Software Application with Quick Staff Counter Switching, God-Level Admin Audit Panel, strict user role portal restrictions, and cashier attribution across thermal receipts.
+
+**What was built/changed:**
+- Built `src/utils/desktop.js` (`isDesktopApp()`) to detect desktop/standalone/Tauri mode.
+- Updated `src/App.jsx` to bypass public marketing pages on `/` and `/landing` in desktop app mode, landing directly on `/login`.
+- Built `src/components/StaffSwitcherWidget.jsx`: Quick active cashier/staff switcher widget with PIN authentication for shared counter PC.
+- Updated `src/api/auth.js` & `src/context/AuthContext.jsx`: `getActiveCashier()`, `setActiveCashier()`, reactive cashier state, and role route guards.
+- Updated `src/layouts/SidebarLayout.jsx`: Embedded `StaffSwitcherWidget` into header and enforced strict role-specific navigation menus (`cashier`, `receptionist`, `doctor`, `pharmacist`).
+- Updated `src/utils/thermalPrinter.js` and `src/printer/thermal_printer.ts`: Printed `"Cashier: [Selected Staff Name]"` on all thermal receipt headers and footers.
+- Updated `src/api/db.js`: Attached `active_cashier_id` and `active_cashier_name` to sales, OPD receipts, stock movements, and audit logs.
+- Built `src/pages/GodAdminPanel.jsx`: God-Level Audit Panel featuring real-time logs for patient registrations, medicine sales, exact staff cash drawer collections, discounts granted, and stock write-offs. Integrated into `DeveloperAdminPanel.jsx` (`/admin`).
+
+**Decisions made / assumptions taken:**
+- Active cashier session defaults to logged-in user if no specific cashier is selected on counter PC.
+- Role isolation preserves super admin / owner bypass for unrestricted management.
+
+**Known issues / incomplete:**
+- None.
+
+**Blocked on / needs human input:**
+- None.
+
+**Next recommended step:**
+- Deploy build to staging or production desktop installer package.
+
+**Task worked on:**
+Build Doctor Mobile App Phone Testing & Expo Server Suite
+
+**What was built/changed:**
+- Created `PHASE_2_STEP_5/mobile_scaffold/src/services/phone_pairing.service.ts`: PhonePairingService class for discovering local IPv4 network interfaces, probing host/port connectivity, building local server URLs, and generating pairing QR payloads.
+- Created `PHASE_2_STEP_5/mobile_scaffold/expo_launcher.ts`: Dedicated Expo dev server launcher displaying CLI ASCII QR code and Metro bundler details for Dr. Kashif's phone scanning via Expo Go.
+- Added `start:mobile`, `start:phone`, and `start:expo` scripts to `PHASE_2_STEP_5/mobile_scaffold/package.json`.
+- Added `start:mobile` and `start:phone` shortcuts to root `package.json`.
+- Updated `PHASE_2_STEP_5/step_5_verification.ts` to include phone pairing service and Expo QR payload verification.
+
+**Decisions made / assumptions taken:**
+- Used standard node native `net` and `os` modules for local LAN interface scanning and socket probing without extra external dependencies.
+
+**Known issues / incomplete:**
+- None.
+
+**Blocked on / needs human input:**
+- None.
+
+**Next recommended step:**
+- Continue with upcoming mobile client UI enhancements or Phase 3 feature additions.
 
 ### Session: 2026-08-30 (Part 82) — FINAL_AUDIT_STEP_A: Grand Test Runner & Regression Auditor
 

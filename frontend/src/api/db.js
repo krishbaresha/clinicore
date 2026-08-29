@@ -1154,6 +1154,10 @@ export const dbVisits = {
   add: (visit) => {
     const visits = getCollection(KEYS.VISITS);
     const token_number = dbVisits.nextTokenNumber();
+    const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
+    const cashierId = visit.cashier_id || visit.active_cashier_id || activeCashier?.id || "user_admin";
+    const cashierName = visit.cashier_name || visit.active_cashier_name || activeCashier?.name || "Front Desk";
+
     const newVisit = {
       ...visit,
       id: generateId("visit"),
@@ -1165,11 +1169,24 @@ export const dbVisits = {
       notes: visit.notes || "",
       doctor_id: visit.doctor_id || "user_owner",
       fee_status: visit.fee_status || (visit.fee_amount > 0 ? "paid" : "unpaid"),
+      cashier_id: cashierId,
+      cashier_name: cashierName,
+      active_cashier_id: cashierId,
+      active_cashier_name: cashierName,
     };
     setCollection(KEYS.VISITS, [newVisit, ...visits]);
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("visits", newVisit, "CREATE", newVisit.id);
     }
+    dbAuditLogs.logEvent({
+      action: "PATIENT_REGISTERED",
+      entity: "visits",
+      entity_id: newVisit.id,
+      actor_id: cashierId,
+      actor_name: cashierName,
+      reason: `Registered patient ${newVisit.patient_name || 'Patient'} for OPD Token #${newVisit.token_number} (Fee: Rs. ${newVisit.fee_amount || 0})`,
+      after: newVisit,
+    });
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newVisit;
   },
@@ -2366,6 +2383,10 @@ export const dbStockMovements = {
     const seq = movements.length + 1;
     const movId = movementData.movement_id || `mov_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
+    const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
+    const actorId = movementData.actor_id || movementData.active_cashier_id || activeCashier?.id || "system";
+    const actorName = movementData.actor_name || movementData.active_cashier_name || activeCashier?.name || "System";
+
     const payload = {
       movement_id: movId,
       sequence_no: seq,
@@ -2391,8 +2412,10 @@ export const dbStockMovements = {
       source_voucher_type: movementData.source_voucher_type || "MANUAL",
       source_voucher_no: movementData.source_voucher_no || "",
       source_voucher_id: movementData.source_voucher_id || "",
-      actor_id: movementData.actor_id || "system",
-      actor_name: movementData.actor_name || "System",
+      actor_id: actorId,
+      actor_name: actorName,
+      active_cashier_id: actorId,
+      active_cashier_name: actorName,
       notes: movementData.notes || "",
     };
 
@@ -2401,6 +2424,18 @@ export const dbStockMovements = {
 
     movements.push(event);
     setCollection(KEYS.STOCK_MOVEMENTS, movements);
+
+    if (["write_off", "adjustment", "quarantine", "damage", "expiry"].includes(movementData.movement_type)) {
+      dbAuditLogs.logEvent({
+        action: "STOCK_WRITE_OFF",
+        entity: "inventory",
+        entity_id: movementData.inventory_id || movId,
+        actor_id: actorId,
+        actor_name: actorName,
+        reason: `${movementData.movement_type.toUpperCase()} for ${movementData.medicine_name || 'Item'} (Batch: ${movementData.batch_no || 'DEFAULT'}, Qty: ${movementData.qty_base_units || 1}) - ${movementData.notes || 'Stock adjustment'}`,
+        after: event,
+      });
+    }
 
     try {
       dbOutbox.enqueue("STOCK_MOVEMENT", event);
@@ -4071,12 +4106,18 @@ export const dbSales = {
       ? Number(sale.paid_amount)
       : total;
 
+    const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
+    const cashierId = sale.cashier_id || sale.active_cashier_id || activeCashier?.id || "user_admin";
+    const cashierName = sale.cashier_name || sale.active_cashier_name || activeCashier?.name || "Counter Staff";
+
     const newSale = {
       ...sale,
       id: generateId("sale"),
       receipt_no: invoiceNo,
-      cashier_id: sale.cashier_id || "",
-      cashier_name: sale.cashier_name || "Cashier Desk",
+      cashier_id: cashierId,
+      cashier_name: cashierName,
+      active_cashier_id: cashierId,
+      active_cashier_name: cashierName,
       warehouse_id: sale.warehouse_id || "wh_str",
       sale_date: sale.sale_date || new Date().toISOString(),
       subtotal_amount: subtotal,
@@ -4102,6 +4143,29 @@ export const dbSales = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("pos_sales", newSale, "CREATE", newSale.id);
     }
+
+    dbAuditLogs.logEvent({
+      action: "POS_MEDICINE_SALE",
+      entity: "sales",
+      entity_id: newSale.id,
+      actor_id: cashierId,
+      actor_name: cashierName,
+      reason: `Sold ${newSale.items?.length || 0} item(s) to ${newSale.patient_name || 'Walk-in'} for Rs. ${newSale.total_amount} (Receipt #${newSale.receipt_no})`,
+      after: newSale,
+    });
+
+    if (discount > 0) {
+      dbAuditLogs.logEvent({
+        action: "DISCOUNT_GRANTED",
+        entity: "sales",
+        entity_id: newSale.id,
+        actor_id: cashierId,
+        actor_name: cashierName,
+        reason: `Discount of Rs. ${discount} granted on invoice ${newSale.receipt_no}`,
+        after: { receipt_no: newSale.receipt_no, discount_amount: discount, total_amount: total },
+      });
+    }
+
     return newSale;
   },
   voidSale: (saleId, voidReason, authorizedBy = "Doctor / Admin") => {

@@ -14,6 +14,8 @@
     "tauri:dev": "npm --prefix frontend run tauri:dev",
     "tauri:build": "npm --prefix frontend run tauri:build",
     "validate": "node scripts/scan_secrets.mjs && node scripts/scan_imports_and_hooks.mjs && npm --prefix frontend run lint && npm --prefix frontend run test",
+    "start:mobile": "npm --prefix PHASE_2_STEP_5/mobile_scaffold run start:mobile",
+    "start:phone": "npm --prefix PHASE_2_STEP_5/mobile_scaffold run start:phone",
     "ci": "npm run validate && npm --prefix frontend run build",
     "deploy": "python scripts/deploy_vps.py"
   }

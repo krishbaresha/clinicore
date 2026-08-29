@@ -40,6 +40,7 @@ import KeyboardShortcutsModal from "../components/KeyboardShortcutsModal.jsx";
 import { useGlobalKeyboardNav } from "../hooks/useGlobalKeyboardNav.js";
 import { syncEngine } from "../api/syncEngine.js";
 import { useTranslation } from "react-i18next";
+import StaffSwitcherWidget from "../components/StaffSwitcherWidget.jsx";
 
 function getNavIcon(iconName, className = "w-5 h-5") {
   switch (iconName) {
@@ -64,22 +65,33 @@ function getNavIcon(iconName, className = "w-5 h-5") {
   }
 }
 
-// 1. Unified Front Desk & Medical Store Operator (Receptionist + Pharmacist / Cashier)
-const UNIFIED_DESK_NAV = [
+// 1. Receptionist — OPD Queue & Registration Portal Only
+const RECEPTIONIST_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Register Patient", icon: "how_to_reg", path: "/reception/register" },
   { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
+  { label: "Pending Reports", icon: "pending_actions", path: "/reception/pending-reports" },
+  { label: "Patients Directory", icon: "group", path: "/patients" },
+];
+
+// 2. Cashier — Pharmacy POS Portal Only
+const CASHIER_NAV = [
+  { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
+  { label: "Counter POS", icon: "point_of_sale", path: "/store/pos" },
+  { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
+  { label: "Fees & CashBook", icon: "payments", path: "/fees" },
+];
+
+// 3. Pharmacist — POS & Inventory Portal
+const PHARMACIST_NAV = [
+  { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Counter POS", icon: "point_of_sale", path: "/store/pos" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
   { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
-  { label: "Warehouse & Wholesale", icon: "warehouse", path: "/store/warehouse" },
-  { label: "Pending Reports", icon: "pending_actions", path: "/reception/pending-reports" },
-  { label: "Patients & EMR", icon: "group", path: "/patients" },
-  { label: "Fees & CashBook", icon: "payments", path: "/fees" },
 ];
 
-// 2. Warehouse & Wholesale Distribution Portal
+// 4. Warehouse & Wholesale Distribution Portal
 const WAREHOUSE_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Godown & Wholesale", icon: "warehouse", path: "/store/warehouse" },
@@ -87,8 +99,7 @@ const WAREHOUSE_NAV = [
   { label: "Store Counter Inventory", icon: "inventory_2", path: "/store" },
 ];
 
-// 3. Doctor — Strict Consultation-Only Portal (3 tabs only)
-// Rule: Doctor ke pas sirf apna consultation data dikhe
+// 5. Doctor — Strict Chamber EMR & Prescription Portal Only
 const DOCTOR_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Doctor Consultation", icon: "stethoscope", path: "/doctor/queue" },
@@ -96,9 +107,9 @@ const DOCTOR_NAV = [
 ];
 
 const NAV_BY_ROLE = {
-  receptionist: UNIFIED_DESK_NAV,
-  cashier: UNIFIED_DESK_NAV,
-  pharmacist: UNIFIED_DESK_NAV,
+  receptionist: RECEPTIONIST_NAV,
+  cashier: CASHIER_NAV,
+  pharmacist: PHARMACIST_NAV,
   warehouse: WAREHOUSE_NAV,
   doctor: DOCTOR_NAV,
 };
@@ -759,6 +770,8 @@ export default function SidebarLayout({ children }) {
           </button>
 
           <LanguageSwitcher compact={true} />
+
+          <StaffSwitcherWidget />
 
           {user && (
             <div className="flex items-center gap-2 bg-white/80 border border-slate-200/70 rounded-xl px-2.5 sm:px-3 py-1 shadow-xs backdrop-blur-xs min-h-[38px]">

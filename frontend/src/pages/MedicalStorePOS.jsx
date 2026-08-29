@@ -176,7 +176,7 @@ function ReceiptModal({ sale, onClose }) {
 }
 
 export default function MedicalStorePOS() {
-  const { user } = useAuth();
+  const { user, activeCashier } = useAuth();
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryResults, setInventoryResults] = useState([]);
   const [cart, setCart] = useState([]);
@@ -199,6 +199,9 @@ export default function MedicalStorePOS() {
 
   // Active POS Operator Switcher (Single-login multi-cashier workflow)
   const [activeOperator, setActiveOperator] = useState(() => {
+    if (activeCashier && activeCashier.name) {
+      return { id: activeCashier.id, name: activeCashier.name, role: activeCashier.role || "Cashier" };
+    }
     try {
       const saved = typeof localStorage !== "undefined" ? localStorage.getItem("cf_pos_active_operator") : null;
       if (saved) return JSON.parse(saved);
@@ -206,6 +209,12 @@ export default function MedicalStorePOS() {
     if (user?.name) return { id: user.userId || user.id, name: user.name, role: user.role || "Cashier" };
     return { id: "op_default", name: "Counter Staff", role: "Cashier" };
   });
+
+  useEffect(() => {
+    if (activeCashier && activeCashier.name) {
+      setActiveOperator({ id: activeCashier.id, name: activeCashier.name, role: activeCashier.role || "Cashier" });
+    }
+  }, [activeCashier]);
 
   const availableOperators = useMemo(() => {
     const users = dbUsers.getActiveStaff ? dbUsers.getActiveStaff("wh_str") : dbUsers.getAll();

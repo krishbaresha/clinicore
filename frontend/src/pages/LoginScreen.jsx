@@ -29,7 +29,11 @@ export default function LoginScreen() {
     const result = await login(identifier, password);
     setLoading(false);
     if (result && result.success) {
-      navigate("/dashboard", { replace: true });
+      const role = result.user?.role;
+      if (role === "cashier") navigate("/store/pos", { replace: true });
+      else if (role === "receptionist") navigate("/reception/register", { replace: true });
+      else if (role === "doctor") navigate("/doctor/queue", { replace: true });
+      else navigate("/dashboard", { replace: true });
     } else {
       setError(result?.error?.message || "Invalid email/username or password.");
     }

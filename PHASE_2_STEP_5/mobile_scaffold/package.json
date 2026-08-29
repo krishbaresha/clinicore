@@ -5,6 +5,9 @@
   "main": "src/services/approval.service.ts",
   "scripts": {
     "start": "node --experimental-strip-types ../step_5_verification.ts",
+    "start:mobile": "node --experimental-strip-types expo_launcher.ts",
+    "start:phone": "node --experimental-strip-types expo_launcher.ts",
+    "start:expo": "node --experimental-strip-types expo_launcher.ts",
     "test": "node --experimental-strip-types ../step_5_verification.ts"
   },
   "keywords": ["clinicflow", "doctor", "mobile", "scaffold"],

@@ -6,7 +6,7 @@
 
 | Route | Screen Name | Access Level | Description |
 |---|---|---|---|
-| `/login` | Staff Login | Public / Staff | Bootstrap login using Email + Password. |
+| `/login` | Staff Login | Public / Staff | Bootstrap login using Email + Password. Bypasses web landing page in Desktop App mode. |
 | `/dashboard` | Executive Dashboard | Doctor / Admin | Bento-grid showing today's statistics, collections, and queues. |
 | `/reception/register` | Patient Registration | Receptionist / Admin | Register new patients with automatic sequential MR Card Numbers. |
 | `/reception/queue` | Reception Queue | Receptionist / Admin | Live patient token queue manager, turn switcher, and late waiver settings. |
@@ -15,13 +15,14 @@
 | `/patients` | Patients Directory | All Staff | Omni-search directory showing outstanding patient dues (Udhaar). |
 | `/patients/:id` | Patient Profile | All Staff | Interactive timeline of all past visits, HD Lightbox, and pharmacy receipts. |
 | `/fees` | Financial Register | Admin / Accountant | Three-Tab Register: Daily Cash Drawer Z-Report, Expense Journal CashBook, and Analytics. |
-| `/store/pos` | Counter POS | Pharmacist / Admin | Retail sales screen, B2B wholesale invoicing, overall discounts, and party codes. |
+| `/store/pos` | Counter POS | Pharmacist / Cashier | Retail sales screen, B2B wholesale invoicing, overall discounts, party codes, and active cashier switching. |
 | `/store/inventory` | Inventory & Ledger | Pharmacist / Admin | Item catalog, multi-unit ratios, bulk import, and 4-Level Stock Ledger. |
 | `/store/sales-log` | Store Sales Log | Pharmacist / Admin | History of sales invoices, return processing, and receipt reprints. |
 | `/warehouse` | Godown & Logistics | Warehouse Incharge | Internal stock transfers, B2B party accounts, and Godown matrices. |
 | `/purchases` | Supplier Purchases | Warehouse / Admin | Supplier ledger, GRN (Goods Received Notes) logs, and Account registration. |
 | `/receipt-studio` | Thermal Receipt Studio | Super Admin Only | Customize receipt headers, logos, and print templates. |
-| `/admin` | Master Control Panel | Super Admin Only | Strict Master Passcode protected panel for backups, staff audits, and configs. |
+| `/admin` | Master Control Panel | Super Admin Only | Strict Master Passcode protected panel featuring God-Level Audit Panel, backups, staff audits, and configs. |
+| `/god-admin` | God-Level Admin Audit Panel | Super Admin Only | Real-time audit logs: patient registrations, medicine sales, staff cash collections, discounts, and stock write-offs. |
 
 ---
 

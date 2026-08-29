@@ -197,7 +197,24 @@ assert.strictEqual(uploadPayload.doctorId, 'DOC-KASHIF-01');
 assert.strictEqual(uploadPayload.fileName, 'prescription_scan_001.jpg');
 assert.ok(uploadPayload.uploadId.startsWith('UPL-'));
 assert.ok(uploadPayload.checksumSha256.startsWith('SHA256-'));
-console.log('✓ Prescription file validation & upload payload generation verified successfully.');
+// 4. Test Local LAN Phone Pairing Service & QR Payload Generation
+console.log('\n[4/5] Testing Local LAN Phone Pairing Service & Expo QR Code Payload Generation...');
+import { PhonePairingService } from './mobile_scaffold/src/services/phone_pairing.service.ts';
 
-console.log('\n[4/4] Finalizing Verification...');
+const pairingService = new PhonePairingService();
+const lanAddresses = pairingService.getLocalIpAddresses();
+assert.ok(Array.isArray(lanAddresses), 'Local IP list should be an array');
+
+const serverUrl = pairingService.buildServerUrl('192.168.1.105', 5000);
+assert.strictEqual(serverUrl, 'http://192.168.1.105:5000');
+
+const qrPayloadStr = pairingService.generateQrPairingPayload('192.168.1.105', 5000, 'CLINIC-HYD-01');
+const parsedPayload = JSON.parse(qrPayloadStr);
+assert.strictEqual(parsedPayload.type, 'CLINICFLOW_MOBILE_PAIRING');
+assert.strictEqual(parsedPayload.serverUrl, 'http://192.168.1.105:5000');
+assert.strictEqual(parsedPayload.clinicId, 'CLINIC-HYD-01');
+console.log('✓ Local LAN phone pairing service & QR payload generation verified successfully.');
+
+console.log('\n[5/5] Finalizing Verification...');
 console.log('🎉 ALL ASSERTIONS PASSED CLEANLY IN PHASE 2 STEP 5 VERIFICATION SUITE!');
+

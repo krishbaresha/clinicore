@@ -607,3 +607,47 @@ export function assertAuthorized(allowedRoles = [], requireFinancials = false) {
   }
   return check.user;
 }
+
+/**
+ * Shared Counter Active Cashier / Staff Session Manager
+ */
+export function getActiveCashier() {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("cf_active_cashier") : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.id && parsed.name) return parsed;
+    }
+  } catch {}
+  
+  const session = getSession();
+  if (session && session.name) {
+    return {
+      id: session.userId || session.id || "user_admin",
+      name: session.name,
+      role: session.role || "Cashier",
+      pin: "1234",
+    };
+  }
+  return { id: "user_admin", name: "Counter Staff", role: "Cashier", pin: "1234" };
+}
+
+export function setActiveCashier(staff) {
+  if (!staff || !staff.name) return getActiveCashier();
+  const data = {
+    id: staff.id || staff.userId || `staff_${Date.now()}`,
+    name: staff.name || staff.display_label,
+    role: staff.role || "Cashier",
+    pin: staff.pin || "1234",
+    switched_at: new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem("cf_active_cashier", JSON.stringify(data));
+    localStorage.setItem("cf_pos_active_operator", JSON.stringify(data));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("clinicflow_cashier_changed", { detail: data }));
+    }
+  } catch {}
+  return data;
+}
+

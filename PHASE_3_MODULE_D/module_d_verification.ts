@@ -171,7 +171,7 @@ runTest('Passwords & Auth Tokens Redaction', () => {
   const credentialsPayload = {
     username: 'drkashif',
     password: 'SuperSecretPassword123!',
-    authToken: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ',
+    authToken: 'Bearer MOCK_TOKEN_123',
     apiKey: 'sk-prod-9923842938492384',
   };
 

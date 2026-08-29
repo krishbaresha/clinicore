@@ -126,48 +126,78 @@ function AdminProtectedLayout({ children }) {
   );
 }
 
+import { isDesktopApp } from "./utils/desktop.js";
+
+const GodAdminPanel          = lazyWithRetry(() => import("./pages/GodAdminPanel.jsx"));
+
+/**
+ * RoleProtectedRoute — Restricts route access by user role.
+ * Non-permitted roles are redirected to their primary home portal.
+ */
+function RoleProtectedRoute({ allowedRoles, children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+
+  const isSuper = Boolean(user.is_owner || user.role === "admin" || user.role === "owner" || user.userId === "user_admin");
+  if (isSuper) return children;
+
+  if (allowedRoles && Array.isArray(allowedRoles) && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    const roleDefaultRoutes = {
+      cashier: "/store/pos",
+      receptionist: "/reception/register",
+      doctor: "/doctor/queue",
+      pharmacist: "/store/pos",
+      warehouse: "/store/warehouse",
+    };
+    const target = roleDefaultRoutes[user.role] || "/dashboard";
+    return <Navigate to={target} replace />;
+  }
+  return children;
+}
+
 function AppRoutes() {
+  const desktopMode = isDesktopApp();
+
   return (
     <Suspense fallback={<PageLoadingFallback />}>
       <Routes>
-        {/* Public & Admin Landing Pages */}
-        <Route path="/"            element={<LandingPage />} />
-        <Route path="/landing"     element={<LandingPage />} />
+        {/* Public & Admin Landing Pages — Bypassed in Desktop App mode */}
+        <Route path="/"            element={desktopMode ? <Navigate to="/login" replace /> : <LandingPage />} />
+        <Route path="/landing"     element={desktopMode ? <Navigate to="/login" replace /> : <LandingPage />} />
         <Route path="/admin"       element={<DeveloperAdminPanel />} />
         <Route path="/developer-admin" element={<DeveloperAdminPanel />} />
         <Route path="/developer"   element={<DeveloperAdminPanel />} />
+        <Route path="/god-admin"   element={<AdminProtectedLayout><GodAdminPanel /></AdminProtectedLayout>} />
         <Route path="/login"       element={<LoginScreen />} />
 
         {/* ─── High-Security Thermal Receipt Studio (Super Admin Master Passcode Only) ─── */}
         <Route path="/receipt-studio" element={<AdminOrOwnerRoute><ReceiptStudio /></AdminOrOwnerRoute>} />
 
-        {/* ─── Disabled Pages (Can be re-enabled in future if needed) ─── */}
-        {/* <Route path="/clinic"      element={<ClinicPublicPage />} /> */}
-        {/* <Route path="/dr-asif"     element={<ClinicPublicPage />} /> */}
         {/* ─── Public Waiting Room Live Queue Display (TV / Fullscreen Lounge) ─── */}
         <Route path="/live"         element={<PublicLiveQueue />} />
         <Route path="/display"      element={<PublicLiveQueue />} />
         <Route path="/public/queue" element={<PublicLiveQueue />} />
 
-        {/* ─── Reception / Counter Flow ─────────────────────────── */}
-        <Route path="/reception/register"        element={<AuthenticatedLayout><PatientRegistration /></AuthenticatedLayout>} />
-        <Route path="/reception/queue"           element={<AuthenticatedLayout><ReceptionQueue /></AuthenticatedLayout>} />
-        <Route path="/reception/pending-reports" element={<AuthenticatedLayout><PendingReports /></AuthenticatedLayout>} />
+        {/* ─── Reception / Counter Flow (Receptionist / Admin) ─────────────────────────── */}
+        <Route path="/reception/register"        element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['receptionist', 'admin', 'owner', 'manager']}><PatientRegistration /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/reception/queue"           element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['receptionist', 'admin', 'owner', 'manager']}><ReceptionQueue /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/reception/pending-reports" element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['receptionist', 'admin', 'owner', 'manager']}><PendingReports /></RoleProtectedRoute></AuthenticatedLayout>} />
 
-        {/* ─── Doctor Flow ──────────────────────────────────────── */}
-        <Route path="/doctor/queue"                   element={<AuthenticatedLayout><DoctorQueue /></AuthenticatedLayout>} />
-        <Route path="/doctor/consultation/:visitId"   element={<AuthenticatedLayout><ConsultationScreen /></AuthenticatedLayout>} />
+        {/* ─── Doctor Flow (Doctor / Admin) ──────────────────────────────────────── */}
+        <Route path="/doctor/queue"                   element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['doctor', 'admin', 'owner']}><DoctorQueue /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/doctor/consultation/:visitId"   element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['doctor', 'admin', 'owner']}><ConsultationScreen /></RoleProtectedRoute></AuthenticatedLayout>} />
 
-        {/* ─── Medical Store ─────────────────────────────────────── */}
+        {/* ─── Medical Store (Cashier / Pharmacist / Admin) ─────────────────────────── */}
         <Route path="/pos"             element={<Navigate to="/store/pos" replace />} />
-        <Route path="/store/pos"       element={<AuthenticatedLayout><MedicalStorePOS /></AuthenticatedLayout>} />
-        <Route path="/store/purchases" element={<AuthenticatedLayout><SupplierPurchases /></AuthenticatedLayout>} />
+        <Route path="/store/pos"       element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'admin', 'owner', 'manager']}><MedicalStorePOS /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/store/purchases" element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['pharmacist', 'warehouse', 'admin', 'owner', 'manager']}><SupplierPurchases /></RoleProtectedRoute></AuthenticatedLayout>} />
         <Route path="/purchases"       element={<Navigate to="/store/purchases" replace />} />
-        <Route path="/store/sales"     element={<AuthenticatedLayout><MedicalStoreSalesLog /></AuthenticatedLayout>} />
+        <Route path="/store/sales"     element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'admin', 'owner', 'manager']}><MedicalStoreSalesLog /></RoleProtectedRoute></AuthenticatedLayout>} />
         <Route path="/store/sales-log" element={<Navigate to="/store/sales" replace />} />
-        <Route path="/store/warehouse" element={<AuthenticatedLayout><WarehouseManagement /></AuthenticatedLayout>} />
+        <Route path="/store/warehouse" element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['warehouse', 'pharmacist', 'admin', 'owner', 'manager']}><WarehouseManagement /></RoleProtectedRoute></AuthenticatedLayout>} />
         <Route path="/warehouse"       element={<Navigate to="/store/warehouse" replace />} />
-        <Route path="/store"           element={<AuthenticatedLayout><MedicalStoreInventory /></AuthenticatedLayout>} />
+        <Route path="/store"           element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['pharmacist', 'warehouse', 'admin', 'owner', 'manager']}><MedicalStoreInventory /></RoleProtectedRoute></AuthenticatedLayout>} />
 
         {/* ─── Shared / General ──────────────────────────────────── */}
         <Route path="/dashboard"   element={<AuthenticatedLayout><Dashboard /></AuthenticatedLayout>} />

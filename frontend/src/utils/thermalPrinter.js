@@ -6,6 +6,7 @@
 import { formatPatientAge } from "./formatters.js";
 import { CLINIC_LOGO_BASE64 } from "./clinicLogoBase64.js";
 import { getShortVersionBadge } from "./version.js";
+import { getActiveCashier } from "../api/auth.js";
 
 /**
  * Get user customized receipt branding & layout configuration
@@ -235,7 +236,8 @@ export function printThermalReceipt(sale, clinicData = null) {
     hour: "2-digit", minute: "2-digit", hour12: true
   });
 
-  const cashierName = escapeHtml(sale.cashier_name || sale.user_name || "Store Staff");
+  const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
+  const cashierName = escapeHtml(sale.cashier_name || sale.active_cashier_name || (activeCashier?.name) || sale.user_name || "Store Staff");
   const customerName = escapeHtml(sale.patient_name || (sale.visit_id ? "Linked OPD Patient" : "Walk-In-Customer"));
   const invoiceId = escapeHtml(sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
 
@@ -879,6 +881,9 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
     hour: "2-digit", minute: "2-digit", hour12: true
   });
 
+  const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
+  const cashierName = escapeHtml(receipt.cashier_name || receipt.active_cashier_name || (activeCashier?.name) || "Front Desk");
+
   const doctorName = escapeHtml(receipt.doctor?.name || receipt.visit?.doctor_name || "Doctor");
   const clinicAddress = escapeHtml(clinicData?.address || "Lajpat Road, Hyderabad");
   const clinicPhone = escapeHtml(clinicData?.phone || "03473100304");
@@ -956,6 +961,10 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
             <span style="color: #444;">Doctor:</span>
             <span style="font-weight: 900;">${doctorName}</span>
           </div>` : ""}
+          <div class="info-row">
+            <span style="color: #444;">Cashier:</span>
+            <span style="font-weight: 800;">${cashierName}</span>
+          </div>
           <div class="info-row">
             <span style="color: #444;">Patient:</span>
             <span>${patientName}</span>

@@ -25,6 +25,7 @@ import {
   printExecutiveAuditReceipt,
   printExecutiveAuditDocument,
 } from "../utils/thermalPrinter.js";
+import GodAdminPanel from "./GodAdminPanel.jsx";
 
 const DEFAULT_ADMIN_PASSCODE = "KB2026"; // Default Developer Passcode
 const DEFAULT_TAB_PIN = "7860"; // Default Tab Lock PIN
@@ -1221,6 +1222,7 @@ export default function DeveloperAdminPanel() {
   }, [inventoryList]);
 
   const NAV_ITEMS = [
+    { id: "god_audit", label: "God-Level Staff & Audit Stream", icon: "security", badge: "God-Level" },
     { id: "licensing", label: "Software Licensing & Remote Control", icon: "vpn_key", badge: "Control" },
     { id: "audits", label: "Multi-Godown & Clinic Audits", icon: "analytics", badge: "Live" },
     { id: "godowns", label: "Godowns & Multi-Warehouse Portal", icon: "warehouse", count: warehousesList.length, badge: "Stock" },
@@ -2050,6 +2052,15 @@ export default function DeveloperAdminPanel() {
                   </div>
                 );
               })()}
+
+          {/* ================================================================= */}
+          {/* TAB 0: GOD-LEVEL STAFF & AUDIT STREAM                            */}
+          {/* ================================================================= */}
+          {activeTab === "god_audit" && (
+            <div className="animate-fade-in">
+              <GodAdminPanel />
+            </div>
+          )}
 
           {/* ================================================================= */}
           {/* TAB 1: EXECUTIVE MULTI-GODOWN & CLINIC AUDITS (6-Mo / 1-Yr)       */}
