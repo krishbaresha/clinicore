@@ -27,6 +27,8 @@ class AuthController {
         RateLimiter::check('login', 5, 300, $username);
 
         $db = Database::getConnection();
+        self::ensureBootstrapAdminUser($db);
+
         $stmt = $db->prepare("
             SELECT u.id, u.clinic_id, u.name, u.display_label, u.role, u.phone, u.email, 
                    u.password_hash, u.assigned_warehouse_id, u.is_principal_doctor, u.status,
@@ -92,5 +94,28 @@ class AuthController {
             'user'   => $user,
             'clinic' => $clinic
         ]);
+    }
+
+    public static function ensureBootstrapAdminUser(PDO $db): void {
+        try {
+            $count = (int) ($db->query("SELECT COUNT(*) FROM users")->fetchColumn() ?: 0);
+            if ($count === 0) {
+                // Ensure default clinic exists
+                $db->exec("INSERT IGNORE INTO clinics (id, name, logo_url, address, phone, default_consultation_fee, clinic_status, public_notice) 
+                           VALUES ('clinic_001', 'Dr. Muhammad Kashif Khan Clinic', '', 'Hyderabad, Interior Sindh', '03000000000', 500, 'open', '')");
+
+                // Salted SHA-256 hash for default passcode 'KB2026'
+                $salt = 'cf_salt_2026_master';
+                $hash = 'cf_s256$' . $salt . '$' . hash('sha256', $salt . '::' . 'KB2026');
+
+                $stmt = $db->prepare("
+                    INSERT IGNORE INTO users (id, clinic_id, name, display_label, role, phone, email, password_hash, is_principal_doctor, status)
+                    VALUES ('user_admin', 'clinic_001', 'Administrator (Clinic Owner)', 'Administrator', 'admin', '03000000000', 'admin@clinicore.pk', :pass, 1, 'active')
+                ");
+                $stmt->execute([':pass' => $hash]);
+            }
+        } catch (\Throwable $e) {
+            error_log("Bootstrap Admin Notice: " . $e->getMessage());
+        }
     }
 }

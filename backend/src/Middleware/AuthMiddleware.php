@@ -32,6 +32,12 @@ class AuthMiddleware {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user) {
+            \CliniCore\Controllers\AuthController::ensureBootstrapAdminUser($db);
+            $stmt->execute([':id' => $payload['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if (!$user) {
             Response::unauthorized("User account does not exist or has been deactivated.");
         }
 
