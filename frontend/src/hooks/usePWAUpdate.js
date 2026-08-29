@@ -54,12 +54,27 @@ export function usePWAUpdate() {
       if (res.ok) {
         const data = await res.json();
         if (data && data.version) {
+          const parseSemver = (v) => {
+            if (!v) return null;
+            const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)/);
+            return m ? { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) } : null;
+          };
           if (!currentVersionRef.current) {
             currentVersionRef.current = data.version;
-          } else if (data.version !== currentVersionRef.current) {
-            console.log(`[PWA] New version detected on server: ${data.version} (current: ${currentVersionRef.current})`);
-            setNewVersion(data.version);
-            setUpdateAvailable(true);
+          } else {
+            const server = parseSemver(data.version);
+            const client = parseSemver(currentVersionRef.current);
+            let hasSemanticUpdate = false;
+            if (server && client) {
+              hasSemanticUpdate = (server.major !== client.major || server.minor !== client.minor || server.patch !== client.patch);
+            } else {
+              hasSemanticUpdate = data.version !== currentVersionRef.current;
+            }
+            if (hasSemanticUpdate) {
+              console.log(`[PWA] New version detected on server: ${data.version} (current: ${currentVersionRef.current})`);
+              setNewVersion(data.version);
+              setUpdateAvailable(true);
+            }
           }
         }
       }

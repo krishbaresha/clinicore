@@ -63,6 +63,7 @@ class SyncEngine {
     this.lastSyncTime =
       (typeof localStorage !== "undefined" ? localStorage.getItem("cf_last_cloud_sync") : null) || null;
     this.serverTimeOffsetMs = 0;
+    this.enableSnapshotSyncFallback = false;
 
     // Register write hook with db.js for automatic debounced synchronization
     registerCollectionChangeHook(() => {
@@ -263,8 +264,9 @@ class SyncEngine {
     const pendingMutations = allOutbox.filter((m) => m.status === "pending" || m.status === "failed" || m.status === "sending");
 
     if (pendingMutations.length === 0) {
-      // Push snapshot fallback if state changed
-      await this.pushLocalStateToCloud();
+      if (this.enableSnapshotSyncFallback) {
+        await this.pushLocalStateToCloud();
+      }
       return;
     }
 
@@ -518,6 +520,10 @@ class SyncEngine {
           if (typeof localStorage !== "undefined") {
             localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
           }
+          try {
+            window.dispatchEvent(new Event("clinicflow_status_update"));
+            window.dispatchEvent(new Event("storage"));
+          } catch (e) {}
           this.setState(SYNC_FSM_STATES.IDLE);
         }
       } else {

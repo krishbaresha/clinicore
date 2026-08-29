@@ -647,39 +647,173 @@ class SystemController
                 return;
             }
 
-            // Restore each collection into app_cloud_state
+            // Perform backup restoration inside an ACID database transaction to ensure atomicity
             $restoredKeys = [];
-            $upsertStmt = $db->prepare("
-                INSERT INTO app_cloud_state (collection_key, data_json, updated_at)
-                VALUES (:key, :data, NOW())
-                ON DUPLICATE KEY UPDATE data_json = VALUES(data_json), updated_at = NOW()
-            ");
+            Database::transaction(function (PDO $db) use ($collections, &$restoredKeys) {
+                // Disable foreign key constraints during bulk load
+                $db->exec("SET FOREIGN_KEY_CHECKS = 0");
 
-            foreach ($collections as $collectionKey => $collectionData) {
-                // Sanitize key
-                $safeKey = preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)$collectionKey);
-                if (empty($safeKey)) continue;
+                // 1. Restore each collection into JSON app_cloud_state table
+                $upsertStmt = $db->prepare("
+                    INSERT INTO app_cloud_state (collection_key, data_json, updated_at)
+                    VALUES (:key, :data, NOW())
+                    ON DUPLICATE KEY UPDATE data_json = VALUES(data_json), updated_at = NOW()
+                ");
 
-                $dataJson = is_string($collectionData) ? $collectionData : json_encode($collectionData, JSON_UNESCAPED_UNICODE);
-                $upsertStmt->execute([':key' => $safeKey, ':data' => $dataJson]);
-                $restoredKeys[] = $safeKey;
-            }
+                foreach ($collections as $collectionKey => $collectionData) {
+                    $safeKey = preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)$collectionKey);
+                    if (empty($safeKey)) continue;
 
-            // Also restore patients & visits into their dedicated MySQL tables (best-effort)
-            if (isset($collections['cf_patients_v5']) && is_array($collections['cf_patients_v5'])) {
-                try {
-                    $patStmt = $db->prepare("INSERT IGNORE INTO patients (id, clinic_id, data_json, created_at) VALUES (:id, :cid, :data, NOW())");
-                    foreach ($collections['cf_patients_v5'] as $pat) {
-                        if (!empty($pat['id'])) {
-                            $patStmt->execute([
-                                ':id'   => $pat['id'],
-                                ':cid'  => $pat['clinic_id'] ?? 'clinic_001',
-                                ':data' => json_encode($pat, JSON_UNESCAPED_UNICODE),
+                    $dataJson = is_string($collectionData) ? $collectionData : json_encode($collectionData, JSON_UNESCAPED_UNICODE);
+                    $upsertStmt->execute([':key' => $safeKey, ':data' => $dataJson]);
+                    $restoredKeys[] = $safeKey;
+                }
+
+                // 2. Restore Relational Database State
+
+                // A. Clinics
+                if (isset($collections['cf_clinic_v5'])) {
+                    $db->exec("DELETE FROM clinics");
+                    $clinic = $collections['cf_clinic_v5'];
+                    if (isset($clinic['id'])) {
+                        $clinic = [$clinic];
+                    }
+                    if (is_array($clinic)) {
+                        $stmt = $db->prepare("INSERT INTO clinics (id, name, logo_url, address, phone, default_consultation_fee, clinic_status, public_notice) 
+                                              VALUES (:id, :name, :logo_url, :address, :phone, :default_consultation_fee, :clinic_status, :public_notice)");
+                        foreach ($clinic as $c) {
+                            $stmt->execute([
+                                ':id' => $c['id'],
+                                ':name' => $c['name'] ?? 'Clinic',
+                                ':logo_url' => $c['logo_url'] ?? '',
+                                ':address' => $c['address'] ?? '',
+                                ':phone' => $c['phone'] ?? '',
+                                ':default_consultation_fee' => $c['default_consultation_fee'] ?? 300,
+                                ':clinic_status' => $c['clinic_status'] ?? 'open',
+                                ':public_notice' => $c['public_notice'] ?? ''
                             ]);
                         }
                     }
-                } catch (\Throwable) {}
-            }
+                }
+
+                // B. Warehouses
+                if (isset($collections['cf_warehouses_v6']) && is_array($collections['cf_warehouses_v6'])) {
+                    $db->exec("DELETE FROM warehouses");
+                    $stmt = $db->prepare("INSERT INTO warehouses (id, clinic_id, name, code, address, status, notes) 
+                                          VALUES (:id, :clinic_id, :name, :code, :address, :status, :notes)");
+                    foreach ($collections['cf_warehouses_v6'] as $w) {
+                        $stmt->execute([
+                            ':id' => $w['id'],
+                            ':clinic_id' => $w['clinic_id'] ?? 'clinic_001',
+                            ':name' => $w['name'] ?? '',
+                            ':code' => $w['code'] ?? '',
+                            ':address' => $w['address'] ?? '',
+                            ':status' => $w['status'] ?? 'active',
+                            ':notes' => $w['notes'] ?? ''
+                        ]);
+                    }
+                }
+
+                // C. Users
+                if (isset($collections['cf_users_v5']) && is_array($collections['cf_users_v5'])) {
+                    $db->exec("DELETE FROM users");
+                    $stmt = $db->prepare("INSERT INTO users (id, clinic_id, name, display_label, role, phone, email, password_hash, assigned_warehouse_id, is_principal_doctor, status) 
+                                          VALUES (:id, :clinic_id, :name, :display_label, :role, :phone, :email, :password_hash, :assigned_warehouse_id, :is_principal_doctor, :status)");
+                    foreach ($collections['cf_users_v5'] as $u) {
+                        $passHash = $u['password_hash'] ?? $u['password'] ?? '';
+                        $stmt->execute([
+                            ':id' => $u['id'],
+                            ':clinic_id' => $u['clinic_id'] ?? 'clinic_001',
+                            ':name' => $u['name'] ?? '',
+                            ':display_label' => $u['display_label'] ?? $u['name'] ?? '',
+                            ':role' => $u['role'] ?? 'staff',
+                            ':phone' => $u['phone'] ?? '',
+                            ':email' => $u['email'] ?? '',
+                            ':password_hash' => $passHash,
+                            ':assigned_warehouse_id' => $u['assigned_warehouse_id'] ?? null,
+                            ':is_principal_doctor' => !empty($u['is_principal_doctor']) ? 1 : 0,
+                            ':status' => $u['status'] ?? 'active'
+                        ]);
+                    }
+                }
+
+                // D. Patients
+                if (isset($collections['cf_patients_v5']) && is_array($collections['cf_patients_v5'])) {
+                    $db->exec("DELETE FROM patients");
+                    $stmt = $db->prepare("INSERT INTO patients (id, clinic_id, mr_number, full_name, relation_name, relation_type, phone, cnic, age, gender, address, city, notes) 
+                                          VALUES (:id, :clinic_id, :mr_number, :full_name, :relation_name, :relation_type, :phone, :cnic, :age, :gender, :address, :city, :notes)");
+                    foreach ($collections['cf_patients_v5'] as $p) {
+                        $stmt->execute([
+                            ':id' => $p['id'],
+                            ':clinic_id' => $p['clinic_id'] ?? 'clinic_001',
+                            ':mr_number' => $p['mr_number'] ?? '',
+                            ':full_name' => $p['full_name'] ?? $p['name'] ?? 'Unnamed',
+                            ':relation_name' => $p['relation_name'] ?? null,
+                            ':relation_type' => $p['relation_type'] ?? 'father',
+                            ':phone' => $p['phone'] ?? '',
+                            ':cnic' => $p['cnic'] ?? null,
+                            ':age' => isset($p['age']) ? (int)$p['age'] : null,
+                            ':gender' => $p['gender'] ?? 'male',
+                            ':address' => $p['address'] ?? null,
+                            ':city' => $p['city'] ?? 'Hyderabad',
+                            ':notes' => $p['notes'] ?? null
+                        ]);
+                    }
+                }
+
+                // E. Visits
+                if (isset($collections['cf_visits_v5']) && is_array($collections['cf_visits_v5'])) {
+                    $db->exec("DELETE FROM visits");
+                    $stmt = $db->prepare("INSERT INTO visits (id, clinic_id, patient_id, doctor_id, token_number, queue_date, status, fee_amount, net_fee, symptoms, diagnosis, notes) 
+                                          VALUES (:id, :clinic_id, :patient_id, :doctor_id, :token_number, :queue_date, :status, :fee_amount, :net_fee, :symptoms, :diagnosis, :notes)");
+                    foreach ($collections['cf_visits_v5'] as $v) {
+                        $stmt->execute([
+                            ':id' => $v['id'],
+                            ':clinic_id' => $v['clinic_id'] ?? 'clinic_001',
+                            ':patient_id' => $v['patient_id'] ?? 'pat_unknown',
+                            ':doctor_id' => $v['doctor_id'] ?? 'unknown_doc',
+                            ':token_number' => $v['token_number'] ?? 1,
+                            ':queue_date' => $v['queue_date'] ?? date('Y-m-d'),
+                            ':status' => $v['status'] ?? 'waiting',
+                            ':fee_amount' => $v['fee_amount'] ?? 500,
+                            ':net_fee' => $v['net_fee'] ?? 500,
+                            ':symptoms' => $v['symptoms'] ?? null,
+                            ':diagnosis' => $v['diagnosis'] ?? null,
+                            ':notes' => $v['notes'] ?? null
+                        ]);
+                    }
+                }
+
+                // F. Inventory
+                if (isset($collections['cf_inventory_v5']) && is_array($collections['cf_inventory_v5'])) {
+                    $db->exec("DELETE FROM inventory");
+                    $stmt = $db->prepare("INSERT INTO inventory (id, clinic_id, sku_code, name, generic_name, category, manufacturing_company, box_label, unit_label, units_per_box, purchase_price_box, purchase_price_unit, retail_price_unit, min_reorder_qty, status, notes) 
+                                          VALUES (:id, :clinic_id, :sku_code, :name, :generic_name, :category, :manufacturing_company, :box_label, :unit_label, :units_per_box, :purchase_price_box, :purchase_price_unit, :retail_price_unit, :min_reorder_qty, :status, :notes)");
+                    foreach ($collections['cf_inventory_v5'] as $i) {
+                        $stmt->execute([
+                            ':id' => $i['id'],
+                            ':clinic_id' => $i['clinic_id'] ?? 'clinic_001',
+                            ':sku_code' => $i['sku_code'] ?? '',
+                            ':name' => $i['name'] ?? '',
+                            ':generic_name' => $i['generic_name'] ?? null,
+                            ':category' => $i['category'] ?? 'General',
+                            ':manufacturing_company' => $i['manufacturing_company'] ?? null,
+                            ':box_label' => $i['box_label'] ?? 'Packs',
+                            ':unit_label' => $i['unit_label'] ?? 'Units',
+                            ':units_per_box' => $i['units_per_box'] ?? 1,
+                            ':purchase_price_box' => $i['purchase_price_box'] ?? 0,
+                            ':purchase_price_unit' => $i['purchase_price_unit'] ?? 0,
+                            ':retail_price_unit' => $i['retail_price_unit'] ?? 0,
+                            ':min_reorder_qty' => $i['min_reorder_qty'] ?? 10,
+                            ':status' => $i['status'] ?? 'active',
+                            ':notes' => $i['notes'] ?? null
+                        ]);
+                    }
+                }
+
+                // Re-enable constraints
+                $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+            });
 
             Response::success([
                 'restored'        => true,

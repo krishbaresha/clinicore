@@ -33,9 +33,24 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Phase 20 — Real-Time Backup Restore & Scoped Portals Deploy Hardened
-- **Last worked on:** Scoped WAREHOUSE_NAV (removed fees) & Dashboard elements (removed queue metrics, token registers, financial cards) for warehouse staff; fixed syncEngine unauthorized (401) errors by injecting JWT Authorization headers; resolved backup reload race condition by awaiting syncEngine pushes before page refresh.
+- **Phase:** Phase 21 — Server-Authoritative Sync and Data Integrity Upgraded
+- **Last worked on:** Decoupled `SyncController` on VPS to delegate to `MutationService`; implemented relational mutations for all core business entities; enabled frontend incremental outbox queuing in `db.js` and blocked automatic snapshot overrides; configured multi-client auto-propagation rendering and SemVer update checks.
 - **Currently blocked on:** None.
+
+### Session: 2026-08-29 (Part 72) — Server-Authoritative Sync and Data Integrity Upgrade
+**Task worked on:**
+1. **Backend Decoupling & Relational Mutations:**
+   - Engineered `MutationService.php` to handle domain-specific mutations inside MySQL transaction blocks for patients, visits, sales, purchases, expenses, and settings, replacing generic JSON snapshot storage.
+   - Refactored `SyncController.php` to delegate to `MutationService::mutate()` and cache original responses for idempotency.
+2. **Frontend Outbox Mutations & PWA updates:**
+   - Modified all mutating methods in `db.js` to enqueue mutations to `dbOutbox` queue.
+   - Disabled automatic fallback full snapshot uploads in `syncEngine.js` online loop, keeping them only as a manually controlled migration/recovery mechanism.
+   - Updated `syncEngine.js` to dispatch state update events upon successful pulls so all connected clients propagate changes instantly.
+   - Refactored `usePWAUpdate.js` to compare SemVer major/minor/patch numbers, ignoring differences in string build metadata.
+3. **Verification:**
+   - All 616 automated tests passed cleanly.
+   - Deep AST scan verified hook and symbol integrity.
+   - Clean Vite production bundle compilation.
 
 ### Session: 2026-08-29 (Part 71) — Real-Time Backup Restore & Scoped Portals Deploy
 **Task worked on:**

@@ -39,7 +39,23 @@ class AuthController {
         $stmt->execute([':u1' => $username, ':u2' => $username, ':u3' => $username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$user || !password_verify($password, $user['password_hash'])) {
+        $isMatch = false;
+        if ($user) {
+            $dbHash = $user['password_hash'];
+            if (str_starts_with($dbHash, 'cf_s256$')) {
+                $parts = explode('$', $dbHash);
+                if (count($parts) === 3) {
+                    $salt = $parts[1];
+                    $targetDigest = $parts[2];
+                    $computedDigest = hash('sha256', $salt . '::' . $password);
+                    $isMatch = hash_equals($targetDigest, $computedDigest);
+                }
+            } else {
+                $isMatch = password_verify($password, $dbHash);
+            }
+        }
+
+        if (!$user || !$isMatch) {
             RateLimiter::hit('login', 300, $username);
             Response::error('INVALID_CREDENTIALS', 'Invalid username or password.', 401);
         }
