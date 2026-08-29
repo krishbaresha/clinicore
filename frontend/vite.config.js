@@ -74,6 +74,9 @@ export default defineConfig({
     sourcemap: false,
   },
   server: {
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
     proxy: {
       '/api': {
         target: 'https://api.clinicore.me',
