@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 100 — Direct Hostinger VPS Gateway Link (`https://api.clinicore.me`) (`v2.5.0-release` Certified)
-- **Last worked on:** Updated `resendGateway.js` so that all local dev and production desktop/web instances target the Hostinger VPS endpoint `https://api.clinicore.me` directly. Eliminated local port dependencies (`localhost:5000`), matching production client desktop behavior 100%.
+- **Phase:** Milestone 101 — Local Storage Config Precedence & Zero-Wipe Persistence (`v2.5.0-release` Certified)
+- **Last worked on:** Fixed bug where `loadData()` in `DeveloperAdminPanel.jsx` was overwriting locally saved Resend API keys and automation frequency with empty remote data. Guaranteed local storage & SQLite database precedence in `dbClinic.get()` and `loadData()`.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 101) — Local Storage Config Precedence & Zero-Wipe Persistence
+
+**Task worked on:**
+Ensured Resend API Key, Recipient Email, Automation Schedule, and WhatsApp Gateway Number stay 100% saved across refreshes and restarts in Desktop App mode.
+
+**What was built/changed:**
+1. Modified `frontend/src/api/db.js`: Enhanced `dbClinic.get()` to preserve local storage values for `resend_api_key`, `notification_email`, `report_frequency`, and `whatsapp_gateway_no` (`c5f468a`).
+2. Modified `frontend/src/pages/DeveloperAdminPanel.jsx`: Updated `loadData()` to give local saved form values priority so empty remote server responses never wipe out saved desktop credentials.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`c5f468a`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 100) — Direct Hostinger VPS Gateway Link (`https://api.clinicore.me`)
 
