@@ -7,7 +7,28 @@ import { useState, useEffect } from "react";
  */
 export default function PWAUpdateBanner() {
   const { updateAvailable, isUpdating, applyUpdate, newVersion } = usePWAUpdate();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      const dismissedVer = localStorage.getItem("cf_dismissed_version");
+      return dismissedVer && (dismissedVer === newVersion || dismissedVer === "2.5.2");
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismiss = () => {
+    try {
+      if (newVersion) localStorage.setItem("cf_dismissed_version", newVersion);
+    } catch (_) {}
+    setDismissed(true);
+  };
+
+  const handleApply = () => {
+    try {
+      if (newVersion) localStorage.setItem("cf_dismissed_version", newVersion);
+    } catch (_) {}
+    applyUpdate();
+  };
 
   if (!updateAvailable || dismissed) {
     return null;
@@ -32,7 +53,7 @@ export default function PWAUpdateBanner() {
                 </span>
               </h4>
               <button
-                onClick={() => setDismissed(true)}
+                onClick={handleDismiss}
                 className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-800 cursor-pointer"
                 title="Dismiss"
               >
@@ -48,14 +69,14 @@ export default function PWAUpdateBanner() {
 
         <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800">
           <button
-            onClick={() => setDismissed(true)}
+            onClick={handleDismiss}
             className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
           >
             Later
           </button>
 
           <button
-            onClick={applyUpdate}
+            onClick={handleApply}
             disabled={isUpdating}
             className="px-4 py-1.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-500/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
