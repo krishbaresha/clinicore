@@ -398,6 +398,52 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Stage / Prepare Encrypted Backup on VPS
+    if (url.pathname === "/api/v1/system/prepare-backup" && req.method === "POST") {
+      try {
+        const { filename, content } = payload;
+        if (!filename || !content) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: false, error: "Missing filename or content" }));
+          return;
+        }
+        const BACKUPS_DIR = path.join(DATA_DIR, "backups");
+        if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+        const filePath = path.join(BACKUPS_DIR, path.basename(filename));
+        fs.writeFileSync(filePath, Buffer.from(content, "base64"));
+        const download_url = `/api/v1/system/download-backup?file=${encodeURIComponent(path.basename(filename))}`;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, data: { download_url, filename } }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+      return;
+    }
+
+    // Download Backup File
+    if (url.pathname === "/api/v1/system/download-backup" && req.method === "GET") {
+      const fileName = url.searchParams.get("file");
+      if (!fileName) {
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("Missing file parameter");
+        return;
+      }
+      const BACKUPS_DIR = path.join(DATA_DIR, "backups");
+      const safePath = path.join(BACKUPS_DIR, path.basename(fileName));
+      if (fs.existsSync(safePath)) {
+        res.writeHead(200, {
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition": `attachment; filename="${path.basename(fileName)}"`,
+        });
+        res.end(fs.readFileSync(safePath));
+      } else {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Backup file not found on VPS storage");
+      }
+      return;
+    }
+
     // Fallback 404
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Route not found" }));
@@ -421,6 +467,8 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
       console.log(`[Autonomous Backup] Skipped: No Resend API Key configured yet.`);
       return;
     }
+
+    const now = new Date();
 
     // Use Pakistan Standard Time (Asia/Karachi, UTC+5) for accurate clinic scheduling
     const pktFormatter = new Intl.DateTimeFormat("en-US", {

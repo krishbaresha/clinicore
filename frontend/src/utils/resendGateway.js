@@ -37,11 +37,13 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
   // ⚠️ Direct api.resend.com is intentionally NOT attempted:
   //    Tauri WebView DNS cannot reliably resolve external hostnames → EAI_AGAIN
   //    VPS backend relays to Resend with full internet access (server-side)
+  const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
   const relayUrls = [
-    "http://127.0.0.1:5000/api/v1/system/send-email",
-    "https://api.clinicore.me/api/v1/system/send-email",
-    "https://clinicore.me/api/v1/system/send-email",
+    ...(typeof window !== "undefined" && window.location.origin && !isLocal ? [`${window.location.origin}/api/v1/system/send-email`] : []),
     "/api/v1/system/send-email",
+    "http://127.0.0.1:5000/api/v1/system/send-email",
+    "https://clinicore.me/api/v1/system/send-email",
   ];
 
   const emailBody = JSON.stringify({
@@ -58,7 +60,7 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
   for (const url of relayUrls) {
     try {
       const controller = new AbortController();
-      // 4-second hard timeout per relay — prevents Desktop hanging on unreachable endpoints
+      // 4-second hard timeout per relay — prevents Desktop/Mobile hanging on unreachable endpoints
       const timeoutId = setTimeout(() => controller.abort(), 4000);
 
       const relayRes = await fetch(url, {
@@ -79,9 +81,8 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
         };
       }
 
-      // 4xx from relay = Resend API itself rejected (bad key, unverified domain, etc.)
-      // Stop immediately — no point trying other relay endpoints
-      if (relayRes.status >= 400 && relayRes.status < 500) {
+      // Explicit rejection from Resend API (invalid key, bad format, domain issue)
+      if (relayRes.status === 400 || relayRes.status === 401 || relayRes.status === 403 || relayRes.status === 422) {
         const errMsg =
           relayData?.error ||
           relayData?.message ||
@@ -91,9 +92,6 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
 
       if (relayData?.error) lastError = relayData.error;
     } catch (err) {
-      // AbortError = 4s timeout (endpoint unreachable / Desktop DNS issue)
-      // TypeError  = network unreachable
-      // Both are expected for inactive relays — silently try next
       if (!lastError && err.name !== "AbortError") {
         lastError = err.message;
       }
