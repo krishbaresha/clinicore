@@ -184,7 +184,10 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
     doc.write(sanitizedHtml);
     doc.close();
 
+    let isCleanedUp = false;
     const cleanup = () => {
+      if (isCleanedUp) return;
+      isCleanedUp = true;
       setTimeout(() => {
         try {
           if (iframe && iframe.parentNode) {
