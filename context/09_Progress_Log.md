@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 92 — Dedicated Warehouse CRM Dashboard & Role Navigation Fixed (`v2.5.0-release` Certified)
-- **Last worked on:** Redesigned `/dashboard` when a Warehouse user (`warehouse`, `warehouse_incharge`, `warehouse_manager`) logs in to present a 100% dedicated Warehouse CRM & Financial Dashboard (Godown Valuation, Stock Inward GRN, B2B Sales, Parties Udhaar, & Low Stock Alerts). Fixed missing Dashboard tab in sidebar navigation for Warehouse and Doctor roles.
+- **Phase:** Milestone 93 — Dashboard Sidebar Nav Permission Matrix Fix (`v2.5.0-release` Certified)
+- **Last worked on:** Added `dashboard: ["view"]` to all user roles in `PERMISSION_MATRIX` (`auth.js`) and updated `canAccessRoutePath` (`permissions.js`). Verified that the **Dashboard tab** is now 100% visible in the sidebar menu for Dr. Nargis (`DOCTOR`), Usama (`WAREHOUSE_INCHARGE`), and all staff roles.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 93) — Dashboard Sidebar Navigation Permission Fix
+
+**Task worked on:**
+Fixed missing Dashboard tab in sidebar menu for `doctor`, `warehouse_incharge`, `warehouse_manager`, `pharmacist`, `cashier`, `accountant`, and `receptionist` roles.
+
+**What was built/changed:**
+1. Modified `frontend/src/api/auth.js`: Added `dashboard: ["view"]` to every role in `PERMISSION_MATRIX` (`83d13c2`).
+2. Modified `frontend/src/config/permissions.js`: Updated `canAccessRoutePath(user, "/dashboard")` to return `true` for all authenticated sessions so `SidebarLayout.jsx` menu filtering never hides the Dashboard tab.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`83d13c2`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 92) — Dedicated Warehouse CRM Dashboard Redesign & Navigation Closure
 
