@@ -8,20 +8,6 @@ import { useState, useEffect } from "react";
 export default function PWAUpdateBanner() {
   const { updateAvailable, isUpdating, applyUpdate, newVersion } = usePWAUpdate();
   const [dismissed, setDismissed] = useState(false);
-  const [countdown, setCountdown] = useState(5);
-  const [paused, setPaused] = useState(false);
-
-  useEffect(() => {
-    if (!updateAvailable || dismissed || paused || isUpdating) return;
-    if (countdown <= 0) {
-      applyUpdate();
-      return;
-    }
-    const timer = setTimeout(() => {
-      setCountdown((prev) => prev - 1);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [updateAvailable, dismissed, paused, countdown, isUpdating, applyUpdate]);
 
   if (!updateAvailable || dismissed) {
     return null;
@@ -32,7 +18,7 @@ export default function PWAUpdateBanner() {
       <div className="bg-slate-900/98 backdrop-blur-xl text-white border-2 border-teal-500 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.7)] flex flex-col gap-3 ring-2 ring-teal-500/30">
         <div className="flex items-start gap-3">
           <div className="w-11 h-11 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center shrink-0 text-teal-400">
-            <span className="material-symbols-outlined text-2xl animate-spin">
+            <span className="material-symbols-outlined text-2xl animate-spin-slow">
               sync
             </span>
           </div>
@@ -40,14 +26,14 @@ export default function PWAUpdateBanner() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <h4 className="font-bold text-sm text-slate-100 flex items-center gap-1.5">
-                <span>Auto-Update In Progress</span>
-                <span className="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40 animate-pulse">
-                  {countdown > 0 ? `Applying in ${countdown}s` : 'Updating now...'}
+                <span>Update Available</span>
+                <span className="text-[10px] uppercase font-bold bg-teal-500/30 text-teal-300 px-2 py-0.5 rounded-full border border-teal-500/40">
+                  {newVersion || "v2.5.2"} Live
                 </span>
               </h4>
               <button
-                onClick={() => { setPaused(true); setDismissed(true); }}
-                className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-800"
+                onClick={() => setDismissed(true)}
+                className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-800 cursor-pointer"
                 title="Dismiss"
               >
                 <span className="material-symbols-outlined text-lg leading-none">close</span>
@@ -55,25 +41,17 @@ export default function PWAUpdateBanner() {
             </div>
 
             <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              New verified update <strong className="text-teal-400">{newVersion || "v2.5.1"}</strong> is live. Software will auto-restart to apply all fixes without losing any data.
+              A newer verified release <strong className="text-teal-400">{newVersion || "v2.5.2"}</strong> is available with live fixes. Click below to upgrade seamlessly without losing any offline data.
             </p>
           </div>
         </div>
 
-        {/* Visual Progress Bar for 5s Countdown */}
-        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-          <div 
-            className="bg-gradient-to-r from-teal-400 to-emerald-400 h-full transition-all duration-1000 ease-linear"
-            style={{ width: `${Math.max(0, (5 - countdown) / 5) * 100}%` }}
-          />
-        </div>
-
-        <div className="flex items-center justify-end gap-2 pt-1">
+        <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800">
           <button
-            onClick={() => setPaused(!paused)}
-            className="px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            onClick={() => setDismissed(true)}
+            className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
           >
-            {paused ? "Resume Auto-Update" : "Pause"}
+            Later
           </button>
 
           <button
@@ -89,7 +67,7 @@ export default function PWAUpdateBanner() {
             ) : (
               <>
                 <span className="material-symbols-outlined text-sm">rocket_launch</span>
-                <span>Update Now ({countdown}s)</span>
+                <span>Update Now</span>
               </>
             )}
           </button>

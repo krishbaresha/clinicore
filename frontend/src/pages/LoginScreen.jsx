@@ -363,9 +363,13 @@ export default function LoginScreen() {
           </main>
         )}
 
-        <footer className="w-full text-center py-2 text-[10px] text-slate-400 font-semibold border-t border-slate-100 flex items-center justify-between mt-4">
-          <span>H/Dr. Asif Ashraf Clinic</span>
-          <span className="text-teal-700/80">
+        <footer className="w-full text-center py-2.5 text-[11px] text-slate-400 font-semibold border-t border-slate-100 flex items-center justify-between mt-4">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+            <span className="text-slate-600 font-bold">CliniCore v{(typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.2"}</span>
+            <span className="text-[10px] text-slate-400 font-mono">({(typeof globalThis !== "undefined" && globalThis.__APP_BUILD_ID__) || "20260830"})</span>
+          </span>
+          <span className="text-teal-700 font-semibold">
             Developer: Krish Baresha Softwares | 03142291356
           </span>
         </footer>
