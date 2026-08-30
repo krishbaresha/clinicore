@@ -5681,7 +5681,6 @@ export function importFullDatabase(backupInput, options = { skipCheckpoint: fals
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          passcode: storageDriver.getItem("cf_admin_master_passcode") || "KB2026",
           collections: collectionsSnapshot,
           metadata: { restored_at: new Date().toISOString(), source: "ui_backup_upload" }
         })

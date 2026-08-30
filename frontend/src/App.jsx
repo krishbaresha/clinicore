@@ -226,6 +226,25 @@ export default function App() {
         ]);
         initDB();
         
+        // ─── Hydrate VPS-authoritative passcodes into localStorage on every startup ───
+        // This ensures admin_master_passcode & tab_pin are always synced from VPS
+        (async () => {
+          try {
+            const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+              (typeof window !== "undefined" && window.location.hostname !== "localhost" ? "https://api.clinicore.me" : "");
+            if (vpsApiUrl) {
+              const cfgRes = await fetch(`${vpsApiUrl}/api/v1/system/config`, { cache: "no-store" });
+              if (cfgRes.ok) {
+                const cfgJson = await cfgRes.json();
+                const vpsPass = (cfgJson?.data?.admin_master_passcode || "").trim();
+                const vpsPin  = (cfgJson?.data?.tab_pin || "").trim();
+                if (vpsPass) localStorage.setItem("cf_admin_master_passcode", vpsPass);
+                if (vpsPin)  localStorage.setItem("cf_admin_tab_pin", vpsPin);
+              }
+            }
+          } catch (_) { /* silent — offline is fine */ }
+        })();
+
         // WhatsApp-like cloud first sync hydration on startup (non-blocking in background)
         Promise.race([
           syncEngine.pullLatestCloudState(),

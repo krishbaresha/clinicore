@@ -34,8 +34,8 @@ function saveJson(file, data) {
 }
 
 let systemConfig = loadJson(CONFIG_FILE, {
-  admin_master_passcode: "KB2026",
-  tab_pin: "0000",
+  admin_master_passcode: "",
+  tab_pin: "",
   tab_security_json: "{}",
 });
 
@@ -130,11 +130,14 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Verify Passcode
+    // Verify Passcode — VPS is sole authority, no hardcoded fallback
     if (url.pathname === "/api/v1/system/verify-passcode" && req.method === "POST") {
       const { passcode } = payload;
-      const currentPasscode = systemConfig.admin_master_passcode || "KB2026";
-      if (passcode === currentPasscode) {
+      const currentPasscode = (systemConfig.admin_master_passcode || "").trim();
+      if (!currentPasscode) {
+        res.writeHead(503, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: { message: "Admin passcode not configured on VPS. Please set it via Admin Panel." } }));
+      } else if (passcode === currentPasscode) {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, data: { token: "node_admin_jwt_token_" + Date.now() } }));
       } else {
@@ -251,11 +254,21 @@ const server = http.createServer((req, res) => {
           systemConfig.license = { ...(systemConfig.license || {}), ...payload.license };
         }
         if (clinicData.resend_api_key) systemConfig.resend_api_key = clinicData.resend_api_key;
+        // ─── CRITICAL: Save admin_master_passcode & tab_pin at root level ───
+        // These come directly in payload when Admin Panel saves Security Config
+        if (payload.admin_master_passcode) systemConfig.admin_master_passcode = payload.admin_master_passcode.trim();
+        if (payload.tab_pin) systemConfig.tab_pin = payload.tab_pin.trim();
+        if (payload.tab_security_json) systemConfig.tab_security_json = payload.tab_security_json;
         saveJson(CONFIG_FILE, systemConfig);
+        console.log(`[Config Update] admin_master_passcode and tab_pin updated on VPS.`);
       }
       const responseData = {
         success: true,
         data: {
+          // Return security config so frontend can hydrate on pull
+          admin_master_passcode: systemConfig.admin_master_passcode || "",
+          tab_pin: systemConfig.tab_pin || "",
+          tab_security_json: systemConfig.tab_security_json || "{}",
           clinic: systemConfig.clinic || {
             id: "clinic_001",
             name: "H/Dr.Asif Ashraf Khan Clinic Medical Store",
@@ -287,7 +300,8 @@ const server = http.createServer((req, res) => {
         if (payload.clinic) systemConfig.clinic = { ...(systemConfig.clinic || {}), ...payload.clinic };
         saveJson(CONFIG_FILE, systemConfig);
 
-        await executeAutonomousBackup({ force: true, triggerReason: "Admin On-Demand Web/Desktop Click" });
+        
+         executeAutonomousBackup({ force: true, triggerReason: "Admin On-Demand Web/Desktop Click" });
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, message: "VPS autonomous backup triggered and dispatched successfully!" }));
       } catch (err) {

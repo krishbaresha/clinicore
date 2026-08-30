@@ -293,6 +293,19 @@ export default function DeveloperAdminPanel() {
       const res = await fetch(`${apiUrl}/api/v1/system/config`);
       if (res.ok) {
         const json = await res.json();
+        if (json?.success && json?.data) {
+          // ─── CRITICAL: Hydrate VPS-authoritative passcodes into localStorage IMMEDIATELY ───
+          const vpsAdminPass = (json.data.admin_master_passcode || "").trim();
+          const vpsTabPin = (json.data.tab_pin || "").trim();
+          if (vpsAdminPass) {
+            localStorage.setItem("cf_admin_master_passcode", vpsAdminPass);
+            setAdminPasscode(vpsAdminPass);
+          }
+          if (vpsTabPin) {
+            localStorage.setItem("cf_admin_tab_pin", vpsTabPin);
+            setTabPin(vpsTabPin);
+          }
+        }
         if (json?.success && json?.data?.clinic) {
           const sClinic = json.data.clinic;
           setActiveClinic(sClinic);
@@ -508,11 +521,11 @@ export default function DeveloperAdminPanel() {
       return;
     }
 
-    // 2. Offline / Local Passcode Fallback (Supports synchronized passcode & canonical master key)
+    // 2. Offline / Local Passcode Fallback (Only VPS-synced value is accepted — no hardcoded defaults)
     const currentAdminPasscode = (getAdminPasscode() || "").trim();
-    const isMasterMatch = (currentAdminPasscode && input === currentAdminPasscode) ||
-                          input === "KB2026" ||
-                          input === (localStorage.getItem("cf_admin_master_passcode") || "").trim();
+    const isMasterMatch = currentAdminPasscode.length > 0 &&
+                          (input === currentAdminPasscode ||
+                           input === (localStorage.getItem("cf_admin_master_passcode") || "").trim());
 
     if (isMasterMatch) {
       sessionStorage.setItem("cf_dev_auth", "true");

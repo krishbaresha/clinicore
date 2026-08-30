@@ -85,10 +85,14 @@ export default function MedicalStoreSalesLog() {
 
   function handleConfirmVoid(e) {
     e.preventDefault();
-    const currentTabPin = typeof localStorage !== "undefined" ? localStorage.getItem("cf_admin_tab_pin") || "7860" : "7860";
-    const isMasterValid = adminPin.trim() === currentTabPin.trim() || (typeof localStorage !== "undefined" && adminPin.trim() === (localStorage.getItem("cf_admin_master_passcode") || "KB2026").trim());
+    // Pull VPS-synced values only — no hardcoded fallback PINs
+    const currentTabPin = (typeof localStorage !== "undefined" ? localStorage.getItem("cf_admin_tab_pin") : "") || "";
+    const currentMasterPasscode = (typeof localStorage !== "undefined" ? localStorage.getItem("cf_admin_master_passcode") : "") || "";
+    const isMasterValid =
+      (currentTabPin && adminPin.trim() === currentTabPin.trim()) ||
+      (currentMasterPasscode && adminPin.trim() === currentMasterPasscode.trim());
     if (!isMasterValid) {
-      setVoidError("Invalid Admin PIN / Master Passcode. Only the principal doctor or authorized manager can void sales.");
+      setVoidError("Invalid Admin PIN / Master Passcode. Please use your VPS-configured PIN.");
       return;
     }
     if (!voidReason.trim()) {

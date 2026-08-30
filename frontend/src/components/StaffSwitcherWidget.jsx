@@ -45,11 +45,19 @@ export default function StaffSwitcherWidget() {
     if (e) e.preventDefault();
     if (!selectedStaff) return;
 
-    const expectedPin = String(selectedStaff.pin || selectedStaff.cashier_pin || "1234").trim();
-    const entered = pinInput.trim();
-
-    if (entered && entered !== expectedPin && entered !== "1234" && entered !== "7860" && entered !== "KB2026") {
-      setErrorMsg("Incorrect 4-digit PIN. Default PIN is 1234.");
+    // Only VPS-synced staff PIN is accepted — no hardcoded backdoor defaults
+    const expectedPin = String(selectedStaff.pin || selectedStaff.cashier_pin || "").trim();
+    if (!expectedPin) {
+      // Staff has no PIN configured yet — allow direct switch until PIN is set via Admin Panel
+      switchCashier(selectedStaff);
+      setIsOpen(false);
+      setSelectedStaff(null);
+      setPinInput("");
+      setErrorMsg("");
+      return;
+    }
+    if (entered && entered !== expectedPin) {
+      setErrorMsg("Incorrect PIN. Please enter your VPS-configured staff PIN.");
       return;
     }
 

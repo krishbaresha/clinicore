@@ -305,10 +305,11 @@ function setRateLimitState(state) {
 }
 
 export function getAdminPasscode() {
+  // VPS is the single source of truth — never fall back to a hardcoded default
   if (typeof window !== "undefined" && window.localStorage) {
-    return storageDriver.getItem("cf_admin_master_passcode") || "KB2026";
+    return storageDriver.getItem("cf_admin_master_passcode") || "";
   }
-  return "KB2026";
+  return "";
 }
 
 export function verifyAdminPasscode(passcode) {
