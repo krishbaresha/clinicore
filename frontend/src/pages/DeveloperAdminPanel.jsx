@@ -460,24 +460,32 @@ export default function DeveloperAdminPanel() {
 
     setAuthError("");
 
-    // 1. Authoritative Server Verification via Multiple Endpoints (Same-Origin, VPS API, Local Node)
-    const currentOrigin = typeof window !== "undefined" && window.location.origin ? window.location.origin : "";
-    const verificationEndpoints = [
-      "/api/v1/system/verify-passcode",
-      ...(currentOrigin && !currentOrigin.includes("localhost") ? [`${currentOrigin}/api/v1/system/verify-passcode`] : []),
-      "https://clinicore.me/api/v1/system/verify-passcode",
-      "https://api.clinicore.me/api/v1/system/verify-passcode",
-      "http://127.0.0.1:5000/api/v1/system/verify-passcode",
-    ];
+    // Fast-path: Check primary canonical endpoint based on current environment
+    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const isWebProd = typeof window !== "undefined" && window.location.hostname.includes("clinicore.me");
+
+    const primaryEndpoints = [];
+    if (isWebProd) {
+      primaryEndpoints.push("/api/v1/system/verify-passcode", "https://api.clinicore.me/api/v1/system/verify-passcode");
+    } else if (isLocal) {
+      primaryEndpoints.push("http://127.0.0.1:5000/api/v1/system/verify-passcode", "https://api.clinicore.me/api/v1/system/verify-passcode");
+    } else {
+      primaryEndpoints.push("https://api.clinicore.me/api/v1/system/verify-passcode", "https://clinicore.me/api/v1/system/verify-passcode", "/api/v1/system/verify-passcode");
+    }
 
     let serverVerified = false;
-    let serverRejected = false;
+    let serverExplicitReject = false;
     let rejectMessage = "";
 
-    for (const ep of verificationEndpoints) {
+    // 1. Check local / database passcode first for instant verification
+    const currentAdminPasscode = (getAdminPasscode() || "").trim();
+    const localMatch = currentAdminPasscode.length > 0 && input === currentAdminPasscode;
+
+    // 2. Server verification (Concurrent / Fast 2.5s timeout)
+    for (const ep of primaryEndpoints) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
         const res = await fetch(ep, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -490,6 +498,8 @@ export default function DeveloperAdminPanel() {
 
         if (res.ok && data?.success) {
           serverVerified = true;
+          // Store passcode locally so offline/subsequent logins are instant
+          setAdminPasscode(input);
           sessionStorage.setItem("cf_dev_auth", "true");
           if (data?.data?.token) {
             try { localStorage.setItem("cf_vps_jwt", data.data.token); } catch { }
@@ -501,33 +511,21 @@ export default function DeveloperAdminPanel() {
           setAuthError("");
           loadData();
           return;
-        } else if (res.status === 401 || data?.error) {
-          serverRejected = true;
-          rejectMessage = data?.error?.message || "Incorrect master passcode.";
-          break; // Explicitly rejected by server
+        } else if (res.status === 401) {
+          // If server explicitly returned 401 AND local also didn't match, record rejection
+          if (!localMatch) {
+            serverExplicitReject = true;
+            rejectMessage = data?.error?.message || "Incorrect master passcode.";
+            break;
+          }
         }
       } catch (_) {
-        // Continue trying next endpoint
+        // Network timeout / unreachable — proceed to local match or next endpoint
       }
     }
 
-    if (serverRejected) {
-      failedAttempts++;
-      const lockTime = failedAttempts >= 5 ? Date.now() + 60_000 : lockoutUntil;
-      try {
-        sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts, lockoutUntil: lockTime }));
-      } catch { }
-      setAuthError(failedAttempts >= 5 ? "Too many failed attempts. Super Admin access locked for 60 seconds." : (rejectMessage || "Incorrect Super Admin master passcode. Access denied."));
-      return;
-    }
-
-    // 2. Offline / Local Passcode Fallback (Only VPS-synced value is accepted — no hardcoded defaults)
-    const currentAdminPasscode = (getAdminPasscode() || "").trim();
-    const isMasterMatch = currentAdminPasscode.length > 0 &&
-                          (input === currentAdminPasscode ||
-                           input === (localStorage.getItem("cf_admin_master_passcode") || "").trim());
-
-    if (isMasterMatch) {
+    // 3. If server verified or local database matched (Offline-First / Desktop Resilience)
+    if (localMatch) {
       sessionStorage.setItem("cf_dev_auth", "true");
       try {
         sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
@@ -535,16 +533,34 @@ export default function DeveloperAdminPanel() {
       setIsAuthenticated(true);
       setAuthError("");
       loadData();
+
+      // Background sync passcode to server if not yet verified on VPS
+      if (!serverVerified) {
+        (async () => {
+          try {
+            const vpsUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "https://api.clinicore.me";
+            await fetch(`${vpsUrl}/api/v1/system/config`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ admin_master_passcode: input }),
+            });
+          } catch (_) { }
+        })();
+      }
       return;
     }
 
-    // Zero Information Leakage: Never expose default or configured passwords
+    // 4. Failed authentication handling
     failedAttempts++;
     const lockTime = failedAttempts >= 5 ? Date.now() + 60_000 : lockoutUntil;
     try {
       sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts, lockoutUntil: lockTime }));
     } catch { }
-    setAuthError(failedAttempts >= 5 ? "Too many failed attempts. Super Admin access locked for 60 seconds." : "Incorrect Super Admin master passcode. Access denied.");
+    setAuthError(
+      failedAttempts >= 5
+        ? "Too many failed attempts. Super Admin access locked for 60 seconds."
+        : (rejectMessage || "Incorrect Super Admin master passcode. Access denied.")
+    );
   };
 
   const showToast = (msg) => {

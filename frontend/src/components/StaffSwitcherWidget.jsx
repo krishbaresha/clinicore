@@ -45,6 +45,8 @@ export default function StaffSwitcherWidget() {
     if (e) e.preventDefault();
     if (!selectedStaff) return;
 
+    const entered = pinInput.trim(); // ← was accidentally removed in passcode purge
+
     // Only VPS-synced staff PIN is accepted — no hardcoded backdoor defaults
     const expectedPin = String(selectedStaff.pin || selectedStaff.cashier_pin || "").trim();
     if (!expectedPin) {
