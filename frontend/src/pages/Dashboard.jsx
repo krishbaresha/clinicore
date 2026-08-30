@@ -815,74 +815,99 @@ export default function Dashboard() {
           </div>
         </section>
       ) : isDoctor ? (
-        /* Doctor Personal OPD Portal — Sirf apni info */
-        <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-600 text-2xl">stethoscope</span>
+        /* Doctor Personal Live OPD Queue & Consultation Desk */
+        <section className="glass-card p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">hourglass_top</span>
+              </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-base">My OPD Consultation Portal</h3>
-                <p className="text-xs text-gray-400">Sirf apna data — real-time</p>
+                <h3 className="font-extrabold text-base text-slate-900">Live Chamber Queue &amp; Waiting Patients</h3>
+                <p className="text-xs text-slate-500">Real-time OPD patient waiting list for your consultation chamber</p>
               </div>
             </div>
-            <button
-              onClick={() => navigate("/doctor/queue")}
-              className="text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 px-4 py-2 rounded-xl border border-teal-700 transition-colors flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-sm">queue</span>
-              Open My Queue
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-teal-100 text-teal-800 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-teal-600 animate-pulse" />
+                {myWaitingVisits.length} Waiting
+              </span>
+              <button
+                onClick={() => navigate("/doctor/queue")}
+                className="btn-primary text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">queue</span>
+                Open Chamber Queue Portal →
+              </button>
+            </div>
           </div>
 
-          {/* Main Stats Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-center">
-              <div className="text-xs text-teal-700 font-bold uppercase mb-1">Aaj ke Patients</div>
-              <div className="text-3xl font-black text-teal-900">{myTodayVisits.length}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">Mere chamber me</div>
+          {myWaitingVisits.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50/80 rounded-2xl border border-slate-100 space-y-2">
+              <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
+                <span className="material-symbols-outlined text-2xl">task_alt</span>
+              </div>
+              <h4 className="font-bold text-sm text-slate-800">Chamber Queue is Clear</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                All assigned OPD consultation tokens have been completed. New waiting patients will appear here automatically.
+              </p>
             </div>
-            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center">
-              <div className="text-xs text-emerald-700 font-bold uppercase mb-1">
-                {canViewFinancials ? "Aaj ki Fees" : "Completed OPD"}
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-900">
-                {canViewFinancials
-                  ? `Rs. ${myFeesToday.toLocaleString()}`
-                  : `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Treated`}
-              </div>
-              <div className="text-[11px] text-gray-500 mt-0.5">
-                {canViewFinancials ? "OPD collection" : "Consultations completed"}
-              </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider bg-slate-50">
+                    <th className="py-2.5 px-3">Token #</th>
+                    <th className="py-2.5 px-3">Patient Name</th>
+                    <th className="py-2.5 px-3">Age / Gender</th>
+                    <th className="py-2.5 px-3">Chief Complaint</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {myWaitingVisits.map((visit) => {
+                    const patient = dbPatients.getById(visit.patient_id) || {};
+                    return (
+                      <tr key={visit.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 font-black text-teal-800">
+                          <span className="px-2.5 py-1 rounded-lg bg-teal-100 text-teal-900 text-xs">
+                            #{visit.token_number}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-bold text-slate-900">
+                          {visit.patient_name || patient.full_name || "Patient"}
+                          {patient.mr_number && (
+                            <span className="block text-[10px] font-mono text-slate-400">{patient.mr_number}</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-slate-600">
+                          {patient.age ? `${patient.age} yrs` : "N/A"} • {patient.gender || "N/A"}
+                        </td>
+                        <td className="py-3 px-3 text-slate-600 max-w-[200px] truncate">
+                          {visit.symptoms || visit.chief_complaint || "General Consultation"}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                            Waiting
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            onClick={() => navigate(`/doctor/consultation?visit_id=${visit.id}`)}
+                            className="px-3 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] shadow-sm transition-colors inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">stethoscope</span>
+                            Start Consultation
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
-              <div className="text-xs text-amber-700 font-bold uppercase mb-1">Queue Waiting</div>
-              <div className="text-3xl font-black text-amber-900">{myWaitingVisits.length}</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">
-                {myWaitingVisits.length > 0 ? `Next: #${myWaitingVisits[0].token_number}` : "Khali hai"}
-              </div>
-            </div>
-            <div className={`p-4 rounded-2xl border text-center ${
-              myInRoomVisit
-                ? "bg-blue-50 border-blue-100"
-                : "bg-gray-50 border-gray-100"
-            }`}>
-              <div className={`text-xs font-bold uppercase mb-1 ${
-                myInRoomVisit ? "text-blue-700" : "text-gray-400"
-              }`}>Chamber Status</div>
-              <div className={`text-sm font-black ${
-                myInRoomVisit ? "text-blue-900" : "text-gray-400"
-              }`}>
-                {myInRoomVisit
-                  ? `#${myInRoomVisit.token_number} In Room`
-                  : "Khali"}
-              </div>
-              <div className="text-[11px] text-gray-400 mt-0.5">
-                {myInRoomVisit
-                  ? (myInRoomVisit.patient_name || dbPatients.getById(myInRoomVisit.patient_id)?.full_name || "Patient")
-                  : "Koi patient nahi"}
-              </div>
-            </div>
-          </div>
+          )}
         </section>
       ) : (
         /* Front Desk / Receptionist / Operational Counter Summary */
@@ -986,26 +1011,10 @@ export default function Dashboard() {
         )
       )}
 
-      {/* Quick Actions — Doctor: sirf OPD + EMR, no settings */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4" aria-label="Quick actions">
-        {isDoctor ? (
-          <>
-            <button
-              onClick={() => navigate("/doctor/queue")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-            >
-              <span className="material-symbols-outlined">stethoscope</span>
-              <span className="font-label-md text-label-md font-bold">Doctor Consultation Queue</span>
-            </button>
-            <button
-              onClick={() => navigate("/patients")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-            >
-              <span className="material-symbols-outlined">group</span>
-              <span className="font-label-md text-label-md font-bold">Patients &amp; EMR Records</span>
-            </button>
-          </>
-        ) : user?.role === "warehouse" ? (
+      {/* Quick Actions — Only for Non-Doctor Staff */}
+      {!isDoctor && (
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4" aria-label="Quick actions">
+          {user?.role === "warehouse" ? (
           <>
             <button
               onClick={() => navigate("/store/warehouse")}
@@ -1057,6 +1066,7 @@ export default function Dashboard() {
           </>
         )}
       </section>
+      )}
     </div>
   );
 }
