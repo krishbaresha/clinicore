@@ -188,7 +188,24 @@ const server = http.createServer((req, res) => {
     // System Config GET/POST
     if (url.pathname === "/api/v1/system/config") {
       if (req.method === "POST") {
-        systemConfig = { ...systemConfig, ...payload };
+        const clinicData = payload.clinic || payload;
+        systemConfig.clinic = {
+          ...(systemConfig.clinic || {
+            id: "clinic_001",
+            name: "H/Dr.Asif Ashraf Khan Clinic Medical Store",
+            address: "Lajpat Road, Hyderabad, Sindh",
+            phone: "03473100304",
+            default_consultation_fee: 300,
+            clinic_status: "open",
+            notification_email: "drasifhosting@gmail.com",
+            report_frequency: "daily_9pm",
+          }),
+          ...clinicData,
+        };
+        if (payload.license) {
+          systemConfig.license = { ...(systemConfig.license || {}), ...payload.license };
+        }
+        if (clinicData.resend_api_key) systemConfig.resend_api_key = clinicData.resend_api_key;
         saveJson(CONFIG_FILE, systemConfig);
       }
       const responseData = {
