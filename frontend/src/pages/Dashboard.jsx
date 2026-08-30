@@ -124,8 +124,12 @@ export default function Dashboard() {
       return {
         id: doc.id,
         name: doc.name || doc.full_name || "Doctor",
+        specialization: doc.specialization || doc.qualification || "General Physician",
+        is_owner: Boolean(doc.is_owner || doc.is_principal_doctor),
         visitsCount: docVisits.length,
+        today_patient_count: docVisits.length,
         feesCollected: docFees,
+        today_fees: docFees,
       };
     });
 
@@ -802,10 +806,12 @@ export default function Dashboard() {
                         {doc.is_owner && <span className="text-[9px] bg-amber-400 text-teal-950 font-black px-1.5 py-0.2 rounded shrink-0">OWNER</span>}
                       </div>
                       <div className="text-[11px] text-teal-200 truncate">{doc.specialization || "General Physician"}</div>
-                      <div className="text-[10px] text-teal-300/80 mt-0.5">{doc.today_patient_count} Patients Today</div>
+                      <div className="text-[10px] text-teal-300/80 mt-0.5">{doc.visitsCount ?? doc.today_patient_count ?? 0} Patients Today</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-black text-amber-300">Rs. {doc.today_fees.toLocaleString()}</div>
+                      <div className="text-sm font-black text-amber-300">
+                        Rs. {(Number(doc.feesCollected ?? doc.today_fees) || 0).toLocaleString()}
+                      </div>
                       <div className="text-[9px] text-teal-200 uppercase">OPD Collection</div>
                     </div>
                   </div>
