@@ -33,7 +33,11 @@ import { storageDriver } from "./storageDriver.js";
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
-  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://127.0.0.1:5000" : "https://api.clinicore.me");
+  (typeof window !== "undefined" && window.location.origin && window.location.protocol.startsWith("http") && !window.location.hostname.includes("localhost")
+    ? window.location.origin
+    : typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://127.0.0.1:5000"
+    : "https://clinicore.me");
 
 
 export const SYNC_FSM_STATES = {

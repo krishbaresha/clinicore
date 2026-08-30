@@ -231,7 +231,11 @@ export default function App() {
         (async () => {
           try {
             const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-              (typeof window !== "undefined" && window.location.hostname !== "localhost" ? "https://api.clinicore.me" : "");
+              (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost")
+                ? window.location.origin
+                : typeof window !== "undefined" && window.location.hostname === "localhost"
+                ? "http://127.0.0.1:5000"
+                : "https://clinicore.me");
             if (vpsApiUrl) {
               const cfgRes = await fetch(`${vpsApiUrl}/api/v1/system/config`, { cache: "no-store" });
               if (cfgRes.ok) {

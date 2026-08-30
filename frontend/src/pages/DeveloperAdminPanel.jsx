@@ -29,8 +29,13 @@ import {
 } from "../utils/thermalPrinter.js";
 import GodAdminPanel from "./GodAdminPanel.jsx";
 
-const DEFAULT_API_URL = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://127.0.0.1:5000" : "https://api.clinicore.me");
+const DEFAULT_API_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost")
+    ? window.location.origin
+    : typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://127.0.0.1:5000"
+    : "https://clinicore.me");
 
 export function getApiUrl() {
   return DEFAULT_API_URL;

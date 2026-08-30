@@ -349,7 +349,11 @@ export async function login(identifier, password) {
     try {
       const API_BASE =
         (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-        (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
+        (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost")
+          ? window.location.origin
+          : typeof window !== "undefined" && window.location.hostname === "localhost"
+          ? "http://127.0.0.1:5000"
+          : "https://clinicore.me");
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);

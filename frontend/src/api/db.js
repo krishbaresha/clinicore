@@ -5674,7 +5674,11 @@ export function importFullDatabase(backupInput, options = { skipCheckpoint: fals
     try {
       const API_BASE =
         (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-        (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
+        (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost")
+          ? window.location.origin
+          : typeof window !== "undefined" && window.location.hostname === "localhost"
+          ? "http://127.0.0.1:5000"
+          : "https://clinicore.me");
 
       const collectionsSnapshot = getAllCollectionsSnapshot();
       fetch(`${API_BASE}/api/v1/system/restore-backup-data`, {
