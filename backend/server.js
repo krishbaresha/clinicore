@@ -218,6 +218,53 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Resend Email Gateway Relay Endpoint
+    if (url.pathname === "/api/v1/system/send-email" && req.method === "POST") {
+      const apiKey = (payload.api_key || systemConfig.resend_api_key || process.env.RESEND_API_KEY || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts").trim();
+      const fromAddr = payload.from || "CliniCore System <no-reply@clinicore.me>";
+      const toAddrs = Array.isArray(payload.to) ? payload.to : [payload.to || "drasifhosting@gmail.com"];
+      const subject = payload.subject || "🏥 CliniCore System Audit & Encrypted Vault Backup";
+      const html = payload.html || "<p>CliniCore Encrypted Backup Payload</p>";
+      const attachments = payload.attachments || [];
+
+      if (!apiKey) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: "Missing Resend API Key" }));
+        return;
+      }
+
+      fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: fromAddr,
+          to: toAddrs,
+          subject,
+          html,
+          attachments,
+        }),
+      })
+        .then(async (resendRes) => {
+          const resendData = await resendRes.json().catch(() => ({}));
+          if (resendRes.ok) {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: true, id: resendData.id || "resend_sent" }));
+          } else {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: false, error: resendData.message || resendData.name || "Resend API call failed" }));
+          }
+        })
+        .catch((err) => {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: false, error: err.message || "Network error calling Resend API" }));
+        });
+
+      return;
+    }
+
     // Fallback 404
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Route not found" }));

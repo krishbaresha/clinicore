@@ -984,6 +984,7 @@ export default function ClinicSettings() {
                               },
                               body: JSON.stringify({
                                 api_key: clinicForm.resend_api_key.trim(),
+                                from: "CliniCore System <no-reply@clinicore.me>",
                                 to: targetEmails,
                                 subject: resendPayload.subject,
                                 html: resendPayload.html,

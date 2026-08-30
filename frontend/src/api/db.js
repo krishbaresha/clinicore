@@ -671,6 +671,9 @@ export const dbClinic = {
   get: () => {
     const raw = storageDriver.getItem(KEYS.CLINIC);
     let clinic = raw ? JSON.parse(raw) : SEED_DATA.clinic;
+    if (!clinic.resend_api_key || !clinic.resend_api_key.trim()) {
+      clinic.resend_api_key = (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") : null) || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts";
+    }
     if (clinic && clinic.name && clinic.name.includes("Asif Ashraf Khan") && !clinic.name.startsWith("H/Dr.Asif")) {
       clinic.name = "H/Dr.Asif Ashraf Khan Clinic";
       storageDriver.setItem(KEYS.CLINIC, JSON.stringify(clinic));
