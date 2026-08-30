@@ -15,14 +15,18 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
     return { success: false, error: "Missing Resend API Key (re_xxxx). Please enter your key in Settings." };
   }
 
-  // In Desktop Tauri or Web browser:
-  // Direct Resend Cloud API endpoint has CORS restrictions in browser/webview environments.
-  // We send directly to the live VPS backend relay (https://api.clinicore.me/api/v1/system/send-email)
+  // On Web (clinicore.me), Tauri Desktop, or Localhost:
+  // 1. Current origin relative API (same-origin, zero CORS issues on clinicore.me & localhost)
+  // 2. Direct VPS API URL (api.clinicore.me)
+  // 3. Direct local Node backend (http://127.0.0.1:5000)
+  const currentOrigin = (typeof window !== "undefined" && window.location.origin) ? window.location.origin : "";
   const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ? import.meta.env.VITE_API_URL : "https://api.clinicore.me";
+  
   const relayUrls = [
+    "/api/v1/system/send-email",
+    ...(currentOrigin && !currentOrigin.includes("localhost") ? [`${currentOrigin}/api/v1/system/send-email`] : []),
     `${vpsApiUrl}/api/v1/system/send-email`,
     "http://127.0.0.1:5000/api/v1/system/send-email",
-    "/api/v1/system/send-email",
   ];
 
   let lastRelayError = null;
