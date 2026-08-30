@@ -33,9 +33,28 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 87 — Phase B Navigation & Central Permission Policy Engine Completed
-- **Last worked on:** Created `frontend/src/config/permissions.js` canonical route authorization engine. Refactored `App.jsx` `RoleProtectedRoute` and `SidebarLayout.jsx` menu builder to derive access dynamically from permissions matrix. Enhanced `Dashboard.jsx` with role-aware metrics for Doctor, Warehouse Manager, Cashier, and Owner.
-- **Currently blocked on:** Awaiting User Approval to begin Phase C (Fix Warehouse Manager Navigation & Dedicated Warehouse Portal).
+- **Phase:** Milestone 88 — Phase C Dedicated Warehouse Portal & Operational Isolation Completed
+- **Last worked on:** Enforced location-locked purchase scoping (`warehouse_id`) in `SupplierPurchases.jsx`, verified strict accounting rules for internal transfers (0 revenue, 0 profit), validated location-locked inventory catalogue in `MedicalStoreInventory.jsx` (`effectiveLocationId`), and confirmed full navigation isolation for Warehouse Manager.
+- **Currently blocked on:** Awaiting User Approval to begin Phase D (Warehouse Data Scoping & Authorization Gate).
+
+### Session: 2026-08-30 (Part 88) — Phase C Dedicated Warehouse Portal & Operational Context
+
+**Task worked on:**
+Implemented Phase C operational context isolation and location-locked purchase scoping for Warehouse Manager.
+
+**What was built/changed:**
+1. Modified `frontend/src/pages/SupplierPurchases.jsx`: Enforced automatic `warehouse_id` assignment (`user?.assigned_warehouse_id || "wh_001"`) on all saved Company Purchases / GRNs.
+2. Verified `frontend/src/pages/MedicalStoreInventory.jsx`: Confirmed `isLocationLocked` and `effectiveLocationId` enforce strict location-locked catalogue viewing for assigned warehouse managers.
+3. Verified `frontend/src/pages/WarehouseManagement.jsx`: Confirmed 6 consolidated operational tabs (`stock`, `b2b`, `transfer`, `parties`, `logs`, `godowns`) and strict transfer accounting (0 revenue, 0 profit for internal transfers).
+4. Protected Files Preserved: `thermalPrinter.js`, `FeesReports.jsx`, `DayClosingReceiptModal.jsx`, and `ReceiptStudio.jsx` remained 100% untouched.
+
+**Verification Results:**
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED
+- `npm run build`: Clean Vite production build
+- Git Commit: `30e54f1`
+
+---
 
 ### Session: 2026-08-30 (Part 87) — Phase B Navigation, Permission Engine & Dashboard Realignment
 

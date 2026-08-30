@@ -4564,6 +4564,7 @@ export const dbExpenses = {
     const newExp = {
       ...expense,
       id: generateId("exp"),
+      warehouse_id: expense.warehouse_id || (typeof window !== "undefined" && window.__CF_ACTIVE_USER__?.assigned_warehouse_id) || "wh_001",
       amount: Number(expense.amount) || 0,
       date: expDate,
       expense_date: expDate,

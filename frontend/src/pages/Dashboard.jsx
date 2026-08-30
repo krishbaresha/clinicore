@@ -87,7 +87,16 @@ export default function Dashboard() {
     const pRevToday = tSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
 
     const allExpenses = dbExpenses.getAll() || [];
-    const tExpenses = allExpenses.filter((e) => new Date(e.expense_date).toDateString() === todayStr);
+    const activeWhId = user?.assigned_warehouse_id || "wh_001";
+    const isWarehouseRole = user?.role === "warehouse" || user?.role === "warehouse_incharge";
+    const tExpenses = allExpenses.filter((e) => {
+      const matchDate = new Date(e.expense_date || e.date).toDateString() === todayStr;
+      if (!matchDate) return false;
+      if (isWarehouseRole && !user?.is_owner && user?.role !== "admin") {
+        return e.warehouse_id === activeWhId;
+      }
+      return true;
+    });
     const expToday = tExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
     const netRevToday = (fToday + pRevToday) - expToday;
