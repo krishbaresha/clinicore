@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 99 — Automated Services Config Persistence Fix (`v2.5.0-release` Certified)
-- **Last worked on:** Fixed bug in `POST /api/v1/system/config` (`backend/server.js`) where saving API & Automation Config did not persist `systemConfig.clinic` settings. Now Resend API keys, recipient email, report frequency, and WhatsApp gateway numbers persist permanently across page reloads and device syncs.
+- **Phase:** Milestone 100 — Direct Hostinger VPS Gateway Link (`https://api.clinicore.me`) (`v2.5.0-release` Certified)
+- **Last worked on:** Updated `resendGateway.js` so that all local dev and production desktop/web instances target the Hostinger VPS endpoint `https://api.clinicore.me` directly. Eliminated local port dependencies (`localhost:5000`), matching production client desktop behavior 100%.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 100) — Direct Hostinger VPS Gateway Link (`https://api.clinicore.me`)
+
+**Task worked on:**
+Configured `resendGateway.js` to target production VPS `https://api.clinicore.me` directly across testing and production environments.
+
+**What was built/changed:**
+1. Modified `frontend/src/utils/resendGateway.js`: Set default `apiUrl` target to `https://api.clinicore.me` (`c1a5f7f`).
+2. Stopped local node backend task (`task-2555`), aligning local testing environment 100% with live client desktop deployment.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`c1a5f7f`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 99) — Automated Services Config Persistence Fix
 
