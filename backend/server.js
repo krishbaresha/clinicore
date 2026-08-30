@@ -375,17 +375,28 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
       return;
     }
 
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const currentHour = now.getHours();
-    const currentMin = now.getMinutes();
+    // Use Pakistan Standard Time (Asia/Karachi, UTC+5) for accurate clinic scheduling
+    const pktFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Karachi",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    });
+    const parts = pktFormatter.formatToParts(now);
+    const getPart = (type) => parts.find((p) => p.type === type)?.value;
+    const todayStr = `${getPart("year")}-${getPart("month")}-${getPart("day")}`;
+    const currentHour = parseInt(getPart("hour") || "0", 10) % 24;
+    const currentMin = parseInt(getPart("minute") || "0", 10);
 
     let shouldRun = force;
 
     if (!shouldRun) {
-      if (reportFreq === "daily_9pm" && currentHour === 21 && lastBackupExecutionDay !== todayStr) {
+      if ((reportFreq === "daily_midnight" || reportFreq === "daily_12am") && currentHour === 0 && lastBackupExecutionDay !== todayStr) {
         shouldRun = true;
-      } else if (reportFreq === "daily_midnight" && currentHour === 0 && lastBackupExecutionDay !== todayStr) {
+      } else if (reportFreq === "daily_9pm" && currentHour === 21 && lastBackupExecutionDay !== todayStr) {
         shouldRun = true;
       } else if (reportFreq === "every_12h" && (currentHour === 0 || currentHour === 12) && currentMin < 5) {
         shouldRun = true;
