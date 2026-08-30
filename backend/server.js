@@ -237,7 +237,7 @@ const server = http.createServer((req, res) => {
 
     // Resend Email Gateway Relay Endpoint
     if (url.pathname === "/api/v1/system/send-email" && req.method === "POST") {
-      const apiKey = (payload.api_key || systemConfig.resend_api_key || process.env.RESEND_API_KEY || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts").trim();
+      const apiKey = (payload.api_key || systemConfig.resend_api_key || process.env.RESEND_API_KEY || "").trim();
       const fromAddr = payload.from || "CliniCore System <backup@clinicore.me>";
       const toAddrs = Array.isArray(payload.to) ? payload.to : [payload.to || "drasifhosting@gmail.com"];
       const subject = payload.subject || "🏥 CliniCore System Audit & Encrypted Vault Backup";

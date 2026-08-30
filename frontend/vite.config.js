@@ -74,7 +74,7 @@ function viteEmailRelayPlugin() {
           req.on('end', async () => {
             try {
               const payload = JSON.parse(body || '{}');
-              const key = (payload.api_key || 're_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts').trim();
+              const key = (payload.api_key || process.env.RESEND_API_KEY || '').trim();
               const fromAddr = payload.from || 'CliniCore System <backup@clinicore.me>';
               const toAddrs = Array.isArray(payload.to) ? payload.to : [payload.to || 'drasifhosting@gmail.com'];
               const emailSubject = payload.subject || '🏥 CliniCore System Audit & Encrypted Vault Backup';
