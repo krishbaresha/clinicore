@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 93 — Dashboard Sidebar Nav Permission Matrix Fix (`v2.5.0-release` Certified)
-- **Last worked on:** Added `dashboard: ["view"]` to all user roles in `PERMISSION_MATRIX` (`auth.js`) and updated `canAccessRoutePath` (`permissions.js`). Verified that the **Dashboard tab** is now 100% visible in the sidebar menu for Dr. Nargis (`DOCTOR`), Usama (`WAREHOUSE_INCHARGE`), and all staff roles.
+- **Phase:** Milestone 94 — Dashboard `useAuth` Import Fix & AST Validator Hardening (`v2.5.0-release` Certified)
+- **Last worked on:** Restored missing `import { useAuth } from "../hooks/useAuth.js";` in `Dashboard.jsx`. Updated `scripts/scan_imports_and_hooks.mjs` with an automated AST rule to prevent `useAuth` import regressions across all components.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 94) — Dashboard `useAuth` Import Fix & Scanner Rule Hardening
+
+**Task worked on:**
+Fixed runtime `ReferenceError: useAuth is not defined` on `Dashboard.jsx:81`.
+
+**What was built/changed:**
+1. Modified `frontend/src/pages/Dashboard.jsx`: Added missing `import { useAuth } from "../hooks/useAuth.js";` (`84e8c75`).
+2. Modified `scripts/scan_imports_and_hooks.mjs`: Added automated check rule for `useAuth()` to prevent future missing imports.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`84e8c75`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 93) — Dashboard Sidebar Navigation Permission Fix
 
