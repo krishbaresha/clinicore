@@ -80,12 +80,18 @@ export default function DeveloperAdminPanel() {
   const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window !== "undefined" ? window.innerWidth >= 1200 : true));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  // Resend Backup Dispatch & Preview States
   const [isDispatchingBackup, setIsDispatchingBackup] = useState(false);
   const [isPingingApi, setIsPingingApi] = useState(false);
   const [showEmailPreviewModal, setShowEmailPreviewModal] = useState(false);
   const [emailPreviewMode, setEmailPreviewMode] = useState("desktop"); // 'desktop' | 'mobile'
   const [countdownDetail, setCountdownDetail] = useState(null);
+  const [liveAdminVersion, setLiveAdminVersion] = useState(() => {
+    try {
+      return localStorage.getItem("cf_applied_version") || (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.3";
+    } catch {
+      return "2.5.3";
+    }
+  });
   const [selectedFreqType, setSelectedFreqType] = useState(() => {
     const c = dbClinic.get() || {};
     const freq = c.report_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "daily_9pm" : "daily_9pm");
@@ -262,6 +268,27 @@ export default function DeveloperAdminPanel() {
   const loadData = async (preserveForm = false) => {
     // 1. Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
     try {
+      const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ? import.meta.env.VITE_API_URL : "https://api.clinicore.me";
+      const endpoints = [
+        `/version.json?_t=${Date.now()}`,
+        `https://clinicore.me/version.json?_t=${Date.now()}`,
+        `${vpsApiUrl}/api/v1/system/version?_t=${Date.now()}`,
+      ];
+      for (const ep of endpoints) {
+        try {
+          const vRes = await fetch(ep, { cache: "no-store" });
+          if (vRes.ok) {
+            const vData = await vRes.json();
+            const ver = vData?.version || vData?.data?.version;
+            if (ver) {
+              setLiveAdminVersion(ver);
+              try { localStorage.setItem("cf_applied_version", ver); } catch (_) {}
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+
       const apiUrl = DEFAULT_API_URL;
       const res = await fetch(`${apiUrl}/api/v1/system/config`);
       if (res.ok) {
@@ -1391,7 +1418,7 @@ export default function DeveloperAdminPanel() {
               <span className="hidden md:inline">Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}</strong></span>
               <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-[10px] flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>v{(typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.2"}</span>
+                <span>v{liveAdminVersion}</span>
               </span>
             </div>
           </div>
