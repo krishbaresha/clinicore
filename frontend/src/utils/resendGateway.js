@@ -5,7 +5,7 @@
 
 export async function sendResendEmail({ apiKey, from, to, subject, html, attachments }) {
   const key = (apiKey || (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") : null) || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts").trim();
-  const fromAddr = from || "CliniCore System <no-reply@clinicore.me>";
+  const fromAddr = from || "CliniCore System <backup@clinicore.me>";
   const toAddrs = Array.isArray(to) ? to : [to || "drasifhosting@gmail.com"];
   const emailSubject = subject || "🏥 CliniCore System Audit & Encrypted Vault Backup";
   const emailHtml = html || "<p>CliniCore System Message</p>";
