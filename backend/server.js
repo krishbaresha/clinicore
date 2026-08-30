@@ -280,6 +280,23 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Direct On-Demand VPS Backup Trigger Endpoint
+    if (url.pathname === "/api/v1/system/trigger-vps-backup" && req.method === "POST") {
+      try {
+        if (payload.resend_api_key) systemConfig.resend_api_key = payload.resend_api_key;
+        if (payload.clinic) systemConfig.clinic = { ...(systemConfig.clinic || {}), ...payload.clinic };
+        saveJson(CONFIG_FILE, systemConfig);
+
+        executeAutonomousBackup({ force: true, triggerReason: "Admin On-Demand Web/Desktop Click" });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, message: "VPS autonomous backup triggered and dispatched successfully!" }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+      return;
+    }
+
     // Resend Email Gateway Relay Endpoint
     if (url.pathname === "/api/v1/system/send-email" && req.method === "POST") {
       const apiKey = (payload.api_key || systemConfig.resend_api_key || process.env.RESEND_API_KEY || "").trim();

@@ -870,21 +870,45 @@ export default function DeveloperAdminPanel() {
       // 1. Stage backup on server to create authoritative 1-click download link
       let downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
       try {
-        const prepRes = await fetch(`${apiUrl}/api/v1/system/prepare-backup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filename,
-            content: base64Content,
-          }),
-        });
-        const prepData = await prepRes.json();
-        if (prepData?.success && prepData?.data?.download_url) {
-          downloadUrl = prepData.data.download_url;
+        const vpsEndpoints = [`/api/v1/system/prepare-backup`, `${apiUrl}/api/v1/system/prepare-backup`];
+        for (const ep of vpsEndpoints) {
+          try {
+            const prepRes = await fetch(ep, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                filename,
+                content: base64Content,
+              }),
+            });
+            const prepData = await prepRes.json().catch(() => ({}));
+            if (prepData?.success && prepData?.data?.download_url) {
+              downloadUrl = prepData.data.download_url;
+              break;
+            }
+          } catch (_) {}
         }
       } catch (prepErr) {
         console.warn("Could not pre-stage backup file on VPS:", prepErr);
       }
+
+      // Also notify VPS 24/7 engine to trigger autonomous cloud snapshot sync
+      try {
+        const triggerEndpoints = [`/api/v1/system/trigger-vps-backup`, `${apiUrl}/api/v1/system/trigger-vps-backup`];
+        for (const tep of triggerEndpoints) {
+          try {
+            fetch(tep, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                resend_api_key: clinicForm.resend_api_key.trim(),
+                clinic: clinicForm,
+              }),
+            }).catch(() => {});
+            break;
+          } catch (_) {}
+        }
+      } catch (_) {}
 
       // 2. Generate email template with 1-click download CTA button and timestamp
       const emailHtml = generateCliniCoreEmailTemplate({
