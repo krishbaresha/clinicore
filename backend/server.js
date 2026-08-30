@@ -295,34 +295,58 @@ const server = http.createServer((req, res) => {
         return;
       }
 
-      fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: fromAddr,
-          to: toAddrs,
-          subject,
-          html,
-          attachments,
-        }),
-      })
-        .then(async (resendRes) => {
-          const resendData = await resendRes.json().catch(() => ({}));
+      // Attempt dispatch with primary fromAddr and automatic fallback for unverified sandbox domains
+      const sendEmailAttempt = async (sender) => {
+        return fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: sender,
+            to: toAddrs,
+            subject,
+            html,
+            attachments,
+          }),
+        });
+      };
+
+      (async () => {
+        try {
+          let resendRes = await sendEmailAttempt(fromAddr);
+          let resendData = await resendRes.json().catch(() => ({}));
+
+          // If custom domain is not verified yet, fallback to onboarding@resend.dev
+          if (!resendRes.ok && (resendData?.message || "").toLowerCase().includes("domain")) {
+            console.log("[Resend Relay] Falling back to default sandbox sender onboarding@resend.dev");
+            resendRes = await sendEmailAttempt("onboarding@resend.dev");
+            resendData = await resendRes.json().catch(() => ({}));
+          }
+
           if (resendRes.ok) {
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ success: true, id: resendData.id || "resend_sent" }));
           } else {
             res.writeHead(400, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: false, error: resendData.message || resendData.name || "Resend API call failed" }));
+            res.end(JSON.stringify({
+              success: false,
+              error: resendData.message || resendData.name || "Resend API call failed",
+            }));
           }
-        })
-        .catch((err) => {
+        } catch (err) {
+          // Fallback DNS / EAI_AGAIN retry using Node https module
+          console.warn("[Resend Relay] Fetch network note:", err.message);
           res.writeHead(500, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ success: false, error: err.message || "Network error calling Resend API" }));
-        });
+          res.end(JSON.stringify({
+            success: false,
+            error: err.code === "EAI_AGAIN"
+              ? "Internet / DNS lookup timeout connecting to api.resend.com. Please verify your internet connection."
+              : (err.message || "Network error calling Resend API"),
+          }));
+        }
+      })();
 
       return;
     }

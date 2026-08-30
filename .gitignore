@@ -54,6 +54,23 @@ storage/uploads/
 Tech-Bill/
 graphify-out/
 Cache/
+Software Docs/
+PHASE_2_STEP_1/
+PHASE_2_STEP_2/
+PHASE_2_STEP_3/
+PHASE_2_STEP_4/
+PHASE_2_STEP_5/
+PHASE_2_STEP_6/
+PHASE_2_STEP_7/
+PHASE_3_MODULE_A/
+PHASE_3_MODULE_B/
+PHASE_3_MODULE_C/
+PHASE_3_MODULE_D/
+PHASE_4_STEP_A/
+PHASE_4_STEP_B/
+PHASE_5_STEP_A/
+PHASE_5_STEP_B/
+ui_redesign_docs/
 
 # Logs
 npm-debug.log*
