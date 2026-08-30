@@ -11,46 +11,43 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
   const emailHtml = html || "<p>CliniCore System Message</p>";
   const emailAttachments = attachments || [];
 
-  const payload = {
-    api_key: key,
-    from: fromAddr,
-    to: toAddrs,
-    subject: emailSubject,
-    html: emailHtml,
-    attachments: emailAttachments,
-  };
-
-  // 1. Try local backend (http://127.0.0.1:5000 / http://localhost:5000) first, then VPS backend
-  const candidateUrls = [];
-  if (typeof window !== "undefined") {
-    candidateUrls.push("http://127.0.0.1:5000");
-    candidateUrls.push("http://localhost:5000");
+  if (!key) {
+    return { success: false, error: "Missing Resend API Key (re_xxxx). Please enter your key in Settings." };
   }
-  candidateUrls.push(import.meta.env?.VITE_API_URL || "https://api.clinicore.me");
 
-  let lastRelayError = null;
+  // 1. Primary: Dispatch via Relay endpoint (Handled locally by Vite/Node or by VPS)
+  const relayUrls = ["/api/v1/system/send-email"];
+  if (typeof window !== "undefined" && window.location.origin) {
+    relayUrls.unshift(`${window.location.origin}/api/v1/system/send-email`);
+  }
+  const vpsApiUrl = import.meta.env?.VITE_API_URL || "https://api.clinicore.me";
+  relayUrls.push(`${vpsApiUrl}/api/v1/system/send-email`);
 
-  for (const baseUrl of candidateUrls) {
+  for (const url of relayUrls) {
     try {
-      const res = await fetch(`${baseUrl}/api/v1/system/send-email`, {
+      const relayRes = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          api_key: key,
+          from: fromAddr,
+          to: toAddrs,
+          subject: emailSubject,
+          html: emailHtml,
+          attachments: emailAttachments,
+        }),
       });
 
-      const backendData = await res.json().catch(() => null);
-      if (res.ok && backendData?.success) {
-        return { success: true, id: backendData.id || "sent_via_relay", method: `relay (${baseUrl})` };
-      } else if (backendData?.error) {
-        lastRelayError = backendData.error;
+      const relayData = await relayRes.json().catch(() => null);
+      if (relayRes.ok && relayData?.success) {
+        return { success: true, id: relayData.id || "sent_via_relay", method: `Relayed (${url.startsWith("http") ? url : "Local/VPS"})` };
+      } else if (relayData?.error) {
+        return { success: false, error: relayData.error, details: relayData };
       }
-    } catch (err) {
-      // Backend candidate offline/unreachable
-      lastRelayError = err.message;
-    }
+    } catch {}
   }
 
-  // 2. Direct Fallback to Resend Cloud API
+  // 2. Direct Fallback via Resend Cloud API
   try {
     const directRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -69,14 +66,16 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
 
     const directData = await directRes.json().catch(() => ({}));
     if (directRes.ok) {
-      return { success: true, id: directData.id || "sent_direct", method: "direct_resend_api" };
+      return { success: true, id: directData.id || "sent_direct", method: "Resend Cloud (Direct)" };
     } else {
-      const errMsg = directData.message || directData.name || lastRelayError || `Resend Error (HTTP ${directRes.status})`;
+      const errMsg = directData.message || directData.name || `Resend Error (HTTP ${directRes.status})`;
       return { success: false, error: errMsg, details: directData };
     }
   } catch (directErr) {
-    const finalErr = lastRelayError || directErr.message || "Network connection failure";
-    return { success: false, error: finalErr };
+    return { success: false, error: directErr.message || "Network connection failure" };
   }
 }
+
+
+
 

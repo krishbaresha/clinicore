@@ -63,12 +63,86 @@ function pwaVersionPlugin() {
   }
 }
 
+function viteEmailRelayPlugin() {
+  return {
+    name: 'vite-email-relay-plugin',
+    configureServer(server) {
+      server.middlewares.use('/api/v1/system/send-email', (req, res) => {
+        if (req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          req.on('end', async () => {
+            try {
+              const payload = JSON.parse(body || '{}');
+              const key = (payload.api_key || 're_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts').trim();
+              const fromAddr = payload.from || 'CliniCore System <backup@clinicore.me>';
+              const toAddrs = Array.isArray(payload.to) ? payload.to : [payload.to || 'drasifhosting@gmail.com'];
+              const emailSubject = payload.subject || '🏥 CliniCore System Audit & Encrypted Vault Backup';
+              const emailHtml = payload.html || '<p>CliniCore System Message</p>';
+              const emailAttachments = payload.attachments || [];
+
+              const https = await import('node:https');
+              const postData = JSON.stringify({
+                from: fromAddr,
+                to: toAddrs,
+                subject: emailSubject,
+                html: emailHtml,
+                attachments: emailAttachments,
+              });
+
+              const r = https.request('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${key}`,
+                  'Content-Type': 'application/json',
+                  'Content-Length': Buffer.byteLength(postData),
+                },
+              }, resendRes => {
+                let data = '';
+                resendRes.on('data', c => { data += c; });
+                resendRes.on('end', () => {
+                  res.writeHead(resendRes.statusCode || 200, { 'Content-Type': 'application/json' });
+                  try {
+                    const parsed = JSON.parse(data || '{}');
+                    if (resendRes.statusCode >= 200 && resendRes.statusCode < 300) {
+                      res.end(JSON.stringify({ success: true, id: parsed.id || 'resend_sent' }));
+                    } else {
+                      res.end(JSON.stringify({ success: false, error: parsed.message || parsed.name || 'Resend API call failed', details: parsed }));
+                    }
+                  } catch {
+                    res.end(data);
+                  }
+                });
+              });
+
+              r.on('error', err => {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: err.message }));
+              });
+
+              r.write(postData);
+              r.end();
+            } catch (err) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: err.message }));
+            }
+          });
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, message: 'Email Relay Active' }));
+        }
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     tailwindcss(),
     react(),
     pwaVersionPlugin(),
+    viteEmailRelayPlugin(),
   ],
   build: {
     sourcemap: false,
@@ -78,6 +152,9 @@ export default defineConfig({
       ignored: ['**/src-tauri/**', '**/target/**', '**/.git/**'],
     },
     proxy: {
+      '/api/v1/system/send-email': {
+        bypass: () => false,
+      },
       '/api': {
         target: 'https://api.clinicore.me',
         changeOrigin: true,
@@ -86,3 +163,5 @@ export default defineConfig({
     }
   }
 })
+
+
