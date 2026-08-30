@@ -33,9 +33,20 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 108 — Zero-Latency Cold Startup & Full VPS Cloud Data Hydration (`v2.5.0-release` Certified)
-- **Last worked on:** Eliminated initial white screen flash on startup by introducing an instant dark shell in `index.html` with inline styling. Hydrated the live VPS cloud database (`https://api.clinicore.me/api/v1/system/sync-state`) with all 4,351 Master Medicines, 263 B2B Parties, 44 Suppliers, 263 Accounts, 3 Warehouses, and 5 Staff Users. Fixed `syncEngine.js` catalog protection guards against remote empty wipes. Registered `clinicore-node-api` systemd service unit on port 5000.
+- **Phase:** Milestone 109 — Enterprise Verified Build v2.5.1 & Real-Time Multi-Device Sync Architecture (`v2.5.1-release` Certified)
+- **Last worked on:** Enforced WhatsApp-like cloud-first sync hydration on boot so every fresh computer/laptop installation instantly pulls live VPS data before opening UI. Enhanced OTA Auto-Updater with a prominent 5-second countdown banner and instant seamless hot-patching. Configured transactional email relay with Resend key synced directly to VPS database (`clinic_001.resend_api_key`) and verified direct 200 OK delivery. Compiled fresh Windows NSIS setup (`CliniCore_2.5.1_x64-setup.exe`) and MSI installer (`CliniCore_2.5.1_x64_en-US.msi`).
 - **Currently blocked on:** Zero blockers. 638/638 Tests Passing. Live CI/CD Pipeline 100% Green.
+
+### Session: 2026-08-30 (Part 109) — Enterprise Verified Build v2.5.1 (Cloud-First Sync & 5s Auto-Update Deck)
+**Task worked on:**
+Build verified production release v2.5.1 with multi-device WhatsApp-like real-time data sync, 5-second auto-update countdown toast, secure Resend email integration, and compiled Windows installers.
+
+**What was built/changed:**
+1. `frontend/src/App.jsx`: Synchronously awaited `syncEngine.pullLatestCloudState()` before resolving `storageReady`, ensuring zero local data discrepancy across different laptops.
+2. `frontend/src/components/PWAUpdateBanner.jsx`: Implemented 5-second visual countdown progress bar with auto-apply mechanism and pause/resume controls.
+3. `backend/server.js` & VPS MySQL: Synced Resend API key directly to VPS database entity (`cf_clinic_v5.resend_api_key`) and verified live transactional email dispatch.
+4. `scripts/vps_fix_all.sh`: Enhanced to read and preserve `RESEND_API_KEY` dynamically from environment without committing secrets to repository.
+5. `frontend/src-tauri/target/release/bundle/nsis/CliniCore_2.5.1_x64-setup.exe` & `bundle/msi/CliniCore_2.5.1_x64_en-US.msi`: Built production Windows release binaries.
 
 ### Session: 2026-08-30 (Part 108) — Zero-Latency Cold Startup & Full VPS Cloud Data Hydration
 **Task worked on:**
