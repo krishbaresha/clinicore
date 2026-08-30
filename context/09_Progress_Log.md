@@ -33,9 +33,21 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 107 — Enterprise Private Over-The-Air (OTA) Hot-Patching Engine & Resilient CI/CD Pipeline (`v2.5.0-release` Certified)
-- **Last worked on:** Configured canonical private OTA update architecture via VPS `/api/v1/system/version` and `/version.json` so clients receive live 1-click update prompts without manual re-installation or GitHub access. Hardened CI/CD pipeline, resolved secret leak warnings, fixed `SupplierPurchases.jsx` auth scope, closed stale PRs, and verified full green CI/CD build passing (Run #33312756487).
-- **Currently blocked on:** Zero blockers. 638/638 Tests Passing. Live CI/CD Pipeline Green.
+- **Phase:** Milestone 108 — Zero-Latency Cold Startup & Full VPS Cloud Data Hydration (`v2.5.0-release` Certified)
+- **Last worked on:** Eliminated initial white screen flash on startup by introducing an instant dark shell in `index.html` with inline styling. Hydrated the live VPS cloud database (`https://api.clinicore.me/api/v1/system/sync-state`) with all 4,351 Master Medicines, 263 B2B Parties, 44 Suppliers, 263 Accounts, 3 Warehouses, and 5 Staff Users. Fixed `syncEngine.js` catalog protection guards against remote empty wipes. Registered `clinicore-node-api` systemd service unit on port 5000.
+- **Currently blocked on:** Zero blockers. 638/638 Tests Passing. Live CI/CD Pipeline 100% Green.
+
+### Session: 2026-08-30 (Part 108) — Zero-Latency Cold Startup & Full VPS Cloud Data Hydration
+**Task worked on:**
+Resolve cold boot white screen delay and hydrate real VPS database state from master catalogs so all connected client devices receive the complete inventory and party database.
+
+**What was built/changed:**
+1. `frontend/index.html`: Replaced render-blocking font loader behaviors and removed premature reload triggers. Inlined immediate dark shell `#0f172a` with branded spinner to prevent white screen flash before React mounts.
+2. `backend/server.js`: Pre-seeded backend sync data with `master_medicines_seed.json`, `master_parties_seed.json`, `master_suppliers_seed.json`, and `master_accounts_seed.json` so fresh server instances automatically self-hydrate.
+3. `backend/data/`: Added master catalog JSON files to backend directory for standalone execution and cloud persistence.
+4. `frontend/src/api/syncEngine.js`: Added catalog collection protection (`catalogKeys`) so empty remote payloads cannot wipe local master datasets.
+5. `scripts/vps_fix_all.sh`: Increased Nginx `client_max_body_size 50M` and registered `clinicore-node-api` systemd service unit on port 5000.
+6. Verified live VPS database at `https://api.clinicore.me/api/v1/system/sync-state` containing **4,351 Medicines, 263 Parties, 44 Suppliers, 263 Accounts, 3 Warehouses, and 5 Users**.
 
 ### Session: 2026-08-30 (Part 107) — Enterprise Private Over-The-Air (OTA) Hot-Patching & Resilient CI/CD Pipeline
 
