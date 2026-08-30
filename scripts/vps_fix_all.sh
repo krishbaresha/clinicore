@@ -153,12 +153,15 @@ server {
     listen [::]:80 default_server;
     server_name api.clinicore.me clinicore.me www.clinicore.me _;
 
+    client_max_body_size 50M;
+
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
 
     # Route ALL /api/* requests to Node.js backend
     location /api {
         proxy_pass http://127.0.0.1:5000;
+        client_max_body_size 50M;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';

@@ -42,6 +42,33 @@ let systemConfig = loadJson(CONFIG_FILE, {
 let users = loadJson(USERS_FILE, []);
 let syncStateData = loadJson(STATE_FILE, {});
 
+// Pre-seed backend syncStateData if empty so VPS serves the full catalog
+const MASTER_MEDS_FILE = path.join(DATA_DIR, "master_medicines_seed.json");
+const MASTER_PARTIES_FILE = path.join(DATA_DIR, "master_parties_seed.json");
+const MASTER_SUPPLIERS_FILE = path.join(DATA_DIR, "master_suppliers_seed.json");
+const MASTER_ACCOUNTS_FILE = path.join(DATA_DIR, "master_accounts_seed.json");
+
+if (!syncStateData["cf_inventory_v5"] || syncStateData["cf_inventory_v5"].length === 0) {
+  syncStateData["cf_inventory_v5"] = loadJson(MASTER_MEDS_FILE, []);
+}
+if (!syncStateData["cf_parties_v5"] || syncStateData["cf_parties_v5"].length === 0) {
+  syncStateData["cf_parties_v5"] = loadJson(MASTER_PARTIES_FILE, []);
+}
+if (!syncStateData["cf_suppliers_v5"] || syncStateData["cf_suppliers_v5"].length === 0) {
+  syncStateData["cf_suppliers_v5"] = loadJson(MASTER_SUPPLIERS_FILE, []);
+}
+if (!syncStateData["cf_accounts_v6"] || syncStateData["cf_accounts_v6"].length === 0) {
+  syncStateData["cf_accounts_v6"] = loadJson(MASTER_ACCOUNTS_FILE, []);
+}
+if (!syncStateData["cf_warehouses_v6"] || syncStateData["cf_warehouses_v6"].length === 0) {
+  syncStateData["cf_warehouses_v6"] = [
+    { id: "wh_001", clinic_id: "clinic_001", name: "Lajpaat Road Warehouse", code: "GDW-01", location: "Lajpaat Road , Hyderabad, Sindh", incharge_name: "Raza", phone: "03000000000", status: "active", is_default: true, is_store_counter: false, created_at: new Date().toISOString() },
+    { id: "wh_002", clinic_id: "clinic_001", name: "Usama 1", code: "GDW-02", location: "Inside Medical Store", incharge_name: "Usama", phone: "03000000000", status: "active", is_default: false, is_store_counter: false, created_at: new Date().toISOString() },
+    { id: "wh_str", clinic_id: "clinic_001", name: "Medical Store Counter", code: "STR-01", location: "Retail Counter Shelf", incharge_name: "Cashier", phone: "03000000000", status: "active", is_default: false, is_store_counter: true, created_at: new Date().toISOString() }
+  ];
+}
+saveJson(STATE_FILE, syncStateData);
+
 // PERMANENT PURGE: Delete admin@clinicore.pk / user_admin if present in users
 users = users.filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
 saveJson(USERS_FILE, users);

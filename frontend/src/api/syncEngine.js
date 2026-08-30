@@ -510,12 +510,16 @@ class SyncEngine {
             KEYS.CLINIC,
           ];
 
+          const catalogKeys = new Set([KEYS.INVENTORY, KEYS.PARTIES, KEYS.SUPPLIERS, KEYS.ACCOUNTS, KEYS.WAREHOUSES]);
+
           for (const key of directOverwriteKeys) {
             if (remoteData[key] !== undefined && remoteData[key] !== null) {
               const remoteVal = remoteData[key];
               if (Array.isArray(remoteVal) && remoteVal.length === 0) {
-                // VPS returns empty array → wipe local (VPS says empty = truth)
-                setCollection(key, []);
+                // If VPS returns empty array for catalog items, do NOT wipe local master catalog seeds!
+                if (!catalogKeys.has(key)) {
+                  setCollection(key, []);
+                }
               } else if (Array.isArray(remoteVal) && remoteVal.length > 0) {
                 setCollection(key, remoteVal);
               } else if (remoteVal && typeof remoteVal === "object" && !Array.isArray(remoteVal)) {
