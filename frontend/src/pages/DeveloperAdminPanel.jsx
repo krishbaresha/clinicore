@@ -1382,9 +1382,13 @@ export default function DeveloperAdminPanel() {
                 MASTER SUITE
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate hidden md:block">
-              Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}</strong>
-            </p>
+            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
+              <span className="hidden md:inline">Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}</strong></span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-[10px] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>v{(typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.2"}</span>
+              </span>
+            </div>
           </div>
         </div>
 
