@@ -658,3 +658,9 @@
   }
 }
 
+/* Hide Microsoft Edge / WebView2 default password reveal eye and clear button */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+}
+

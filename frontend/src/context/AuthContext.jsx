@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from "react";
-import { getSession, login as apiLogin, logout as apiLogout, getActiveCashier, setActiveCashier as apiSetActiveCashier } from "../api/auth.js";
+import { getSession, login as apiLogin, logout as apiLogout, getActiveCashier, setActiveCashier as apiSetActiveCashier, loginWithPin as apiLoginWithPin } from "../api/auth.js";
 import { dbClinic } from "../api/db.js";
 
 export const AuthContext = createContext(null);
@@ -67,6 +67,21 @@ export function AuthProvider({ children }) {
     return result;
   }
 
+  async function loginWithPin(userId, pin) {
+    const result = await apiLoginWithPin(userId, pin);
+    if (result.success) {
+      setUser(result.user);
+      setClinic(dbClinic.get());
+      const updatedCashier = apiSetActiveCashier({
+        id: result.user.userId || result.user.id,
+        name: result.user.name,
+        role: result.user.role,
+      });
+      setActiveCashierState(updatedCashier);
+    }
+    return result;
+  }
+
   function logout() {
     apiLogout();
     setUser(null);
@@ -92,7 +107,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, clinic, loading, activeCashier, switchCashier, login, logout, refreshClinic, refreshUser }}>
+    <AuthContext.Provider value={{ user, clinic, loading, activeCashier, switchCashier, login, logout, refreshClinic, refreshUser, loginWithPin }}>
       {children}
     </AuthContext.Provider>
   );

@@ -41,6 +41,8 @@ import { useGlobalKeyboardNav } from "../hooks/useGlobalKeyboardNav.js";
 import { syncEngine } from "../api/syncEngine.js";
 import { useTranslation } from "react-i18next";
 import StaffSwitcherWidget from "../components/StaffSwitcherWidget.jsx";
+import clinicLogo from "../assets/clinic-logo.png";
+import { canAccessRoutePath } from "../config/permissions.js";
 
 function getNavIcon(iconName, className = "w-5 h-5") {
   switch (iconName) {
@@ -74,12 +76,17 @@ const RECEPTIONIST_NAV = [
   { label: "Patients Directory", icon: "group", path: "/patients" },
 ];
 
-// 2. Cashier — Pharmacy POS Portal Only
+// 2. Cashier / Counter Staff — Full Clinic + Medical Store Operational Navigation
 const CASHIER_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
+  { label: "Register Patient", icon: "how_to_reg", path: "/reception/register" },
+  { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
   { label: "Counter POS", icon: "point_of_sale", path: "/store/pos" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
-  { label: "Fees & CashBook", icon: "payments", path: "/fees" },
+  { label: "Store Inventory", icon: "inventory_2", path: "/store" },
+  { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Patients Directory", icon: "group", path: "/patients" },
+  { label: "Fees & Day Closing", icon: "payments", path: "/fees" },
 ];
 
 // 3. Pharmacist — POS & Inventory Portal
@@ -163,7 +170,7 @@ export default function SidebarLayout({ children }) {
 
   // Native PWA Deferred Prompt & Installation State
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isPWAInstalled, setIsPWAInstalled] = useState(() => {
+  const [isPWAInstalled, setIsPWAInstalled] = useState(true); const _unusedState = (() => {
     if (typeof window === "undefined") return false;
     return (
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -596,12 +603,10 @@ export default function SidebarLayout({ children }) {
     };
   }, []);
 
-  // Build nav items — ensure Admin / Owner gets full settings & super admin panel
-  const isAdminOrOwner = user?.is_owner || user?.role === "admin" || user?.role === "owner" || user?.userId === "user_admin";
+  // Build nav items — dynamically filter by centralized permissions policy
   const rawNavItems = (user?.role && NAV_BY_ROLE[user.role]) || NAV_DEFAULT;
   const navItems = rawNavItems.filter((item) => {
-    if ((item.path === "/settings" || item.path === "/admin") && !isAdminOrOwner) return false;
-    return true;
+    return canAccessRoutePath(user, item.path);
   });
 
   function handleLogout() {
@@ -675,7 +680,7 @@ export default function SidebarLayout({ children }) {
       <LicenseBanner />
 
       {/* ── Top Header Bar (Translucent Glassmorphic Engine - Fixed Topbar) ── */}
-      <header className="border-b border-slate-200/70 bg-white/90 backdrop-blur-md z-40 shadow-xs h-16 flex items-center px-4 sm:px-6 justify-between flex-shrink-0">
+      <header className="border-b border-slate-200/70 bg-white z-40 shadow-xs h-16 flex items-center px-4 sm:px-6 justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           {/* Sidebar Open/Close Toggle Button with 44px ergonomic touch target */}
           <button
@@ -695,9 +700,9 @@ export default function SidebarLayout({ children }) {
           {/* Brand Logo & Clinic Info */}
           <div className="flex items-center gap-2.5">
             <img
-              src="/favicon.svg"
-              alt="CliniCore Logo"
-              className="h-9 w-9 object-contain rounded-xl drop-shadow-xs"
+              src={clinicLogo}
+              alt="H/Dr. Asif Clinic Logo"
+              className="h-10 sm:h-11 w-auto max-w-[120px] object-contain drop-shadow-xs"
             />
             <div>
               <div className="flex items-center gap-2">
@@ -843,6 +848,10 @@ export default function SidebarLayout({ children }) {
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                 </div>
+                <div className="text-[9px] text-slate-400 font-semibold text-center mt-1 border-t border-slate-200/50 pt-1.5 leading-tight">
+                  Developer: <span className="text-teal-700/90 font-bold block">Krish Baresha Softwares</span>
+                  <div className="text-[8px] text-slate-500 font-medium mt-0.5">Ph: 03142291356</div>
+                </div>
               </>
             ) : (
               <div className="flex flex-col items-center gap-2">
@@ -892,9 +901,11 @@ export default function SidebarLayout({ children }) {
                 {/* Drawer Top Header */}
                 <div className="p-4 border-b border-slate-200/60 flex items-center justify-between bg-gradient-to-r from-teal-50/80 to-white flex-shrink-0">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
-                      <Hospital className="w-5 h-5 text-white" />
-                    </div>
+                    <img
+                      src={clinicLogo}
+                      alt="Clinic Logo"
+                      className="w-9 h-9 object-contain rounded-xl shadow-md"
+                    />
                     <div>
                       <h2 className="font-black text-sm text-slate-900 tracking-tight">CliniCore</h2>
                       <p className="text-[10px] text-slate-500 font-medium truncate max-w-[160px]">

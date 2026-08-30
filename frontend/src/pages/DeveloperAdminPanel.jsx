@@ -613,27 +613,33 @@ export default function DeveloperAdminPanel() {
     if (!staffForm.name.trim()) return;
 
     if (editingUser) {
-      dbUsers.update(editingUser.id, {
+      const updateData = {
         name: staffForm.name,
         role: staffForm.role,
-        email: staffForm.email,
-        phone: staffForm.phone,
-        specialization: staffForm.specialization,
+        email: staffForm.email || `${staffForm.name.toLowerCase().replace(/\s+/g, "")}@example.com`,
+        phone: staffForm.phone || "",
+        specialization: staffForm.role === "doctor" ? staffForm.specialization : "",
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
         can_view_financials: Boolean(staffForm.can_view_financials),
         assigned_warehouse_id: staffForm.assigned_warehouse_id || "",
         availability_status: staffForm.availability_status,
-      });
+      };
+      if (staffForm.password) {
+        updateData.password = hashPassword(staffForm.password);
+        updateData.pin = staffForm.password;
+      }
+      dbUsers.update(editingUser.id, updateData);
       showToast(`Updated ${staffForm.name} profile successfully!`);
     } else {
       dbUsers.add({
         name: staffForm.name,
         role: staffForm.role,
         email: staffForm.email || `${staffForm.name.toLowerCase().replace(/\s+/g, "")}@example.com`,
-        phone: staffForm.phone,
-        password: hashPassword(staffForm.password || "123456"),
-        specialization: staffForm.specialization,
+        phone: staffForm.phone || "",
+        password: hashPassword(staffForm.password || "1234"),
+        pin: staffForm.password || "1234",
+        specialization: staffForm.role === "doctor" ? staffForm.specialization : "",
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
         can_view_financials: Boolean(staffForm.can_view_financials),
@@ -3013,16 +3019,41 @@ export default function DeveloperAdminPanel() {
                     Direct password resets, permission control, and doctor profile management
                   </p>
                 </div>
-                <button
-                  onClick={() => {
-                    setEditingUser(null);
-                    setShowAddStaffModal(true);
-                  }}
-                  className="bg-gradient-to-r from-teal-700 to-teal-600 text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:from-teal-800 hover:to-teal-700 transition-all flex items-center gap-1.5 shadow-lg shadow-teal-700/20 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">person_add</span>
-                  Add Doctor / Staff
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={async () => {
+                      showToast("Syncing with VPS Cloud...");
+                      const result = await syncEngine.forceSyncNow();
+                      if (result.success) {
+                        showToast(`✅ Sync completed!`);
+                        loadData();
+                      } else {
+                        showToast(`❌ Sync failed: ${result.message}`);
+                      }
+                    }}
+                    className={`px-4 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border ${
+                      syncState.isOnline
+                        ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300"
+                        : "bg-slate-50 text-slate-600 border-slate-300"
+                    }`}
+                    disabled={syncState.isSyncing}
+                  >
+                    <span className={`material-symbols-outlined text-base ${syncState.isSyncing ? "animate-spin" : ""}`}>
+                      {syncState.isSyncing ? "sync" : "cloud_sync"}
+                    </span>
+                    <span>{syncState.isSyncing ? "Syncing..." : "Sync to VPS"}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingUser(null);
+                      setShowAddStaffModal(true);
+                    }}
+                    className="bg-gradient-to-r from-teal-700 to-teal-600 text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:from-teal-800 hover:to-teal-700 transition-all flex items-center gap-1.5 shadow-lg shadow-teal-700/20 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">person_add</span>
+                    Add Doctor / Staff
+                  </button>
+                </div>
               </div>
 
               {/* Users Table */}
@@ -3033,7 +3064,7 @@ export default function DeveloperAdminPanel() {
                       <th className="px-5 py-3.5">Staff Name</th>
                       <th className="px-5 py-3.5">Role</th>
                       <th className="px-5 py-3.5">Room / Dept</th>
-                      <th className="px-5 py-3.5">Email &amp; Phone</th>
+                      
                       <th className="px-5 py-3.5">Fee / Financials</th>
                       <th className="px-5 py-3.5 text-right whitespace-nowrap">Master Actions</th>
                     </tr>
@@ -3050,24 +3081,21 @@ export default function DeveloperAdminPanel() {
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-slate-500 font-medium">{u.specialization || "Clinic Staff"}</div>
+                          {u.role === "doctor" && <div className="text-[11px] text-slate-500 font-medium">{u.specialization || "General Physician"}</div>}
                         </td>
                         <td className="px-5 py-3.5">
                           <span className={`px-3 py-1 rounded-xl text-[11px] font-black capitalize ${
                             u.role === "doctor"
                               ? "bg-teal-100 text-teal-900 border border-teal-200"
-                              : u.role === "warehouse"
-                              ? "bg-purple-100 text-purple-900 border border-purple-200"
+                              : u.role === "warehouse_incharge"
+                              ? "bg-indigo-100 text-indigo-900 border border-indigo-200"
                               : "bg-emerald-100 text-emerald-900 border border-emerald-200"
                           }`}>
-                            {u.role}
+                            {u.role === "cashier" ? "POS Counter & Cashier" : u.role === "warehouse_incharge" ? "Warehouse Manager" : u.role}
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-teal-950 font-bold">{u.room_number || "Counter"}</td>
-                        <td className="px-5 py-3.5">
-                          <div className="text-teal-950 font-semibold">{u.email}</div>
-                          <div className="text-[11px] text-slate-500 font-mono">{u.phone || "No phone"}</div>
-                        </td>
+
                         <td className="px-5 py-3.5">
                           <div className="flex flex-col gap-1">
                             {u.role === "doctor" && (
@@ -3892,13 +3920,8 @@ export default function DeveloperAdminPanel() {
                     className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold"
                   >
                     <option value="doctor">Doctor</option>
-                    <option value="receptionist">Receptionist / Front Desk</option>
-                    <option value="pharmacist">Pharmacist / Counter</option>
-                    <option value="cashier">Cashier</option>
-                    <option value="warehouse_incharge">Warehouse Incharge / Godown</option>
-                    <option value="accountant">Accountant / Finance</option>
-                    <option value="b2b_salesman">B2B Salesman / Order Booker</option>
-                    <option value="manager">Manager</option>
+                    <option value="cashier">POS Counter & Cashier</option>
+                    <option value="warehouse_incharge">Warehouse Manager</option>
                     <option value="admin">Administrator</option>
                   </select>
                 </div>
@@ -3954,39 +3977,20 @@ export default function DeveloperAdminPanel() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Email</label>
-                  <input
-                    type="email"
-                    value={staffForm.email}
-                    onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Phone</label>
-                  <input
-                    type="text"
-                    value={staffForm.phone}
-                    onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-mono"
-                  />
-                </div>
-              </div>
 
-              {!editingUser && (
-                <div>
-                  <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Initial Password</label>
-                  <input
-                    type="password"
-                    value={staffForm.password}
-                    onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-                    placeholder="Enter Account Password"
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-mono"
-                  />
-                </div>
-              )}
+
+              <div>
+                <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                  {editingUser ? "Change Login PIN (Leave blank to keep current)" : "Initial Login PIN"}
+                </label>
+                <input
+                  type="text"
+                  value={staffForm.password}
+                  onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                  placeholder={editingUser ? "••••" : "e.g. 1234"}
+                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-mono font-bold text-center tracking-widest text-lg"
+                />
+              </div>
 
               {/* Clinic Financials & Revenue Visibility Permission Card */}
               <div className="bg-teal-50/70 border border-teal-200 rounded-2xl p-4 space-y-2">

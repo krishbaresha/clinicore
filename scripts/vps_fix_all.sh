@@ -156,14 +156,18 @@ server {
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
 
-    # Route ALL /api/* requests to PHP gateway
-    location ~ ^/api(/.*)?$ {
-        fastcgi_pass unix:$PHP_SOCKET;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $BACKEND_DIR/public/index.php;
-        fastcgi_param DOCUMENT_ROOT   $BACKEND_DIR/public;
-        fastcgi_param REQUEST_URI     \$request_uri;
-        fastcgi_read_timeout 120;
+    # Route ALL /api/* requests to Node.js backend
+    location /api {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 120;
     }
 
     # Frontend SPA Root

@@ -16,6 +16,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
+const STATE_FILE = path.join(DATA_DIR, "sync_state.json");
 
 function loadJson(file, defaultData) {
   try {
@@ -39,6 +40,7 @@ let systemConfig = loadJson(CONFIG_FILE, {
 });
 
 let users = loadJson(USERS_FILE, []);
+let syncStateData = loadJson(STATE_FILE, {});
 
 // PERMANENT PURGE: Delete admin@clinicore.pk / user_admin if present in users
 users = users.filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
@@ -70,9 +72,30 @@ const server = http.createServer((req, res) => {
     } catch (e) {}
 
     // Healthcheck
-    if (url.pathname === "/health" || url.pathname === "/api/v1/health") {
+    if (url.pathname === "/health" || url.pathname === "/api/health" || url.pathname === "/api/v1/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "healthy", engine: "Node.js Canonical API", version: "2.5.0" }));
+      return;
+    }
+
+    // Time Calibration
+    if (url.pathname === "/api/v1/time" || url.pathname === "/api/v1/system/time") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, data: { epoch_ms: Date.now() } }));
+      return;
+    }
+
+    // Verify Passcode
+    if (url.pathname === "/api/v1/system/verify-passcode" && req.method === "POST") {
+      const { passcode } = payload;
+      const currentPasscode = systemConfig.admin_master_passcode || "KB2026";
+      if (passcode === currentPasscode) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, data: { token: "node_admin_jwt_token_" + Date.now() } }));
+      } else {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: { message: "Incorrect master passcode." } }));
+      }
       return;
     }
 
@@ -90,18 +113,75 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Sync Pull
-    if (url.pathname === "/api/v1/sync/pull" && req.method === "GET") {
-      const cursor = Number(url.searchParams.get("cursor") || 0);
+    // Sync Pull (State Pull)
+    if (url.pathname === "/api/v1/system/sync-state" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ success: true, cursor: cursor + 1, mutations: [] }));
+      res.end(JSON.stringify({ success: true, data: syncStateData }));
       return;
     }
 
-    // Sync Push
-    if (url.pathname === "/api/v1/sync/push" && req.method === "POST") {
+    // Sync Push (State Push)
+    if (url.pathname === "/api/v1/system/sync-state" && req.method === "POST") {
+      syncStateData = payload;
+      saveJson(STATE_FILE, syncStateData);
+      if (payload && Array.isArray(payload["cf_users_v5"])) {
+        users = payload["cf_users_v5"].filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
+        saveJson(USERS_FILE, users);
+      }
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ success: true, synced_count: Array.isArray(payload.mutations) ? payload.mutations.length : 0 }));
+      res.end(JSON.stringify({ success: true }));
+      return;
+    }
+
+    // Restore Backup Data
+    if (url.pathname === "/api/v1/system/restore-backup-data" && req.method === "POST") {
+      syncStateData = payload;
+      saveJson(STATE_FILE, syncStateData);
+      if (payload && Array.isArray(payload["cf_users_v5"])) {
+        users = payload["cf_users_v5"].filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
+        saveJson(USERS_FILE, users);
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true }));
+      return;
+    }
+
+    // Incremental Mutations Sync Push Gate (Fallback acknowledgment)
+    if (url.pathname === "/api/v1/sync/push" && req.method === "POST") {
+      // Process incremental user deletes or updates directly to local cache
+      const mutations = payload.mutations || [];
+      const results = [];
+      for (const mut of mutations) {
+        const { entity_type, action, payload: itemPayload, entity_id } = mut;
+        if (entity_type === "users") {
+          if (action === "DELETE") {
+            users = users.filter((u) => u.id !== entity_id);
+            saveJson(USERS_FILE, users);
+            if (syncStateData["cf_users_v5"]) {
+              syncStateData["cf_users_v5"] = syncStateData["cf_users_v5"].filter((u) => u.id !== entity_id);
+              saveJson(STATE_FILE, syncStateData);
+            }
+          } else if (action === "CREATE") {
+            const cleanUser = { ...itemPayload };
+            users = [...users.filter((u) => u.id !== cleanUser.id), cleanUser];
+            saveJson(USERS_FILE, users);
+            if (syncStateData["cf_users_v5"]) {
+              syncStateData["cf_users_v5"] = [...syncStateData["cf_users_v5"].filter((u) => u.id !== cleanUser.id), cleanUser];
+              saveJson(STATE_FILE, syncStateData);
+            }
+          } else if (action === "UPDATE") {
+            users = users.map((u) => (u.id === entity_id ? { ...u, ...itemPayload } : u));
+            saveJson(USERS_FILE, users);
+            if (syncStateData["cf_users_v5"]) {
+              syncStateData["cf_users_v5"] = syncStateData["cf_users_v5"].map((u) => (u.id === entity_id ? { ...u, ...itemPayload } : u));
+              saveJson(STATE_FILE, syncStateData);
+            }
+          }
+        }
+        results.push({ mutation_id: mut.mutation_id || mut.id, status: "confirmed" });
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, data: { results } }));
       return;
     }
 
@@ -110,12 +190,31 @@ const server = http.createServer((req, res) => {
       if (req.method === "POST") {
         systemConfig = { ...systemConfig, ...payload };
         saveJson(CONFIG_FILE, systemConfig);
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, config: systemConfig }));
-      } else {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, config: systemConfig }));
       }
+      const responseData = {
+        success: true,
+        data: {
+          clinic: systemConfig.clinic || {
+            id: "clinic_001",
+            name: "H/Dr.Asif Ashraf Khan Clinic Medical Store",
+            address: "Lajpat Road, Hyderabad, Sindh",
+            phone: "03473100304",
+            default_consultation_fee: 300,
+            clinic_status: "open",
+            notification_email: "drasifhosting@gmail.com",
+            report_frequency: "daily_9pm",
+          },
+          license: systemConfig.license || {
+            license_status: "active",
+            monthly_fee: 5000,
+            currency: "PKR",
+            billing_cycle: "monthly",
+            due_day: 1,
+          }
+        }
+      };
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(responseData));
       return;
     }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients, dbStockTransfers } from "../api/db.js";
+import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients, dbStockTransfers, dbWarehouses } from "../api/db.js";
 import { formatCurrency, formatTodayLong, getGreeting } from "../utils/formatters.js";
 import { useTranslation } from "react-i18next";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -130,6 +130,11 @@ export default function Dashboard() {
     const myWait = myTVisits.filter((v) => v.status === "waiting");
     const myInRoom = myTVisits.find((v) => v.status === "in_consultation");
 
+    const allWarehouses = dbWarehouses.getAll() || [];
+    const godownStockValuation = allWarehouses.reduce((sum, w) => sum + (dbWarehouses.getStockValuation(w.id) || 0), 0);
+    const allTransfers = dbStockTransfers.getAll() || [];
+    const todayTransfers = allTransfers.filter((t) => new Date(t.created_at || t.date).toDateString() === todayStr);
+
     return {
       todayVisits: tVisits,
       todaySales: tSales,
@@ -149,6 +154,8 @@ export default function Dashboard() {
       completedVisits: totalCompleted,
       myWaitingVisits: myWait,
       myInRoomVisit: myInRoom,
+      godownStockValuation,
+      todayTransfers,
     };
   }, [syncTick, user]);
 

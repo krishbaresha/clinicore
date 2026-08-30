@@ -37,6 +37,20 @@ be specific so a human or next AI can correct it if wrong]
 - **Last worked on:** Transformed ClinicFlow into dedicated Desktop App mode with public page bypass, built Shared Single-Counter Quick Staff Switcher widget, integrated God-Level Admin Audit Panel in Super Admin, updated thermal printer engines with Cashier attribution, attached active cashier to all sales, OPD receipts, and stock movements, and enforced strict user role portal access.
 - **Currently blocked on:** None.
 
+### Session: 2026-08-30 (Part 85) — Operator Consolidation, Logo Transparency, Print Lifecycle Fix & Document Architecture
+
+**Task worked on:**
+Consolidate duplicate POS Operator vs Active Cashier concept into a unified session-backed identity, audit and elevate Dr. Asif logo transparency and sizing across UI header and 80mm receipts, eliminate double-print invocations and preview-cancel reload bugs in `thermalPrinter.js`, and verify the entire 618-test suite.
+
+**What was built/changed:**
+1. `MedicalStorePOS.jsx`: Removed redundant local `Operator: <select>` dropdown; bound `cashier_id` and `cashier_name` in checkout payloads directly to the authoritative `activeCashier` from `AuthContext.jsx`.
+2. `auth.js` & `SidebarLayout.jsx`: Expanded Counter Staff (`cashier` role) operational navigation (`CASHIER_NAV`) and permissions to seamlessly perform patient registration, queue management, POS checkout, inventory view, purchase entries, and daily Z-closing on the single counter terminal.
+3. `SidebarLayout.jsx`: Upgraded header logo sizing to `h-10 sm:h-11 w-auto max-w-[120px]` with transparent drop-shadow, making Dr. Asif's name and clinic branding crisp and prominently visible.
+4. `thermalPrinter.js`: Scaled thermal receipt logo to `max-width: 220px; max-height: 100px;`; refactored `executeThermalPrint` with an isolated temporary iframe and `onafterprint` teardown; stripped all duplicate inline `<script>window.print()</script>` blocks across closing and purchase templates to eliminate the double-dialog bug.
+5. Verification: All 618 tests passed, 0 AST errors, 0 oxlint errors, and clean production Vite bundle compilation.
+
+---
+
 ### Session: 2026-08-30 (Part 84) — Tauri 2.0 Bundler, Valid Icons & Desktop Execution Fix
 
 **Task worked on:**

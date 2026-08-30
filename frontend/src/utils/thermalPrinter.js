@@ -98,7 +98,7 @@ function getLogoHeaderHtml(docTypeLabel = "", blockFlags = {}) {
 
   // Logo image (header_logo block)
   if (showLogo && logoSrc) {
-    headerHtml += `<div style="text-align:center;margin:0 0 2px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:145px;max-height:85px;width:auto;height:auto;display:block;margin:0 auto;object-fit:contain;" /></div>`;
+    headerHtml += `<div style="text-align:center;margin:0 0 4px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:220px;max-height:100px;width:auto;height:auto;display:block;margin:0 auto;object-fit:contain;" /></div>`;
   }
 
   // Text header (clinic_name always shown if present; tagline & contact_info conditional)
@@ -149,58 +149,69 @@ export function escapeHtml(str) {
 
 /**
  * Universal Thermal Print Dispatcher
- * Uses hidden iframe (immune to popup blockers) and falls back to window.open.
+ * Uses isolated temporary iframe with automatic lifecycle teardown on afterprint/cancel.
+ * Prevents double-printing, page reloads, and state corruption.
  */
 export function executeThermalPrint(receiptHtml, title = "Print") {
-  if (typeof document === "undefined") {
+  if (typeof document === "undefined" || !receiptHtml) {
     return receiptHtml;
   }
   try {
-    let iframe = document.getElementById("thermal-print-iframe");
+    // Strip any embedded print scripts to guarantee single-invocation
+    const sanitizedHtml = receiptHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 
-    if (!iframe) {
-      iframe = document.createElement("iframe");
-      iframe.id = "thermal-print-iframe";
-      iframe.style.position = "fixed";
-      iframe.style.right = "0";
-      iframe.style.bottom = "0";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "0";
-      iframe.setAttribute("aria-hidden", "true");
-      iframe.title = title || "Print Thermal Receipt";
-      document.body.appendChild(iframe);
+    // Clean up any lingering print iframes
+    const oldIframe = document.getElementById("thermal-print-iframe");
+    if (oldIframe && oldIframe.parentNode) {
+      oldIframe.parentNode.removeChild(oldIframe);
     }
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "thermal-print-iframe";
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "1px";
+    iframe.style.height = "1px";
+    iframe.style.opacity = "0.01";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.title = title || "Print Thermal Receipt";
+    document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow.document;
     doc.open();
-    doc.write(receiptHtml);
+    doc.write(sanitizedHtml);
     doc.close();
 
+    const cleanup = () => {
+      setTimeout(() => {
+        try {
+          if (iframe && iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        } catch {}
+      }, 100);
+    };
+
+    try {
+      iframe.contentWindow.onafterprint = cleanup;
+    } catch {}
+
+    // Allow CSS/fonts/images in the iframe to layout before invoking print dialog
     setTimeout(() => {
       try {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
       } catch (err) {
-        console.warn("Iframe print blocked, falling back to window.open:", err);
-        const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-        if (win) {
-          win.document.open();
-          win.document.write(receiptHtml);
-          win.document.close();
-          setTimeout(() => { win.print(); }, 600);
-        }
+        console.warn("Thermal print invocation fallback:", err);
       }
-    }, 600);
+    }, 200);
+
+    // Fallback safety garbage collection
+    setTimeout(cleanup, 30000);
   } catch (outerErr) {
-    console.warn("Direct window fallback:", outerErr);
-    const win = window.open("", "_blank", "width=440,height=650,scrollbars=yes,resizable=yes");
-    if (win) {
-      win.document.open();
-      win.document.write(receiptHtml);
-      win.document.close();
-      setTimeout(() => { win.print(); }, 250);
-    }
+    console.error("Thermal print dispatcher error:", outerErr);
   }
 }
 
@@ -569,14 +580,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
         <!-- Powered By CliniCore (permanent) -->
         ${getWatermarkFooterHtml()}
 
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            }, 250);
-          };
-        </script>
+
       </body>
     </html>
   `;
@@ -839,14 +843,7 @@ export function printCashVoucherReceipt(entry, clinicData = null) {
 
         ${getWatermarkFooterHtml()}
 
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            }, 250);
-          };
-        </script>
+
       </body>
     </html>
   `;
@@ -1121,14 +1118,7 @@ export function printProductStockCard(item, transactions = [], summary = {}, cli
 
         ${getWatermarkFooterHtml()}
 
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            }, 250);
-          };
-        </script>
+
       </body>
     </html>
   `;

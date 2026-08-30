@@ -197,50 +197,6 @@ export default function MedicalStorePOS() {
   const [cashTenderedInput, setCashTenderedInput] = useState("");
   const [showRxModal, setShowRxModal] = useState(false);
 
-  // Active POS Operator Switcher (Single-login multi-cashier workflow)
-  const [activeOperator, setActiveOperator] = useState(() => {
-    if (activeCashier && activeCashier.name) {
-      return { id: activeCashier.id, name: activeCashier.name, role: activeCashier.role || "Cashier" };
-    }
-    try {
-      const saved = typeof localStorage !== "undefined" ? localStorage.getItem("cf_pos_active_operator") : null;
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    if (user?.name) return { id: user.userId || user.id, name: user.name, role: user.role || "Cashier" };
-    return { id: "op_default", name: "Counter Staff", role: "Cashier" };
-  });
-
-  useEffect(() => {
-    if (activeCashier && activeCashier.name) {
-      setActiveOperator({ id: activeCashier.id, name: activeCashier.name, role: activeCashier.role || "Cashier" });
-    }
-  }, [activeCashier]);
-
-  const availableOperators = useMemo(() => {
-    const users = dbUsers.getActiveStaff ? dbUsers.getActiveStaff("wh_str") : dbUsers.getAll();
-    const salesmen = dbSalesmen.getAll ? dbSalesmen.getAll() : [];
-    const list = [
-      ...users.map((u) => ({ id: u.id, name: u.display_label || u.name, role: u.role || "Staff" })),
-      ...salesmen.map((s) => ({ id: s.id, name: s.name, role: "Salesman" })),
-    ];
-    const unique = [];
-    const names = new Set();
-    for (const op of list) {
-      if (op.name && !names.has(op.name.toLowerCase())) {
-        names.add(op.name.toLowerCase());
-        unique.push(op);
-      }
-    }
-    return unique.length > 0 ? unique : [{ id: "op_default", name: "Counter Staff", role: "Cashier" }];
-  }, []);
-
-  const handleOperatorChange = (op) => {
-    setActiveOperator(op);
-    try {
-      localStorage.setItem("cf_pos_active_operator", JSON.stringify(op));
-    } catch {}
-  };
-
   const handleReprintLastReceipt = () => {
     const allSales = dbSales.getAll();
     if (!allSales || allSales.length === 0) {
@@ -612,8 +568,8 @@ export default function MedicalStorePOS() {
       payment_type: paymentType,
       cash_tendered: paymentType === "cash" ? tenderedCashVal : paidVal,
       change_due: paymentType === "cash" ? changeDueVal : 0,
-      cashier_id: activeOperator.id,
-      cashier_name: activeOperator.name,
+      cashier_id: activeCashier?.id || user?.userId || user?.id || "cashier",
+      cashier_name: activeCashier?.name || user?.name || "Counter Staff",
       warehouse_id: "wh_str",
     });
 
@@ -681,25 +637,7 @@ export default function MedicalStorePOS() {
 
         {/* Right Controls: Operator Switcher + Reprint + Mode */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Active Cashier / Operator Quick Switcher */}
-          <div className="flex items-center gap-2 bg-teal-50/80 border border-teal-200/80 px-3 py-1.5 rounded-xl shadow-2xs">
-            <span className="material-symbols-outlined text-teal-700 text-base">badge</span>
-            <span className="text-[11px] font-black text-teal-950 uppercase tracking-tight">Operator:</span>
-            <select
-              value={activeOperator.id}
-              onChange={(e) => {
-                const found = availableOperators.find((op) => op.id === e.target.value);
-                if (found) handleOperatorChange(found);
-              }}
-              className="bg-white text-teal-950 font-black text-xs px-2.5 py-1 rounded-lg border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
-            >
-              {availableOperators.map((op) => (
-                <option key={op.id} value={op.id}>
-                  {op.name} ({op.role})
-                </option>
-              ))}
-            </select>
-          </div>
+
 
           {/* Instant Reprint Last Bill (F10) */}
           <button

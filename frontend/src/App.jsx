@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { initDB, dbPatients } from "./api/db.js";
+import { waitForDiskCache } from "./api/storageDriver.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import SidebarLayout from "./layouts/SidebarLayout.jsx";
@@ -130,27 +131,24 @@ import { isDesktopApp } from "./utils/desktop.js";
 
 const GodAdminPanel          = lazyWithRetry(() => import("./pages/GodAdminPanel.jsx"));
 
+import { canAccessRoutePath, getDefaultRouteForRole } from "./config/permissions.js";
+import { useLocation } from "react-router-dom";
+
 /**
- * RoleProtectedRoute — Restricts route access by user role.
- * Non-permitted roles are redirected to their primary home portal.
+ * RoleProtectedRoute — Restricts route access using canonical permissions policy.
+ * Non-permitted roles fail-closed and redirect to their default home portal.
  */
-function RoleProtectedRoute({ allowedRoles, children }) {
+function RoleProtectedRoute({ allowedRoles, targetPath, children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
 
-  const isSuper = Boolean(user.is_owner || user.role === "admin" || user.role === "owner" || user.userId === "user_admin");
-  if (isSuper) return children;
+  const pathToCheck = targetPath || location.pathname;
+  const isAuthorized = canAccessRoutePath(user, pathToCheck);
 
-  if (allowedRoles && Array.isArray(allowedRoles) && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    const roleDefaultRoutes = {
-      cashier: "/store/pos",
-      receptionist: "/reception/register",
-      doctor: "/doctor/queue",
-      pharmacist: "/store/pos",
-      warehouse: "/store/warehouse",
-    };
-    const target = roleDefaultRoutes[user.role] || "/dashboard";
+  if (!isAuthorized) {
+    const target = getDefaultRouteForRole(user.role);
     return <Navigate to={target} replace />;
   }
   return children;
@@ -215,17 +213,40 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const [storageReady, setStorageReady] = useState(false);
+
   // Seed DB and run automated retention lifecycle check (purge patients inactive > 24 months)
   useEffect(() => {
-    initDB();
-    syncEngine.pullLatestCloudState();
-    try {
-      // Auto-purge patient profiles with 0 visits in the last 2 years (24 months)
-      dbPatients.autoPurgeExpiredPatients(24);
-    } catch (e) {
-      console.warn("Retention lifecycle check deferred:", e);
+    async function setupStorage() {
+      try {
+        await waitForDiskCache();
+        initDB();
+        setStorageReady(true);
+        syncEngine.pullLatestCloudState();
+        try {
+          // Auto-purge patient profiles with 0 visits in the last 2 years (24 months)
+          dbPatients.autoPurgeExpiredPatients(24);
+        } catch (e) {
+          console.warn("Retention lifecycle check deferred:", e);
+        }
+      } catch (err) {
+        console.error("Storage setup failed:", err);
+      }
     }
+    setupStorage();
   }, []);
+
+  if (!storageReady) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white font-sans">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500 mx-auto mb-4"></div>
+          <p className="text-sm font-semibold tracking-wide text-slate-400 uppercase">ClinicFlow</p>
+          <p className="text-xs text-slate-500 mt-1">Initializing Secure Storage...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>

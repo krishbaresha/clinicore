@@ -18,6 +18,7 @@ import {
 } from "./conflictResolver.js";
 import { decorateRecordLineage, stripLineageMetadata, getActiveSessionUser } from "./lineage.js";
 import { telemetry } from "./telemetry.js";
+import { storageDriver, isTauri, waitForDiskCache, getDataPath } from "./storageDriver.js";
 
 // Re-export arithmetic & conflict resolution helpers for consumer modules
 export {
@@ -331,7 +332,7 @@ function getPKTDateStr(date = new Date()) {
 
 export function getCollection(key) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storageDriver.getItem(key);
     if (!raw) return [];
 
     const cached = _COLLECTION_CACHE.get(key);
@@ -385,7 +386,7 @@ export function setCollection(key, data) {
       _ID_MAP_CACHE.set(key, idMap);
     }
 
-    localStorage.setItem(key, raw);
+    storageDriver.setItem(key, raw);
 
     notifyStatusUpdate();
 
@@ -453,13 +454,13 @@ export function factoryResetAllData() {
   try {
     // Collect all cf_* keys first (avoid modifying during iteration)
     const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
+    for (let i = 0; i < storageDriver.length; i++) {
+      const k = storageDriver.key(i);
       if (k && (k.startsWith("cf_") || k.startsWith("clinicflow_"))) {
         keysToRemove.push(k);
       }
     }
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    keysToRemove.forEach((k) => storageDriver.removeItem(k));
 
     // Wipe in-memory caches
     _COLLECTION_CACHE.clear();
@@ -479,9 +480,9 @@ export function factoryResetAllData() {
 
 export function generateSequentialInvoiceNo(prefix = "INV") {
   const counterKey = `cf_seq_${prefix}`;
-  let current = parseInt(localStorage.getItem(counterKey) || "1000", 10);
+  let current = parseInt(storageDriver.getItem(counterKey) || "1000", 10);
   current += 1;
-  localStorage.setItem(counterKey, current.toString());
+  storageDriver.setItem(counterKey, current.toString());
   return `${prefix}-${current}`;
 }
 
@@ -508,69 +509,69 @@ export function initDB() {
   }
 
   // 2. If already seeded or has existing clinical records, ensure essentials and return safely
-  if (localStorage.getItem(KEYS.SEEDED)) {
+  if (storageDriver.getItem(KEYS.SEEDED)) {
     return;
   }
 
   // Check if existing data is present in storage before creating defaults
   const hasExistingData = Boolean(
-    localStorage.getItem(KEYS.PATIENTS) ||
-    localStorage.getItem(KEYS.USERS) ||
-    localStorage.getItem(KEYS.INVENTORY) ||
-    localStorage.getItem("cf_patients_v5")
+    storageDriver.getItem(KEYS.PATIENTS) ||
+    storageDriver.getItem(KEYS.USERS) ||
+    storageDriver.getItem(KEYS.INVENTORY) ||
+    storageDriver.getItem("cf_patients_v5")
   );
 
   if (!hasExistingData) {
     _COLLECTION_CACHE.clear();
     _ID_MAP_CACHE.clear();
 
-    localStorage.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
-    localStorage.setItem(KEYS.SERVICES, JSON.stringify(SEED_DATA.clinic_services));
-    localStorage.setItem(KEYS.USERS, JSON.stringify(SEED_DATA.users));
-    localStorage.setItem(KEYS.PATIENTS, JSON.stringify([]));
-    localStorage.setItem(KEYS.VISITS, JSON.stringify([]));
-    localStorage.setItem(KEYS.INVENTORY, JSON.stringify(SEED_DATA.inventory));
-    localStorage.setItem(KEYS.PARTIES, JSON.stringify(SEED_DATA.parties));
-    localStorage.setItem(KEYS.SUPPLIERS, JSON.stringify(SEED_DATA.suppliers));
-    localStorage.setItem(KEYS.SALESMEN, JSON.stringify(SEED_DATA.salesmen));
-    localStorage.setItem(KEYS.PURCHASES, JSON.stringify([]));
-    localStorage.setItem(KEYS.B2B_SALES, JSON.stringify([]));
-    localStorage.setItem(KEYS.SALES, JSON.stringify([]));
-    localStorage.setItem(KEYS.PATIENT_LEDGER, JSON.stringify([]));
-    localStorage.setItem(KEYS.EXPENSES, JSON.stringify([]));
-    localStorage.setItem(KEYS.RETURNS, JSON.stringify([]));
-    localStorage.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
-    localStorage.setItem(KEYS.SHIFT_CLOSINGS, JSON.stringify([]));
-    localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify([]));
-    localStorage.setItem(KEYS.TENANTS, JSON.stringify(SEED_DATA.tenants));
-    localStorage.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
-    localStorage.setItem(KEYS.SUPPLIER_LEDGER, JSON.stringify([]));
-    localStorage.setItem(KEYS.CASHBOOK, JSON.stringify([]));
-    localStorage.setItem(KEYS.STOCK_MOVEMENTS, JSON.stringify([]));
-    localStorage.setItem(KEYS.AUDIT_LOGS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
+    storageDriver.setItem(KEYS.SERVICES, JSON.stringify(SEED_DATA.clinic_services));
+    storageDriver.setItem(KEYS.USERS, JSON.stringify(SEED_DATA.users));
+    storageDriver.setItem(KEYS.PATIENTS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.VISITS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.INVENTORY, JSON.stringify(SEED_DATA.inventory));
+    storageDriver.setItem(KEYS.PARTIES, JSON.stringify(SEED_DATA.parties));
+    storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify(SEED_DATA.suppliers));
+    storageDriver.setItem(KEYS.SALESMEN, JSON.stringify(SEED_DATA.salesmen));
+    storageDriver.setItem(KEYS.PURCHASES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.B2B_SALES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SALES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.PATIENT_LEDGER, JSON.stringify([]));
+    storageDriver.setItem(KEYS.EXPENSES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.RETURNS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SHIFT_CLOSINGS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.DOCUMENTS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.TENANTS, JSON.stringify(SEED_DATA.tenants));
+    storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
+    storageDriver.setItem(KEYS.SUPPLIER_LEDGER, JSON.stringify([]));
+    storageDriver.setItem(KEYS.CASHBOOK, JSON.stringify([]));
+    storageDriver.setItem(KEYS.STOCK_MOVEMENTS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.AUDIT_LOGS, JSON.stringify([]));
   } else {
     // Ensure essential singletons exist if missing
-    if (!localStorage.getItem(KEYS.CLINIC)) {
-      localStorage.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
+    if (!storageDriver.getItem(KEYS.CLINIC)) {
+      storageDriver.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
     }
-    if (!localStorage.getItem(KEYS.WAREHOUSES)) {
-      localStorage.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
+    if (!storageDriver.getItem(KEYS.WAREHOUSES)) {
+      storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
     }
   }
   // PERMANENT PURGE: Remove legacy admin@clinicore.pk / user_admin bootstrap user from local storage
   try {
-    const rawUsers = localStorage.getItem(KEYS.USERS);
+    const rawUsers = storageDriver.getItem(KEYS.USERS);
     if (rawUsers) {
       const parsedUsers = JSON.parse(rawUsers);
       const cleanedUsers = parsedUsers.filter(u => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
       if (cleanedUsers.length !== parsedUsers.length) {
-        localStorage.setItem(KEYS.USERS, JSON.stringify(cleanedUsers));
+        storageDriver.setItem(KEYS.USERS, JSON.stringify(cleanedUsers));
         _COLLECTION_CACHE.delete(KEYS.USERS);
       }
     }
   } catch (err) {}
 
-  localStorage.setItem(KEYS.LICENSE, JSON.stringify({
+  storageDriver.setItem(KEYS.LICENSE, JSON.stringify({
     license_status: "active", // "active" | "warning" | "grace_period" | "restricted" | "locked"
     monthly_fee: 5000,
     currency: "PKR",
@@ -593,13 +594,13 @@ export function initDB() {
     custom_notice: "",
     updated_at: new Date().toISOString(),
   }));
-  localStorage.setItem(KEYS.OUTBOX, JSON.stringify([]));
+  storageDriver.setItem(KEYS.OUTBOX, JSON.stringify([]));
 
-  localStorage.setItem(KEYS.SEEDED, "1");
+  storageDriver.setItem(KEYS.SEEDED, "1");
 }
 
 export function resetDatabaseToDemoData() {
-  Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
+  Object.values(KEYS).forEach((k) => storageDriver.removeItem(k));
   _COLLECTION_CACHE.clear();
   _ID_MAP_CACHE.clear();
   initDB();
@@ -629,15 +630,15 @@ export function clearAllTransactionalData() {
 
   // Set all transactional tables to clean empty arrays
   transactionalKeys.forEach((k) => {
-    localStorage.setItem(k, JSON.stringify([]));
+    storageDriver.setItem(k, JSON.stringify([]));
   });
 
   // Clear sequential counters and opening float caches
   try {
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i);
+    for (let i = storageDriver.length - 1; i >= 0; i--) {
+      const key = storageDriver.key(i);
       if (key && (key.startsWith("cf_seq_") || key.startsWith("cf_opening_cash_"))) {
-        localStorage.removeItem(key);
+        storageDriver.removeItem(key);
       }
     }
   } catch {}
@@ -655,18 +656,18 @@ export function clearAllTransactionalData() {
 // ---------- Clinic ----------
 export const dbClinic = {
   get: () => {
-    const raw = localStorage.getItem(KEYS.CLINIC);
+    const raw = storageDriver.getItem(KEYS.CLINIC);
     let clinic = raw ? JSON.parse(raw) : SEED_DATA.clinic;
     if (clinic && clinic.name && clinic.name.includes("Asif Ashraf Khan") && !clinic.name.startsWith("H/Dr.Asif")) {
       clinic.name = "H/Dr.Asif Ashraf Khan Clinic";
-      localStorage.setItem(KEYS.CLINIC, JSON.stringify(clinic));
+      storageDriver.setItem(KEYS.CLINIC, JSON.stringify(clinic));
     }
     return clinic;
   },
   update: (data) => {
     const current = dbClinic.get();
     const updated = { ...current, ...data };
-    localStorage.setItem(KEYS.CLINIC, JSON.stringify(updated));
+    storageDriver.setItem(KEYS.CLINIC, JSON.stringify(updated));
     try {
       window.dispatchEvent(new Event("clinicflow_status_update"));
     } catch {}
@@ -870,7 +871,7 @@ export const dbUsers = {
   },
   resetPassword: (id, newPlainPassword) => {
     const users = getCollection(KEYS.USERS);
-    const updated = users.map((u) => (u.id === id ? { ...u, password: hashPassword(newPlainPassword) } : u));
+    const updated = users.map((u) => (u.id === id ? { ...u, password: hashPassword(newPlainPassword), pin: newPlainPassword } : u));
     setCollection(KEYS.USERS, updated);
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return true;
@@ -1082,7 +1083,7 @@ export const dbPatients = {
 export const dbVisits = {
   getAll: () => {
     let list = getCollection(KEYS.VISITS);
-    if (!localStorage.getItem(KEYS.VISITS)) {
+    if (!storageDriver.getItem(KEYS.VISITS)) {
       list = SEED_DATA.visits || [];
       setCollection(KEYS.VISITS, list);
     }
@@ -5049,19 +5050,19 @@ export function createPreRestoreCheckpoint(reason = "Pre-Restore Safety Checkpoi
     const checkpointId = `cf_chk_${timestamp}`;
     const snapshot = {};
 
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
+    for (let i = 0; i < storageDriver.length; i++) {
+      const k = storageDriver.key(i);
       if (k && !k.startsWith("cf_chk_") && k !== CHECKPOINT_META_KEY) {
-        snapshot[k] = localStorage.getItem(k);
+        snapshot[k] = storageDriver.getItem(k);
       }
     }
 
     const payloadStr = JSON.stringify(snapshot);
-    localStorage.setItem(checkpointId, payloadStr);
+    storageDriver.setItem(checkpointId, payloadStr);
 
     let metaList = [];
     try {
-      metaList = JSON.parse(localStorage.getItem(CHECKPOINT_META_KEY) || "[]");
+      metaList = JSON.parse(storageDriver.getItem(CHECKPOINT_META_KEY) || "[]");
     } catch {
       metaList = [];
     }
@@ -5078,11 +5079,11 @@ export function createPreRestoreCheckpoint(reason = "Pre-Restore Safety Checkpoi
     while (metaList.length > MAX_CHECKPOINTS_RETAINED) {
       const expired = metaList.pop();
       if (expired && expired.id) {
-        localStorage.removeItem(expired.id);
+        storageDriver.removeItem(expired.id);
       }
     }
 
-    localStorage.setItem(CHECKPOINT_META_KEY, JSON.stringify(metaList));
+    storageDriver.setItem(CHECKPOINT_META_KEY, JSON.stringify(metaList));
     return { success: true, checkpointId };
   } catch (err) {
     return { success: false, error: err.message };
@@ -5094,7 +5095,7 @@ export function rollbackLastRestore(targetCheckpointId = null) {
     if (typeof localStorage === "undefined") return { success: false, error: "LocalStorage unavailable." };
     let metaList = [];
     try {
-      metaList = JSON.parse(localStorage.getItem(CHECKPOINT_META_KEY) || "[]");
+      metaList = JSON.parse(storageDriver.getItem(CHECKPOINT_META_KEY) || "[]");
     } catch {
       metaList = [];
     }
@@ -5111,7 +5112,7 @@ export function rollbackLastRestore(targetCheckpointId = null) {
       return { success: false, error: "Target checkpoint not found." };
     }
 
-    const rawSnapshot = localStorage.getItem(target.id);
+    const rawSnapshot = storageDriver.getItem(target.id);
     if (!rawSnapshot) {
       return { success: false, error: "Checkpoint snapshot data is missing or corrupted." };
     }
@@ -5119,17 +5120,17 @@ export function rollbackLastRestore(targetCheckpointId = null) {
     const snapshot = JSON.parse(rawSnapshot);
 
     const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
+    for (let i = 0; i < storageDriver.length; i++) {
+      const k = storageDriver.key(i);
       if (k && !k.startsWith("cf_chk_") && k !== CHECKPOINT_META_KEY) {
         keysToRemove.push(k);
       }
     }
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    keysToRemove.forEach((k) => storageDriver.removeItem(k));
 
     Object.entries(snapshot).forEach(([k, v]) => {
       if (v !== null && v !== undefined) {
-        localStorage.setItem(k, v);
+        storageDriver.setItem(k, v);
       }
     });
 
@@ -5434,11 +5435,11 @@ export function importFullDatabase(backupInput, options = { skipCheckpoint: fals
     _ID_MAP_CACHE.clear();
 
     sandboxMemory.forEach((val, key) => {
-      localStorage.setItem(key, val);
+      storageDriver.setItem(key, val);
     });
 
-    localStorage.setItem(KEYS.SEEDED, "1");
-    localStorage.setItem(SCHEMA_VERSION_KEY, String(TARGET_SCHEMA_VERSION));
+    storageDriver.setItem(KEYS.SEEDED, "1");
+    storageDriver.setItem(SCHEMA_VERSION_KEY, String(TARGET_SCHEMA_VERSION));
 
     try {
       window.dispatchEvent(new Event("clinicflow_status_update"));
@@ -5455,7 +5456,7 @@ export function importFullDatabase(backupInput, options = { skipCheckpoint: fals
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          passcode: localStorage.getItem("cf_admin_master_passcode") || "KB2026",
+          passcode: storageDriver.getItem("cf_admin_master_passcode") || "KB2026",
           collections: collectionsSnapshot,
           metadata: { restored_at: new Date().toISOString(), source: "ui_backup_upload" }
         })
@@ -5531,7 +5532,7 @@ export function hydrateCollectionsFromSnapshot(snapshot) {
       }
       if (typeof localStorage !== "undefined") {
         try {
-          localStorage.setItem(key, raw);
+          storageDriver.setItem(key, raw);
         } catch {}
       }
     }
@@ -5550,7 +5551,7 @@ export function hydrateCollectionsFromSnapshot(snapshot) {
 export const dbLicense = {
   get: () => {
     try {
-      const raw = localStorage.getItem(KEYS.LICENSE);
+      const raw = storageDriver.getItem(KEYS.LICENSE);
       if (!raw) {
         return {
           license_status: "active",
@@ -5586,7 +5587,7 @@ export const dbLicense = {
       ...updates,
       updated_at: new Date().toISOString(),
     };
-    localStorage.setItem(KEYS.LICENSE, JSON.stringify(merged));
+    storageDriver.setItem(KEYS.LICENSE, JSON.stringify(merged));
     try {
       window.dispatchEvent(new CustomEvent("clinicflow_license_update", { detail: merged }));
       window.dispatchEvent(new Event("clinicflow_status_update"));
@@ -5700,10 +5701,10 @@ export const dbLicense = {
 export function getDeviceId() {
   try {
     if (typeof localStorage !== "undefined") {
-      let devId = localStorage.getItem("cf_device_fingerprint");
+      let devId = storageDriver.getItem("cf_device_fingerprint");
       if (!devId) {
         devId = "dev_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10);
-        localStorage.setItem("cf_device_fingerprint", devId);
+        storageDriver.setItem("cf_device_fingerprint", devId);
       }
       return devId;
     }
@@ -5830,7 +5831,7 @@ export const dbAuditLogs = {
 
     if (!finalActorId && typeof sessionStorage !== "undefined") {
       try {
-        const rawSess = sessionStorage.getItem("cf_session") || localStorage.getItem("cf_session");
+        const rawSess = sessionStorage.getItem("cf_session") || storageDriver.getItem("cf_session");
         if (rawSess) {
           const sess = JSON.parse(rawSess);
           finalActorId = sess.userId || "system";

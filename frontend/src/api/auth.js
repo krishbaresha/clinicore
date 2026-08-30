@@ -1,5 +1,6 @@
 /** auth.js — Login and session helpers with security hardening. */
 import { dbUsers, hashPassword, verifyPassword, dbAuditLogs } from "./db.js";
+import { storageDriver } from "./storageDriver.js";
 
 const SESSION_KEY = "cf_session";
 const MAX_ATTEMPTS = 5;
@@ -58,15 +59,15 @@ export const PERMISSION_MATRIX = {
     system_settings: [],
   },
   cashier: {
-    patients: ["view", "create"],
-    visits: ["view", "create"],
+    patients: ["view", "create", "edit"],
+    visits: ["view", "create", "edit"],
     inventory: ["view"],
     pos_sales: ["view", "create", "financial_view"],
-    b2b_sales: ["view"],
-    purchases: [],
-    suppliers: [],
+    b2b_sales: ["view", "create", "financial_view"],
+    purchases: ["view", "create"],
+    suppliers: ["view"],
     parties: ["view"],
-    warehouses: [],
+    warehouses: ["view"],
     cashbook: ["view", "create", "financial_view"],
     system_settings: [],
   },
@@ -267,7 +268,7 @@ function setRateLimitState(state) {
 
 export function getAdminPasscode() {
   if (typeof window !== "undefined" && window.localStorage) {
-    return localStorage.getItem("cf_admin_master_passcode") || "KB2026";
+    return storageDriver.getItem("cf_admin_master_passcode") || "KB2026";
   }
   return "KB2026";
 }
@@ -328,7 +329,7 @@ export async function login(identifier, password) {
           const vpsUser = json.data.user;
 
           // Save JWT token for sync engine API calls
-          try { localStorage.setItem("cf_vps_jwt", json.data.token); } catch {}
+          try { storageDriver.setItem("cf_vps_jwt", json.data.token); } catch {}
 
           // Update local user cache from VPS record so offline login works next time
           try {
@@ -360,7 +361,7 @@ export async function login(identifier, password) {
             if (typeof sessionStorage !== "undefined") {
               sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
             }
-            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            storageDriver.setItem(SESSION_KEY, JSON.stringify(session));
           } catch {}
 
           setRateLimitState({ failedAttempts: 0, lockoutUntil: 0 });
@@ -477,7 +478,7 @@ export async function login(identifier, password) {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     }
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    storageDriver.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {}
 
   dbAuditLogs.logEvent({
@@ -496,7 +497,7 @@ export function getSession() {
     if (typeof sessionStorage === "undefined") return null;
     let session = JSON.parse(sessionStorage.getItem(SESSION_KEY));
     if (!session && typeof localStorage !== "undefined") {
-      session = JSON.parse(localStorage.getItem(SESSION_KEY));
+      session = JSON.parse(storageDriver.getItem(SESSION_KEY));
       if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     }
     if (!session || !session.userId) return null;
@@ -516,13 +517,13 @@ export function getSession() {
       }
       // Local-only session with no user record → purge
       sessionStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(SESSION_KEY);
+      storageDriver.removeItem(SESSION_KEY);
       return null;
     }
 
     if (dbUser.status === "disabled" || dbUser.status === "deactivated" || dbUser.status === "inactive") {
       sessionStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(SESSION_KEY);
+      storageDriver.removeItem(SESSION_KEY);
       return null;
     }
 
@@ -549,7 +550,7 @@ export function getSession() {
 export function logout() {
   try {
     if (typeof sessionStorage !== "undefined") sessionStorage.removeItem(SESSION_KEY);
-    if (typeof localStorage !== "undefined") localStorage.removeItem(SESSION_KEY);
+    if (typeof localStorage !== "undefined") storageDriver.removeItem(SESSION_KEY);
   } catch {}
 }
 
@@ -594,7 +595,7 @@ export function assertAuthorized(allowedRoles = [], requireFinancials = false) {
  */
 export function getActiveCashier() {
   try {
-    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("cf_active_cashier") : null;
+    const raw = typeof localStorage !== "undefined" ? storageDriver.getItem("cf_active_cashier") : null;
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.id && parsed.name) return parsed;
@@ -623,8 +624,8 @@ export function setActiveCashier(staff) {
     switched_at: new Date().toISOString(),
   };
   try {
-    localStorage.setItem("cf_active_cashier", JSON.stringify(data));
-    localStorage.setItem("cf_pos_active_operator", JSON.stringify(data));
+    storageDriver.setItem("cf_active_cashier", JSON.stringify(data));
+    storageDriver.setItem("cf_pos_active_operator", JSON.stringify(data));
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("clinicflow_cashier_changed", { detail: data }));
     }
@@ -632,3 +633,61 @@ export function setActiveCashier(staff) {
   return data;
 }
 
+
+
+/**
+ * Attempt login using 4-digit PIN selection.
+ * Returns { success, user, error }.
+ */
+export async function loginWithPin(userId, pin) {
+  const allUsers = dbUsers.getAll();
+  const user = allUsers.find((u) => u.id === userId);
+  if (!user) {
+    return { success: false, error: { message: "User not found." } };
+  }
+  
+  if (user.status === "disabled" || user.status === "deactivated" || user.status === "inactive") {
+    return {
+      success: false,
+      error: { message: "This account has been disabled." },
+    };
+  }
+
+  // Verify PIN (matches either raw user.pin, user.password, or verifies against hash)
+  const isMatch = (user.pin && user.pin.toString() === pin.toString()) || 
+                  (user.password && user.password.toString() === pin.toString()) ||
+                  verifyPassword(pin, user.password || user.password_hash || "");
+                  
+  if (!isMatch) {
+    return { success: false, error: { message: "Incorrect 4-digit PIN." } };
+  }
+
+  // Create session
+  const session = {
+    userId: user.id,
+    name: user.name || user.display_label,
+    role: user.role,
+    clinic_id: user.clinic_id || "clinic_001",
+    assigned_warehouse_id: user.assigned_warehouse_id || "",
+    is_owner: Boolean(user.is_principal_doctor || user.is_owner || user.role === "admin" || user.role === "owner"),
+    can_view_financials: Boolean(user.can_view_financials || user.role === "admin" || user.role === "owner"),
+    is_principal_doctor: Boolean(user.is_principal_doctor),
+    sessionToken: "st_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+    authenticatedAt: new Date().toISOString(),
+    auth_source: "local_pin",
+  };
+
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }
+    storageDriver.setItem(SESSION_KEY, JSON.stringify(session));
+    
+    // Auto-set as active cashier for POS session
+    setActiveCashier(user);
+  } catch (e) {
+    console.error("Failed to write session:", e);
+  }
+
+  return { success: true, user: session };
+}

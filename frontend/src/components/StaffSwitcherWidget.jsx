@@ -105,9 +105,7 @@ export default function StaffSwitcherWidget() {
                   <h3 className="text-sm font-black text-white tracking-tight">
                     Active Counter Staff Switcher
                   </h3>
-                  <p className="text-[10px] text-emerald-200/90 font-medium">
-                    Shared Counter PC • Switch operator without logging out
-                  </p>
+                  
                 </div>
               </div>
               <button
@@ -249,9 +247,7 @@ export default function StaffSwitcherWidget() {
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 text-center text-[10px] text-slate-400 font-medium">
-                  Active operator name will be printed on all 80mm thermal receipts.
-                </div>
+
               </div>
             )}
           </div>

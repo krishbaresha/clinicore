@@ -28,6 +28,7 @@ import {
   reconcileSystemSettings,
 } from "./conflictResolver.js";
 import { telemetry } from "./telemetry.js";
+import { storageDriver } from "./storageDriver.js";
 
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
@@ -61,7 +62,7 @@ class SyncEngine {
     this.retryAttempt = 0;
     this.subscribers = new Set();
     this.lastSyncTime =
-      (typeof localStorage !== "undefined" ? localStorage.getItem("cf_last_cloud_sync") : null) || null;
+      (typeof localStorage !== "undefined" ? storageDriver.getItem("cf_last_cloud_sync") : null) || null;
     this.serverTimeOffsetMs = 0;
     this.enableSnapshotSyncFallback = false;
 
@@ -260,7 +261,7 @@ class SyncEngine {
   }
 
   async processOutbox() {
-    const token = localStorage.getItem("cf_vps_jwt");
+    const token = storageDriver.getItem("cf_vps_jwt");
     if (!this.isOnline || this.isSyncing || (!token && !this.enableSnapshotSyncFallback)) return;
     const allOutbox = dbOutbox?.getAll?.() || [];
     // Reset any orphaned "sending" items from prior crashes to "pending"
@@ -284,11 +285,11 @@ class SyncEngine {
         }
         return m;
       });
-      localStorage.setItem(KEYS.OUTBOX, JSON.stringify(inFlightOutbox));
+      storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(inFlightOutbox));
       this.notify();
 
       // 2. Transmit batch to /api/v1/sync/push
-      const token = localStorage.getItem("cf_vps_jwt");
+      const token = storageDriver.getItem("cf_vps_jwt");
       const headers = { "Content-Type": "application/json" };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
@@ -320,11 +321,11 @@ class SyncEngine {
           return false; // Default remove successfully acknowledged
         });
 
-        localStorage.setItem(KEYS.OUTBOX, JSON.stringify(updatedOutbox));
+        storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(updatedOutbox));
         this.retryAttempt = 0;
         this.lastSyncTime = new Date().toISOString();
         if (typeof localStorage !== "undefined") {
-          localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
+          storageDriver.setItem("cf_last_cloud_sync", this.lastSyncTime);
         }
         this.setState(SYNC_FSM_STATES.IDLE);
       } else {
@@ -348,7 +349,7 @@ class SyncEngine {
         return m;
       });
 
-      localStorage.setItem(KEYS.OUTBOX, JSON.stringify(updatedOutbox));
+      storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(updatedOutbox));
       const hasDeadLetters = updatedOutbox.some((m) => m.status === "dead_letter");
       this.setState(hasDeadLetters ? SYNC_FSM_STATES.DEAD_LETTER : SYNC_FSM_STATES.ERROR, err.message);
 
@@ -368,7 +369,7 @@ class SyncEngine {
 
       if (payloadStr === this.lastStateHash) return;
 
-      const token = localStorage.getItem("cf_vps_jwt");
+      const token = storageDriver.getItem("cf_vps_jwt");
       const headers = { "Content-Type": "application/json" };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
@@ -383,7 +384,7 @@ class SyncEngine {
         this.lastStateHash = payloadStr;
         this.lastSyncTime = new Date().toISOString();
         if (typeof localStorage !== "undefined") {
-          localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
+          storageDriver.setItem("cf_last_cloud_sync", this.lastSyncTime);
         }
         this.notify();
       }
@@ -403,7 +404,7 @@ class SyncEngine {
     try {
       // 1. Pull Config & Licensing (Domain 5: Server Supremacy)
       try {
-        const token = localStorage.getItem("cf_vps_jwt");
+        const token = storageDriver.getItem("cf_vps_jwt");
         const headers = {
           "User-Agent": "CliniCore-PWA/2.0",
         };
@@ -423,14 +424,14 @@ class SyncEngine {
               { clinic: sClinic, license: cfgJson.data.license || currentLic }
             );
             if (reconciled.license) {
-              localStorage.setItem(KEYS.LICENSE, JSON.stringify(reconciled.license));
+              storageDriver.setItem(KEYS.LICENSE, JSON.stringify(reconciled.license));
             }
           }
         }
       } catch {}
 
       // 2. Pull Relational State (Requires Active Authenticated Session)
-      const token = localStorage.getItem("cf_vps_jwt");
+      const token = storageDriver.getItem("cf_vps_jwt");
       if (!token) {
         // Client is not authenticated yet — skip sync-state pull until login
         this.setState(SYNC_FSM_STATES.IDLE);
@@ -482,7 +483,7 @@ class SyncEngine {
               }
             }
             setCollection(KEYS.PATIENTS, merged);
-            localStorage.setItem("cf_patients_base_sync", JSON.stringify(merged));
+            storageDriver.setItem("cf_patients_base_sync", JSON.stringify(merged));
           }
 
           // ── B. All other collections — direct VPS overwrite ──
@@ -518,14 +519,14 @@ class SyncEngine {
                 setCollection(key, remoteVal);
               } else if (remoteVal && typeof remoteVal === "object" && !Array.isArray(remoteVal)) {
                 // Singleton object (clinic config)
-                localStorage.setItem(key, JSON.stringify(remoteVal));
+                storageDriver.setItem(key, JSON.stringify(remoteVal));
               }
             }
           }
 
           this.lastSyncTime = new Date().toISOString();
           if (typeof localStorage !== "undefined") {
-            localStorage.setItem("cf_last_cloud_sync", this.lastSyncTime);
+            storageDriver.setItem("cf_last_cloud_sync", this.lastSyncTime);
           }
           try {
             window.dispatchEvent(new Event("clinicflow_status_update"));
@@ -535,7 +536,7 @@ class SyncEngine {
         }
       } else {
         if (res.status === 401) {
-          localStorage.removeItem("cf_vps_jwt");
+          storageDriver.removeItem("cf_vps_jwt");
           this.setState(SYNC_FSM_STATES.IDLE);
         } else {
           this.setState(SYNC_FSM_STATES.ERROR, `Pull error: HTTP ${res.status}`);
@@ -566,7 +567,7 @@ class SyncEngine {
       target.status = "pending";
       target.retry_count = 0;
       target.last_error = null;
-      localStorage.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
+      storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
       this.notify();
       this.processOutbox();
       return true;
@@ -583,7 +584,7 @@ class SyncEngine {
         m.last_error = null;
       }
     });
-    localStorage.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
+    storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
     this.notify();
     this.processOutbox();
   }
@@ -596,7 +597,7 @@ class SyncEngine {
   clearDeadLetterQueue() {
     const allOutbox = dbOutbox?.getAll?.() || [];
     const remaining = allOutbox.filter((m) => m.status !== "dead_letter");
-    localStorage.setItem(KEYS.OUTBOX, JSON.stringify(remaining));
+    storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(remaining));
     this.notify();
   }
 

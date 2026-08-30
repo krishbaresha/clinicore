@@ -1,17 +1,29 @@
-/**
- * lineage.js — Automatic Record Lineage & Distributed Provenance Tracking
- */
-
 import { APP_CONFIG } from '../utils/version.js';
 import { getDeviceId } from './db.js';
+import { storageDriver } from './storageDriver.js';
 
 export function getActiveSessionUser() {
-  if (typeof sessionStorage === 'undefined' && typeof localStorage === 'undefined') {
+  try {
+    // 1. Look for active switched counter staff (User B) first
+    const rawCashier = storageDriver.getItem("cf_active_cashier");
+    if (rawCashier) {
+      const cashier = JSON.parse(rawCashier);
+      if (cashier && cashier.name) {
+        return {
+          id: cashier.id || cashier.userId || 'system',
+          name: cashier.name,
+          role: cashier.role || 'staff',
+        };
+      }
+    }
+  } catch (_) {}
+
+  if (typeof sessionStorage === 'undefined') {
     return { id: 'system', name: 'System Automated', role: 'system' };
   }
   try {
     const raw = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('cf_session')) ||
-                (typeof localStorage !== 'undefined' && localStorage.getItem('cf_session'));
+                storageDriver.getItem('cf_session');
     if (raw) {
       const sess = JSON.parse(raw);
       return {
