@@ -23,14 +23,14 @@ function loadJson(file, defaultData) {
     if (fs.existsSync(file)) {
       return JSON.parse(fs.readFileSync(file, "utf8"));
     }
-  } catch (e) {}
+  } catch (e) { }
   return defaultData;
 }
 
 function saveJson(file, data) {
   try {
     fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
-  } catch (e) {}
+  } catch (e) { }
 }
 
 let systemConfig = loadJson(CONFIG_FILE, {
@@ -96,7 +96,7 @@ const server = http.createServer((req, res) => {
     let payload = {};
     try {
       if (body) payload = JSON.parse(body);
-    } catch (e) {}
+    } catch (e) { }
 
     // Healthcheck
     if (url.pathname === "/health" || url.pathname === "/api/health" || url.pathname === "/api/v1/health") {
@@ -145,8 +145,8 @@ const server = http.createServer((req, res) => {
 
       // Valid if matches stored passcode OR bootstrap recovery keys
       const isValid = (currentPasscode && inputPass === currentPasscode) ||
-                      inputPass === "Champion24" ||
-                      inputPass === "KB2026";
+        inputPass === "Champion24" ||
+        inputPass === "KB2026";
 
       if (isValid) {
         if (inputPass && inputPass !== currentPasscode) {
