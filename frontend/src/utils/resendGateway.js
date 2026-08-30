@@ -20,12 +20,15 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
     attachments: emailAttachments,
   };
 
-  // Try local backend (http://localhost:5000) first if on localhost, then VPS backend (https://api.clinicore.me)
+  // 1. Try local backend (http://127.0.0.1:5000 / http://localhost:5000) first, then VPS backend
   const candidateUrls = [];
-  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+  if (typeof window !== "undefined") {
+    candidateUrls.push("http://127.0.0.1:5000");
     candidateUrls.push("http://localhost:5000");
   }
   candidateUrls.push(import.meta.env?.VITE_API_URL || "https://api.clinicore.me");
+
+  let lastRelayError = null;
 
   for (const baseUrl of candidateUrls) {
     try {
@@ -35,14 +38,15 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        const backendData = await res.json().catch(() => null);
-        if (backendData?.success) {
-          return { success: true, id: backendData.id || "sent_via_relay", method: `relay (${baseUrl})` };
-        }
+      const backendData = await res.json().catch(() => null);
+      if (res.ok && backendData?.success) {
+        return { success: true, id: backendData.id || "sent_via_relay", method: `relay (${baseUrl})` };
+      } else if (backendData?.error) {
+        lastRelayError = backendData.error;
       }
     } catch (err) {
-      console.warn(`Email relay unavailable at ${baseUrl}:`, err.message);
+      // Backend candidate offline/unreachable
+      lastRelayError = err.message;
     }
   }
 
@@ -67,10 +71,12 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
     if (directRes.ok) {
       return { success: true, id: directData.id || "sent_direct", method: "direct_resend_api" };
     } else {
-      const errMsg = directData.message || directData.name || `Resend Error (HTTP ${directRes.status})`;
+      const errMsg = directData.message || directData.name || lastRelayError || `Resend Error (HTTP ${directRes.status})`;
       return { success: false, error: errMsg, details: directData };
     }
   } catch (directErr) {
-    return { success: false, error: directErr.message || "Network connection failure" };
+    const finalErr = lastRelayError || directErr.message || "Network connection failure";
+    return { success: false, error: finalErr };
   }
 }
+

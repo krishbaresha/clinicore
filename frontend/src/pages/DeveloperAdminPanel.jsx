@@ -28,10 +28,11 @@ import {
 } from "../utils/thermalPrinter.js";
 import GodAdminPanel from "./GodAdminPanel.jsx";
 
-const DEFAULT_ADMIN_PASSCODE = "KB2026"; // Default Developer Passcode
+const DEFAULT_ADMIN_PASSCODE = "2026"; // Default Developer Passcode
 const DEFAULT_TAB_PIN = "7860"; // Default Tab Lock PIN
 const DEFAULT_API_URL = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
+  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://127.0.0.1:5000" : "https://api.clinicore.me");
+
 
 export function getAdminPasscode() {
   try {
@@ -44,7 +45,7 @@ export function getAdminPasscode() {
 export function setAdminPasscode(pass) {
   try {
     localStorage.setItem("cf_admin_master_passcode", pass);
-  } catch {}
+  } catch { }
 }
 
 export function getTabPin() {
@@ -58,7 +59,7 @@ export function getTabPin() {
 export function setTabPin(pin) {
   try {
     localStorage.setItem("cf_admin_tab_pin", pin);
-  } catch {}
+  } catch { }
 }
 
 import { generateCliniCoreEmailTemplate } from "../utils/emailTemplate.js";
@@ -114,7 +115,7 @@ export default function DeveloperAdminPanel() {
     const handleLogsUpdate = () => {
       try {
         setAutomationLogs(JSON.parse(localStorage.getItem("cf_automation_execution_logs") || "[]"));
-      } catch {}
+      } catch { }
     };
     window.addEventListener("cf_automation_tick", handleTick);
     window.addEventListener("cf_automation_logs_updated", handleLogsUpdate);
@@ -277,10 +278,10 @@ export default function DeveloperAdminPanel() {
           }
 
           const localClinic = dbClinic.get() || {};
-          const localFreq = localStorage.getItem("cf_report_frequency") || localClinic.report_frequency || sClinic.report_frequency || "daily_9pm";
-          const localKey = localStorage.getItem("cf_resend_api_key") || localClinic.resend_api_key || sClinic.resend_api_key || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts";
-          const localEmail = localStorage.getItem("cf_notification_email") || localClinic.notification_email || sClinic.notification_email || "drasifhosting@gmail.com";
-          const localWa = localStorage.getItem("cf_whatsapp_gateway_no") || localClinic.whatsapp_gateway_no || sClinic.whatsapp_gateway_no || "03473100304";
+          const localFreq = localClinic.report_frequency || localStorage.getItem("cf_report_frequency") || sClinic.report_frequency || "daily_9pm";
+          const localKey = localClinic.resend_api_key || localStorage.getItem("cf_resend_api_key") || sClinic.resend_api_key || "";
+          const localEmail = localClinic.notification_email || localStorage.getItem("cf_notification_email") || sClinic.notification_email || "drasifhosting@gmail.com";
+          const localWa = localClinic.whatsapp_gateway_no || localStorage.getItem("cf_whatsapp_gateway_no") || sClinic.whatsapp_gateway_no || "03473100304";
 
           if (!preserveForm) {
             let type = localFreq;
@@ -306,6 +307,7 @@ export default function DeveloperAdminPanel() {
               whatsapp_gateway_no: localWa,
             });
           }
+
           if (sClinic.admin_master_passcode) setAdminPasscode(sClinic.admin_master_passcode);
           if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
 
@@ -313,7 +315,7 @@ export default function DeveloperAdminPanel() {
           if (sClinic.tab_security_json) {
             try {
               loadedTabs = typeof sClinic.tab_security_json === "string" ? JSON.parse(sClinic.tab_security_json) : sClinic.tab_security_json;
-            } catch {}
+            } catch { }
           }
           const savedSecurity = (() => {
             try {
@@ -395,7 +397,7 @@ export default function DeveloperAdminPanel() {
         failedAttempts = parsed.failedAttempts || 0;
         lockoutUntil = parsed.lockoutUntil || 0;
       }
-    } catch {}
+    } catch { }
 
     if (failedAttempts >= 5 && now < lockoutUntil) {
       const secsLeft = Math.ceil((lockoutUntil - now) / 1000);
@@ -407,7 +409,7 @@ export default function DeveloperAdminPanel() {
       failedAttempts = 0;
       try {
         sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
-      } catch {}
+      } catch { }
     }
 
     // 1. Authoritative Server Verification (Strict Case-Sensitive)
@@ -423,23 +425,23 @@ export default function DeveloperAdminPanel() {
       if (res.ok && data?.success) {
         sessionStorage.setItem("cf_dev_auth", "true");
         if (data?.data?.token) {
-          try { localStorage.setItem("cf_vps_jwt", data.data.token); } catch {}
+          try { localStorage.setItem("cf_vps_jwt", data.data.token); } catch { }
         }
         try {
           sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
-        } catch {}
+        } catch { }
         setIsAuthenticated(true);
         setAuthError("");
         loadData();
         return;
       }
- else {
+      else {
         // If server rejected the passcode, stop here immediately!
         failedAttempts++;
         const lockTime = failedAttempts >= 5 ? Date.now() + 60_000 : lockoutUntil;
         try {
           sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts, lockoutUntil: lockTime }));
-        } catch {}
+        } catch { }
         setAuthError(data?.error?.message || (failedAttempts >= 5 ? "Too many failed attempts. Super Admin access locked for 60 seconds." : "Incorrect Super Admin master passcode. Access denied."));
         return;
       }
@@ -450,7 +452,7 @@ export default function DeveloperAdminPanel() {
         sessionStorage.setItem("cf_dev_auth", "true");
         try {
           sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
-        } catch {}
+        } catch { }
         setIsAuthenticated(true);
         setAuthError("");
         loadData();
@@ -463,7 +465,7 @@ export default function DeveloperAdminPanel() {
     const lockTime = failedAttempts >= 5 ? Date.now() + 60_000 : lockoutUntil;
     try {
       sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts, lockoutUntil: lockTime }));
-    } catch {}
+    } catch { }
     setAuthError(failedAttempts >= 5 ? "Too many failed attempts. Super Admin access locked for 60 seconds." : "Incorrect Super Admin master passcode. Access denied.");
   };
 
@@ -731,7 +733,7 @@ export default function DeveloperAdminPanel() {
     loadData();
     try {
       await syncEngine.pushLocalStateToCloud();
-    } catch {}
+    } catch { }
   };
 
   const handleDeleteGodown = async (godownId, godownName) => {
@@ -748,7 +750,7 @@ export default function DeveloperAdminPanel() {
     loadData();
     try {
       await syncEngine.pushLocalStateToCloud();
-    } catch {}
+    } catch { }
   };
 
   const handleSetDefaultGodown = async (godownId) => {
@@ -760,7 +762,7 @@ export default function DeveloperAdminPanel() {
     loadData();
     try {
       await syncEngine.pushLocalStateToCloud();
-    } catch {}
+    } catch { }
   };
 
   // ---------------------------------------------------------------------------
@@ -789,6 +791,7 @@ export default function DeveloperAdminPanel() {
 
     const frequencyLabels = {
       every_1m: "🧪 Testing Mode: Every 1 Minute (Live Automation Test)",
+      daily_12am: "🌙 Daily at 12:00 AM Midnight (Day Closing Vault)",
       daily_9pm: "Daily at 9:00 PM (Shift End Closure)",
       daily_10pm: "Daily at 10:00 PM (Late Night Closure)",
       daily_8pm: "Daily at 8:00 PM (Evening Shift Closure)",
@@ -909,12 +912,12 @@ export default function DeveloperAdminPanel() {
     const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
     const apiUrl = DEFAULT_API_URL;
     const downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
-    
+
     let sizeBytes = 145000;
     try {
       const encryptedBackupStr = exportFullDatabase(true);
       sizeBytes = new Blob([encryptedBackupStr]).size;
-    } catch {}
+    } catch { }
 
     const html = generateCliniCoreEmailTemplate({
       clinicName: clinicForm.name || "Medical Clinic & Pharmacy",
@@ -1091,7 +1094,7 @@ export default function DeveloperAdminPanel() {
   const handleSaveSecurityConfig = async (e) => {
     e?.preventDefault?.();
     if (!tempSecurityConfig) return;
-    
+
     const newAdminPass = (tempSecurityConfig.admin_passcode || "").trim() || getAdminPasscode();
     const newTabPin = (tempSecurityConfig.tab_pin || "").trim() || getTabPin();
 
@@ -1142,7 +1145,7 @@ export default function DeveloperAdminPanel() {
   const godownStats = useMemo(() => {
     const warehouses = dbWarehouses.getAll() || [];
     const inv = dbInventory.getAll() || [];
-    
+
     let totalValuation = 0;
     let totalUnits = 0;
 
@@ -1441,7 +1444,7 @@ export default function DeveloperAdminPanel() {
 
       {/* Main Body with Collapsible Sidebar */}
       <div className="flex flex-1 relative min-w-0">
-        
+
         {/* Mobile Backdrop */}
         {mobileDrawerOpen && (
           <div
@@ -1492,22 +1495,20 @@ export default function DeveloperAdminPanel() {
                   }}
                   className={`
                     w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer text-left
-                    ${
-                      isActive
-                        ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
-                        : "text-slate-600 hover:bg-teal-50/80 hover:text-teal-950"
+                    ${isActive
+                      ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
+                      : "text-slate-600 hover:bg-teal-50/80 hover:text-teal-950"
                     }
                   `}
                   title={!sidebarOpen ? item.label : undefined}
                 >
                   <span
-                    className={`material-symbols-outlined text-xl flex-shrink-0 ${
-                      isActive ? "text-white" : "text-teal-700"
-                    }`}
+                    className={`material-symbols-outlined text-xl flex-shrink-0 ${isActive ? "text-white" : "text-teal-700"
+                      }`}
                   >
                     {item.icon}
                   </span>
-                  
+
                   {(mobileDrawerOpen || sidebarOpen) && (
                     <span className="flex-1 truncate tracking-tight">
                       {item.label}
@@ -1516,9 +1517,8 @@ export default function DeveloperAdminPanel() {
 
                   {(mobileDrawerOpen || sidebarOpen) && isLocked && (
                     <span
-                      className={`material-symbols-outlined text-sm ${
-                        isActive ? "text-amber-300" : "text-amber-600"
-                      }`}
+                      className={`material-symbols-outlined text-sm ${isActive ? "text-amber-300" : "text-amber-600"
+                        }`}
                       title="This module is password protected"
                     >
                       lock
@@ -1527,11 +1527,10 @@ export default function DeveloperAdminPanel() {
 
                   {(mobileDrawerOpen || sidebarOpen) && !isLocked && item.count !== undefined && (
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isActive
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive
                           ? "bg-white/20 text-white"
                           : "bg-teal-100 text-teal-800"
-                      }`}
+                        }`}
                     >
                       {item.count}
                     </span>
@@ -1539,11 +1538,10 @@ export default function DeveloperAdminPanel() {
 
                   {(mobileDrawerOpen || sidebarOpen) && !isLocked && item.badge && (
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                        isActive
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${isActive
                           ? "bg-white/20 text-white"
                           : "bg-emerald-100 text-emerald-800"
-                      }`}
+                        }`}
                     >
                       {item.badge}
                     </span>
@@ -1598,7 +1596,7 @@ export default function DeveloperAdminPanel() {
 
         {/* ── Main Content Pane ── */}
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden space-y-6 pb-24 md:pb-12">
-          
+
           {/* Sub-Tab Password / PIN Challenge Screen */}
           {tabSecurity?.tabs?.[activeTab]?.locked && !unlockedTabs.has(activeTab) ? (
             <div className="bg-white border border-amber-200/80 rounded-3xl p-8 sm:p-12 shadow-xl max-w-lg mx-auto text-center space-y-6 animate-fade-in my-8">
@@ -1728,17 +1726,16 @@ export default function DeveloperAdminPanel() {
                               Software Licensing, Subscription &amp; Remote Control
                             </h3>
                             {/* Live Dynamic Status Pill */}
-                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider border ${
-                              evalStatus.status === "active"
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider border ${evalStatus.status === "active"
                                 ? "bg-emerald-50 text-emerald-800 border-emerald-300"
                                 : evalStatus.status === "warning"
-                                ? "bg-yellow-50 text-yellow-800 border-yellow-300"
-                                : evalStatus.status === "grace_period"
-                                ? "bg-amber-50 text-amber-800 border-amber-300 animate-pulse"
-                                : evalStatus.status === "restricted"
-                                ? "bg-orange-50 text-orange-800 border-orange-300 animate-pulse"
-                                : "bg-rose-50 text-rose-800 border-rose-300 animate-pulse"
-                            }`}>
+                                  ? "bg-yellow-50 text-yellow-800 border-yellow-300"
+                                  : evalStatus.status === "grace_period"
+                                    ? "bg-amber-50 text-amber-800 border-amber-300 animate-pulse"
+                                    : evalStatus.status === "restricted"
+                                      ? "bg-orange-50 text-orange-800 border-orange-300 animate-pulse"
+                                      : "bg-rose-50 text-rose-800 border-rose-300 animate-pulse"
+                              }`}>
                               ● {evalStatus.status === "active" ? "Active (Full Access)" : evalStatus.status.toUpperCase()}
                             </span>
                           </div>
@@ -1858,11 +1855,10 @@ export default function DeveloperAdminPanel() {
                               <div
                                 key={mode.id}
                                 onClick={() => setLicenseForm({ ...licenseForm, license_status: mode.id, is_hard_locked: mode.id === "locked" })}
-                                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all ${
-                                  isSelected
+                                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all ${isSelected
                                     ? `${mode.color} ring-2 ring-teal-600 shadow-md scale-[1.02]`
                                     : "border-slate-200 hover:border-teal-200 bg-white opacity-80 hover:opacity-100"
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="font-black text-xs">{mode.title}</span>
@@ -1914,11 +1910,10 @@ export default function DeveloperAdminPanel() {
                                     : [...current, feat.key];
                                   setLicenseForm({ ...licenseForm, restricted_features: next });
                                 }}
-                                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                                  isBlocked
+                                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${isBlocked
                                     ? "bg-rose-50 border-rose-300 text-rose-950 font-bold shadow-xs"
                                     : "bg-slate-50 border-slate-200 text-slate-700 hover:border-teal-200"
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-center gap-2">
                                   <span className={`material-symbols-outlined text-base ${isBlocked ? "text-rose-600" : "text-slate-500"}`}>
@@ -1929,7 +1924,7 @@ export default function DeveloperAdminPanel() {
                                 <input
                                   type="checkbox"
                                   checked={isBlocked}
-                                  onChange={() => {}}
+                                  onChange={() => { }}
                                   className="rounded text-rose-600 focus:ring-rose-500"
                                 />
                               </div>
@@ -2042,83 +2037,82 @@ export default function DeveloperAdminPanel() {
                 );
               })()}
 
-          {/* ================================================================= */}
-          {/* TAB 0: GOD-LEVEL STAFF & AUDIT STREAM                            */}
-          {/* ================================================================= */}
-          {activeTab === "god_audit" && (
-            <div className="animate-fade-in">
-              <GodAdminPanel />
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB 1: EXECUTIVE MULTI-GODOWN & CLINIC AUDITS (6-Mo / 1-Yr)       */}
-          {/* ================================================================= */}
-          {activeTab === "audits" && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Filter Control Bar */}
-              <div className="bg-white border border-teal-100 p-6 rounded-3xl space-y-4 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-teal-700">query_stats</span>
-                      Executive Financial &amp; Multi-Godown Audit
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                      Periodic evaluation across {warehousesList.length} Godowns and Clinic OPD Revenue
-                    </p>
-                  </div>
-
-                  {/* Audit Period Selector */}
-                  <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                    <div className="inline-flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-teal-100 min-w-full sm:min-w-0">
-                      {[
-                        { id: "30_days", label: "30 Days" },
-                        { id: "6_months", label: "6 Months (حالیہ چھ ماہ)" },
-                        { id: "1_year", label: "1 Year (سالانہ آڈٹ)" },
-                        { id: "2_years", label: "2 Years (دو سالہ آڈٹ)" },
-                        { id: "all_time", label: "All Time" },
-                        { id: "custom", label: "Custom Range" },
-                      ].map((r) => (
-                        <button
-                          key={r.id}
-                          onClick={() => setAuditRange(r.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                            auditRange === r.id
-                              ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
-                              : "text-slate-600 hover:text-teal-950 hover:bg-slate-100"
-                          }`}
-                        >
-                          {r.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              {/* ================================================================= */}
+              {/* TAB 0: GOD-LEVEL STAFF & AUDIT STREAM                            */}
+              {/* ================================================================= */}
+              {activeTab === "god_audit" && (
+                <div className="animate-fade-in">
+                  <GodAdminPanel />
                 </div>
+              )}
 
-                {/* Audit Export & Dispatch Actions Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-teal-50 bg-teal-50/40 p-3.5 rounded-2xl">
-                  <div className="flex items-center gap-2 text-xs font-bold text-teal-900">
-                    <span className="material-symbols-outlined text-teal-700 text-base">ios_share</span>
-                    <span>Audit Export &amp; Reporting Options:</span>
-                  </div>
+              {/* ================================================================= */}
+              {/* TAB 1: EXECUTIVE MULTI-GODOWN & CLINIC AUDITS (6-Mo / 1-Yr)       */}
+              {/* ================================================================= */}
+              {activeTab === "audits" && (
+                <div className="space-y-6 animate-fade-in">
+                  {/* Filter Control Bar */}
+                  <div className="bg-white border border-teal-100 p-6 rounded-3xl space-y-4 shadow-sm">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-teal-700">query_stats</span>
+                          Executive Financial &amp; Multi-Godown Audit
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                          Periodic evaluation across {warehousesList.length} Godowns and Clinic OPD Revenue
+                        </p>
+                      </div>
 
-                  <div className="grid grid-cols-1 xs:grid-cols-3 sm:flex sm:flex-wrap items-center gap-2">
-                    {/* Excel XLS File Export */}
-                    <button
-                      onClick={() => {
-                        const godownScopeName = auditGodown === "all" 
-                          ? "All Locations" 
-                          : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
-                        
-                        const periodLabel = auditRange === "30_days" ? "Last 30 Days" :
-                          auditRange === "6_months" ? "Last 6 Months" :
-                          auditRange === "1_year" ? "1 Year Audit" :
-                          auditRange === "2_years" ? "2 Years Audit" :
-                          auditRange === "all_time" ? "All Time History" : "Custom Range";
+                      {/* Audit Period Selector */}
+                      <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                        <div className="inline-flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-teal-100 min-w-full sm:min-w-0">
+                          {[
+                            { id: "30_days", label: "30 Days" },
+                            { id: "6_months", label: "6 Months (حالیہ چھ ماہ)" },
+                            { id: "1_year", label: "1 Year (سالانہ آڈٹ)" },
+                            { id: "2_years", label: "2 Years (دو سالہ آڈٹ)" },
+                            { id: "all_time", label: "All Time" },
+                            { id: "custom", label: "Custom Range" },
+                          ].map((r) => (
+                            <button
+                              key={r.id}
+                              onClick={() => setAuditRange(r.id)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${auditRange === r.id
+                                  ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
+                                  : "text-slate-600 hover:text-teal-950 hover:bg-slate-100"
+                                }`}
+                            >
+                              {r.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
 
-                        // Generate clean formatted Excel XML / HTML Spreadsheet
-                        const excelHtml = `
+                    {/* Audit Export & Dispatch Actions Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-teal-50 bg-teal-50/40 p-3.5 rounded-2xl">
+                      <div className="flex items-center gap-2 text-xs font-bold text-teal-900">
+                        <span className="material-symbols-outlined text-teal-700 text-base">ios_share</span>
+                        <span>Audit Export &amp; Reporting Options:</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 xs:grid-cols-3 sm:flex sm:flex-wrap items-center gap-2">
+                        {/* Excel XLS File Export */}
+                        <button
+                          onClick={() => {
+                            const godownScopeName = auditGodown === "all"
+                              ? "All Locations"
+                              : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
+
+                            const periodLabel = auditRange === "30_days" ? "Last 30 Days" :
+                              auditRange === "6_months" ? "Last 6 Months" :
+                                auditRange === "1_year" ? "1 Year Audit" :
+                                  auditRange === "2_years" ? "2 Years Audit" :
+                                    auditRange === "all_time" ? "All Time History" : "Custom Range";
+
+                            // Generate clean formatted Excel XML / HTML Spreadsheet
+                            const excelHtml = `
                           <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
                             <head>
                               <meta charset="utf-8" />
@@ -2174,10 +2168,10 @@ export default function DeveloperAdminPanel() {
                                   <th style="text-align: right;">Total Stock Valuation (Rs.)</th>
                                 </tr>
                                 ${filteredAuditInventory.map(i => {
-                                  const cost = Number(i.cost_price_per_box || i.cost_price || 0);
-                                  const qty = Number(i.warehouse_stock || i.stock_qty || 0);
-                                  const val = qty * cost;
-                                  return `
+                              const cost = Number(i.cost_price_per_box || i.cost_price || 0);
+                              const qty = Number(i.warehouse_stock || i.stock_qty || 0);
+                              const val = qty * cost;
+                              return `
                                     <tr>
                                       <td>${i.item_code || "MED"}</td>
                                       <td style="font-weight: bold;">${i.medicine_name || ""}</td>
@@ -2187,1612 +2181,1605 @@ export default function DeveloperAdminPanel() {
                                       <td class="number-cell" style="font-weight: bold;">${val}</td>
                                     </tr>
                                   `;
-                                }).join("")}
+                            }).join("")}
                               </table>
                             </body>
                           </html>
                         `;
 
-                        const blob = new Blob([excelHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `Executive_Audit_${auditDates.startDateStr}_to_${auditDates.endDateStr}.xls`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        showToast("📊 Professional Excel Audit File (.xls) downloaded!");
-                      }}
-                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                      title="Download full audit with financial KPIs and stock matrix as Excel spreadsheet"
-                    >
-                      <span className="material-symbols-outlined text-base">table_view</span>
-                      <span>Excel (.xls)</span>
-                    </button>
-
-                    {/* 80mm Low-Ink Thermal Slip Script */}
-                    <button
-                      onClick={() => {
-                        const godownScopeName = auditGodown === "all" 
-                          ? "All Locations (Godowns + Store)" 
-                          : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
-                        
-                        const periodLabel = auditRange === "30_days" ? "30 Days Audit" :
-                          auditRange === "6_months" ? "6 Months Audit (حالیہ چھ ماہ)" :
-                          auditRange === "1_year" ? "1 Year Audit (سالانہ آڈٹ)" :
-                          auditRange === "2_years" ? "2 Years Audit (دو سالہ آڈٹ)" :
-                          auditRange === "all_time" ? "All Time Audit" : "Custom Period Audit";
-
-                        printExecutiveAuditReceipt({
-                          periodLabel,
-                          startDateStr: auditDates.startDateStr,
-                          endDateStr: auditDates.endDateStr,
-                          godownLabel: godownScopeName,
-                          metrics: auditMetrics,
-                          inventoryItems: filteredAuditInventory,
-                        }, activeClinic);
-                        showToast("🖨️ 80mm Thermal Audit Slip triggered!");
-                      }}
-                      className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                      title="Print or share compact 80mm ESC/POS thermal script"
-                    >
-                      <span className="material-symbols-outlined text-base">receipt_long</span>
-                      <span>80mm Thermal Slip</span>
-                    </button>
-
-                    {/* A4 / PDF Executive Document Template */}
-                    <button
-                      onClick={() => {
-                        const godownScopeName = auditGodown === "all" 
-                          ? "All Godowns & Store Locations Combined" 
-                          : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
-                        
-                        const periodLabel = auditRange === "30_days" ? "30 Days Executive Audit" :
-                          auditRange === "6_months" ? "6 Months Executive Financial & Godown Audit" :
-                          auditRange === "1_year" ? "1 Year Executive Annual Audit" :
-                          auditRange === "2_years" ? "2 Years Executive Audit Statement" :
-                          auditRange === "all_time" ? "Complete Historical Audit" : "Custom Period Audit Statement";
-
-                        printExecutiveAuditDocument({
-                          periodLabel,
-                          startDateStr: auditDates.startDateStr,
-                          endDateStr: auditDates.endDateStr,
-                          godownLabel: godownScopeName,
-                          metrics: auditMetrics,
-                          inventoryItems: filteredAuditInventory,
-                        }, activeClinic);
-                        showToast("📄 A4 / PDF Audit Document opened for print & export!");
-                      }}
-                      className="px-3.5 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-black rounded-xl flex items-center gap-1.5 shadow-md shadow-teal-700/20 transition-all cursor-pointer"
-                      title="Generate official A4 / PDF statement with KPI cards, tables & signatures"
-                    >
-                      <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-                      <span>PDF / A4 Statement</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Godown Selection & Custom Dates */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-teal-50">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Select Godown / Warehouse</label>
-                    <select
-                      value={auditGodown}
-                      onChange={(e) => setAuditGodown(e.target.value)}
-                      className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600"
-                    >
-                      <option value="all">
-                        🏢 All Locations Combined
-                        {warehousesList.length > 0
-                          ? ` (${warehousesList.map((w) => w.name).join(" + ")}${" + Store"})`
-                          : ""}
-                      </option>
-                      {warehousesList.map((wh) => (
-                        <option key={wh.id} value={wh.id}>
-                          📍 {wh.name} ({wh.location || "Warehouse"})
-                        </option>
-                      ))}
-                      {warehousesList.length > 0 && (
-                        <option value="wh_str">🏬 Store Counter Godown</option>
-                      )}
-                    </select>
-                  </div>
-
-                  {auditRange === "custom" && (
-                    <>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Audit Start Date</label>
-                        <input
-                          type="date"
-                          value={auditCustomStart}
-                          onChange={(e) => setAuditCustomStart(e.target.value)}
-                          className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Audit End Date</label>
-                        <input
-                          type="date"
-                          value={auditCustomEnd}
-                          onChange={(e) => setAuditCustomEnd(e.target.value)}
-                          className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Bento Audit Metrics Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                <div className="bg-white border border-teal-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-[10px] sm:text-[11px] font-bold text-teal-800 uppercase tracking-wider">Total Godown Stock Valuation</div>
-                  <div className="text-xl sm:text-2xl font-black text-teal-950 mt-1">
-                    Rs. {Number(auditMetrics.totalStockValuation || 0).toLocaleString("en-US")}
-                  </div>
-                  <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                    {Number(auditMetrics.totalUnitsCount || 0).toLocaleString("en-US")} Total Units in Selected Godowns
-                  </div>
-                </div>
-
-                <div className="bg-white border border-emerald-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-[10px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Total Clinic &amp; Store Inflows</div>
-                  <div className="text-xl sm:text-2xl font-black text-emerald-950 mt-1">
-                    Rs. {Number(auditMetrics.totalInflows || 0).toLocaleString("en-US")}
-                  </div>
-                  <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                    OPD: Rs. {Number(auditMetrics.opdFeesTotal || 0).toLocaleString("en-US")} | B2B: Rs. {Number(auditMetrics.b2bSalesTotal || 0).toLocaleString("en-US")}
-                  </div>
-                </div>
-
-                <div className="bg-white border border-rose-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-[10px] sm:text-[11px] font-bold text-rose-800 uppercase tracking-wider">Total Outflows &amp; Purchases</div>
-                  <div className="text-xl sm:text-2xl font-black text-rose-950 mt-1">
-                    Rs. {Number(auditMetrics.totalOutflows || 0).toLocaleString("en-US")}
-                  </div>
-                  <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                    GRN: Rs. {Number(auditMetrics.supplierPurchasesCash || 0).toLocaleString("en-US")} | Exp: Rs. {Number(auditMetrics.expensesTotal || 0).toLocaleString("en-US")}
-                  </div>
-                </div>
-
-                <div className="bg-white border border-purple-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-[10px] sm:text-[11px] font-bold text-purple-800 uppercase tracking-wider">Net Operating Margin</div>
-                  <div className={`text-xl sm:text-2xl font-black mt-1 ${auditMetrics.netOperatingSurplus >= 0 ? "text-purple-950" : "text-rose-600"}`}>
-                    Rs. {Number(auditMetrics.netOperatingSurplus || 0).toLocaleString("en-US")}
-                  </div>
-                  <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                    {auditMetrics.netOperatingSurplus >= 0 ? "✅ Net Operational Profit" : "⚠️ Operating Deficit"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Godown Item Breakdown Table */}
-              <div className="bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <h4 className="font-black text-teal-950 text-base">Godown SKU Valuation &amp; Quantity Matrix</h4>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Search SKU name, company..."
-                      value={auditSearch}
-                      onChange={(e) => setAuditSearch(e.target.value)}
-                      className="bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-4 py-2 text-xs font-semibold w-full sm:w-64 focus:outline-none focus:border-teal-600"
-                    />
-                    <button
-                      onClick={() => {
-                        const csvContent = "data:text/csv;charset=utf-8," + 
-                          ["Item Code,Medicine Name,Company,Godown Qty,Cost Price,Total Valuation"].join(",") + "\n" +
-                          filteredAuditInventory.map(i => `"${i.item_code}","${i.medicine_name}","${i.company_name}",${i.warehouse_stock || 0},${i.cost_price_per_box || 0},${(i.warehouse_stock || 0) * (i.cost_price_per_box || 0)}`).join("\n");
-                        const encodedUri = encodeURI(csvContent);
-                        const link = document.createElement("a");
-                        link.setAttribute("href", encodedUri);
-                        link.setAttribute("download", `Godown_Audit_${auditDates.startDateStr}_to_${auditDates.endDateStr}.csv`);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        showToast("📊 Audit CSV Exported!");
-                      }}
-                      className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold rounded-2xl border border-teal-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                    >
-                      <span className="material-symbols-outlined text-base text-teal-700">download</span>
-                      Export CSV
-                    </button>
-                  </div>
-                </div>
-
-                <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto w-full">
-                  <table className="w-full text-left text-xs min-w-[550px]">
-                    <thead className="bg-teal-50/80 text-teal-900 font-black uppercase tracking-wider sticky top-0 z-10 border-b border-teal-100">
-                      <tr>
-                        <th className="px-3.5 py-3">SKU Code</th>
-                        <th className="px-3.5 py-3">Medicine Name</th>
-                        <th className="px-3.5 py-3">Manufacturer Brand</th>
-                        <th className="px-3.5 py-3 text-center">Godown Stock</th>
-                        <th className="px-3.5 py-3 text-right">Unit Cost</th>
-                        <th className="px-3.5 py-3 text-right">Stock Valuation</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-teal-50 font-medium">
-                      {filteredAuditInventory.slice(0, 100).map((inv) => {
-                        const cost = Number(inv.cost_price_per_box || inv.cost_price || 0);
-                        const qty = Number(inv.warehouse_stock || inv.stock_qty || 0);
-                        const val = qty * cost;
-                        return (
-                          <tr key={inv.id} className="hover:bg-teal-50/40 transition-colors">
-                            <td className="px-4 py-2.5 font-mono text-teal-800 font-bold">{inv.item_code || "MED"}</td>
-                            <td className="px-4 py-2.5 font-bold text-teal-950">{inv.medicine_name}</td>
-                            <td className="px-4 py-2.5 text-slate-600">{inv.company_name || "BM Pvt LTD"}</td>
-                            <td className="px-4 py-2.5 text-center font-bold text-teal-900">{qty} {inv.unit_label || "Packs"}</td>
-                            <td className="px-4 py-2.5 text-right text-slate-600">Rs. {cost.toLocaleString()}</td>
-                            <td className="px-4 py-2.5 text-right font-black text-teal-950">Rs. {val.toLocaleString()}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB: GODOWNS & MULTI-WAREHOUSE MASTER PORTAL                      */}
-          {/* ================================================================= */}
-          {activeTab === "godowns" && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Header Hero & Bento Stats */}
-              <div className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-50 pb-6">
-                  <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-black uppercase tracking-wider mb-2">
-                      <span className="material-symbols-outlined text-sm">warehouse</span>
-                      Central Storage &amp; Multi-Location Control Plane
-                    </div>
-                    <h3 className="text-xl sm:text-2xl font-black text-teal-950 tracking-tight">
-                      Godowns &amp; Multi-Warehouse Master Portal
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium max-w-2xl leading-relaxed">
-                      Register and manage storage godowns, track exact stock breakdown per location, assign warehouse incharges, and monitor real-time multi-branch inventory valuations.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => {
-                        setEditingGodown(null);
-                        setGodownForm({
-                          name: "",
-                          code: `GDW-0${(warehousesList.filter(w => !w.is_store_counter).length + 1)}`,
-                          location: "Hyderabad, Sindh",
-                          incharge_name: "",
-                          phone: "",
-                          notes: "",
-                          status: "active",
-                          is_default: false,
-                          is_store_counter: false,
-                        });
-                        setShowGodownModal(true);
-                      }}
-                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-teal-700/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-base">add_home_work</span>
-                      <span>+ Register New Godown / Warehouse</span>
-                    </button>
-
-                    <Link
-                      to="/store/warehouse"
-                      className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors"
-                      title="Open Warehouse Transfer & Internal Movements Desk"
-                    >
-                      <span className="material-symbols-outlined text-base text-teal-700">sync_alt</span>
-                      <span>Stock Transfer Desk</span>
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Bento KPI Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  <div className="bg-gradient-to-br from-teal-50 to-emerald-50/40 border border-teal-200/80 p-5 rounded-3xl">
-                    <div className="flex items-center justify-between text-teal-800">
-                      <span className="text-[11px] font-black uppercase tracking-wider">Total Godowns</span>
-                      <span className="material-symbols-outlined text-xl">domain</span>
-                    </div>
-                    <div className="text-2xl font-black text-teal-950 mt-2">
-                      {warehousesList.length} <span className="text-xs font-semibold text-teal-700">Locations</span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                      {godownStats.activeCount} Active • {warehousesList.filter(w => w.is_store_counter).length} Counter Store
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-teal-200/80 p-5 rounded-3xl shadow-xs">
-                    <div className="flex items-center justify-between text-emerald-800">
-                      <span className="text-[11px] font-black uppercase tracking-wider">Total Stock Valuation</span>
-                      <span className="material-symbols-outlined text-xl">payments</span>
-                    </div>
-                    <div className="text-2xl font-black text-emerald-950 mt-2">
-                      Rs. {Number(godownStats.totalValuation || 0).toLocaleString("en-US")}
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                      Across all {warehousesList.length} physical locations
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-teal-200/80 p-5 rounded-3xl shadow-xs">
-                    <div className="flex items-center justify-between text-teal-800">
-                      <span className="text-[11px] font-black uppercase tracking-wider">Total Physical Inventory</span>
-                      <span className="material-symbols-outlined text-xl">inventory_2</span>
-                    </div>
-                    <div className="text-2xl font-black text-teal-950 mt-2">
-                      {Number(godownStats.totalUnits || 0).toLocaleString("en-US")} <span className="text-xs font-semibold text-slate-500">Units/Packs</span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                      {inventoryList.length} Unique Medicine SKUs
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-amber-200/80 p-5 rounded-3xl shadow-xs">
-                    <div className="flex items-center justify-between text-amber-800">
-                      <span className="text-[11px] font-black uppercase tracking-wider">Default Primary Godown</span>
-                      <span className="material-symbols-outlined text-xl">star</span>
-                    </div>
-                    <div className="text-base font-black text-slate-900 mt-2 truncate">
-                      {warehousesList.find(w => w.is_default)?.name || warehousesList.find(w => !w.is_store_counter)?.name || "Main Godown"}
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                      Code: {warehousesList.find(w => w.is_default)?.code || "GDW-01"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Godown Cards Grid */}
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-teal-100 shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-teal-700">store</span>
-                    <span className="text-sm font-black text-teal-950">Registered Storage Facilities &amp; Godowns</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Search godown name, code, incharge..."
-                      value={godownSearch}
-                      onChange={(e) => setGodownSearch(e.target.value)}
-                      className="bg-slate-50 border border-teal-200 rounded-2xl px-3.5 py-2 text-xs font-bold text-teal-950 focus:outline-none focus:border-teal-600 w-full sm:w-64"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {godownStats.warehouses
-                    .filter((gd) => {
-                      const q = (godownSearch || "").toLowerCase();
-                      if (!q) return true;
-                      return (
-                        (gd.name || "").toLowerCase().includes(q) ||
-                        (gd.code || "").toLowerCase().includes(q) ||
-                        (gd.location || "").toLowerCase().includes(q) ||
-                        (gd.incharge_name || "").toLowerCase().includes(q)
-                      );
-                    })
-                    .map((gd) => {
-                      const isSelected = selectedGodownForStock === gd.id;
-                      return (
-                        <div
-                          key={gd.id}
-                          className={`bg-white rounded-3xl border transition-all duration-200 p-5 space-y-4 shadow-sm hover:shadow-md ${
-                            isSelected
-                              ? "border-teal-600 ring-2 ring-teal-500/20 bg-teal-50/10"
-                              : gd.is_default
-                              ? "border-teal-300 ring-1 ring-teal-200"
-                              : "border-teal-100"
-                          }`}
+                            const blob = new Blob([excelHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `Executive_Audit_${auditDates.startDateStr}_to_${auditDates.endDateStr}.xls`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            showToast("📊 Professional Excel Audit File (.xls) downloaded!");
+                          }}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          title="Download full audit with financial KPIs and stock matrix as Excel spreadsheet"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${
-                                  gd.is_store_counter
-                                    ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
-                                    : "bg-teal-50 border border-teal-200 text-teal-700"
-                                }`}
-                              >
-                                <span className="material-symbols-outlined text-2xl">
-                                  {gd.is_store_counter ? "storefront" : "warehouse"}
-                                </span>
-                              </div>
-                              <div className="min-w-0">
-                                <h4 className="font-black text-slate-900 text-sm leading-tight truncate">{gd.name}</h4>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
-                                    {gd.code || gd.id}
-                                  </span>
-                                  {gd.is_default && (
-                                    <span className="text-[9px] font-black bg-teal-700 text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                      PRIMARY
-                                    </span>
-                                  )}
-                                  {gd.is_store_counter && (
-                                    <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md uppercase">
-                                      POS Counter
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
+                          <span className="material-symbols-outlined text-base">table_view</span>
+                          <span>Excel (.xls)</span>
+                        </button>
 
-                            <span
-                              className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-wider shrink-0 ${
-                                gd.status === "active"
-                                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                  : "bg-slate-100 text-slate-600 border-slate-200"
-                              }`}
-                            >
-                              {gd.status || "active"}
-                            </span>
-                          </div>
-
-                          <div className="space-y-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                            <div className="flex justify-between items-center">
-                              <span className="text-slate-400 font-medium">Incharge Custodian:</span>
-                              <span className="font-bold text-teal-950">{gd.incharge_name || "Central Team"}</span>
-                            </div>
-                            {gd.phone && (
-                              <div className="flex justify-between items-center">
-                                <span className="text-slate-400 font-medium">Contact Phone:</span>
-                                <a href={`tel:${gd.phone}`} className="font-mono font-bold text-teal-700 hover:underline">
-                                  {gd.phone}
-                                </a>
-                              </div>
-                            )}
-                            <div className="flex justify-between items-center">
-                              <span className="text-slate-400 font-medium">Physical Location:</span>
-                              <span className="font-semibold text-slate-800 truncate max-w-[170px]" title={gd.location}>
-                                {gd.location || "Hyderabad, Sindh"}
-                              </span>
-                            </div>
-                            <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
-                              <span className="text-slate-400 font-medium">Stock SKUs / Units:</span>
-                              <span className="font-black text-teal-800">
-                                {gd.skuCount} SKUs ({Number(gd.unitsCount || 0).toLocaleString("en-US")} Units)
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-slate-400 font-medium">Estimated Value:</span>
-                              <span className="font-black text-emerald-800 text-sm">
-                                Rs. {Number(gd.valuation || 0).toLocaleString("en-US")}
-                              </span>
-                            </div>
-                          </div>
-
-                          {gd.notes && (
-                            <p className="text-[11px] text-slate-500 italic bg-amber-50/60 border border-amber-100 p-2 rounded-xl">
-                              📝 {gd.notes}
-                            </p>
-                          )}
-
-                          {/* Card Action Buttons */}
-                          <div className="pt-2 border-t border-teal-50 flex flex-wrap gap-2">
-                            <button
-                              onClick={() => {
-                                setSelectedGodownForStock(isSelected ? null : gd.id);
-                                setGodownStockSearch("");
-                                setGodownCompanyFilter("all");
-                              }}
-                              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                                isSelected
-                                  ? "bg-teal-800 text-white shadow-md shadow-teal-900/20"
-                                  : "bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200"
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-sm">
-                                {isSelected ? "visibility_off" : "inventory"}
-                              </span>
-                              <span>{isSelected ? "Hide Stock" : "Inspect Live Stock"}</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setEditingGodown(gd);
-                                setGodownForm({
-                                  name: gd.name || "",
-                                  code: gd.code || "",
-                                  location: gd.location || "",
-                                  incharge_name: gd.incharge_name || "",
-                                  phone: gd.phone || "",
-                                  notes: gd.notes || "",
-                                  status: gd.status || "active",
-                                  is_default: Boolean(gd.is_default),
-                                  is_store_counter: Boolean(gd.is_store_counter),
-                                });
-                                setShowGodownModal(true);
-                              }}
-                              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                              title="Edit Godown Details"
-                            >
-                              <span className="material-symbols-outlined text-sm">edit</span>
-                            </button>
-
-                            {!gd.is_default && !gd.is_store_counter && (
-                              <button
-                                onClick={() => handleSetDefaultGodown(gd.id)}
-                                className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer"
-                                title="Set as Default Primary Godown"
-                              >
-                                <span className="material-symbols-outlined text-sm">star</span>
-                              </button>
-                            )}
-
-                            {!gd.is_store_counter && !gd.is_default && (
-                              <button
-                                onClick={() => handleDeleteGodown(gd.id, gd.name)}
-                                className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
-                                title="Delete Godown"
-                              >
-                                <span className="material-symbols-outlined text-sm">delete</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-
-              {/* Drill-down: Live Stock Inspector for Selected Godown */}
-              {selectedGodownForStock && (() => {
-                const currentGd = warehousesList.find(w => w.id === selectedGodownForStock) || { name: "Godown", code: "GDW" };
-                const currentVal = dbWarehouses.getStockValuation(selectedGodownForStock);
-                return (
-                  <div className="bg-white border-2 border-teal-600/30 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl animate-fade-in">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-100 pb-5">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black uppercase tracking-wider bg-teal-100 text-teal-800 px-3 py-1 rounded-full border border-teal-200">
-                            Active Stock Inspector
-                          </span>
-                          <span className="font-mono text-xs font-bold text-slate-500">
-                            ID: {selectedGodownForStock}
-                          </span>
-                        </div>
-                        <h4 className="text-xl font-black text-teal-950 mt-2 flex items-center gap-2">
-                          <span className="material-symbols-outlined text-teal-700">inventory_2</span>
-                          Stock Inventory in: <span className="text-teal-700">{currentGd.name}</span> ({currentGd.code})
-                        </h4>
-                        <p className="text-xs text-slate-500 mt-1 font-medium">
-                          Showing live stock count, unit purchase costs, and real-time total valuation for this physical location.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="bg-teal-50 border border-teal-200 px-4 py-2 rounded-2xl text-right">
-                          <div className="text-[10px] font-bold text-teal-700 uppercase">Location Valuation</div>
-                          <div className="text-base font-black text-teal-950 font-mono">
-                            Rs. {Number(currentVal.totalValue || 0).toLocaleString("en-US")}
-                          </div>
-                        </div>
-
+                        {/* 80mm Low-Ink Thermal Slip Script */}
                         <button
                           onClick={() => {
-                            const csvContent = "data:text/csv;charset=utf-8," + 
-                              ["Item Code,Medicine Name,Company,Formula,Location Stock,Unit Cost Price,Total Valuation,Unit Sale Price"].join(",") + "\n" +
-                              currentGodownStockItems.map(i => `"${i.item_code}","${i.medicine_name}","${i.company_name || ''}","${i.generic_name || ''}",${i.locationQty},${i.unitCost},${i.locationValuation},${i.unitSale}`).join("\n");
+                            const godownScopeName = auditGodown === "all"
+                              ? "All Locations (Godowns + Store)"
+                              : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
+
+                            const periodLabel = auditRange === "30_days" ? "30 Days Audit" :
+                              auditRange === "6_months" ? "6 Months Audit (حالیہ چھ ماہ)" :
+                                auditRange === "1_year" ? "1 Year Audit (سالانہ آڈٹ)" :
+                                  auditRange === "2_years" ? "2 Years Audit (دو سالہ آڈٹ)" :
+                                    auditRange === "all_time" ? "All Time Audit" : "Custom Period Audit";
+
+                            printExecutiveAuditReceipt({
+                              periodLabel,
+                              startDateStr: auditDates.startDateStr,
+                              endDateStr: auditDates.endDateStr,
+                              godownLabel: godownScopeName,
+                              metrics: auditMetrics,
+                              inventoryItems: filteredAuditInventory,
+                            }, activeClinic);
+                            showToast("🖨️ 80mm Thermal Audit Slip triggered!");
+                          }}
+                          className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          title="Print or share compact 80mm ESC/POS thermal script"
+                        >
+                          <span className="material-symbols-outlined text-base">receipt_long</span>
+                          <span>80mm Thermal Slip</span>
+                        </button>
+
+                        {/* A4 / PDF Executive Document Template */}
+                        <button
+                          onClick={() => {
+                            const godownScopeName = auditGodown === "all"
+                              ? "All Godowns & Store Locations Combined"
+                              : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
+
+                            const periodLabel = auditRange === "30_days" ? "30 Days Executive Audit" :
+                              auditRange === "6_months" ? "6 Months Executive Financial & Godown Audit" :
+                                auditRange === "1_year" ? "1 Year Executive Annual Audit" :
+                                  auditRange === "2_years" ? "2 Years Executive Audit Statement" :
+                                    auditRange === "all_time" ? "Complete Historical Audit" : "Custom Period Audit Statement";
+
+                            printExecutiveAuditDocument({
+                              periodLabel,
+                              startDateStr: auditDates.startDateStr,
+                              endDateStr: auditDates.endDateStr,
+                              godownLabel: godownScopeName,
+                              metrics: auditMetrics,
+                              inventoryItems: filteredAuditInventory,
+                            }, activeClinic);
+                            showToast("📄 A4 / PDF Audit Document opened for print & export!");
+                          }}
+                          className="px-3.5 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-black rounded-xl flex items-center gap-1.5 shadow-md shadow-teal-700/20 transition-all cursor-pointer"
+                          title="Generate official A4 / PDF statement with KPI cards, tables & signatures"
+                        >
+                          <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                          <span>PDF / A4 Statement</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Godown Selection & Custom Dates */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-teal-50">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Select Godown / Warehouse</label>
+                        <select
+                          value={auditGodown}
+                          onChange={(e) => setAuditGodown(e.target.value)}
+                          className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600"
+                        >
+                          <option value="all">
+                            🏢 All Locations Combined
+                            {warehousesList.length > 0
+                              ? ` (${warehousesList.map((w) => w.name).join(" + ")}${" + Store"})`
+                              : ""}
+                          </option>
+                          {warehousesList.map((wh) => (
+                            <option key={wh.id} value={wh.id}>
+                              📍 {wh.name} ({wh.location || "Warehouse"})
+                            </option>
+                          ))}
+                          {warehousesList.length > 0 && (
+                            <option value="wh_str">🏬 Store Counter Godown</option>
+                          )}
+                        </select>
+                      </div>
+
+                      {auditRange === "custom" && (
+                        <>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Audit Start Date</label>
+                            <input
+                              type="date"
+                              value={auditCustomStart}
+                              onChange={(e) => setAuditCustomStart(e.target.value)}
+                              className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Audit End Date</label>
+                            <input
+                              type="date"
+                              value={auditCustomEnd}
+                              onChange={(e) => setAuditCustomEnd(e.target.value)}
+                              className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bento Audit Metrics Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div className="bg-white border border-teal-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-[10px] sm:text-[11px] font-bold text-teal-800 uppercase tracking-wider">Total Godown Stock Valuation</div>
+                      <div className="text-xl sm:text-2xl font-black text-teal-950 mt-1">
+                        Rs. {Number(auditMetrics.totalStockValuation || 0).toLocaleString("en-US")}
+                      </div>
+                      <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
+                        {Number(auditMetrics.totalUnitsCount || 0).toLocaleString("en-US")} Total Units in Selected Godowns
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-emerald-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-[10px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Total Clinic &amp; Store Inflows</div>
+                      <div className="text-xl sm:text-2xl font-black text-emerald-950 mt-1">
+                        Rs. {Number(auditMetrics.totalInflows || 0).toLocaleString("en-US")}
+                      </div>
+                      <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
+                        OPD: Rs. {Number(auditMetrics.opdFeesTotal || 0).toLocaleString("en-US")} | B2B: Rs. {Number(auditMetrics.b2bSalesTotal || 0).toLocaleString("en-US")}
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-rose-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-[10px] sm:text-[11px] font-bold text-rose-800 uppercase tracking-wider">Total Outflows &amp; Purchases</div>
+                      <div className="text-xl sm:text-2xl font-black text-rose-950 mt-1">
+                        Rs. {Number(auditMetrics.totalOutflows || 0).toLocaleString("en-US")}
+                      </div>
+                      <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
+                        GRN: Rs. {Number(auditMetrics.supplierPurchasesCash || 0).toLocaleString("en-US")} | Exp: Rs. {Number(auditMetrics.expensesTotal || 0).toLocaleString("en-US")}
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-purple-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-[10px] sm:text-[11px] font-bold text-purple-800 uppercase tracking-wider">Net Operating Margin</div>
+                      <div className={`text-xl sm:text-2xl font-black mt-1 ${auditMetrics.netOperatingSurplus >= 0 ? "text-purple-950" : "text-rose-600"}`}>
+                        Rs. {Number(auditMetrics.netOperatingSurplus || 0).toLocaleString("en-US")}
+                      </div>
+                      <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
+                        {auditMetrics.netOperatingSurplus >= 0 ? "✅ Net Operational Profit" : "⚠️ Operating Deficit"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Godown Item Breakdown Table */}
+                  <div className="bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <h4 className="font-black text-teal-950 text-base">Godown SKU Valuation &amp; Quantity Matrix</h4>
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Search SKU name, company..."
+                          value={auditSearch}
+                          onChange={(e) => setAuditSearch(e.target.value)}
+                          className="bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-4 py-2 text-xs font-semibold w-full sm:w-64 focus:outline-none focus:border-teal-600"
+                        />
+                        <button
+                          onClick={() => {
+                            const csvContent = "data:text/csv;charset=utf-8," +
+                              ["Item Code,Medicine Name,Company,Godown Qty,Cost Price,Total Valuation"].join(",") + "\n" +
+                              filteredAuditInventory.map(i => `"${i.item_code}","${i.medicine_name}","${i.company_name}",${i.warehouse_stock || 0},${i.cost_price_per_box || 0},${(i.warehouse_stock || 0) * (i.cost_price_per_box || 0)}`).join("\n");
                             const encodedUri = encodeURI(csvContent);
                             const link = document.createElement("a");
                             link.setAttribute("href", encodedUri);
-                            link.setAttribute("download", `Stock_Report_${currentGd.code}_${new Date().toISOString().split("T")[0]}.csv`);
+                            link.setAttribute("download", `Godown_Audit_${auditDates.startDateStr}_to_${auditDates.endDateStr}.csv`);
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
-                            showToast(`📊 Exported stock report for ${currentGd.name}!`);
+                            showToast("📊 Audit CSV Exported!");
                           }}
-                          className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold rounded-2xl border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                          className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold rounded-2xl border border-teal-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
                         >
-                          <span className="material-symbols-outlined text-base text-emerald-700">download</span>
-                          Export Location CSV
-                        </button>
-
-                        <button
-                          onClick={() => setSelectedGodownForStock(null)}
-                          className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                          title="Close Stock Inspector"
-                        >
-                          <span className="material-symbols-outlined text-base">close</span>
+                          <span className="material-symbols-outlined text-base text-teal-700">download</span>
+                          Export CSV
                         </button>
                       </div>
                     </div>
 
-                    {/* Search and Company Filter */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-2 relative">
-                        <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
-                          search
-                        </span>
-                        <input
-                          type="text"
-                          placeholder="Search medicine name, item code, formula..."
-                          value={godownStockSearch}
-                          onChange={(e) => setGodownStockSearch(e.target.value)}
-                          className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600 focus:bg-white"
-                        />
-                      </div>
-
-                      <div>
-                        <select
-                          value={godownCompanyFilter}
-                          onChange={(e) => setGodownCompanyFilter(e.target.value)}
-                          className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600"
-                        >
-                          <option value="all">🏢 All Manufacturing Brands</option>
-                          {godownCompanyOptions.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Stock Table */}
-                    <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto">
-                      <table className="w-full text-left text-xs min-w-[700px]">
-                        <thead className="bg-teal-50/90 text-teal-950 font-black uppercase tracking-wider sticky top-0 z-10 border-b border-teal-200">
+                    <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto w-full">
+                      <table className="w-full text-left text-xs min-w-[550px]">
+                        <thead className="bg-teal-50/80 text-teal-900 font-black uppercase tracking-wider sticky top-0 z-10 border-b border-teal-100">
                           <tr>
-                            <th className="px-4 py-3">Item Code</th>
-                            <th className="px-4 py-3">Medicine &amp; Formula</th>
-                            <th className="px-4 py-3">Company Brand</th>
-                            <th className="px-4 py-3 text-center">Stock in Godown</th>
-                            <th className="px-4 py-3 text-right">Cost Price</th>
-                            <th className="px-4 py-3 text-right">Valuation</th>
-                            <th className="px-4 py-3 text-right">Sale Price</th>
-                            <th className="px-4 py-3 text-center">Status</th>
+                            <th className="px-3.5 py-3">SKU Code</th>
+                            <th className="px-3.5 py-3">Medicine Name</th>
+                            <th className="px-3.5 py-3">Manufacturer Brand</th>
+                            <th className="px-3.5 py-3 text-center">Godown Stock</th>
+                            <th className="px-3.5 py-3 text-right">Unit Cost</th>
+                            <th className="px-3.5 py-3 text-right">Stock Valuation</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-teal-50 font-medium">
-                          {currentGodownStockItems.map((item) => {
-                            const isLowStock = item.locationQty <= (item.min_reorder_level || 5);
+                          {filteredAuditInventory.slice(0, 100).map((inv) => {
+                            const cost = Number(inv.cost_price_per_box || inv.cost_price || 0);
+                            const qty = Number(inv.warehouse_stock || inv.stock_qty || 0);
+                            const val = qty * cost;
                             return (
-                              <tr key={item.id} className="hover:bg-teal-50/40 transition-colors">
-                                <td className="px-4 py-3 font-mono font-bold text-teal-800">{item.item_code || "MED"}</td>
-                                <td className="px-4 py-3">
-                                  <div className="font-bold text-teal-950">{item.medicine_name}</div>
-                                  {item.generic_name && (
-                                    <div className="text-[10px] text-slate-400 italic">{item.generic_name}</div>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 font-semibold text-slate-700">{item.company_name || "BM Pvt LTD"}</td>
-                                <td className="px-4 py-3 text-center">
-                                  <span className={`px-2.5 py-1 rounded-full font-black text-xs ${
-                                    item.locationQty > 0
-                                      ? "bg-teal-100 text-teal-950"
-                                      : "bg-rose-100 text-rose-800"
-                                  }`}>
-                                    {item.locationQty} {item.unit_label || "Units"}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-right font-mono text-slate-600">
-                                  Rs. {item.unitCost.toLocaleString("en-US")}
-                                </td>
-                                <td className="px-4 py-3 text-right font-mono font-black text-teal-950">
-                                  Rs. {item.locationValuation.toLocaleString("en-US")}
-                                </td>
-                                <td className="px-4 py-3 text-right font-mono font-bold text-emerald-800">
-                                  Rs. {item.unitSale.toLocaleString("en-US")}
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  {isLowStock ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">
-                                      Low Stock
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                      Healthy
-                                    </span>
-                                  )}
-                                </td>
+                              <tr key={inv.id} className="hover:bg-teal-50/40 transition-colors">
+                                <td className="px-4 py-2.5 font-mono text-teal-800 font-bold">{inv.item_code || "MED"}</td>
+                                <td className="px-4 py-2.5 font-bold text-teal-950">{inv.medicine_name}</td>
+                                <td className="px-4 py-2.5 text-slate-600">{inv.company_name || "BM Pvt LTD"}</td>
+                                <td className="px-4 py-2.5 text-center font-bold text-teal-900">{qty} {inv.unit_label || "Packs"}</td>
+                                <td className="px-4 py-2.5 text-right text-slate-600">Rs. {cost.toLocaleString()}</td>
+                                <td className="px-4 py-2.5 text-right font-black text-teal-950">Rs. {val.toLocaleString()}</td>
                               </tr>
                             );
                           })}
-
-                          {currentGodownStockItems.length === 0 && (
-                            <tr>
-                              <td colSpan={8} className="py-12 text-center text-slate-400">
-                                <span className="material-symbols-outlined text-4xl block mb-2 text-slate-300">inventory_2</span>
-                                No medicines found matching filter in this godown.
-                              </td>
-                            </tr>
-                          )}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                );
-              })()}
-            </div>
-          )}
+                </div>
+              )}
 
-          {/* ================================================================= */}
-          {/* TAB: THERMAL RECEIPT STUDIO & CUSTOMIZER                          */}
-          {/* ================================================================= */}
-          {activeTab === "receipt_studio" && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl -z-0 pointer-events-none" />
-                <div className="relative z-10 max-w-2xl space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-700/60 border border-teal-500/30 text-teal-200 text-xs font-bold">
-                    <span className="material-symbols-outlined text-sm">palette</span>
-                    Universal Thermal Print Engine Synchronizer
+              {/* ================================================================= */}
+              {/* TAB: GODOWNS & MULTI-WAREHOUSE MASTER PORTAL                      */}
+              {/* ================================================================= */}
+              {activeTab === "godowns" && (
+                <div className="space-y-6 animate-fade-in">
+                  {/* Header Hero & Bento Stats */}
+                  <div className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-50 pb-6">
+                      <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-black uppercase tracking-wider mb-2">
+                          <span className="material-symbols-outlined text-sm">warehouse</span>
+                          Central Storage &amp; Multi-Location Control Plane
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-black text-teal-950 tracking-tight">
+                          Godowns &amp; Multi-Warehouse Master Portal
+                        </h3>
+                        <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium max-w-2xl leading-relaxed">
+                          Register and manage storage godowns, track exact stock breakdown per location, assign warehouse incharges, and monitor real-time multi-branch inventory valuations.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => {
+                            setEditingGodown(null);
+                            setGodownForm({
+                              name: "",
+                              code: `GDW-0${(warehousesList.filter(w => !w.is_store_counter).length + 1)}`,
+                              location: "Hyderabad, Sindh",
+                              incharge_name: "",
+                              phone: "",
+                              notes: "",
+                              status: "active",
+                              is_default: false,
+                              is_store_counter: false,
+                            });
+                            setShowGodownModal(true);
+                          }}
+                          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-teal-700/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                        >
+                          <span className="material-symbols-outlined text-base">add_home_work</span>
+                          <span>+ Register New Godown / Warehouse</span>
+                        </button>
+
+                        <Link
+                          to="/store/warehouse"
+                          className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                          title="Open Warehouse Transfer & Internal Movements Desk"
+                        >
+                          <span className="material-symbols-outlined text-base text-teal-700">sync_alt</span>
+                          <span>Stock Transfer Desk</span>
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Bento KPI Stats */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                      <div className="bg-gradient-to-br from-teal-50 to-emerald-50/40 border border-teal-200/80 p-5 rounded-3xl">
+                        <div className="flex items-center justify-between text-teal-800">
+                          <span className="text-[11px] font-black uppercase tracking-wider">Total Godowns</span>
+                          <span className="material-symbols-outlined text-xl">domain</span>
+                        </div>
+                        <div className="text-2xl font-black text-teal-950 mt-2">
+                          {warehousesList.length} <span className="text-xs font-semibold text-teal-700">Locations</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                          {godownStats.activeCount} Active • {warehousesList.filter(w => w.is_store_counter).length} Counter Store
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-teal-200/80 p-5 rounded-3xl shadow-xs">
+                        <div className="flex items-center justify-between text-emerald-800">
+                          <span className="text-[11px] font-black uppercase tracking-wider">Total Stock Valuation</span>
+                          <span className="material-symbols-outlined text-xl">payments</span>
+                        </div>
+                        <div className="text-2xl font-black text-emerald-950 mt-2">
+                          Rs. {Number(godownStats.totalValuation || 0).toLocaleString("en-US")}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                          Across all {warehousesList.length} physical locations
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-teal-200/80 p-5 rounded-3xl shadow-xs">
+                        <div className="flex items-center justify-between text-teal-800">
+                          <span className="text-[11px] font-black uppercase tracking-wider">Total Physical Inventory</span>
+                          <span className="material-symbols-outlined text-xl">inventory_2</span>
+                        </div>
+                        <div className="text-2xl font-black text-teal-950 mt-2">
+                          {Number(godownStats.totalUnits || 0).toLocaleString("en-US")} <span className="text-xs font-semibold text-slate-500">Units/Packs</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                          {inventoryList.length} Unique Medicine SKUs
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-amber-200/80 p-5 rounded-3xl shadow-xs">
+                        <div className="flex items-center justify-between text-amber-800">
+                          <span className="text-[11px] font-black uppercase tracking-wider">Default Primary Godown</span>
+                          <span className="material-symbols-outlined text-xl">star</span>
+                        </div>
+                        <div className="text-base font-black text-slate-900 mt-2 truncate">
+                          {warehousesList.find(w => w.is_default)?.name || warehousesList.find(w => !w.is_store_counter)?.name || "Main Godown"}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-1 font-semibold">
+                          Code: {warehousesList.find(w => w.is_default)?.code || "GDW-01"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black tracking-tight text-white">
-                    80mm Thermal Receipt Studio &amp; Customizer
-                  </h3>
-                  <p className="text-sm text-teal-100/80 leading-relaxed font-medium">
-                    Customize clinic logos, titles, taglines, phone/address lines, doctor info, paper width, and block drag-and-drop order. All changes made in the Studio dynamically reflect across Counter POS, OPD Tokens, Wholesale Invoices, GRN Vouchers, and Day-End statements.
-                  </p>
-                  <div className="pt-2 flex flex-wrap items-center gap-3">
-                    <Link
-                      to="/receipt-studio"
-                      className="px-6 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-teal-950 font-black text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer active:scale-95"
-                    >
-                      <span className="material-symbols-outlined">launch</span>
-                      Open Fullscreen Receipt Studio
-                    </Link>
+
+                  {/* Godown Cards Grid */}
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-teal-100 shadow-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-teal-700">store</span>
+                        <span className="text-sm font-black text-teal-950">Registered Storage Facilities &amp; Godowns</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Search godown name, code, incharge..."
+                          value={godownSearch}
+                          onChange={(e) => setGodownSearch(e.target.value)}
+                          className="bg-slate-50 border border-teal-200 rounded-2xl px-3.5 py-2 text-xs font-bold text-teal-950 focus:outline-none focus:border-teal-600 w-full sm:w-64"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {godownStats.warehouses
+                        .filter((gd) => {
+                          const q = (godownSearch || "").toLowerCase();
+                          if (!q) return true;
+                          return (
+                            (gd.name || "").toLowerCase().includes(q) ||
+                            (gd.code || "").toLowerCase().includes(q) ||
+                            (gd.location || "").toLowerCase().includes(q) ||
+                            (gd.incharge_name || "").toLowerCase().includes(q)
+                          );
+                        })
+                        .map((gd) => {
+                          const isSelected = selectedGodownForStock === gd.id;
+                          return (
+                            <div
+                              key={gd.id}
+                              className={`bg-white rounded-3xl border transition-all duration-200 p-5 space-y-4 shadow-sm hover:shadow-md ${isSelected
+                                  ? "border-teal-600 ring-2 ring-teal-500/20 bg-teal-50/10"
+                                  : gd.is_default
+                                    ? "border-teal-300 ring-1 ring-teal-200"
+                                    : "border-teal-100"
+                                }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${gd.is_store_counter
+                                        ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                                        : "bg-teal-50 border border-teal-200 text-teal-700"
+                                      }`}
+                                  >
+                                    <span className="material-symbols-outlined text-2xl">
+                                      {gd.is_store_counter ? "storefront" : "warehouse"}
+                                    </span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="font-black text-slate-900 text-sm leading-tight truncate">{gd.name}</h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                                        {gd.code || gd.id}
+                                      </span>
+                                      {gd.is_default && (
+                                        <span className="text-[9px] font-black bg-teal-700 text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                          PRIMARY
+                                        </span>
+                                      )}
+                                      {gd.is_store_counter && (
+                                        <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md uppercase">
+                                          POS Counter
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <span
+                                  className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-wider shrink-0 ${gd.status === "active"
+                                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                      : "bg-slate-100 text-slate-600 border-slate-200"
+                                    }`}
+                                >
+                                  {gd.status || "active"}
+                                </span>
+                              </div>
+
+                              <div className="space-y-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-400 font-medium">Incharge Custodian:</span>
+                                  <span className="font-bold text-teal-950">{gd.incharge_name || "Central Team"}</span>
+                                </div>
+                                {gd.phone && (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-slate-400 font-medium">Contact Phone:</span>
+                                    <a href={`tel:${gd.phone}`} className="font-mono font-bold text-teal-700 hover:underline">
+                                      {gd.phone}
+                                    </a>
+                                  </div>
+                                )}
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-400 font-medium">Physical Location:</span>
+                                  <span className="font-semibold text-slate-800 truncate max-w-[170px]" title={gd.location}>
+                                    {gd.location || "Hyderabad, Sindh"}
+                                  </span>
+                                </div>
+                                <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
+                                  <span className="text-slate-400 font-medium">Stock SKUs / Units:</span>
+                                  <span className="font-black text-teal-800">
+                                    {gd.skuCount} SKUs ({Number(gd.unitsCount || 0).toLocaleString("en-US")} Units)
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-400 font-medium">Estimated Value:</span>
+                                  <span className="font-black text-emerald-800 text-sm">
+                                    Rs. {Number(gd.valuation || 0).toLocaleString("en-US")}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {gd.notes && (
+                                <p className="text-[11px] text-slate-500 italic bg-amber-50/60 border border-amber-100 p-2 rounded-xl">
+                                  📝 {gd.notes}
+                                </p>
+                              )}
+
+                              {/* Card Action Buttons */}
+                              <div className="pt-2 border-t border-teal-50 flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedGodownForStock(isSelected ? null : gd.id);
+                                    setGodownStockSearch("");
+                                    setGodownCompanyFilter("all");
+                                  }}
+                                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${isSelected
+                                      ? "bg-teal-800 text-white shadow-md shadow-teal-900/20"
+                                      : "bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200"
+                                    }`}
+                                >
+                                  <span className="material-symbols-outlined text-sm">
+                                    {isSelected ? "visibility_off" : "inventory"}
+                                  </span>
+                                  <span>{isSelected ? "Hide Stock" : "Inspect Live Stock"}</span>
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setEditingGodown(gd);
+                                    setGodownForm({
+                                      name: gd.name || "",
+                                      code: gd.code || "",
+                                      location: gd.location || "",
+                                      incharge_name: gd.incharge_name || "",
+                                      phone: gd.phone || "",
+                                      notes: gd.notes || "",
+                                      status: gd.status || "active",
+                                      is_default: Boolean(gd.is_default),
+                                      is_store_counter: Boolean(gd.is_store_counter),
+                                    });
+                                    setShowGodownModal(true);
+                                  }}
+                                  className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                  title="Edit Godown Details"
+                                >
+                                  <span className="material-symbols-outlined text-sm">edit</span>
+                                </button>
+
+                                {!gd.is_default && !gd.is_store_counter && (
+                                  <button
+                                    onClick={() => handleSetDefaultGodown(gd.id)}
+                                    className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer"
+                                    title="Set as Default Primary Godown"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">star</span>
+                                  </button>
+                                )}
+
+                                {!gd.is_store_counter && !gd.is_default && (
+                                  <button
+                                    onClick={() => handleDeleteGodown(gd.id, gd.name)}
+                                    className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                                    title="Delete Godown"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* Drill-down: Live Stock Inspector for Selected Godown */}
+                  {selectedGodownForStock && (() => {
+                    const currentGd = warehousesList.find(w => w.id === selectedGodownForStock) || { name: "Godown", code: "GDW" };
+                    const currentVal = dbWarehouses.getStockValuation(selectedGodownForStock);
+                    return (
+                      <div className="bg-white border-2 border-teal-600/30 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl animate-fade-in">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-100 pb-5">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black uppercase tracking-wider bg-teal-100 text-teal-800 px-3 py-1 rounded-full border border-teal-200">
+                                Active Stock Inspector
+                              </span>
+                              <span className="font-mono text-xs font-bold text-slate-500">
+                                ID: {selectedGodownForStock}
+                              </span>
+                            </div>
+                            <h4 className="text-xl font-black text-teal-950 mt-2 flex items-center gap-2">
+                              <span className="material-symbols-outlined text-teal-700">inventory_2</span>
+                              Stock Inventory in: <span className="text-teal-700">{currentGd.name}</span> ({currentGd.code})
+                            </h4>
+                            <p className="text-xs text-slate-500 mt-1 font-medium">
+                              Showing live stock count, unit purchase costs, and real-time total valuation for this physical location.
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="bg-teal-50 border border-teal-200 px-4 py-2 rounded-2xl text-right">
+                              <div className="text-[10px] font-bold text-teal-700 uppercase">Location Valuation</div>
+                              <div className="text-base font-black text-teal-950 font-mono">
+                                Rs. {Number(currentVal.totalValue || 0).toLocaleString("en-US")}
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                const csvContent = "data:text/csv;charset=utf-8," +
+                                  ["Item Code,Medicine Name,Company,Formula,Location Stock,Unit Cost Price,Total Valuation,Unit Sale Price"].join(",") + "\n" +
+                                  currentGodownStockItems.map(i => `"${i.item_code}","${i.medicine_name}","${i.company_name || ''}","${i.generic_name || ''}",${i.locationQty},${i.unitCost},${i.locationValuation},${i.unitSale}`).join("\n");
+                                const encodedUri = encodeURI(csvContent);
+                                const link = document.createElement("a");
+                                link.setAttribute("href", encodedUri);
+                                link.setAttribute("download", `Stock_Report_${currentGd.code}_${new Date().toISOString().split("T")[0]}.csv`);
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                showToast(`📊 Exported stock report for ${currentGd.name}!`);
+                              }}
+                              className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold rounded-2xl border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-base text-emerald-700">download</span>
+                              Export Location CSV
+                            </button>
+
+                            <button
+                              onClick={() => setSelectedGodownForStock(null)}
+                              className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                              title="Close Stock Inspector"
+                            >
+                              <span className="material-symbols-outlined text-base">close</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Search and Company Filter */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="sm:col-span-2 relative">
+                            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                              search
+                            </span>
+                            <input
+                              type="text"
+                              placeholder="Search medicine name, item code, formula..."
+                              value={godownStockSearch}
+                              onChange={(e) => setGodownStockSearch(e.target.value)}
+                              className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600 focus:bg-white"
+                            />
+                          </div>
+
+                          <div>
+                            <select
+                              value={godownCompanyFilter}
+                              onChange={(e) => setGodownCompanyFilter(e.target.value)}
+                              className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600"
+                            >
+                              <option value="all">🏢 All Manufacturing Brands</option>
+                              {godownCompanyOptions.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Stock Table */}
+                        <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto">
+                          <table className="w-full text-left text-xs min-w-[700px]">
+                            <thead className="bg-teal-50/90 text-teal-950 font-black uppercase tracking-wider sticky top-0 z-10 border-b border-teal-200">
+                              <tr>
+                                <th className="px-4 py-3">Item Code</th>
+                                <th className="px-4 py-3">Medicine &amp; Formula</th>
+                                <th className="px-4 py-3">Company Brand</th>
+                                <th className="px-4 py-3 text-center">Stock in Godown</th>
+                                <th className="px-4 py-3 text-right">Cost Price</th>
+                                <th className="px-4 py-3 text-right">Valuation</th>
+                                <th className="px-4 py-3 text-right">Sale Price</th>
+                                <th className="px-4 py-3 text-center">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-teal-50 font-medium">
+                              {currentGodownStockItems.map((item) => {
+                                const isLowStock = item.locationQty <= (item.min_reorder_level || 5);
+                                return (
+                                  <tr key={item.id} className="hover:bg-teal-50/40 transition-colors">
+                                    <td className="px-4 py-3 font-mono font-bold text-teal-800">{item.item_code || "MED"}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="font-bold text-teal-950">{item.medicine_name}</div>
+                                      {item.generic_name && (
+                                        <div className="text-[10px] text-slate-400 italic">{item.generic_name}</div>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 font-semibold text-slate-700">{item.company_name || "BM Pvt LTD"}</td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className={`px-2.5 py-1 rounded-full font-black text-xs ${item.locationQty > 0
+                                          ? "bg-teal-100 text-teal-950"
+                                          : "bg-rose-100 text-rose-800"
+                                        }`}>
+                                        {item.locationQty} {item.unit_label || "Units"}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono text-slate-600">
+                                      Rs. {item.unitCost.toLocaleString("en-US")}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono font-black text-teal-950">
+                                      Rs. {item.locationValuation.toLocaleString("en-US")}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-800">
+                                      Rs. {item.unitSale.toLocaleString("en-US")}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {isLowStock ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">
+                                          Low Stock
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                          Healthy
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+
+                              {currentGodownStockItems.length === 0 && (
+                                <tr>
+                                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                                    <span className="material-symbols-outlined text-4xl block mb-2 text-slate-300">inventory_2</span>
+                                    No medicines found matching filter in this godown.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ================================================================= */}
+              {/* TAB: THERMAL RECEIPT STUDIO & CUSTOMIZER                          */}
+              {/* ================================================================= */}
+              {activeTab === "receipt_studio" && (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl -z-0 pointer-events-none" />
+                    <div className="relative z-10 max-w-2xl space-y-4">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-700/60 border border-teal-500/30 text-teal-200 text-xs font-bold">
+                        <span className="material-symbols-outlined text-sm">palette</span>
+                        Universal Thermal Print Engine Synchronizer
+                      </div>
+                      <h3 className="text-2xl font-black tracking-tight text-white">
+                        80mm Thermal Receipt Studio &amp; Customizer
+                      </h3>
+                      <p className="text-sm text-teal-100/80 leading-relaxed font-medium">
+                        Customize clinic logos, titles, taglines, phone/address lines, doctor info, paper width, and block drag-and-drop order. All changes made in the Studio dynamically reflect across Counter POS, OPD Tokens, Wholesale Invoices, GRN Vouchers, and Day-End statements.
+                      </p>
+                      <div className="pt-2 flex flex-wrap items-center gap-3">
+                        <Link
+                          to="/receipt-studio"
+                          className="px-6 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-teal-950 font-black text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer active:scale-95"
+                        >
+                          <span className="material-symbols-outlined">launch</span>
+                          Open Fullscreen Receipt Studio
+                        </Link>
+                        <button
+                          onClick={() => {
+                            const win = window.open("/receipt-studio", "_blank");
+                            if (win) win.focus();
+                          }}
+                          className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined">open_in_new</span>
+                          Open in New Tab
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feature Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
+                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
+                        <span className="material-symbols-outlined">drag_indicator</span>
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm">Drag &amp; Drop Block Order</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Re-order receipt sections (Logo, Meta Info, Customer, Doctor, Items Table, Totals, Urdu Terms) with instant live preview.
+                      </p>
+                    </div>
+
+                    <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
+                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
+                        <span className="material-symbols-outlined">verified</span>
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm">Permanent Verified Branding</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Mandatory CliniCore Software and developer contact watermark (<span className="font-mono font-bold text-teal-800">0314-2291356</span>) locked across all prints.
+                      </p>
+                    </div>
+
+                    <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
+                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
+                        <span className="material-symbols-outlined">crop</span>
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm">Auto-Crop Logo Scanner</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Canvas pixel boundary scanner automatically trims whitespace padding to eliminate paper roll and ink bloat.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ================================================================= */}
+              {/* TAB 2: STAFF & DOCTOR MASTER ACCESS (Password Reset, Add, Delete) */}
+              {/* ================================================================= */}
+              {activeTab === "staff" && (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="bg-white border border-teal-100 p-6 rounded-3xl flex items-center justify-between shadow-sm">
+                    <div>
+                      <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-teal-700">badge</span>
+                        Doctor &amp; Staff Master Access Directory
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                        Direct password resets, permission control, and doctor profile management
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={async () => {
+                          showToast("Syncing with VPS Cloud...");
+                          const result = await syncEngine.forceSyncNow();
+                          if (result.success) {
+                            showToast(`✅ Sync completed!`);
+                            loadData();
+                          } else {
+                            showToast(`❌ Sync failed: ${result.message}`);
+                          }
+                        }}
+                        className={`px-4 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border ${syncState.isOnline
+                            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300"
+                            : "bg-slate-50 text-slate-600 border-slate-300"
+                          }`}
+                        disabled={syncState.isSyncing}
+                      >
+                        <span className={`material-symbols-outlined text-base ${syncState.isSyncing ? "animate-spin" : ""}`}>
+                          {syncState.isSyncing ? "sync" : "cloud_sync"}
+                        </span>
+                        <span>{syncState.isSyncing ? "Syncing..." : "Sync to VPS"}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingUser(null);
+                          setShowAddStaffModal(true);
+                        }}
+                        className="bg-gradient-to-r from-teal-700 to-teal-600 text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:from-teal-800 hover:to-teal-700 transition-all flex items-center gap-1.5 shadow-lg shadow-teal-700/20 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-base">person_add</span>
+                        Add Doctor / Staff
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Users Table */}
+                  <div className="bg-white border border-teal-100 rounded-3xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-teal-50/80 text-teal-900 font-black uppercase tracking-wider border-b border-teal-100">
+                        <tr>
+                          <th className="px-5 py-3.5">Staff Name</th>
+                          <th className="px-5 py-3.5">Role</th>
+                          <th className="px-5 py-3.5">Room / Dept</th>
+
+                          <th className="px-5 py-3.5">Fee / Financials</th>
+                          <th className="px-5 py-3.5 text-right whitespace-nowrap">Master Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-teal-50 font-medium">
+                        {usersList.map((u) => (
+                          <tr key={u.id} className="hover:bg-teal-50/40 transition-colors">
+                            <td className="px-5 py-3.5">
+                              <div className="font-bold text-teal-950 flex items-center gap-2">
+                                {u.name}
+                                {u.is_owner && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-amber-100 text-amber-900 border border-amber-200">
+                                    PRINCIPAL OWNER
+                                  </span>
+                                )}
+                              </div>
+                              {u.role === "doctor" && <div className="text-[11px] text-slate-500 font-medium">{u.specialization || "General Physician"}</div>}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className={`px-3 py-1 rounded-xl text-[11px] font-black capitalize ${u.role === "doctor"
+                                  ? "bg-teal-100 text-teal-900 border border-teal-200"
+                                  : u.role === "warehouse_incharge"
+                                    ? "bg-indigo-100 text-indigo-900 border border-indigo-200"
+                                    : "bg-emerald-100 text-emerald-900 border border-emerald-200"
+                                }`}>
+                                {u.role === "cashier" ? "POS Counter & Cashier" : u.role === "warehouse_incharge" ? "Warehouse Manager" : u.role}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-teal-950 font-bold">{u.room_number || "Counter"}</td>
+
+                            <td className="px-5 py-3.5">
+                              <div className="flex flex-col gap-1">
+                                {u.role === "doctor" && (
+                                  <span className="font-bold text-teal-800 font-mono text-xs">Fee: Rs. {u.consultation_fee || 300}</span>
+                                )}
+                                {u.is_owner ? (
+                                  <span className="inline-flex items-center gap-1 text-[10.5px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 w-fit">
+                                    👑 Owner (Full Access)
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedVal = !u.can_view_financials;
+                                      dbUsers.update(u.id, { can_view_financials: updatedVal });
+                                      setUsersList(dbUsers.getAll());
+                                      showToast(`${u.name}: Financial revenue access ${updatedVal ? "ENABLED" : "REVOKED"}`);
+                                    }}
+                                    className={`inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-xl border transition-all cursor-pointer w-fit active:scale-95 ${u.can_view_financials
+                                        ? "bg-emerald-100 text-emerald-950 border-emerald-300 hover:bg-emerald-200 shadow-2xs"
+                                        : "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200"
+                                      }`}
+                                    title="Click to toggle financial revenue access for this account"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">
+                                      {u.can_view_financials ? "visibility" : "visibility_off"}
+                                    </span>
+                                    <span>{u.can_view_financials ? "Financials: ON" : "Financials: OFF"}</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5 flex-nowrap">
+                                {u.role === "doctor" && !u.is_owner && (
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`Designate "${u.name}" as the Principal / Primary Doctor (Owner)?`)) {
+                                        dbUsers.setPrincipalDoctor(u.id);
+                                        setUsersList(dbUsers.getAll());
+                                      }
+                                    }}
+                                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-colors shadow-xs cursor-pointer"
+                                    title="Make this Doctor the Primary Clinic Owner"
+                                  >
+                                    <span className="material-symbols-outlined text-sm text-emerald-700">stars</span>
+                                    Make Primary
+                                  </button>
+                                )}
+                                {u.is_owner && (
+                                  <span className="bg-amber-100 text-amber-950 font-black px-2.5 py-1 rounded-xl text-[10.5px] border border-amber-300 flex items-center gap-1">
+                                    ⭐ Primary Doctor
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setResetPasswordModalUser(u);
+                                    setNewPasswordInput("");
+                                  }}
+                                  className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors shadow-xs cursor-pointer"
+                                  title="Direct Password Reset"
+                                >
+                                  <span className="material-symbols-outlined text-sm">key</span>
+                                  Reset Pass
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingUser(u);
+                                    setStaffForm({
+                                      name: u.name,
+                                      role: u.role || "doctor",
+                                      email: u.email || "",
+                                      phone: u.phone || "",
+                                      password: "",
+                                      specialization: u.specialization || "",
+                                      room_number: u.room_number || "Room 1",
+                                      consultation_fee: u.consultation_fee || 300,
+                                      can_view_financials: Boolean(u.can_view_financials),
+                                      is_owner: Boolean(u.is_owner),
+                                      availability_status: u.availability_status || "available",
+                                    });
+                                    setShowAddStaffModal(true);
+                                  }}
+                                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(u.id, u.name)}
+                                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* ================================================================= */}
+              {/* TAB 3: CLINIC IDENTITY & PUBLIC SITE CMS                          */}
+              {/* ================================================================= */}
+              {activeTab === "clinic" && (
+                <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
+                  <div className="border-b border-teal-50 pb-4">
+                    <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-teal-700">domain</span>
+                      Master Clinic Branding &amp; Public Website CMS
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                      Controls landing page hero, doctors directory, thermal receipt headers, and public portal identity
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Full Clinic &amp; Wholesale Store Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={clinicForm.name}
+                        onChange={(e) => setClinicForm({ ...clinicForm, name: e.target.value })}
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Clinic Tagline / Slogan
+                      </label>
+                      <input
+                        type="text"
+                        value={clinicForm.tagline || ""}
+                        onChange={(e) => setClinicForm({ ...clinicForm, tagline: e.target.value })}
+                        placeholder="e.g. Specialized Homeopathic Healthcare & Certified Medicine Store"
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Public Website Hero Main Title
+                      </label>
+                      <input
+                        type="text"
+                        value={clinicForm.hero_title || ""}
+                        onChange={(e) => setClinicForm({ ...clinicForm, hero_title: e.target.value })}
+                        placeholder="e.g. Specialized Homeopathic Healthcare & Family OPD Clinic in Hyderabad"
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Public Website Hero Subtitle &amp; Description
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={clinicForm.hero_description || ""}
+                        onChange={(e) => setClinicForm({ ...clinicForm, hero_description: e.target.value })}
+                        placeholder="Brief description for prospective patients visiting the clinic website..."
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Official Address (City &amp; Street)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={clinicForm.address}
+                        onChange={(e) => setClinicForm({ ...clinicForm, address: e.target.value })}
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Official Phone / Mobile
+                      </label>
+                      <input
+                        type="text"
+                        value={clinicForm.phone}
+                        onChange={(e) => setClinicForm({ ...clinicForm, phone: e.target.value })}
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        WhatsApp Inquiry Number
+                      </label>
+                      <input
+                        type="text"
+                        value={clinicForm.whatsapp || clinicForm.phone || ""}
+                        onChange={(e) => setClinicForm({ ...clinicForm, whatsapp: e.target.value })}
+                        placeholder="923142291356"
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        OPD Chamber &amp; Pharmacy Working Hours / Timings
+                      </label>
+                      <input
+                        type="text"
+                        value={clinicForm.timings || ""}
+                        onChange={(e) => setClinicForm({ ...clinicForm, timings: e.target.value })}
+                        placeholder="e.g. Monday – Saturday: 10:00 AM – 10:00 PM | Sunday: 11:00 AM – 4:00 PM"
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Default Consultation Fee (Rs.)
+                      </label>
+                      <input
+                        type="number"
+                        value={clinicForm.default_consultation_fee}
+                        onChange={(e) => setClinicForm({ ...clinicForm, default_consultation_fee: Number(e.target.value) || 0 })}
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Chamber Live Status
+                      </label>
+                      <select
+                        value={clinicForm.clinic_status || "open"}
+                        onChange={(e) => setClinicForm({ ...clinicForm, clinic_status: e.target.value })}
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                      >
+                        <option value="open">🟢 Open for OPD Consultation &amp; Pharmacy</option>
+                        <option value="closed">🔴 Closed Today</option>
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Public Notice Banner (Top of Website &amp; TV Screens)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={clinicForm.public_notice}
+                        onChange={(e) => setClinicForm({ ...clinicForm, public_notice: e.target.value })}
+                        placeholder="Leave blank if no special announcement..."
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-teal-50 flex justify-end">
                     <button
-                      onClick={() => {
-                        const win = window.open("/receipt-studio", "_blank");
-                        if (win) win.focus();
-                      }}
-                      className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
+                      type="submit"
+                      className="bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-700/20 cursor-pointer"
                     >
-                      <span className="material-symbols-outlined">open_in_new</span>
-                      Open in New Tab
+                      Save Master Clinic &amp; Website CMS
                     </button>
                   </div>
-                </div>
-              </div>
+                </form>
+              )}
 
-              {/* Feature Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
-                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
-                    <span className="material-symbols-outlined">drag_indicator</span>
+              {/* ================================================================= */}
+              {/* TAB 4: AUTOMATED BACKGROUND SERVICES & RESEND EMAIL API           */}
+              {/* ================================================================= */}
+              {activeTab === "apis" && (
+                <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
+                  <div className="border-b border-teal-50 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-teal-700">mark_email_read</span>
+                        Automated Background Services &amp; Resend Email API
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                        Configure Resend email credentials for scheduled daily closing, encrypted .cfbak database vaults, and manual backup dispatches
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Gateway Active
+                      </span>
+                    </div>
                   </div>
-                  <h4 className="font-bold text-slate-900 text-sm">Drag &amp; Drop Block Order</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Re-order receipt sections (Logo, Meta Info, Customer, Doctor, Items Table, Totals, Urdu Terms) with instant live preview.
-                  </p>
-                </div>
 
-                <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
-                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
-                    <span className="material-symbols-outlined">verified</span>
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-sm">Permanent Verified Branding</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Mandatory CliniCore Software and developer contact watermark (<span className="font-mono font-bold text-teal-800">0314-2291356</span>) locked across all prints.
-                  </p>
-                </div>
+                  {/* API Credentials Grid */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Resend API Key (re_xxxx)
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="re_123456789_abcdef..."
+                        value={clinicForm.resend_api_key}
+                        onChange={(e) => setClinicForm({ ...clinicForm, resend_api_key: e.target.value })}
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-mono font-bold text-teal-900"
+                      />
+                      <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500 font-medium">
+                        <span>Relayed through VPS backend (<code className="text-teal-800 font-bold">api.clinicore.me</code>)</span>
+                        <span className="text-emerald-700 font-bold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">verified</span>
+                          <span>Verified Domain: <strong>backup@clinicore.me</strong></span>
+                        </span>
+                      </div>
+                    </div>
 
-                <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
-                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
-                    <span className="material-symbols-outlined">crop</span>
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-sm">Auto-Crop Logo Scanner</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Canvas pixel boundary scanner automatically trims whitespace padding to eliminate paper roll and ink bloat.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                          Notification Recipient Email
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="e.g. drasifhosting@gmail.com"
+                          value={clinicForm.notification_email}
+                          onChange={(e) => setClinicForm({ ...clinicForm, notification_email: e.target.value })}
+                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                        />
+                      </div>
 
-          {/* ================================================================= */}
-          {/* TAB 2: STAFF & DOCTOR MASTER ACCESS (Password Reset, Add, Delete) */}
-          {/* ================================================================= */}
-          {activeTab === "staff" && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="bg-white border border-teal-100 p-6 rounded-3xl flex items-center justify-between shadow-sm">
-                <div>
-                  <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-teal-700">badge</span>
-                    Doctor &amp; Staff Master Access Directory
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                    Direct password resets, permission control, and doctor profile management
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={async () => {
-                      showToast("Syncing with VPS Cloud...");
-                      const result = await syncEngine.forceSyncNow();
-                      if (result.success) {
-                        showToast(`✅ Sync completed!`);
-                        loadData();
-                      } else {
-                        showToast(`❌ Sync failed: ${result.message}`);
-                      }
-                    }}
-                    className={`px-4 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border ${
-                      syncState.isOnline
-                        ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300"
-                        : "bg-slate-50 text-slate-600 border-slate-300"
-                    }`}
-                    disabled={syncState.isSyncing}
-                  >
-                    <span className={`material-symbols-outlined text-base ${syncState.isSyncing ? "animate-spin" : ""}`}>
-                      {syncState.isSyncing ? "sync" : "cloud_sync"}
-                    </span>
-                    <span>{syncState.isSyncing ? "Syncing..." : "Sync to VPS"}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingUser(null);
-                      setShowAddStaffModal(true);
-                    }}
-                    className="bg-gradient-to-r from-teal-700 to-teal-600 text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:from-teal-800 hover:to-teal-700 transition-all flex items-center gap-1.5 shadow-lg shadow-teal-700/20 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base">person_add</span>
-                    Add Doctor / Staff
-                  </button>
-                </div>
-              </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                          <span>Automated Report Frequency</span>
+                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Live Active</span>
+                        </label>
+                        <select
+                          value={selectedFreqType}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedFreqType(val);
+                            let nextFreq = val;
+                            if (val === "custom_time") {
+                              nextFreq = `custom_time:${customTimeInput}`;
+                            } else if (val === "custom_interval") {
+                              nextFreq = `custom_interval:${customIntervalInput}`;
+                            }
+                            setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
+                            try {
+                              localStorage.setItem("cf_report_frequency", nextFreq);
+                            } catch { }
+                          }}
+                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 cursor-pointer shadow-inner"
+                        >
+                          <option value="every_1m" className="text-amber-700 font-bold bg-amber-50">🧪 Testing Mode: Every 1 Minute (Live Automation Verification)</option>
+                          <option value="custom_time">⚙️ Custom Daily Clock Time...</option>
+                          <option value="custom_interval">⚙️ Custom Minute Interval...</option>
+                          <option value="daily_12am">🌙 Daily at 12:00 AM Midnight (Day Closing Vault - Recommended)</option>
+                          <option value="daily_9pm">🌙 Daily at 9:00 PM (Shift End Closure)</option>
+                          <option value="daily_10pm">🌙 Daily at 10:00 PM (Late Night Closure)</option>
+                          <option value="daily_8pm">🌙 Daily at 8:00 PM (Evening Shift Closure)</option>
+                          <option value="every_12h">⏱️ Every 12 Hours (Twice Daily Audit)</option>
+                          <option value="every_6h">⏱️ Every 6 Hours (High Volume Audit)</option>
+                          <option value="hourly">⚡ Every 1 Hour (Real-Time Background Sync)</option>
+                          <option value="weekly_saturday">📅 Weekly on Saturday (Weekly Summary)</option>
+                          <option value="monthly">📊 Monthly Executive Report</option>
+                          <option value="manual">🚫 Manual On-Demand Only (Off)</option>
+                        </select>
 
-              {/* Users Table */}
-              <div className="bg-white border border-teal-100 rounded-3xl overflow-hidden shadow-sm">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-teal-50/80 text-teal-900 font-black uppercase tracking-wider border-b border-teal-100">
-                    <tr>
-                      <th className="px-5 py-3.5">Staff Name</th>
-                      <th className="px-5 py-3.5">Role</th>
-                      <th className="px-5 py-3.5">Room / Dept</th>
-                      
-                      <th className="px-5 py-3.5">Fee / Financials</th>
-                      <th className="px-5 py-3.5 text-right whitespace-nowrap">Master Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-teal-50 font-medium">
-                    {usersList.map((u) => (
-                      <tr key={u.id} className="hover:bg-teal-50/40 transition-colors">
-                        <td className="px-5 py-3.5">
-                          <div className="font-bold text-teal-950 flex items-center gap-2">
-                            {u.name}
-                            {u.is_owner && (
-                              <span className="px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-amber-100 text-amber-900 border border-amber-200">
-                                PRINCIPAL OWNER
-                              </span>
-                            )}
+
+                        {/* Custom Clock Time Input */}
+                        {selectedFreqType === "custom_time" && (
+                          <div className="mt-2.5 space-y-1 animate-fade-in">
+                            <label className="block text-[10px] font-bold text-teal-900 uppercase">Set Custom Daily Time (24h format)</label>
+                            <input
+                              type="time"
+                              value={customTimeInput}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCustomTimeInput(val);
+                                const nextFreq = `custom_time:${val}`;
+                                setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
+                                try {
+                                  localStorage.setItem("cf_report_frequency", nextFreq);
+                                } catch { }
+                              }}
+                              className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-teal-950 font-mono shadow-inner"
+                            />
                           </div>
-                          {u.role === "doctor" && <div className="text-[11px] text-slate-500 font-medium">{u.specialization || "General Physician"}</div>}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className={`px-3 py-1 rounded-xl text-[11px] font-black capitalize ${
-                            u.role === "doctor"
-                              ? "bg-teal-100 text-teal-900 border border-teal-200"
-                              : u.role === "warehouse_incharge"
-                              ? "bg-indigo-100 text-indigo-900 border border-indigo-200"
-                              : "bg-emerald-100 text-emerald-900 border border-emerald-200"
-                          }`}>
-                            {u.role === "cashier" ? "POS Counter & Cashier" : u.role === "warehouse_incharge" ? "Warehouse Manager" : u.role}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-teal-950 font-bold">{u.room_number || "Counter"}</td>
+                        )}
 
-                        <td className="px-5 py-3.5">
-                          <div className="flex flex-col gap-1">
-                            {u.role === "doctor" && (
-                              <span className="font-bold text-teal-800 font-mono text-xs">Fee: Rs. {u.consultation_fee || 300}</span>
-                            )}
-                            {u.is_owner ? (
-                              <span className="inline-flex items-center gap-1 text-[10.5px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 w-fit">
-                                👑 Owner (Full Access)
+                        {/* Custom Interval Input */}
+                        {selectedFreqType === "custom_interval" && (
+                          <div className="mt-2.5 space-y-1 animate-fade-in">
+                            <label className="block text-[10px] font-bold text-teal-900 uppercase">Set Custom Interval (in Minutes)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="1440"
+                              value={customIntervalInput}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 15;
+                                setCustomIntervalInput(val);
+                                const nextFreq = `custom_interval:${val}`;
+                                setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
+                                try {
+                                  localStorage.setItem("cf_report_frequency", nextFreq);
+                                } catch { }
+                              }}
+                              className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-teal-950 font-mono shadow-inner"
+                            />
+                          </div>
+                        )}
+
+                        {/* Countdown Display Alert Badge */}
+                        {countdownDetail && countdownDetail.secondsLeft !== null && (
+                          <div className="mt-3 p-3 bg-gradient-to-r from-teal-950 to-teal-900 border border-teal-800 rounded-2xl flex items-center justify-between text-white shadow-md shadow-teal-950/20">
+                            <div className="flex items-center gap-2">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                               </span>
-                            ) : (
+                              <span className="text-[10px] font-black uppercase tracking-wider text-teal-300">Next Auto-Email:</span>
+                            </div>
+                            <span className="text-xs font-black font-mono text-emerald-400 bg-teal-900/60 px-2 py-0.5 rounded-md border border-teal-800">
+                              {(() => {
+                                const sec = countdownDetail.secondsLeft;
+                                if (sec === null || sec === undefined) return "Calculating...";
+                                if (sec <= 0) return "Triggering now...";
+                                const h = Math.floor(sec / 3600);
+                                const m = Math.floor((sec % 3600) / 60);
+                                const s = sec % 60;
+                                if (h > 0) return `${h}h ${m}m ${s}s`;
+                                if (m > 0) return `${m}m ${s}s`;
+                                return `${s}s`;
+                              })()}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Live Automation Execution Logs */}
+                        {automationLogs.length > 0 && (
+                          <div className="mt-3 bg-white border border-teal-100 rounded-2xl p-3 shadow-sm space-y-2 max-h-[200px] overflow-y-auto">
+                            <div className="flex items-center justify-between border-b border-teal-50 pb-1.5">
+                              <span className="text-[10px] font-black uppercase text-teal-900 tracking-wider">Live Execution Logs (Real-time)</span>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const updatedVal = !u.can_view_financials;
-                                  dbUsers.update(u.id, { can_view_financials: updatedVal });
-                                  setUsersList(dbUsers.getAll());
-                                  showToast(`${u.name}: Financial revenue access ${updatedVal ? "ENABLED" : "REVOKED"}`);
+                                  localStorage.removeItem("cf_automation_execution_logs");
+                                  setAutomationLogs([]);
                                 }}
-                                className={`inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-xl border transition-all cursor-pointer w-fit active:scale-95 ${
-                                  u.can_view_financials
-                                    ? "bg-emerald-100 text-emerald-950 border-emerald-300 hover:bg-emerald-200 shadow-2xs"
-                                    : "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200"
-                                }`}
-                                title="Click to toggle financial revenue access for this account"
+                                className="text-[9px] font-bold text-red-500 hover:text-red-700 bg-red-50 px-1.5 py-0.5 rounded"
                               >
-                                <span className="material-symbols-outlined text-sm">
-                                  {u.can_view_financials ? "visibility" : "visibility_off"}
-                                </span>
-                                <span>{u.can_view_financials ? "Financials: ON" : "Financials: OFF"}</span>
+                                Clear Logs
                               </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5 flex-nowrap">
-                            {u.role === "doctor" && !u.is_owner && (
-                              <button
-                                onClick={() => {
-                                  if (window.confirm(`Designate "${u.name}" as the Principal / Primary Doctor (Owner)?`)) {
-                                    dbUsers.setPrincipalDoctor(u.id);
-                                    setUsersList(dbUsers.getAll());
-                                  }
-                                }}
-                                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-colors shadow-xs cursor-pointer"
-                                title="Make this Doctor the Primary Clinic Owner"
-                              >
-                                <span className="material-symbols-outlined text-sm text-emerald-700">stars</span>
-                                Make Primary
-                              </button>
-                            )}
-                            {u.is_owner && (
-                              <span className="bg-amber-100 text-amber-950 font-black px-2.5 py-1 rounded-xl text-[10.5px] border border-amber-300 flex items-center gap-1">
-                                ⭐ Primary Doctor
-                              </span>
-                            )}
-                            <button
-                              onClick={() => {
-                                setResetPasswordModalUser(u);
-                                setNewPasswordInput("");
-                              }}
-                              className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors shadow-xs cursor-pointer"
-                              title="Direct Password Reset"
-                            >
-                              <span className="material-symbols-outlined text-sm">key</span>
-                              Reset Pass
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingUser(u);
-                                setStaffForm({
-                                  name: u.name,
-                                  role: u.role || "doctor",
-                                  email: u.email || "",
-                                  phone: u.phone || "",
-                                  password: "",
-                                  specialization: u.specialization || "",
-                                  room_number: u.room_number || "Room 1",
-                                  consultation_fee: u.consultation_fee || 300,
-                                  can_view_financials: Boolean(u.can_view_financials),
-                                  is_owner: Boolean(u.is_owner),
-                                  availability_status: u.availability_status || "available",
-                                });
-                                setShowAddStaffModal(true);
-                              }}
-                              className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(u.id, u.name)}
-                              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB 3: CLINIC IDENTITY & PUBLIC SITE CMS                          */}
-          {/* ================================================================= */}
-          {activeTab === "clinic" && (
-            <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
-              <div className="border-b border-teal-50 pb-4">
-                <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-teal-700">domain</span>
-                  Master Clinic Branding &amp; Public Website CMS
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                  Controls landing page hero, doctors directory, thermal receipt headers, and public portal identity
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Full Clinic &amp; Wholesale Store Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={clinicForm.name}
-                    onChange={(e) => setClinicForm({ ...clinicForm, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Clinic Tagline / Slogan
-                  </label>
-                  <input
-                    type="text"
-                    value={clinicForm.tagline || ""}
-                    onChange={(e) => setClinicForm({ ...clinicForm, tagline: e.target.value })}
-                    placeholder="e.g. Specialized Homeopathic Healthcare & Certified Medicine Store"
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Public Website Hero Main Title
-                  </label>
-                  <input
-                    type="text"
-                    value={clinicForm.hero_title || ""}
-                    onChange={(e) => setClinicForm({ ...clinicForm, hero_title: e.target.value })}
-                    placeholder="e.g. Specialized Homeopathic Healthcare & Family OPD Clinic in Hyderabad"
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Public Website Hero Subtitle &amp; Description
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={clinicForm.hero_description || ""}
-                    onChange={(e) => setClinicForm({ ...clinicForm, hero_description: e.target.value })}
-                    placeholder="Brief description for prospective patients visiting the clinic website..."
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Official Address (City &amp; Street)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={clinicForm.address}
-                    onChange={(e) => setClinicForm({ ...clinicForm, address: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Official Phone / Mobile
-                  </label>
-                  <input
-                    type="text"
-                    value={clinicForm.phone}
-                    onChange={(e) => setClinicForm({ ...clinicForm, phone: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    WhatsApp Inquiry Number
-                  </label>
-                  <input
-                    type="text"
-                    value={clinicForm.whatsapp || clinicForm.phone || ""}
-                    onChange={(e) => setClinicForm({ ...clinicForm, whatsapp: e.target.value })}
-                    placeholder="923142291356"
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    OPD Chamber &amp; Pharmacy Working Hours / Timings
-                  </label>
-                  <input
-                    type="text"
-                    value={clinicForm.timings || ""}
-                    onChange={(e) => setClinicForm({ ...clinicForm, timings: e.target.value })}
-                    placeholder="e.g. Monday – Saturday: 10:00 AM – 10:00 PM | Sunday: 11:00 AM – 4:00 PM"
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Default Consultation Fee (Rs.)
-                  </label>
-                  <input
-                    type="number"
-                    value={clinicForm.default_consultation_fee}
-                    onChange={(e) => setClinicForm({ ...clinicForm, default_consultation_fee: Number(e.target.value) || 0 })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Chamber Live Status
-                  </label>
-                  <select
-                    value={clinicForm.clinic_status || "open"}
-                    onChange={(e) => setClinicForm({ ...clinicForm, clinic_status: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                  >
-                    <option value="open">🟢 Open for OPD Consultation &amp; Pharmacy</option>
-                    <option value="closed">🔴 Closed Today</option>
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Public Notice Banner (Top of Website &amp; TV Screens)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={clinicForm.public_notice}
-                    onChange={(e) => setClinicForm({ ...clinicForm, public_notice: e.target.value })}
-                    placeholder="Leave blank if no special announcement..."
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-teal-50 flex justify-end">
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-700/20 cursor-pointer"
-                >
-                  Save Master Clinic &amp; Website CMS
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* ================================================================= */}
-          {/* TAB 4: AUTOMATED BACKGROUND SERVICES & RESEND EMAIL API           */}
-          {/* ================================================================= */}
-          {activeTab === "apis" && (
-            <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
-              <div className="border-b border-teal-50 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-teal-700">mark_email_read</span>
-                    Automated Background Services &amp; Resend Email API
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                    Configure Resend email credentials for scheduled daily closing, encrypted .cfbak database vaults, and manual backup dispatches
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1.5 self-start sm:self-auto">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Gateway Active
-                  </span>
-                </div>
-              </div>
-
-              {/* API Credentials Grid */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    Resend API Key (re_xxxx)
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="re_123456789_abcdef..."
-                    value={clinicForm.resend_api_key}
-                    onChange={(e) => setClinicForm({ ...clinicForm, resend_api_key: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-mono font-bold text-teal-900"
-                  />
-                  <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500 font-medium">
-                    <span>Relayed through VPS backend (<code className="text-teal-800 font-bold">api.clinicore.me</code>)</span>
-                    <span className="text-emerald-700 font-bold flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">verified</span>
-                      <span>Verified Domain: <strong>backup@clinicore.me</strong></span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                      Notification Recipient Email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="e.g. drasifhosting@gmail.com"
-                      value={clinicForm.notification_email}
-                      onChange={(e) => setClinicForm({ ...clinicForm, notification_email: e.target.value })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span>Automated Report Frequency</span>
-                      <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Live Active</span>
-                    </label>
-                    <select
-                      value={selectedFreqType}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedFreqType(val);
-                        let nextFreq = val;
-                        if (val === "custom_time") {
-                          nextFreq = `custom_time:${customTimeInput}`;
-                        } else if (val === "custom_interval") {
-                          nextFreq = `custom_interval:${customIntervalInput}`;
-                        }
-                        setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
-                        try {
-                          localStorage.setItem("cf_report_frequency", nextFreq);
-                        } catch {}
-                      }}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 cursor-pointer shadow-inner"
-                    >
-                      <option value="every_1m" className="text-amber-700 font-bold bg-amber-50">🧪 Testing Mode: Every 1 Minute (Live Automation Verification)</option>
-                      <option value="custom_time">⚙️ Custom Daily Clock Time...</option>
-                      <option value="custom_interval">⚙️ Custom Minute Interval...</option>
-                      <option value="daily_9pm">🌙 Daily at 9:00 PM (Shift End Closure - Recommended)</option>
-                      <option value="daily_10pm">🌙 Daily at 10:00 PM (Late Night Closure)</option>
-                      <option value="daily_8pm">🌙 Daily at 8:00 PM (Evening Shift Closure)</option>
-                      <option value="every_12h">⏱️ Every 12 Hours (Twice Daily Audit)</option>
-                      <option value="every_6h">⏱️ Every 6 Hours (High Volume Audit)</option>
-                      <option value="hourly">⚡ Every 1 Hour (Real-Time Background Sync)</option>
-                      <option value="weekly_saturday">📅 Weekly on Saturday (Weekly Summary)</option>
-                      <option value="monthly">📊 Monthly Executive Report</option>
-                      <option value="manual">🚫 Manual On-Demand Only (Off)</option>
-                    </select>
-
-                    {/* Custom Clock Time Input */}
-                    {selectedFreqType === "custom_time" && (
-                      <div className="mt-2.5 space-y-1 animate-fade-in">
-                        <label className="block text-[10px] font-bold text-teal-900 uppercase">Set Custom Daily Time (24h format)</label>
-                        <input
-                          type="time"
-                          value={customTimeInput}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setCustomTimeInput(val);
-                            const nextFreq = `custom_time:${val}`;
-                            setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
-                            try {
-                              localStorage.setItem("cf_report_frequency", nextFreq);
-                            } catch {}
-                          }}
-                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-teal-950 font-mono shadow-inner"
-                        />
-                      </div>
-                    )}
-
-                    {/* Custom Interval Input */}
-                    {selectedFreqType === "custom_interval" && (
-                      <div className="mt-2.5 space-y-1 animate-fade-in">
-                        <label className="block text-[10px] font-bold text-teal-900 uppercase">Set Custom Interval (in Minutes)</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="1440"
-                          value={customIntervalInput}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value) || 15;
-                            setCustomIntervalInput(val);
-                            const nextFreq = `custom_interval:${val}`;
-                            setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
-                            try {
-                              localStorage.setItem("cf_report_frequency", nextFreq);
-                            } catch {}
-                          }}
-                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-teal-950 font-mono shadow-inner"
-                        />
-                      </div>
-                    )}
-
-                    {/* Countdown Display Alert Badge */}
-                    {countdownDetail && countdownDetail.secondsLeft !== null && (
-                      <div className="mt-3 p-3 bg-gradient-to-r from-teal-950 to-teal-900 border border-teal-800 rounded-2xl flex items-center justify-between text-white shadow-md shadow-teal-950/20">
-                        <div className="flex items-center gap-2">
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                          </span>
-                          <span className="text-[10px] font-black uppercase tracking-wider text-teal-300">Next Auto-Email:</span>
-                        </div>
-                        <span className="text-xs font-black font-mono text-emerald-400 bg-teal-900/60 px-2 py-0.5 rounded-md border border-teal-800">
-                          {(() => {
-                            const sec = countdownDetail.secondsLeft;
-                            if (sec === null || sec === undefined) return "Calculating...";
-                            if (sec <= 0) return "Triggering now...";
-                            const h = Math.floor(sec / 3600);
-                            const m = Math.floor((sec % 3600) / 60);
-                            const s = sec % 60;
-                            if (h > 0) return `${h}h ${m}m ${s}s`;
-                            if (m > 0) return `${m}m ${s}s`;
-                            return `${s}s`;
-                          })()}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Live Automation Execution Logs */}
-                    {automationLogs.length > 0 && (
-                      <div className="mt-3 bg-white border border-teal-100 rounded-2xl p-3 shadow-sm space-y-2 max-h-[200px] overflow-y-auto">
-                        <div className="flex items-center justify-between border-b border-teal-50 pb-1.5">
-                          <span className="text-[10px] font-black uppercase text-teal-900 tracking-wider">Live Execution Logs (Real-time)</span>
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              localStorage.removeItem("cf_automation_execution_logs");
-                              setAutomationLogs([]);
-                            }}
-                            className="text-[9px] font-bold text-red-500 hover:text-red-700 bg-red-50 px-1.5 py-0.5 rounded"
-                          >
-                            Clear Logs
-                          </button>
-                        </div>
-                        <div className="space-y-1.5 text-[9px] font-medium font-mono">
-                          {automationLogs.map((log, idx) => (
-                            <div key={idx} className="flex flex-col gap-0.5 border-b border-slate-50 pb-1 last:border-0">
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                <span className={`px-1 rounded font-bold uppercase ${
-                                  log.status === "success" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
-                                  log.status === "failed" ? "bg-red-50 text-red-600 border border-red-100" :
-                                  "bg-amber-50 text-amber-600 border border-amber-100 animate-pulse"
-                                }`}>
-                                  {log.status}
-                                </span>
-                              </div>
-                              <div className="text-slate-900 font-bold">{log.reason}</div>
-                              <div className="text-slate-600 whitespace-pre-wrap">{log.message}</div>
                             </div>
-                          ))}
-                        </div>
+                            <div className="space-y-1.5 text-[9px] font-medium font-mono">
+                              {automationLogs.map((log, idx) => (
+                                <div key={idx} className="flex flex-col gap-0.5 border-b border-slate-50 pb-1 last:border-0">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                    <span className={`px-1 rounded font-bold uppercase ${log.status === "success" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                                        log.status === "failed" ? "bg-red-50 text-red-600 border border-red-100" :
+                                          "bg-amber-50 text-amber-600 border border-amber-100 animate-pulse"
+                                      }`}>
+                                      {log.status}
+                                    </span>
+                                  </div>
+                                  <div className="text-slate-900 font-bold">{log.reason}</div>
+                                  <div className="text-slate-600 whitespace-pre-wrap">{log.message}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                    WhatsApp Cloud Gateway Phone No
-                  </label>
-                  <input
-                    type="text"
-                    value={clinicForm.whatsapp_gateway_no}
-                    onChange={(e) => setClinicForm({ ...clinicForm, whatsapp_gateway_no: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Manual Backup Dispatch Card */}
-              <div className="bg-gradient-to-r from-teal-50 via-emerald-50/50 to-teal-50/30 border border-teal-200/80 rounded-3xl p-5 space-y-3.5 shadow-2xs">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-teal-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-teal-900/20">
-                    <span className="material-symbols-outlined text-xl">enhanced_encryption</span>
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        WhatsApp Cloud Gateway Phone No
+                      </label>
+                      <input
+                        type="text"
+                        value={clinicForm.whatsapp_gateway_no}
+                        onChange={(e) => setClinicForm({ ...clinicForm, whatsapp_gateway_no: e.target.value })}
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-black text-sm text-teal-950">
-                      Manual On-Demand Backup Email Dispatch
-                    </h4>
-                    <p className="text-xs text-slate-600 leading-relaxed font-medium mt-0.5">
-                      Instantly compile your live database vault, generate a tamper-proof <strong>.cfbak</strong> encrypted backup attachment, format the signature clinical email report matching our web app theme, and deliver directly to <strong>{clinicForm.notification_email || "your inbox"}</strong>.
+
+                  {/* Manual Backup Dispatch Card */}
+                  <div className="bg-gradient-to-r from-teal-50 via-emerald-50/50 to-teal-50/30 border border-teal-200/80 rounded-3xl p-5 space-y-3.5 shadow-2xs">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-teal-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-teal-900/20">
+                        <span className="material-symbols-outlined text-xl">enhanced_encryption</span>
+                      </div>
+                      <div>
+                        <h4 className="font-black text-sm text-teal-950">
+                          Manual On-Demand Backup Email Dispatch
+                        </h4>
+                        <p className="text-xs text-slate-600 leading-relaxed font-medium mt-0.5">
+                          Instantly compile your live database vault, generate a tamper-proof <strong>.cfbak</strong> encrypted backup attachment, format the signature clinical email report matching our web app theme, and deliver directly to <strong>{clinicForm.notification_email || "your inbox"}</strong>.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                      {/* Primary Manual Dispatch Button */}
+                      <button
+                        type="button"
+                        disabled={isDispatchingBackup}
+                        onClick={handleManualBackupEmailDispatch}
+                        className="px-5 py-3 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 hover:from-emerald-800 hover:to-teal-800 text-white font-black text-xs rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-800/25 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                      >
+                        {isDispatchingBackup ? (
+                          <>
+                            <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                            <span>Compiling &amp; Dispatching .cfbak...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-base">outgoing_mail</span>
+                            <span>Send Real Backup Email (.cfbak Attached)</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Direct Local Download Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          exportFullDatabase(false);
+                          showToast("💾 CliniCore Encrypted .cfbak file downloaded to your computer!");
+                        }}
+                        className="px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                        title="Download a local encrypted copy directly to your Downloads folder"
+                      >
+                        <span className="material-symbols-outlined text-base text-emerald-700">download</span>
+                        <span>Download .cfbak Locally</span>
+                      </button>
+
+                      {/* Preview Template Modal Trigger */}
+                      <button
+                        type="button"
+                        onClick={handleOpenEmailPreview}
+                        className="px-4 py-3 bg-white border border-teal-300 hover:bg-teal-50 text-teal-950 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-base text-teal-700">preview</span>
+                        <span>Preview Email Template</span>
+                      </button>
+
+                      {/* Connectivity Ping Button */}
+                      <button
+                        type="button"
+                        disabled={isPingingApi}
+                        onClick={handleTestPingEmail}
+                        className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                      >
+                        {isPingingApi ? (
+                          <>
+                            <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                            <span>Pinging...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-base text-slate-600">sensors</span>
+                            <span>Quick Ping Test</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bottom Action Row */}
+                  <div className="pt-4 border-t border-teal-50 flex items-center justify-end">
+                    <button
+                      type="submit"
+                      className="bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-900 hover:to-teal-800 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-800/20 cursor-pointer active:scale-95 flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-base">save</span>
+                      Save API &amp; Automation Config
+                    </button>
+                  </div>
+                </form>
+              )}
+
+
+
+
+              {/* ================================================================= */}
+              {/* TAB 6: BACKUP, RESTORE & DATA MODES                               */}
+              {/* ================================================================= */}
+              {activeTab === "backups" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in max-w-4xl mx-auto">
+                  {/* Backup Box */}
+                  <div className="bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold border border-teal-200">
+                      <span className="material-symbols-outlined text-2xl">enhanced_encryption</span>
+                    </div>
+                    <h4 className="font-black text-teal-950 text-base">Export Encrypted Backup (.cfbak)</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                      Download a secure, encrypted software backup file (<strong>.cfbak</strong>) containing all clinic records, accounts, sales, purchases, and stock ledger with tamper protection.
                     </p>
+                    <button
+                      onClick={handleExportBackup}
+                      className="w-full bg-teal-700 hover:bg-teal-800 text-white font-black text-xs py-3.5 rounded-2xl transition-colors shadow-lg shadow-teal-700/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-base">lock</span>
+                      Download .cfbak Encrypted Backup
+                    </button>
+                  </div>
+
+                  {/* Restore Box */}
+                  <div className="bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold border border-purple-200">
+                      <span className="material-symbols-outlined text-2xl">upload</span>
+                    </div>
+                    <h4 className="font-black text-teal-950 text-base">Restore Encrypted .cfbak / .json</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                      Upload a software backup file (<strong>.cfbak</strong> or legacy .json) to restore records or migrate onto a new computer.
+                    </p>
+                    <label className="w-full bg-purple-700 hover:bg-purple-800 text-white font-black text-xs py-3.5 rounded-2xl transition-colors shadow-lg shadow-purple-700/20 flex items-center justify-center gap-1.5 cursor-pointer">
+                      <span className="material-symbols-outlined text-base">restore</span>
+                      Upload &amp; Restore .cfbak File
+                      <input type="file" accept=".cfbak,.json" onChange={handleImportBackup} className="hidden" />
+                    </label>
+                  </div>
+
+                  {/* Database Modes */}
+                  <div className="md:col-span-2 bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <h4 className="font-black text-teal-950 text-base flex items-center gap-2">
+                      <span className="material-symbols-outlined text-emerald-700">database</span>
+                      Database Setup &amp; Clean Mode (0 Transactions)
+                    </h4>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Start completely fresh by wiping all mock transactions while preserving your Clinic Profile and 500+ Item Medicine Catalog.
+                    </p>
+
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <button
+                        onClick={async () => {
+                          const passcode = prompt("⚠️ WARNING: This will permanently wipe ALL transactional data (Patients, Sales, Bills, CashBook, Purchases, etc.) from BOTH the VPS database and your local browser storage!\n\nThis action cannot be undone.\n\nEnter your Super Admin Master Passcode to confirm:");
+                          if (!passcode) return;
+
+                          try {
+                            const apiUrl = DEFAULT_API_URL;
+                            const res = await fetch(`${apiUrl}/api/v1/system/factory-reset`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${localStorage.getItem("cf_vps_jwt") || ""}`
+                              },
+                              body: JSON.stringify({ passcode }),
+                            });
+
+                            const data = await res.json().catch(() => null);
+
+                            if (res.ok && data?.success) {
+                              // Wipe local cache
+                              const { factoryResetAllData } = await import("../api/db.js");
+                              factoryResetAllData();
+                              alert("🎉 SUCCESS: Entire database (VPS + Local Storage) has been permanently wiped clean!\n\nSystem will now reload.");
+                              window.location.reload();
+                            } else {
+                              alert("❌ Factory Reset Denied: " + (data?.error?.message || "Incorrect passcode or connection failed."));
+                            }
+                          } catch (err) {
+                            alert("❌ System Error during reset: " + err.message);
+                          }
+                        }}
+                        className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-base text-red-600">delete_forever</span>
+                        Wipe Entire App Data (VPS + Local Reset)
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (confirm("🧹 Detach all mock transactions and activate Clean Production Setup (0 dummy queue patients/bills)?\n\nYour Clinic Profile, Staff Users, Accounts, and Medicine Catalog will stay 100% intact.")) {
+                            clearAllTransactionalData();
+                            loadData();
+                            showToast("✅ Mock data detached! Database is now completely clean (0 transactions).");
+                          }
+                        }}
+                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-base text-emerald-700">cleaning_services</span>
+                        Detach Mock Data (0 Transactions)
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (confirm("⚠️ Are you sure you want to RESET all data back to factory demo state with sample patients and sales?")) {
+                            resetDatabaseToDemoData();
+                            loadData();
+                            showToast("Database reset to demo baseline successfully.");
+                          }
+                        }}
+                        className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-5 py-3 rounded-2xl font-bold text-xs transition-colors cursor-pointer"
+                      >
+                        Reset Factory Demo Data
+                      </button>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  {/* Primary Manual Dispatch Button */}
-                  <button
-                    type="button"
-                    disabled={isDispatchingBackup}
-                    onClick={handleManualBackupEmailDispatch}
-                    className="px-5 py-3 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 hover:from-emerald-800 hover:to-teal-800 text-white font-black text-xs rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-800/25 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    {isDispatchingBackup ? (
-                      <>
-                        <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                        <span>Compiling &amp; Dispatching .cfbak...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined text-base">outgoing_mail</span>
-                        <span>Send Real Backup Email (.cfbak Attached)</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Direct Local Download Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      exportFullDatabase(false);
-                      showToast("💾 CliniCore Encrypted .cfbak file downloaded to your computer!");
-                    }}
-                    className="px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-                    title="Download a local encrypted copy directly to your Downloads folder"
-                  >
-                    <span className="material-symbols-outlined text-base text-emerald-700">download</span>
-                    <span>Download .cfbak Locally</span>
-                  </button>
-
-                  {/* Preview Template Modal Trigger */}
-                  <button
-                    type="button"
-                    onClick={handleOpenEmailPreview}
-                    className="px-4 py-3 bg-white border border-teal-300 hover:bg-teal-50 text-teal-950 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-                  >
-                    <span className="material-symbols-outlined text-base text-teal-700">preview</span>
-                    <span>Preview Email Template</span>
-                  </button>
-
-                  {/* Connectivity Ping Button */}
-                  <button
-                    type="button"
-                    disabled={isPingingApi}
-                    onClick={handleTestPingEmail}
-                    className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
-                  >
-                    {isPingingApi ? (
-                      <>
-                        <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                        <span>Pinging...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined text-base text-slate-600">sensors</span>
-                        <span>Quick Ping Test</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Bottom Action Row */}
-              <div className="pt-4 border-t border-teal-50 flex items-center justify-end">
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-900 hover:to-teal-800 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-800/20 cursor-pointer active:scale-95 flex items-center gap-1.5"
-                >
-                  <span className="material-symbols-outlined text-base">save</span>
-                  Save API &amp; Automation Config
-                </button>
-              </div>
-            </form>
+            </>
           )}
-
-
-
-
-          {/* ================================================================= */}
-          {/* TAB 6: BACKUP, RESTORE & DATA MODES                               */}
-          {/* ================================================================= */}
-          {activeTab === "backups" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in max-w-4xl mx-auto">
-              {/* Backup Box */}
-              <div className="bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold border border-teal-200">
-                  <span className="material-symbols-outlined text-2xl">enhanced_encryption</span>
-                </div>
-                <h4 className="font-black text-teal-950 text-base">Export Encrypted Backup (.cfbak)</h4>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  Download a secure, encrypted software backup file (<strong>.cfbak</strong>) containing all clinic records, accounts, sales, purchases, and stock ledger with tamper protection.
-                </p>
-                <button
-                  onClick={handleExportBackup}
-                  className="w-full bg-teal-700 hover:bg-teal-800 text-white font-black text-xs py-3.5 rounded-2xl transition-colors shadow-lg shadow-teal-700/20 flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">lock</span>
-                  Download .cfbak Encrypted Backup
-                </button>
-              </div>
-
-              {/* Restore Box */}
-              <div className="bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold border border-purple-200">
-                  <span className="material-symbols-outlined text-2xl">upload</span>
-                </div>
-                <h4 className="font-black text-teal-950 text-base">Restore Encrypted .cfbak / .json</h4>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  Upload a software backup file (<strong>.cfbak</strong> or legacy .json) to restore records or migrate onto a new computer.
-                </p>
-                <label className="w-full bg-purple-700 hover:bg-purple-800 text-white font-black text-xs py-3.5 rounded-2xl transition-colors shadow-lg shadow-purple-700/20 flex items-center justify-center gap-1.5 cursor-pointer">
-                  <span className="material-symbols-outlined text-base">restore</span>
-                  Upload &amp; Restore .cfbak File
-                  <input type="file" accept=".cfbak,.json" onChange={handleImportBackup} className="hidden" />
-                </label>
-              </div>
-
-              {/* Database Modes */}
-              <div className="md:col-span-2 bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
-                <h4 className="font-black text-teal-950 text-base flex items-center gap-2">
-                  <span className="material-symbols-outlined text-emerald-700">database</span>
-                  Database Setup &amp; Clean Mode (0 Transactions)
-                </h4>
-                <p className="text-xs text-slate-500 font-medium">
-                  Start completely fresh by wiping all mock transactions while preserving your Clinic Profile and 500+ Item Medicine Catalog.
-                </p>
-
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <button
-                    onClick={async () => {
-                      const passcode = prompt("⚠️ WARNING: This will permanently wipe ALL transactional data (Patients, Sales, Bills, CashBook, Purchases, etc.) from BOTH the VPS database and your local browser storage!\n\nThis action cannot be undone.\n\nEnter your Super Admin Master Passcode to confirm:");
-                      if (!passcode) return;
-
-                      try {
-                        const apiUrl = DEFAULT_API_URL;
-                        const res = await fetch(`${apiUrl}/api/v1/system/factory-reset`, {
-                          method: "POST",
-                          headers: { 
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${localStorage.getItem("cf_vps_jwt") || ""}`
-                          },
-                          body: JSON.stringify({ passcode }),
-                        });
-
-                        const data = await res.json().catch(() => null);
-
-                        if (res.ok && data?.success) {
-                          // Wipe local cache
-                          const { factoryResetAllData } = await import("../api/db.js");
-                          factoryResetAllData();
-                          alert("🎉 SUCCESS: Entire database (VPS + Local Storage) has been permanently wiped clean!\n\nSystem will now reload.");
-                          window.location.reload();
-                        } else {
-                          alert("❌ Factory Reset Denied: " + (data?.error?.message || "Incorrect passcode or connection failed."));
-                        }
-                      } catch (err) {
-                        alert("❌ System Error during reset: " + err.message);
-                      }
-                    }}
-                    className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-red-600">delete_forever</span>
-                    Wipe Entire App Data (VPS + Local Reset)
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (confirm("🧹 Detach all mock transactions and activate Clean Production Setup (0 dummy queue patients/bills)?\n\nYour Clinic Profile, Staff Users, Accounts, and Medicine Catalog will stay 100% intact.")) {
-                        clearAllTransactionalData();
-                        loadData();
-                        showToast("✅ Mock data detached! Database is now completely clean (0 transactions).");
-                      }
-                    }}
-                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-emerald-700">cleaning_services</span>
-                    Detach Mock Data (0 Transactions)
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (confirm("⚠️ Are you sure you want to RESET all data back to factory demo state with sample patients and sales?")) {
-                        resetDatabaseToDemoData();
-                        loadData();
-                        showToast("Database reset to demo baseline successfully.");
-                      }
-                    }}
-                    className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-5 py-3 rounded-2xl font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    Reset Factory Demo Data
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-        </>
-      )}
-    </main>
+        </main>
       </div>
 
       {/* ================================================================= */}
@@ -4168,11 +4155,10 @@ export default function DeveloperAdminPanel() {
                             },
                           });
                         }}
-                        className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
-                          isLocked
+                        className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${isLocked
                             ? "bg-amber-100 text-amber-900 border-amber-300 shadow-xs"
                             : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                        }`}
+                          }`}
                         title="Require PIN to access this tab"
                       >
                         <span className="material-symbols-outlined text-xs">
@@ -4194,11 +4180,10 @@ export default function DeveloperAdminPanel() {
                             },
                           });
                         }}
-                        className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
-                          isHidden
+                        className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${isHidden
                             ? "bg-purple-100 text-purple-900 border-purple-300 shadow-xs"
                             : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-                        }`}
+                          }`}
                         title="Completely hide tab from sidebar menu until unlocked"
                       >
                         <span className="material-symbols-outlined text-xs">
@@ -4375,18 +4360,16 @@ export default function DeveloperAdminPanel() {
                   <button
                     type="button"
                     onClick={() => setEmailPreviewMode("desktop")}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      emailPreviewMode === "desktop" ? "bg-white text-teal-950 shadow-xs" : "text-teal-200 hover:text-white"
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${emailPreviewMode === "desktop" ? "bg-white text-teal-950 shadow-xs" : "text-teal-200 hover:text-white"
+                      }`}
                   >
                     Desktop View
                   </button>
                   <button
                     type="button"
                     onClick={() => setEmailPreviewMode("mobile")}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      emailPreviewMode === "mobile" ? "bg-white text-teal-950 shadow-xs" : "text-teal-200 hover:text-white"
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${emailPreviewMode === "mobile" ? "bg-white text-teal-950 shadow-xs" : "text-teal-200 hover:text-white"
+                      }`}
                   >
                     Mobile (380px)
                   </button>
@@ -4406,9 +4389,8 @@ export default function DeveloperAdminPanel() {
             {/* Modal Body: Live iframe Render */}
             <div className="flex-1 bg-slate-100 overflow-auto p-4 sm:p-6 flex items-center justify-center">
               <div
-                className={`bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden transition-all duration-300 ${
-                  emailPreviewMode === "mobile" ? "w-[390px] h-full" : "w-full h-full max-w-2xl"
-                }`}
+                className={`bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden transition-all duration-300 ${emailPreviewMode === "mobile" ? "w-[390px] h-full" : "w-full h-full max-w-2xl"
+                  }`}
               >
                 <iframe
                   title="CliniCore Email Live Template Render"

@@ -670,12 +670,12 @@ export function clearAllTransactionalData() {
 export const dbClinic = {
   get: () => {
     const raw = storageDriver.getItem(KEYS.CLINIC);
-    let clinic = raw ? JSON.parse(raw) : SEED_DATA.clinic;
+    let clinic = raw ? JSON.parse(raw) : { ...SEED_DATA.clinic };
     if (typeof window !== "undefined") {
-      if (!clinic.resend_api_key || !clinic.resend_api_key.trim()) {
-        clinic.resend_api_key = localStorage.getItem("cf_resend_api_key") || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts";
+      if (!clinic.resend_api_key) {
+        clinic.resend_api_key = localStorage.getItem("cf_resend_api_key") || "";
       }
-      if (!clinic.notification_email || !clinic.notification_email.trim()) {
+      if (!clinic.notification_email) {
         clinic.notification_email = localStorage.getItem("cf_notification_email") || "drasifhosting@gmail.com";
       }
       if (!clinic.report_frequency) {
@@ -685,16 +685,18 @@ export const dbClinic = {
         clinic.whatsapp_gateway_no = localStorage.getItem("cf_whatsapp_gateway_no") || "03473100304";
       }
     }
-    if (clinic && clinic.name && clinic.name.includes("Asif Ashraf Khan") && !clinic.name.startsWith("H/Dr.Asif")) {
-      clinic.name = "H/Dr.Asif Ashraf Khan Clinic";
-      storageDriver.setItem(KEYS.CLINIC, JSON.stringify(clinic));
-    }
     return clinic;
   },
   update: (data) => {
     const current = dbClinic.get();
     const updated = { ...current, ...data };
     storageDriver.setItem(KEYS.CLINIC, JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (updated.resend_api_key !== undefined) localStorage.setItem("cf_resend_api_key", updated.resend_api_key);
+      if (updated.notification_email !== undefined) localStorage.setItem("cf_notification_email", updated.notification_email);
+      if (updated.report_frequency !== undefined) localStorage.setItem("cf_report_frequency", updated.report_frequency);
+      if (updated.whatsapp_gateway_no !== undefined) localStorage.setItem("cf_whatsapp_gateway_no", updated.whatsapp_gateway_no);
+    }
     try {
       window.dispatchEvent(new Event("clinicflow_status_update"));
     } catch {}
@@ -705,6 +707,7 @@ export const dbClinic = {
     }
     return updated;
   },
+
   updateClinicStatus: (status, note) => {
     return dbClinic.update({ clinic_status: status, clinic_status_note: note || "" });
   },

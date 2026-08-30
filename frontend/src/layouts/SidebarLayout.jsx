@@ -338,6 +338,11 @@ export default function SidebarLayout({ children }) {
           shouldTrigger = true;
           triggerReason = `Custom Daily ${timeStr} Clock Closure`;
         }
+      } else if (frequency === "daily_12am") {
+        if (currentHour === 0 && !isAlreadySent) {
+          shouldTrigger = true;
+          triggerReason = "Daily 12:00 AM Midnight Closure";
+        }
       } else if (frequency === "daily_9pm" || frequency === "daily") {
         if (currentHour >= 21 && !isAlreadySent) {
           shouldTrigger = true;
@@ -353,7 +358,8 @@ export default function SidebarLayout({ children }) {
           shouldTrigger = true;
           triggerReason = "Daily 8:00 PM Evening Shift Closure";
         }
-      } else if (frequency === "every_12h") {
+      }
+ else if (frequency === "every_12h") {
         const intervalMs = 12 * 60 * 60 * 1000;
         if (nowMs - lastBackupMs >= intervalMs) {
           shouldTrigger = true;
@@ -564,7 +570,9 @@ export default function SidebarLayout({ children }) {
         // Daily clock times
         let targetHour = 21;
         let targetMin = 0;
-        if (frequency === "daily_10pm") {
+        if (frequency === "daily_12am") {
+          targetHour = 0;
+        } else if (frequency === "daily_10pm") {
           targetHour = 22;
         } else if (frequency === "daily_8pm") {
           targetHour = 20;
