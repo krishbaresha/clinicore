@@ -33,9 +33,27 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 90 — Phase E Presentation-Only Thermal Print Refinement Completed (GATE PASSED)
-- **Last worked on:** Enforced 12 Printing Invariants across `thermalPrinter.js`, `DayClosingReceiptModal.jsx`, and `FeesReports.jsx`. Hardened iframe DOM cleanup, added try-catch error boundaries for print dispatchers, and verified 100% financial immutability during print, reprint, preview, cancel, and error states.
-- **Currently blocked on:** Awaiting User Approval to begin Phase F (Master Ecosystem Integration & Multi-Device Testing).
+- **Phase:** Milestone 91 — Official Release Candidate `v2.5.0-release` Certified (Production Operational Mode)
+- **Last worked on:** Created git tag `v2.5.0-release` at certified commit `7230aa1`. Concluded forensic audit loops. Transitioned ecosystem into **Release ➔ Production ➔ Real-World Operational Monitoring** lifecycle.
+- **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 91) — Final Operational Release Candidate & Production Lifecycle Transition
+
+**Task worked on:**
+Tagged baseline `7230aa1` as `v2.5.0-release` and transitioned ClinicFlow v2.5 Enterprise Hybrid Engine to Production Operational Monitoring mode.
+
+**What was accomplished:**
+1. Certified baseline commit `7230aa1` tagged as `v2.5.0-release`.
+2. Verified 100% clean working tree, `0 AST errors`, `618/618 tests PASSED`, and clean Vite production compilation (`dist/`).
+3. Terminated phase-auditing loop; activated operational lifecycle (**Release Candidate ➔ Production ➔ Real-World Monitoring ➔ Patch only if real issue appears**).
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`7230aa1`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 90) — Phase E Controlled Implementation & Print Lifecycle Security Audit
 
