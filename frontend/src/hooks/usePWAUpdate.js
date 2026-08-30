@@ -14,13 +14,9 @@ export function usePWAUpdate() {
   const [newVersion, setNewVersion] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const registrationRef = useRef(null);
-  const currentVersionRef = useRef(
-    (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__)
-      ? globalThis.__APP_SEMVER__
-      : (typeof globalThis !== "undefined" && globalThis.__APP_BUILD_VERSION__)
-        ? globalThis.__APP_BUILD_VERSION__
-        : "2.5.0"
-  );
+  const currentVersion = (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.1";
+  const currentBuildId = (typeof globalThis !== "undefined" && globalThis.__APP_BUILD_ID__) || "";
+  const currentVersionRef = useRef(currentVersion);
 
   const applyUpdate = useCallback(() => {
     setIsUpdating(true);
@@ -64,30 +60,35 @@ export function usePWAUpdate() {
           });
           if (res.ok) {
             const data = await res.json();
-            const versionString = data?.version || (data?.data && data.data.version);
-            if (versionString) {
+            const serverVersion = data?.version || (data?.data && data.data.version);
+            const serverBuildId = data?.build_id || (data?.data && data.data.build_id) || "";
+            if (serverVersion) {
               const parseSemver = (v) => {
                 if (!v) return null;
                 const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)/);
                 return m ? { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) } : null;
               };
-              if (!currentVersionRef.current) {
-                currentVersionRef.current = versionString;
-              } else {
-                const server = parseSemver(versionString);
-                const client = parseSemver(currentVersionRef.current);
-                let hasSemanticUpdate = false;
-                if (server && client) {
-                  hasSemanticUpdate = (server.major > client.major || (server.major === client.major && server.minor > client.minor) || (server.major === client.major && server.minor === client.minor && server.patch > client.patch));
-                } else {
-                  hasSemanticUpdate = versionString !== currentVersionRef.current;
+              
+              const sSem = parseSemver(serverVersion);
+              const cSem = parseSemver(currentVersionRef.current);
+              let hasNewerVersion = false;
+              if (sSem && cSem) {
+                if (sSem.major > cSem.major) hasNewerVersion = true;
+                else if (sSem.major === cSem.major && sSem.minor > cSem.minor) hasNewerVersion = true;
+                else if (sSem.major === cSem.major && sSem.minor === cSem.minor && sSem.patch > cSem.patch) hasNewerVersion = true;
+                else if (sSem.major === cSem.major && sSem.minor === cSem.minor && sSem.patch === cSem.patch) {
+                  // Only update on matching semver if build ID explicitly differs and is newer
+                  if (serverBuildId && currentBuildId && serverBuildId !== currentBuildId) {
+                    hasNewerVersion = false; // Do not loop reload on matching semver
+                  }
                 }
-                if (hasSemanticUpdate) {
-                  console.log(`[PWA/OTA] New version detected on server: ${versionString} (current: ${currentVersionRef.current})`);
-                  setNewVersion(versionString);
-                  setUpdateAvailable(true);
-                  break;
-                }
+              }
+
+              if (hasNewerVersion) {
+                console.log(`[PWA/OTA] New version detected on server: ${serverVersion} (current: ${currentVersionRef.current})`);
+                setNewVersion(serverVersion);
+                setUpdateAvailable(true);
+                break;
               }
             }
           }
@@ -96,9 +97,9 @@ export function usePWAUpdate() {
         }
       }
     } catch (_) {
-      // Silent fail if completely offline
+      // Offline fallback
     }
-  }, []);
+  }, [currentBuildId]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
