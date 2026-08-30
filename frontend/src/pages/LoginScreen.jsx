@@ -16,9 +16,40 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [clinicData, setClinicData] = useState(null);
   const [search, setSearch] = useState("");
+  const [liveAppVersion, setLiveAppVersion] = useState(() => {
+    try {
+      return localStorage.getItem("cf_applied_version") || (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.3";
+    } catch {
+      return "2.5.3";
+    }
+  });
 
   useEffect(() => {
     setClinicData(dbClinic.get() || {});
+
+    // Query live version dynamically
+    const fetchLiveVersion = async () => {
+      try {
+        const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ? import.meta.env.VITE_API_URL : "https://api.clinicore.me";
+        const endpoints = [`/version.json?_t=${Date.now()}`, `${vpsApiUrl}/api/v1/system/version?_t=${Date.now()}`];
+        for (const ep of endpoints) {
+          try {
+            const res = await fetch(ep, { cache: "no-store" });
+            if (res.ok) {
+              const data = await res.json();
+              const v = data?.version || data?.data?.version;
+              if (v) {
+                setLiveAppVersion(v);
+                try { localStorage.setItem("cf_applied_version", v); } catch (_) {}
+                break;
+              }
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+    };
+
+    fetchLiveVersion();
   }, []);
 
   // Handle physical keyboard input for the PIN pad
@@ -366,7 +397,7 @@ export default function LoginScreen() {
         <footer className="w-full text-center py-2.5 text-[11px] text-slate-400 font-semibold border-t border-slate-100 flex items-center justify-between mt-4">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
-            <span className="text-slate-600 font-bold">CliniCore v{(typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.2"}</span>
+            <span className="text-slate-600 font-bold">CliniCore v{liveAppVersion}</span>
             <span className="text-[10px] text-slate-400 font-mono">({(typeof globalThis !== "undefined" && globalThis.__APP_BUILD_ID__) || "20260830"})</span>
           </span>
           <span className="text-teal-700 font-semibold">
