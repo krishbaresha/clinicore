@@ -33,9 +33,29 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 83 — ClinicFlow Desktop Software Transformation, Shared Single-Counter Quick Staff Switcher & God-Level Admin Audit Panel
-- **Last worked on:** Transformed ClinicFlow into dedicated Desktop App mode with public page bypass, built Shared Single-Counter Quick Staff Switcher widget, integrated God-Level Admin Audit Panel in Super Admin, updated thermal printer engines with Cashier attribution, attached active cashier to all sales, OPD receipts, and stock movements, and enforced strict user role portal access.
-- **Currently blocked on:** None.
+- **Phase:** Milestone 87 — Phase B Navigation & Central Permission Policy Engine Completed
+- **Last worked on:** Created `frontend/src/config/permissions.js` canonical route authorization engine. Refactored `App.jsx` `RoleProtectedRoute` and `SidebarLayout.jsx` menu builder to derive access dynamically from permissions matrix. Enhanced `Dashboard.jsx` with role-aware metrics for Doctor, Warehouse Manager, Cashier, and Owner.
+- **Currently blocked on:** Awaiting User Approval to begin Phase C (Fix Warehouse Manager Navigation & Dedicated Warehouse Portal).
+
+### Session: 2026-08-30 (Part 87) — Phase B Navigation, Permission Engine & Dashboard Realignment
+
+**Task worked on:**
+Executed Phase B forensic audit, Pre-Implementation Design Gate, and full implementation of centralized route authorization policy engine.
+
+**What was built/changed:**
+1. Created `frontend/src/config/permissions.js`: Central route authorization policy engine mapping routes to canonical entity capabilities (`patients.create`, `pos_sales.create`, `purchases.create`, `warehouses.view`) via `hasPermission()`. Enforces fail-closed security.
+2. Modified `frontend/src/App.jsx`: Updated `RoleProtectedRoute` to check `canAccessRoutePath(user, path)`. Unauthenticated or unauthorized access fails closed and redirects to default role portal.
+3. Modified `frontend/src/layouts/SidebarLayout.jsx`: Derived visible sidebar navigation tabs dynamically using `canAccessRoutePath()`.
+4. Modified `frontend/src/pages/Dashboard.jsx`: Added Warehouse Manager stats (Godown valuation, stock transfers) and role-specific dashboard views.
+
+**Verification Results:**
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `oxlint`: 0 errors
+- `npm test`: 618/618 PASSED
+- `npm run build`: Clean Vite production build
+- Git Commit: `55307a2`
+
+---
 
 ### Session: 2026-08-30 (Part 85) — Operator Consolidation, Logo Transparency, Print Lifecycle Fix & Document Architecture
 

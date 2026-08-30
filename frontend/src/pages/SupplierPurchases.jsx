@@ -616,11 +616,12 @@ export default function SupplierPurchases() {
     const totalBill = Math.max(0, itemsSubtotal - extraDisc + freight);
     const paidAmount = grnForm.payment_mode === "Cash" ? totalBill : 0;
     const matchedSup = suppliers.find((s) => s.name.toLowerCase() === grnForm.account_name.toLowerCase());
-
+    const targetWarehouseId = user?.assigned_warehouse_id || "wh_001";
     const savedPur = dbPurchases.add({
       invoice_no: grnForm.voucher_no || dbPurchases.getNextVoucherNo(),
       supplier_name: grnForm.account_name,
       supplier_id: matchedSup ? matchedSup.id : undefined,
+      warehouse_id: targetWarehouseId,
       grn_no: grnForm.grn_no || "0",
       reference: grnForm.reference || "",
       transport: grnForm.transport || "By Hand",
@@ -744,6 +745,7 @@ export default function SupplierPurchases() {
     const newPur = dbPurchases.add({
       supplier_id: selectedSupplierId,
       supplier_name: supplier?.name || "Distributor",
+      warehouse_id: user?.assigned_warehouse_id || "wh_001",
       company_bill_no: companyBillNoInput || "N/A",
       total_amount,
       paid_amount,
