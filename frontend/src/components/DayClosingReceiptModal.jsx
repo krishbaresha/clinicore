@@ -43,22 +43,26 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
   // Handle Print 80mm Thermal Receipt
   const handlePrint = () => {
     if (!closingData) return;
-    const session = getSession();
-    const printPayload = {
-      date: closingData.date,
-      closing_date: closingData.date,
-      closed_by: session?.name || session?.full_name || "Store Manager",
-      audit_scope: "All Terminals & Godowns",
-      consultant: dbClinic.get()?.doctor_name || "Dr. Muhammad Asif Ashraf Khan",
-      sales: closingData.sales,
-      purchases: closingData.purchases,
-      payments_paid: closingData.payments_paid,
-      payments_received: closingData.payments_received,
-      closing_cash: closingData.closing_cash,
-      net_cash_in_hand: closingData.closing_cash,
-      expected_cash: closingData.closing_cash,
-    };
-    printDayEndClosingReceipt(printPayload, clinicData);
+    try {
+      const session = getSession();
+      const printPayload = {
+        date: closingData.date,
+        closing_date: closingData.date,
+        closed_by: session?.name || session?.full_name || "Store Manager",
+        audit_scope: "All Terminals & Godowns",
+        consultant: dbClinic.get()?.doctor_name || "Dr. Muhammad Asif Ashraf Khan",
+        sales: closingData.sales,
+        purchases: closingData.purchases,
+        payments_paid: closingData.payments_paid,
+        payments_received: closingData.payments_received,
+        closing_cash: closingData.closing_cash,
+        net_cash_in_hand: closingData.closing_cash,
+        expected_cash: closingData.closing_cash,
+      };
+      printDayEndClosingReceipt(printPayload, clinicData);
+    } catch (err) {
+      console.error("Day closing slip print failed:", err);
+    }
   };
 
   // Handle Send via WhatsApp
