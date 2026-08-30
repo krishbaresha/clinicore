@@ -516,7 +516,11 @@ export default function FeesReports() {
   };
 
   const handleCashBookReprint = (entry) => {
-    printCashVoucherReceipt(entry, dbClinic.get());
+    try {
+      printCashVoucherReceipt(entry, dbClinic.get());
+    } catch (err) {
+      console.error("CashBook voucher reprint failed:", err);
+    }
   };
 
   // Narration Presets
