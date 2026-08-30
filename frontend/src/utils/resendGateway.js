@@ -15,19 +15,26 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
     return { success: false, error: "Missing Resend API Key (re_xxxx). Please enter your key in Settings." };
   }
 
-  // 1. Primary: Dispatch via Relay endpoint (Handled locally by Vite/Node or by VPS)
-  const relayUrls = ["/api/v1/system/send-email"];
-  if (typeof window !== "undefined" && window.location.origin) {
-    relayUrls.unshift(`${window.location.origin}/api/v1/system/send-email`);
-  }
-  const vpsApiUrl = import.meta.env?.VITE_API_URL || "https://api.clinicore.me";
-  relayUrls.push(`${vpsApiUrl}/api/v1/system/send-email`);
+  // In Desktop Tauri or Web browser:
+  // Direct Resend Cloud API endpoint has CORS restrictions in browser/webview environments.
+  // We send directly to the live VPS backend relay (https://api.clinicore.me/api/v1/system/send-email)
+  const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ? import.meta.env.VITE_API_URL : "https://api.clinicore.me";
+  const relayUrls = [
+    `${vpsApiUrl}/api/v1/system/send-email`,
+    "http://127.0.0.1:5000/api/v1/system/send-email",
+    "/api/v1/system/send-email",
+  ];
+
+  let lastRelayError = null;
 
   for (const url of relayUrls) {
     try {
       const relayRes = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
         body: JSON.stringify({
           api_key: key,
           from: fromAddr,
@@ -40,14 +47,16 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
 
       const relayData = await relayRes.json().catch(() => null);
       if (relayRes.ok && relayData?.success) {
-        return { success: true, id: relayData.id || "sent_via_relay", method: `Relayed (${url.startsWith("http") ? url : "Local/VPS"})` };
-      } else if (relayData?.error && relayRes.status !== 404) {
-        return { success: false, error: relayData.error, details: relayData };
+        return { success: true, id: relayData.id || "sent_via_relay", method: `VPS Relay (${url})` };
+      } else if (relayData?.error) {
+        lastRelayError = relayData.error;
       }
-    } catch {}
+    } catch (err) {
+      lastRelayError = err.message || "Failed to fetch";
+    }
   }
 
-  // 2. Direct Fallback via Resend Cloud API
+  // Fallback: Direct Resend Cloud API (Works when CORS is bypassed or direct connection succeeds)
   try {
     const directRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -72,7 +81,7 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
       return { success: false, error: errMsg, details: directData };
     }
   } catch (directErr) {
-    return { success: false, error: directErr.message || "Network connection failure" };
+    return { success: false, error: lastRelayError || directErr.message || "Network connection failure" };
   }
 }
 
