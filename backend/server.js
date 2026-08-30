@@ -295,19 +295,20 @@ const server = http.createServer((req, res) => {
 
     // Direct On-Demand VPS Backup Trigger Endpoint
     if (url.pathname === "/api/v1/system/trigger-vps-backup" && req.method === "POST") {
-      try {
-        if (payload.resend_api_key) systemConfig.resend_api_key = payload.resend_api_key;
-        if (payload.clinic) systemConfig.clinic = { ...(systemConfig.clinic || {}), ...payload.clinic };
-        saveJson(CONFIG_FILE, systemConfig);
+      (async () => {
+        try {
+          if (payload.resend_api_key) systemConfig.resend_api_key = payload.resend_api_key;
+          if (payload.clinic) systemConfig.clinic = { ...(systemConfig.clinic || {}), ...payload.clinic };
+          saveJson(CONFIG_FILE, systemConfig);
 
-        
-         executeAutonomousBackup({ force: true, triggerReason: "Admin On-Demand Web/Desktop Click" });
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, message: "VPS autonomous backup triggered and dispatched successfully!" }));
-      } catch (err) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: false, error: err.message }));
-      }
+          await executeAutonomousBackup({ force: true, triggerReason: "Admin On-Demand Web/Desktop Click" });
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true, message: "VPS autonomous backup triggered and dispatched successfully!" }));
+        } catch (err) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+      })();
       return;
     }
 
