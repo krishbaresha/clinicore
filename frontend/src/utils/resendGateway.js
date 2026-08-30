@@ -20,10 +20,9 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
     attachments: emailAttachments,
   };
 
-  // 1. Try Backend Relay Endpoint first (http://localhost:5000 locally or https://api.clinicore.me in prod)
+  // 1. Try VPS Backend Relay Endpoint first (https://api.clinicore.me)
   try {
-    const apiUrl = (import.meta.env?.VITE_API_URL) ||
-      (typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://localhost:5000" : "https://api.clinicore.me");
+    const apiUrl = (import.meta.env?.VITE_API_URL) || "https://api.clinicore.me";
 
     const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
       method: "POST",
