@@ -33,9 +33,27 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 96 — Dashboard `toLocaleString` TypeError Safeguard (`v2.5.0-release` Certified)
-- **Last worked on:** Fixed `TypeError: Cannot read properties of undefined (reading 'toLocaleString')` by updating `docBreakdown` return properties and wrapping `.toLocaleString()` in `(Number(val) || 0).toLocaleString()` fallbacks.
+- **Phase:** Milestone 97 — Resend API Key & `clinicore.me` Verified Domain Relay Gateway (`v2.5.0-release` Certified)
+- **Last worked on:** Configured Resend API Key (`re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts`) and custom verified sender domain (`no-reply@clinicore.me` / `backup@clinicore.me`). Added Node.js server email relay endpoint `/api/v1/system/send-email` in `backend/server.js` to bypass browser CORS and deliver automated `.cfbak` backups locally, via email, and to VPS.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 97) — Resend Email Gateway & Domain Verification Integration
+
+**Task worked on:**
+Fixed Resend API email dispatch failures, configured Resend Key `re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts` & verified domain `clinicore.me`, and enabled backend CORS-bypass email relay.
+
+**What was built/changed:**
+1. Modified `backend/server.js`: Implemented `POST /api/v1/system/send-email` relay route using Node.js `fetch()` to relay email requests securely to Resend API (`0734cb7`).
+2. Modified `frontend/src/pages/ClinicSettings.jsx`: Updated default `from` sender address to `CliniCore System <no-reply@clinicore.me>` (replacing sandbox `onboarding@resend.dev`).
+3. Modified `frontend/src/api/db.js`: Set default `resend_api_key` fallback to `re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts`.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`0734cb7`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 96) — Dashboard `toLocaleString` Defensive Guard
 
