@@ -14,12 +14,20 @@ export function usePWAUpdate() {
   const [newVersion, setNewVersion] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const registrationRef = useRef(null);
-  const currentVersion = (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.1";
+  // Read app version stamped at build time by Vite, with safe fallbacks
+  const currentVersion = (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.2";
   const currentBuildId = (typeof globalThis !== "undefined" && globalThis.__APP_BUILD_ID__) || "";
   const currentVersionRef = useRef(currentVersion);
 
   const applyUpdate = useCallback(() => {
     setIsUpdating(true);
+
+    // Record that we have applied up to this version to prevent loops
+    try {
+      if (newVersion) {
+        localStorage.setItem("cf_applied_version", newVersion);
+      }
+    } catch (_) {}
 
     if (registrationRef.current && registrationRef.current.waiting) {
       // Send SKIP_WAITING to the waiting service worker
@@ -35,7 +43,7 @@ export function usePWAUpdate() {
     setTimeout(() => {
       window.location.reload();
     }, 400);
-  }, []);
+  }, [newVersion]);
 
   const checkForUpdate = useCallback(async () => {
     // 1. Trigger SW registration check
@@ -63,6 +71,12 @@ export function usePWAUpdate() {
             const serverVersion = data?.version || (data?.data && data.data.version);
             const serverBuildId = data?.build_id || (data?.data && data.data.build_id) || "";
             if (serverVersion) {
+              // Check if user already dismissed/applied this exact version recently in this session
+              const appliedVersion = (typeof localStorage !== "undefined" ? localStorage.getItem("cf_applied_version") : null);
+              if (appliedVersion && appliedVersion === serverVersion) {
+                continue;
+              }
+
               const parseSemver = (v) => {
                 if (!v) return null;
                 const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)/);
@@ -76,12 +90,6 @@ export function usePWAUpdate() {
                 if (sSem.major > cSem.major) hasNewerVersion = true;
                 else if (sSem.major === cSem.major && sSem.minor > cSem.minor) hasNewerVersion = true;
                 else if (sSem.major === cSem.major && sSem.minor === cSem.minor && sSem.patch > cSem.patch) hasNewerVersion = true;
-                else if (sSem.major === cSem.major && sSem.minor === cSem.minor && sSem.patch === cSem.patch) {
-                  // Only update on matching semver if build ID explicitly differs and is newer
-                  if (serverBuildId && currentBuildId && serverBuildId !== currentBuildId) {
-                    hasNewerVersion = false; // Do not loop reload on matching semver
-                  }
-                }
               }
 
               if (hasNewerVersion) {
@@ -99,7 +107,7 @@ export function usePWAUpdate() {
     } catch (_) {
       // Offline fallback
     }
-  }, [currentBuildId]);
+  }, []);
 
   useEffect(() => {
     // 1. Service Worker setup for Web / PWA environments
