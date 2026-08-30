@@ -14,7 +14,13 @@ export function usePWAUpdate() {
   const [newVersion, setNewVersion] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const registrationRef = useRef(null);
-  const currentVersionRef = useRef(typeof globalThis !== "undefined" && globalThis.__APP_BUILD_VERSION__ ? globalThis.__APP_BUILD_VERSION__ : null);
+  const currentVersionRef = useRef(
+    (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__)
+      ? globalThis.__APP_SEMVER__
+      : (typeof globalThis !== "undefined" && globalThis.__APP_BUILD_VERSION__)
+        ? globalThis.__APP_BUILD_VERSION__
+        : "2.5.0"
+  );
 
   const applyUpdate = useCallback(() => {
     setIsUpdating(true);

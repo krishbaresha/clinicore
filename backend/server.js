@@ -113,12 +113,12 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.0",
+        version: "2.5.1",
         build_id: "20260830.7113922",
         release_channel: "production",
-        changelog: "Auto Machine Hardening, Multi-Warehouse Catalog Isolation & Live OTA Private Sync",
+        changelog: "Auto Machine Hardening, Master Data Catalog & Instant Cold Boot",
         min_client_version: "2.4.0",
-        download_url: "https://github.com/krishbaresha/clinicore/releases/tag/v2.5.0"
+        download_url: "https://clinicore.me"
       }));
       return;
     }
