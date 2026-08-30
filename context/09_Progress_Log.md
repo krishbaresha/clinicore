@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 91 — Official Release Candidate `v2.5.0-release` Certified (Production Operational Mode)
-- **Last worked on:** Created git tag `v2.5.0-release` at certified commit `7230aa1`. Concluded forensic audit loops. Transitioned ecosystem into **Release ➔ Production ➔ Real-World Operational Monitoring** lifecycle.
+- **Phase:** Milestone 92 — Dedicated Warehouse CRM Dashboard & Role Navigation Fixed (`v2.5.0-release` Certified)
+- **Last worked on:** Redesigned `/dashboard` when a Warehouse user (`warehouse`, `warehouse_incharge`, `warehouse_manager`) logs in to present a 100% dedicated Warehouse CRM & Financial Dashboard (Godown Valuation, Stock Inward GRN, B2B Sales, Parties Udhaar, & Low Stock Alerts). Fixed missing Dashboard tab in sidebar navigation for Warehouse and Doctor roles.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 92) — Dedicated Warehouse CRM Dashboard Redesign & Navigation Closure
+
+**Task worked on:**
+Redesigned the `/dashboard` view for Warehouse users to remove all clinic/patient/doctor clutter, and fixed sidebar navigation tab mapping for `warehouse_incharge`, `warehouse_manager`, and `doctor` roles.
+
+**What was built/changed:**
+1. Modified `frontend/src/pages/Dashboard.jsx`: Implemented a dedicated **Warehouse Management CRM & Financial Dashboard** when `isWarehouseUser` is active. Displays Godown Stock Valuation, Today's Inward GRN Purchases, Today's B2B Outward Sales, Total Parties Credit Udhaar, Warehouse Net Revenue, and Godown Low Stock Table (`6e983a0`).
+2. Modified `frontend/src/layouts/SidebarLayout.jsx`: Mapped `warehouse_incharge` and `warehouse_manager` in `NAV_BY_ROLE` so that the **Dashboard tab (`/dashboard`)** is always visible in the sidebar menu.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`6e983a0`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 91) — Final Operational Release Candidate & Production Lifecycle Transition
 
