@@ -33,9 +33,28 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 88 — Phase C Dedicated Warehouse Portal & Operational Isolation Completed
-- **Last worked on:** Enforced location-locked purchase scoping (`warehouse_id`) in `SupplierPurchases.jsx`, verified strict accounting rules for internal transfers (0 revenue, 0 profit), validated location-locked inventory catalogue in `MedicalStoreInventory.jsx` (`effectiveLocationId`), and confirmed full navigation isolation for Warehouse Manager.
-- **Currently blocked on:** Awaiting User Approval to begin Phase D (Warehouse Data Scoping & Authorization Gate).
+- **Phase:** Milestone 89 — Phase D Data Scope & Security Closure Completed (GATE PASSED)
+- **Last worked on:** Enforced data-layer direct-ID scoping (`getScopedRecordById`) in `db.js` for Purchases, Sales, B2B Sales, and Expenses. Removed hardcoded `"wh_001"` authorization fallback in `dbExpenses.add`, and enforced fail-closed anti-spoofing expense creation.
+- **Currently blocked on:** Awaiting User Approval to begin Phase E (Print Lifecycle Forensic Audit & Closing Slip Fix).
+
+### Session: 2026-08-30 (Part 89) — Phase D Final Security Closure & Data Scope Gate
+
+**Task worked on:**
+Implemented Phase D P1 security remediation for data-layer direct-ID scoping and anti-spoofing expense allocation.
+
+**What was built/changed:**
+1. Modified `frontend/src/api/lineage.js`: Extended `getActiveSessionUser` to include `assigned_warehouse_id` and `is_owner`.
+2. Modified `frontend/src/api/db.js`: Created `getScopedRecordById(key, id)` helper that checks session authorization and DENIES cross-warehouse access (`returns null`) when a warehouse-scoped user requests a record belonging to another warehouse.
+3. Updated `dbPurchases.getById`, `dbB2BSales.getById`, `dbSales.getById`, and `dbExpenses.getById` to use `getScopedRecordById`.
+4. Updated `dbExpenses.add` to enforce fail-closed authorization, reject spoofed `warehouse_id` attempts, and remove the hardcoded `"wh_001"` fallback.
+
+**Verification Results:**
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+- Git Commit: `ece3889`
+
+---
 
 ### Session: 2026-08-30 (Part 88) — Phase C Dedicated Warehouse Portal & Operational Context
 
