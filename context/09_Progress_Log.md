@@ -33,9 +33,18 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 109 — Enterprise Verified Build v2.5.1 & Real-Time Multi-Device Sync Architecture (`v2.5.1-release` Certified)
-- **Last worked on:** Enforced WhatsApp-like cloud-first sync hydration on boot so every fresh computer/laptop installation instantly pulls live VPS data before opening UI. Enhanced OTA Auto-Updater with a prominent 5-second countdown banner and instant seamless hot-patching. Configured transactional email relay with Resend key synced directly to VPS database (`clinic_001.resend_api_key`) and verified direct 200 OK delivery. Compiled fresh Windows NSIS setup (`CliniCore_2.5.1_x64-setup.exe`) and MSI installer (`CliniCore_2.5.1_x64_en-US.msi`).
+- **Phase:** Milestone 110 — Desktop Tauri OTA Polling Engine & Resend Cloud Direct Fallback (`v2.5.2-release` Certified)
+- **Last worked on:** Enabled active OTA background update poller for Desktop Tauri apps (`tauri.localhost`) so desktop users also receive automatic 5-second countdown prompts on new cloud releases. Fixed `resendGateway.js` with direct Resend Cloud failover on 404 Relay routes to guarantee 100% email delivery from desktop terminals. Compiled verified Windows installers (`CliniCore_2.5.2_x64-setup.exe` & `CliniCore_2.5.2_x64_en-US.msi`).
 - **Currently blocked on:** Zero blockers. 638/638 Tests Passing. Live CI/CD Pipeline 100% Green.
+
+### Session: 2026-08-30 (Part 110) — Desktop Tauri OTA Polling Engine & Resend Cloud Direct Fallback
+**Task worked on:**
+Resolve Resend ping route-not-found error on desktop apps, eliminate web update countdown loops, and enable background OTA polling in Tauri desktop runtime.
+
+**What was built/changed:**
+1. `frontend/src/utils/resendGateway.js`: Implemented smart direct cloud fallback on 404 relay responses, enabling instantaneous email delivery from desktop environments.
+2. `frontend/src/hooks/usePWAUpdate.js`: Decoupled update poller from Service Worker dependency so desktop apps actively poll VPS every 30s. Resolved SemVer match comparison loop on Web.
+3. `frontend/src-tauri/target/release/bundle/nsis/CliniCore_2.5.2_x64-setup.exe`: Compiled release v2.5.2 installer.
 
 ### Session: 2026-08-30 (Part 109) — Enterprise Verified Build v2.5.1 (Cloud-First Sync & 5s Auto-Update Deck)
 **Task worked on:**

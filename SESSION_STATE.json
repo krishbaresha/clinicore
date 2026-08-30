@@ -1,11 +1,11 @@
 {
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
-  "version": "2.5.1-release",
-  "last_session_date": "2026-08-30T19:25:00+05:00",
-  "session_id": "part-109",
-  "active_milestone": 109,
-  "milestone_title": "Enterprise Verified Build v2.5.1 — WhatsApp-Like Real-Time Cloud Hydration & 5s Auto-Updater Engine",
+  "version": "2.5.2-release",
+  "last_session_date": "2026-08-30T19:46:00+05:00",
+  "session_id": "part-110",
+  "active_milestone": 110,
+  "milestone_title": "Enterprise Verified Build v2.5.2 — Desktop Tauri OTA Polling Engine & Resend Cloud Direct Fallback",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -14,11 +14,11 @@
     "grand_audit_runner_passed": true
   },
   "current_status": {
-    "phase": "Milestone 109 — Enterprise Verified Build v2.5.1 (Complete)",
+    "phase": "Milestone 110 — Enterprise Verified Build v2.5.2 (Complete)",
     "test_suite_status": "638 / 638 Tests PASSED (100%), 0 AST Errors, Clean Vite & Tauri Production Build",
     "build_status": "Production Installers & CI/CD Pipeline Succeeded (100% Green)",
     "git_branch": "main",
-    "last_commit": "31cd40f"
+    "last_commit": "d3c7658"
   },
   "completed_milestones": [
     "Milestone 84: Operator Consolidation, Logo Transparency, Print Lifecycle Fix & Document Architecture",
