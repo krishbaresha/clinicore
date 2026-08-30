@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth.js";
-import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients, dbStockTransfers, dbWarehouses } from "../api/db.js";
+import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients, dbStockTransfers, dbWarehouses, dbPurchases, dbB2BSales, dbParties } from "../api/db.js";
 import { formatCurrency, formatTodayLong, getGreeting } from "../utils/formatters.js";
 import { useTranslation } from "react-i18next";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -39,6 +38,7 @@ export default function Dashboard() {
 
   // Doctor ke liye strict data isolation: sirf apna OPD data dikhe
   const isDoctor = user?.role === "doctor";
+  const isWarehouseUser = user?.role === "warehouse" || user?.role === "warehouse_incharge" || user?.role === "warehouse_manager";
   const [syncTick, setSyncTick] = useState(0);
 
   useEffect(() => {
@@ -72,6 +72,19 @@ export default function Dashboard() {
     completedVisits,
     myWaitingVisits,
     myInRoomVisit,
+    activeWhObj,
+    activeWhId,
+    godownValue,
+    godownUnits,
+    todayWhPurchases,
+    todayWhPurchasesVal,
+    todayWhSales,
+    todayWhSalesVal,
+    todayWhExpenses,
+    todayWhExpensesVal,
+    totalPartyUdhaar,
+    partiesWithUdhaarCount,
+    whLowStockItems,
   } = useMemo(() => {
     const allVisits = dbVisits.getAll() || [];
     const todayStr = new Date().toDateString();
@@ -88,7 +101,7 @@ export default function Dashboard() {
 
     const allExpenses = dbExpenses.getAll() || [];
     const activeWhId = user?.assigned_warehouse_id || "wh_001";
-    const isWarehouseRole = user?.role === "warehouse" || user?.role === "warehouse_incharge";
+    const isWarehouseRole = user?.role === "warehouse" || user?.role === "warehouse_incharge" || user?.role === "warehouse_manager";
     const tExpenses = allExpenses.filter((e) => {
       const matchDate = new Date(e.expense_date || e.date).toDateString() === todayStr;
       if (!matchDate) return false;
@@ -99,50 +112,80 @@ export default function Dashboard() {
     });
     const expToday = tExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-    const netRevToday = (fToday + pRevToday) - expToday;
+    const netRevToday = fToday + pRevToday - expToday;
 
-    const doctorAccounts = (dbUsers.getAll() || []).filter((u) => u.role === "doctor");
-    const docBreakdown = doctorAccounts.map((doc) => {
-      const docVisits = tVisits.filter((v) => v.doctor_id === doc.id);
+    // Doctor breakdown
+    const allUsers = dbUsers.getAll() || [];
+    const doctors = allUsers.filter((u) => u.role === "doctor" || u.is_principal_doctor);
+    const docBreakdown = doctors.map((doc) => {
+      const docVisits = tVisits.filter((v) => v.doctor_id === doc.id || v.doctor_id === doc.userId);
       const docFees = docVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
       return {
-        ...doc,
-        today_patient_count: docVisits.length,
-        today_fees: docFees,
+        id: doc.id,
+        name: doc.name || doc.full_name || "Doctor",
+        visitsCount: docVisits.length,
+        feesCollected: docFees,
       };
     });
 
     const allInventory = dbInventory.getAll() || [];
-    const lowStock = allInventory.filter((i) => (i.stock_qty ?? 0) <= (i.low_stock_threshold ?? 6));
+    const lowStock = allInventory.filter((i) => (i.stock_qty || 0) <= (i.reorder_level || 10));
 
-    // O(N) single-pass frequency counter for first-time vs repeat patients
     const totVisits = allVisits.length;
-    const visitCountsByPatient = new Map();
-    for (let i = 0; i < allVisits.length; i++) {
-      const pid = allVisits[i].patient_id;
-      if (pid) {
-        visitCountsByPatient.set(pid, (visitCountsByPatient.get(pid) || 0) + 1);
-      }
-    }
-    let newPatientsCount = 0;
-    for (const count of visitCountsByPatient.values()) {
-      if (count === 1) newPatientsCount++;
-    }
-
-    const rRatio = totVisits > 0
-      ? Math.round(((totVisits - newPatientsCount) / totVisits) * 100)
-      : 0;
-    const nRatio = 100 - rRatio;
+    const allPatients = dbPatients.getAll() || [];
+    const newPatientsToday = allPatients.filter((p) => new Date(p.created_at || p.registered_date).toDateString() === todayStr).length;
+    const rRatio = tVisits.length > 0 ? Math.round(((tVisits.length - newPatientsToday) / tVisits.length) * 100) : 0;
+    const nRatio = tVisits.length > 0 ? 100 - rRatio : 100;
 
     const totalWait = tVisits.filter((v) => v.status === "waiting");
     const totalCompleted = tVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending");
+
     const myWait = myTVisits.filter((v) => v.status === "waiting");
     const myInRoom = myTVisits.find((v) => v.status === "in_consultation");
 
-    const allWarehouses = dbWarehouses.getAll() || [];
-    const godownStockValuation = allWarehouses.reduce((sum, w) => sum + (dbWarehouses.getStockValuation(w.id) || 0), 0);
-    const allTransfers = dbStockTransfers.getAll() || [];
-    const todayTransfers = allTransfers.filter((t) => new Date(t.created_at || t.date).toDateString() === todayStr);
+    // Warehouse specific calculations
+    const allWhs = dbWarehouses.getAll() || [];
+    const activeWhObj = allWhs.find((w) => w.id === activeWhId) || allWhs[0] || { name: "Primary Godown", id: "wh_001" };
+
+    const whValuation = dbWarehouses.getStockValuation ? dbWarehouses.getStockValuation(activeWhId) : { totalValue: 0, totalUnits: 0 };
+    const godownValue = whValuation?.totalValue || 0;
+    const godownUnits = whValuation?.totalUnits || 0;
+
+    const allPurchases = (dbPurchases && dbPurchases.getAll ? dbPurchases.getAll() : []) || [];
+    const todayWhPurchases = allPurchases.filter((p) => {
+      const pDate = new Date(p.purchase_date || p.date || p.created_at).toDateString();
+      return pDate === todayStr && p.warehouse_id === activeWhId;
+    });
+    const todayWhPurchasesVal = todayWhPurchases.reduce((sum, p) => sum + (p.total_amount || 0), 0);
+
+    const allB2BSales = (dbB2BSales && dbB2BSales.getAll ? dbB2BSales.getAll() : []) || [];
+    const todayWhSales = allB2BSales.filter((s) => {
+      const sDate = new Date(s.sale_date || s.date || s.created_at).toDateString();
+      return sDate === todayStr && s.warehouse_id === activeWhId;
+    });
+    const todayWhSalesVal = todayWhSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
+
+    const todayWhExpenses = allExpenses.filter((e) => {
+      const eDate = new Date(e.expense_date || e.date || e.created_at).toDateString();
+      return eDate === todayStr && e.warehouse_id === activeWhId;
+    });
+    const todayWhExpensesVal = todayWhExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    const allParties = (dbParties && dbParties.getAll ? dbParties.getAll() : []) || [];
+    let totalPartyUdhaar = 0;
+    let partiesWithUdhaarCount = 0;
+    allParties.forEach((p) => {
+      const bal = Number(p.current_balance || p.balance_due || p.balance) || 0;
+      if (bal > 0) {
+        totalPartyUdhaar += bal;
+        partiesWithUdhaarCount++;
+      }
+    });
+
+    const whLowStockItems = allInventory.filter((item) => {
+      const qty = dbInventory.getLocationStock ? dbInventory.getLocationStock(item, activeWhId) : (item.stock_qty || 0);
+      return qty <= (item.reorder_level || 10);
+    });
 
     return {
       todayVisits: tVisits,
@@ -163,10 +206,259 @@ export default function Dashboard() {
       completedVisits: totalCompleted,
       myWaitingVisits: myWait,
       myInRoomVisit: myInRoom,
-      godownStockValuation,
-      todayTransfers,
+      activeWhObj,
+      activeWhId,
+      godownValue,
+      godownUnits,
+      todayWhPurchases,
+      todayWhPurchasesVal,
+      todayWhSales,
+      todayWhSalesVal,
+      todayWhExpenses,
+      todayWhExpensesVal,
+      totalPartyUdhaar,
+      partiesWithUdhaarCount,
+      whLowStockItems,
     };
   }, [syncTick, user]);
+
+  if (isWarehouseUser) {
+    return (
+      <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+        {/* Header Greeting Banner */}
+        <header className="glass-card p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 border border-teal-200/60 bg-gradient-to-r from-teal-900 via-teal-800 to-slate-900 text-white shadow-xl">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-amber-300 font-bold uppercase tracking-wider">
+              <span className="material-symbols-outlined text-base">warehouse</span>
+              <span>Central Warehouse Operations • Location: {activeWhObj?.name || "Primary Godown"} ({activeWhId})</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+              {getGreeting()}, {user?.name || user?.full_name || "Warehouse Manager"}!
+            </h1>
+            <p className="text-xs text-teal-200">
+              {formatTodayLong()} — Real-time Stock, B2B Inward/Outward &amp; Parties Udhaar Summary
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => navigate("/store/purchases")}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">add_business</span>
+              + Inward Purchase (GRN)
+            </button>
+            <button
+              onClick={() => navigate("/store/warehouse")}
+              className="bg-teal-600 hover:bg-teal-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">point_of_sale</span>
+              + B2B Wholesale Sale
+            </button>
+          </div>
+        </header>
+
+        {/* 4 Core Warehouse KPI Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="glass-card p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Godown Stock Valuation</p>
+                <h3 className="text-2xl font-black text-teal-900 mt-1">Rs. {godownValue.toLocaleString()}</h3>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">inventory_2</span>
+              </div>
+            </div>
+            <div className="text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg w-fit">
+              📦 {godownUnits.toLocaleString()} total units in stock
+            </div>
+          </div>
+
+          <div className="glass-card p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today&apos;s Stock Inward (GRN)</p>
+                <h3 className="text-2xl font-black text-cyan-900 mt-1">Rs. {todayWhPurchasesVal.toLocaleString()}</h3>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-cyan-100 text-cyan-800 flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">local_shipping</span>
+              </div>
+            </div>
+            <div className="text-xs font-semibold text-cyan-700 bg-cyan-50 px-2.5 py-1 rounded-lg w-fit">
+              🚚 {todayWhPurchases.length} supplier inward bill(s)
+            </div>
+          </div>
+
+          <div className="glass-card p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today&apos;s B2B Wholesale Outward</p>
+                <h3 className="text-2xl font-black text-amber-900 mt-1">Rs. {todayWhSalesVal.toLocaleString()}</h3>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">point_of_sale</span>
+              </div>
+            </div>
+            <div className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg w-fit">
+              📜 {todayWhSales.length} B2B bill(s) issued today
+            </div>
+          </div>
+
+          <div className="glass-card p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Parties Credit (Udhaar)</p>
+                <h3 className="text-2xl font-black text-rose-900 mt-1">Rs. {totalPartyUdhaar.toLocaleString()}</h3>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
+              </div>
+            </div>
+            <div className="text-xs font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg w-fit">
+              👥 {partiesWithUdhaarCount} party account(s) pending
+            </div>
+          </div>
+        </div>
+
+        {/* Specific Warehouse Revenue Breakdown */}
+        <section className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white rounded-3xl p-6 shadow-lg border border-teal-800/60 space-y-4">
+          <div className="flex items-center justify-between border-b border-teal-800/80 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="material-symbols-outlined text-amber-400 text-2xl">analytics</span>
+              <div>
+                <h3 className="font-bold text-lg leading-tight">Warehouse Net Revenue &amp; Expense Summary</h3>
+                <p className="text-xs text-teal-200">Daily financial operating metrics for {activeWhObj?.name || "Assigned Location"}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">Today&apos;s B2B Revenue</div>
+              <div className="text-2xl font-black text-cyan-300">Rs. {todayWhSalesVal.toLocaleString()}</div>
+              <div className="text-[11px] text-teal-200/80 mt-1">From {todayWhSales.length} wholesale bills</div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">Today&apos;s Warehouse Expenses</div>
+              <div className="text-2xl font-black text-rose-300">Rs. {todayWhExpensesVal.toLocaleString()}</div>
+              <div className="text-[11px] text-teal-200/80 mt-1">From {todayWhExpenses.length} expense voucher(s)</div>
+            </div>
+
+            <div className="bg-amber-500/20 backdrop-blur-md rounded-2xl p-4 border border-amber-400/40">
+              <div className="text-xs text-amber-200 font-bold uppercase tracking-wider mb-1">Warehouse Net Balance</div>
+              <div className="text-2xl font-black text-amber-300">Rs. {(todayWhSalesVal - todayWhExpensesVal).toLocaleString()}</div>
+              <div className="text-[11px] text-amber-100/90 font-medium mt-1">B2B Revenue - Warehouse Expenses</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Warehouse Operational CRM Quick Desk Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div
+            onClick={() => navigate("/store/warehouse")}
+            className="glass-card p-5 rounded-3xl bg-white border border-slate-200 hover:border-teal-400 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined text-2xl">warehouse</span>
+            </div>
+            <h4 className="font-extrabold text-base text-slate-900 group-hover:text-teal-700">Godown &amp; B2B Distribution Hub</h4>
+            <p className="text-xs text-slate-500 mt-1">Issue wholesale bills, internal stock transfers, and view godowns ledger.</p>
+          </div>
+
+          <div
+            onClick={() => navigate("/store/purchases")}
+            className="glass-card p-5 rounded-3xl bg-white border border-slate-200 hover:border-cyan-400 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-cyan-100 text-cyan-800 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined text-2xl">add_business</span>
+            </div>
+            <h4 className="font-extrabold text-base text-slate-900 group-hover:text-cyan-700">Company Purchases (GRN)</h4>
+            <p className="text-xs text-slate-500 mt-1">Receive inward stock from pharmaceutical companies and distributors.</p>
+          </div>
+
+          <div
+            onClick={() => navigate("/store/warehouse")}
+            className="glass-card p-5 rounded-3xl bg-white border border-slate-200 hover:border-amber-400 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined text-2xl">group</span>
+            </div>
+            <h4 className="font-extrabold text-base text-slate-900 group-hover:text-amber-700">B2B Wholesale Parties</h4>
+            <p className="text-xs text-slate-500 mt-1">Manage party accounts, credit limits, city/salesman mappings &amp; Udhaar balance.</p>
+          </div>
+
+          <div
+            onClick={() => navigate("/store")}
+            className="glass-card p-5 rounded-3xl bg-white border border-slate-200 hover:border-emerald-400 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined text-2xl">inventory_2</span>
+            </div>
+            <h4 className="font-extrabold text-base text-slate-900 group-hover:text-emerald-700">Store Catalogue &amp; Stock</h4>
+            <p className="text-xs text-slate-500 mt-1">View inventory list, manufacturing company tags, unit prices, and batches.</p>
+          </div>
+        </div>
+
+        {/* Low Stock Items Table for Warehouse */}
+        <section className="glass-card p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-rose-600">warning</span>
+              <h3 className="font-bold text-base text-slate-900">
+                Low Stock Alerts in {activeWhObj?.name || "Assigned Warehouse"}
+              </h3>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800">
+              {whLowStockItems.length} Low Items
+            </span>
+          </div>
+
+          {whLowStockItems.length === 0 ? (
+            <div className="p-6 text-center text-slate-500 text-xs bg-slate-50 rounded-2xl">
+              ✅ All stock levels in {activeWhObj?.name || "assigned godown"} are healthy and above reorder thresholds.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider bg-slate-50">
+                    <th className="py-2.5 px-3">Medicine SKU</th>
+                    <th className="py-2.5 px-3">Company</th>
+                    <th className="py-2.5 px-3 text-right">Location Stock</th>
+                    <th className="py-2.5 px-3 text-right">Reorder Level</th>
+                    <th className="py-2.5 px-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {whLowStockItems.slice(0, 8).map((item) => {
+                    const locQty = dbInventory.getLocationStock ? dbInventory.getLocationStock(item, activeWhId) : (item.stock_qty || 0);
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50/80">
+                        <td className="py-2.5 px-3 font-bold text-slate-900">{item.medicine_name}</td>
+                        <td className="py-2.5 px-3 text-slate-600">{item.company_name || item.brand_name || "Generic"}</td>
+                        <td className="py-2.5 px-3 text-right font-black text-rose-600">{locQty} units</td>
+                        <td className="py-2.5 px-3 text-right text-slate-500">{item.reorder_level || 10} units</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <button
+                            onClick={() => navigate("/store/purchases")}
+                            className="px-2.5 py-1 rounded-lg bg-teal-100 text-teal-800 font-bold text-[11px] hover:bg-teal-200 transition-colors"
+                          >
+                            + Order Stock
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-full min-w-0 overflow-x-hidden">

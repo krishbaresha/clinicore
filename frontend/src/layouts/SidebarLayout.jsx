@@ -118,6 +118,8 @@ const NAV_BY_ROLE = {
   cashier: CASHIER_NAV,
   pharmacist: PHARMACIST_NAV,
   warehouse: WAREHOUSE_NAV,
+  warehouse_incharge: WAREHOUSE_NAV,
+  warehouse_manager: WAREHOUSE_NAV,
   doctor: DOCTOR_NAV,
 };
 
