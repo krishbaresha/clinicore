@@ -431,18 +431,14 @@ class SyncEngine {
         }
       } catch {}
 
-      // 2. Pull Relational State (Requires Active Authenticated Session)
+      // 2. Pull Relational State from VPS Single Source of Truth
       const token = storageDriver.getItem("cf_vps_jwt");
-      if (!token) {
-        // Client is not authenticated yet — skip sync-state pull until login
-        this.setState(SYNC_FSM_STATES.IDLE);
-        return;
-      }
-
       const headers = {
         "User-Agent": "CliniCore-PWA/2.0",
-        "Authorization": `Bearer ${token}`
       };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
         headers,
       });

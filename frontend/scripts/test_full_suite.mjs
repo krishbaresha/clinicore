@@ -299,14 +299,31 @@ async function runTests() {
   // ----------------------------------------------------
   await suite("3. Authentication, Security & Rate Limiting", async () => {
     // Ensure doctor and pharmacist exist with hashed test password
-    const allUsers = dbUsers.getAll();
-    const doc = allUsers.find((u) => u.username === "kashif");
-    if (doc) {
+    let allUsers = dbUsers.getAll();
+    let doc = allUsers.find((u) => u.username === "kashif");
+    if (!doc) {
+      doc = dbUsers.add({
+        username: "kashif",
+        name: "Dr. Muhammad Kashif Khan",
+        email: "kashif@clinicflow.com",
+        role: "doctor",
+        password: hashPassword("123456"),
+        consultation_fee: 500,
+      });
+    } else {
       dbUsers.update(doc.id, { password: hashPassword("123456") });
     }
-    const pharm = allUsers.find((u) => u.username === "usama");
-    if (pharm) {
-      dbUsers.update(pharm.id, { password: hashPassword("123456") });
+    let pharm = allUsers.find((u) => u.username === "usama");
+    if (!pharm) {
+      pharm = dbUsers.add({
+        username: "usama",
+        name: "Usama (Pharmacist)",
+        email: "usama@clinicflow.com",
+        role: "pharmacist",
+        password: hashPassword("123456"),
+      });
+    } else {
+      dbUsers.update(pharm.id, { role: "pharmacist", password: hashPassword("123456") });
     }
 
     // Test Doctor Login
