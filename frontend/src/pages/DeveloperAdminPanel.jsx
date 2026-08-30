@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { sendResendEmail } from "../utils/resendGateway.js";
 import {
   dbClinic,
   dbUsers,
@@ -865,36 +866,27 @@ export default function DeveloperAdminPanel() {
         isTestPing: false,
       });
 
-      // 3. Dispatch via Resend API Relay with both 1-click Download Button AND .cfbak attachment!
-      const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          api_key: clinicForm.resend_api_key.trim(),
-          from: "CliniCore System <backup@clinicore.me>",
-          to: [targetEmail],
-          subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
-          html: emailHtml,
-          attachments: [
-            {
-              filename,
-              content: base64Content,
-            },
-          ],
-        }),
+      // 3. Dispatch via Dual-Gateway (Backend Relay + Direct Resend Cloud Fallback)
+      const emailRes = await sendResendEmail({
+        apiKey: clinicForm.resend_api_key.trim(),
+        from: "CliniCore System <backup@clinicore.me>",
+        to: [targetEmail],
+        subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
+        html: emailHtml,
+        attachments: [
+          {
+            filename,
+            content: base64Content,
+          },
+        ],
       });
 
-      const data = await res.json().catch(() => null);
-
-      if (res.ok && data?.success) {
+      if (emailRes.success) {
         showToast("✅ Full encrypted .cfbak backup delivered to " + targetEmail);
-        alert(`✅ Backup Email Successfully Delivered!\n\nEncrypted database vault (.cfbak) and executive audit delivered to:\n${targetEmail}\n\nBackup Time: ${timestampStr}\nSize: ${(sizeBytes / 1024).toFixed(1)} KB\n\nRecipient can either click the 1-Click Download button inside the email or download the attached file!`);
+        alert(`✅ Backup Email Successfully Delivered!\n\nEncrypted database vault (.cfbak) and executive audit delivered to:\n${targetEmail}\n\nBackup Time: ${timestampStr}\nSize: ${(sizeBytes / 1024).toFixed(1)} KB\nMethod: ${emailRes.method}\n\nRecipient can either click the 1-Click Download button inside the email or download the attached file!`);
         if (showEmailPreviewModal) setShowEmailPreviewModal(false);
       } else {
-        const rawError = data?.error?.message || data?.message || data?.error || JSON.stringify(data || {});
-        const errorMsg = typeof rawError === "string" ? rawError : JSON.stringify(rawError);
+        const errorMsg = emailRes.error || "Unknown Resend error";
         if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails") || errorMsg.includes("testing emails")) {
           alert(`💡 Resend Sandbox Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to any custom recipient (${targetEmail}), verify your domain on https://resend.com/domains!\n\nEncrypted database backup was generated and validated.`);
         } else {
@@ -967,33 +959,23 @@ export default function DeveloperAdminPanel() {
         isTestPing: true,
       });
 
-      const apiUrl = DEFAULT_API_URL;
-      const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          api_key: clinicForm.resend_api_key.trim(),
-          from: "CliniCore System <backup@clinicore.me>",
-          to: [targetEmail],
-          subject: `✅ CliniCore Resend API Gateway Connectivity Test (${dateStr})`,
-          html: emailHtml,
-        }),
+      const emailRes = await sendResendEmail({
+        apiKey: clinicForm.resend_api_key.trim(),
+        from: "CliniCore System <backup@clinicore.me>",
+        to: [targetEmail],
+        subject: `✅ CliniCore Resend API Gateway Connectivity Test (${dateStr})`,
+        html: emailHtml,
       });
 
-      const data = await res.json().catch(() => null);
-
-      if (res.ok && data?.success) {
+      if (emailRes.success) {
         showToast("✅ Resend Connectivity Test Ping Verified!");
-        alert(`✅ Resend Gateway Live!\n\nTest verification ping successfully delivered to:\n${targetEmail}`);
+        alert(`✅ Resend Gateway Live!\n\nTest verification ping successfully delivered to:\n${targetEmail}\n\nDispatch Method: ${emailRes.method}`);
       } else {
-        const rawError = data?.error?.message || data?.message || data?.error || JSON.stringify(data || {});
-        const errorMsg = typeof rawError === "string" ? rawError : JSON.stringify(rawError);
+        const errorMsg = emailRes.error || "Unknown Resend error";
         if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails") || errorMsg.includes("testing emails")) {
           alert(`💡 Resend Sandbox Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to any external address (${targetEmail}), verify your domain on https://resend.com/domains!`);
         } else {
-          alert(`⚠️ Resend Ping Response:\n${errorMsg}`);
+          alert(`⚠️ Resend Ping Error:\n${errorMsg}`);
         }
       }
     } catch (err) {

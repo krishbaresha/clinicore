@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { sendResendEmail } from "../utils/resendGateway.js";
 import {
   LayoutDashboard,
   UserPlus,
@@ -466,30 +467,24 @@ export default function SidebarLayout({ children }) {
           isTestPing: false,
         });
 
-        // 4. Relay securely through VPS backend to bypass browser CORS
-        const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            api_key: resendKey,
-            from: "CliniCore System <backup@clinicore.me>",
-            to: [targetEmail],
-            subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
-            html: emailHtml,
-            attachments: [
-              {
-                filename,
-                content: base64Content,
-              },
-            ],
-          }),
+        // 4. Dispatch via Dual-Gateway (Backend Relay + Direct Resend Cloud Fallback)
+        const emailRes = await sendResendEmail({
+          apiKey: resendKey,
+          from: "CliniCore System <backup@clinicore.me>",
+          to: [targetEmail],
+          subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
+          html: emailHtml,
+          attachments: [
+            {
+              filename,
+              content: base64Content,
+            },
+          ],
         });
 
-        const data = await res.json().catch(() => null);
-
-        if (res.ok && data?.success) {
-          console.log(`✅ [AutoBackup] Success! Scheduled backup delivered to ${targetEmail}`);
-          addAutomationLog("success", triggerReason, `Backup successfully delivered to ${targetEmail} (Resend ID: ${data?.id || "N/A"})`);
+        if (emailRes.success) {
+          console.log(`✅ [AutoBackup] Success! Scheduled backup delivered to ${targetEmail} via ${emailRes.method}`);
+          addAutomationLog("success", triggerReason, `Backup successfully delivered to ${targetEmail} (ID: ${emailRes.id}, via ${emailRes.method})`);
           dbClinic.update({
             last_daily_report_date: todayDateStr,
             last_email_backup: now.toISOString(),
@@ -499,9 +494,8 @@ export default function SidebarLayout({ children }) {
             localStorage.setItem("cf_last_triggered_frequency", frequency);
           } catch {}
         } else {
-          console.warn("[AutoBackup] Resend Dispatch Response:", data);
-          const errMsg = data?.message || data?.error || "Unknown Resend API error";
-          addAutomationLog("failed", triggerReason, `Resend API Error: ${errMsg}`);
+          console.warn("[AutoBackup] Resend Dispatch Response Error:", emailRes.error);
+          addAutomationLog("failed", triggerReason, `Resend Error: ${emailRes.error}`);
         }
       } catch (err) {
         console.warn("[AutoBackup] Background automated backup encountered error:", err.message);

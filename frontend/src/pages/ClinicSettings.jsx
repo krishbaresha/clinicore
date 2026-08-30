@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbClinic, dbUsers, dbWarehouses, dbClinicServices, exportFullDatabase, importFullDatabase, clearAllTransactionalData, hashPassword } from "../api/db.js";
+import { sendResendEmail } from "../utils/resendGateway.js";
 
 export default function ClinicSettings() {
   const { user, clinic, refreshClinic, refreshUser } = useAuth();
@@ -974,39 +975,23 @@ export default function ClinicSettings() {
                             ]
                           };
 
-                          let res;
-                          try {
-                            const apiUrl = import.meta.env.VITE_API_URL || (typeof window !== "undefined" && window.location.hostname === "localhost" ? "" : "https://api.clinicore.me");
-                            res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json"
-                              },
-                              body: JSON.stringify({
-                                api_key: clinicForm.resend_api_key.trim(),
-                                from: "CliniCore System <no-reply@clinicore.me>",
-                                to: targetEmails,
-                                subject: resendPayload.subject,
-                                html: resendPayload.html,
-                                attachments: resendPayload.attachments,
-                              })
-                            });
-                          } catch (fetchErr) {
-                            alert(`⚠️ Email send failed: ${fetchErr.message}. Local encrypted .cfbak file was downloaded.`);
-                            if (refreshClinic) refreshClinic();
-                            return;
-                          }
+                          const emailRes = await sendResendEmail({
+                            apiKey: clinicForm.resend_api_key.trim(),
+                            from: "CliniCore System <no-reply@clinicore.me>",
+                            to: targetEmails,
+                            subject: resendPayload.subject,
+                            html: resendPayload.html,
+                            attachments: resendPayload.attachments,
+                          });
 
-                          const data = await res.json().catch(() => null);
-                          if (res.ok && data?.success) {
-                            alert(`✅ Resend API Success! Encrypted Database Backup (.cfbak) delivered to inbox (${targetEmails.join(", ")}).`);
+                          if (emailRes.success) {
+                            alert(`✅ Resend API Success! Encrypted Database Backup (.cfbak) delivered to inbox (${targetEmails.join(", ")} via ${emailRes.method}).`);
                           } else {
-                            const rawError = data?.error?.message || data?.message || data?.error || JSON.stringify(data || {});
-                            const errTxt = typeof rawError === "string" ? rawError : JSON.stringify(rawError);
+                            const errTxt = emailRes.error || "Unknown Resend error";
                             if (errTxt.includes("You can only send testing emails to your own email address") || errTxt.includes("only send testing emails") || errTxt.includes("testing emails")) {
                               alert(`💡 Resend Testing Mode Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to ${clinicForm.backup_email}, verify your domain on https://resend.com/domains!\n\nLocal encrypted .cfbak backup was downloaded to your computer.`);
                             } else {
-                              alert(`⚠️ Resend HTTP error (${res.status}): ${errTxt}. Local encrypted .cfbak backup was downloaded.`);
+                              alert(`⚠️ Resend Dispatch Error: ${errTxt}. Local encrypted .cfbak backup was downloaded to PC.`);
                             }
                           }
                         } catch (err) {
