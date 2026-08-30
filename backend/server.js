@@ -113,10 +113,10 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.2",
-        build_id: "20260830.8824101",
+        version: "2.5.3",
+        build_id: "20260830.9912001",
         release_channel: "production",
-        changelog: "Live Sync Engine Hardening & Verified 5-Second Hot-Patching Engine",
+        changelog: "Pure Cloud Authority Passcodes, Enhanced Resend Cloud Relay & Dynamic OTA Verification",
         min_client_version: "2.4.0",
         download_url: "https://clinicore.me"
       }));

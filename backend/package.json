@@ -1,6 +1,6 @@
 {
   "name": "clinicflow-backend-node",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "description": "ClinicFlow Pure Node.js Backend API & Database Service",
   "main": "server.js",
   "type": "module",
