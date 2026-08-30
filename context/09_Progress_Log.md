@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 95 — Doctor Dashboard UI/UX Pro Max Redesign & Zero-Redundancy Closure (`v2.5.0-release` Certified)
-- **Last worked on:** Redesigned Doctor Dashboard (`isDoctor`) following `ui-ux-pro-max` design standards. Eliminated 100% of duplicate button replicas and redundant portal boxes. Built a clean **Live Chamber Waiting Queue Table** showing waiting tokens with 1-click `Start Consultation` buttons.
+- **Phase:** Milestone 96 — Dashboard `toLocaleString` TypeError Safeguard (`v2.5.0-release` Certified)
+- **Last worked on:** Fixed `TypeError: Cannot read properties of undefined (reading 'toLocaleString')` by updating `docBreakdown` return properties and wrapping `.toLocaleString()` in `(Number(val) || 0).toLocaleString()` fallbacks.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 96) — Dashboard `toLocaleString` Defensive Guard
+
+**Task worked on:**
+Fixed runtime `TypeError: Cannot read properties of undefined (reading 'toLocaleString')` in `Dashboard.jsx`.
+
+**What was built/changed:**
+1. Modified `frontend/src/pages/Dashboard.jsx`: Updated `docBreakdown` calculation to supply both `feesCollected`/`today_fees` and `visitsCount`/`today_patient_count` (`f8798f8`).
+2. Added `(Number(doc.feesCollected ?? doc.today_fees) || 0).toLocaleString()` defensive fallback to prevent crashes on missing or null values.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`f8798f8`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 95) — Doctor Dashboard UI/UX Pro Max Redesign & Redundancy Removal
 
