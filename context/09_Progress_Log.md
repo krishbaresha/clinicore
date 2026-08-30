@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 98 — Dual-Dispatch Resend Gateway & Zero-Failure Ping Relay (`v2.5.0-release` Certified)
-- **Last worked on:** Built `resendGateway.js` with dual-dispatch architecture (Backend Relay + Direct Resend Cloud Fallback) to eliminate "Route Not Found" errors when backend API is unreachable or restarting. Verified test ping delivery directly to Resend Cloud (`HTTP 200 OK`).
+- **Phase:** Milestone 99 — Automated Services Config Persistence Fix (`v2.5.0-release` Certified)
+- **Last worked on:** Fixed bug in `POST /api/v1/system/config` (`backend/server.js`) where saving API & Automation Config did not persist `systemConfig.clinic` settings. Now Resend API keys, recipient email, report frequency, and WhatsApp gateway numbers persist permanently across page reloads and device syncs.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 99) — Automated Services Config Persistence Fix
+
+**Task worked on:**
+Resolved issue where clicking `Save API & Automation Config` did not persist changes when opening the tab again.
+
+**What was built/changed:**
+1. Modified `backend/server.js`: Updated `POST /api/v1/system/config` to merge and update `systemConfig.clinic` inside `backend/data/config.json` (`fe7b92a`).
+2. Confirmed `dbClinic.update()` saves directly to LocalStorage + SQLite, ensuring dual local & cloud persistence.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`fe7b92a`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 98) — Dual-Dispatch Resend Gateway & Route Fallback
 
