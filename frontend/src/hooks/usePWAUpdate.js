@@ -55,10 +55,15 @@ export function usePWAUpdate() {
       }
     }
 
-    // 2. Comprehensive check via local /version.json and VPS /api/v1/system/version
+    // 2. Comprehensive check via local /version.json, production domain, and VPS API
     try {
       const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ? import.meta.env.VITE_API_URL : "https://api.clinicore.me";
-      const endpoints = [`/version.json?_t=${Date.now()}`, `${vpsApiUrl}/api/v1/system/version?_t=${Date.now()}`];
+      const endpoints = [
+        `/version.json?_t=${Date.now()}`,
+        `https://clinicore.me/version.json?_t=${Date.now()}`,
+        `${vpsApiUrl}/api/v1/system/version?_t=${Date.now()}`,
+        `https://clinicore.me/api/v1/system/version?_t=${Date.now()}`,
+      ];
       
       for (const endpoint of endpoints) {
         try {
