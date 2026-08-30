@@ -41,7 +41,7 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
       const relayData = await relayRes.json().catch(() => null);
       if (relayRes.ok && relayData?.success) {
         return { success: true, id: relayData.id || "sent_via_relay", method: `Relayed (${url.startsWith("http") ? url : "Local/VPS"})` };
-      } else if (relayData?.error) {
+      } else if (relayData?.error && relayRes.status !== 404) {
         return { success: false, error: relayData.error, details: relayData };
       }
     } catch {}

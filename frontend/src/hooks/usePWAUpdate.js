@@ -102,57 +102,51 @@ export function usePWAUpdate() {
   }, [currentBuildId]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
-      return;
-    }
+    // 1. Service Worker setup for Web / PWA environments
+    let handleControllerChange = null;
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      if (window.location.protocol === "https:" || isLocalhost) {
+        let refreshing = false;
+        handleControllerChange = () => {
+          if (!refreshing) {
+            refreshing = true;
+            console.log("[PWA] Service Worker controller changed -> refreshing client");
+            window.location.reload();
+          }
+        };
 
-    // Prevent SW in unsupported insecure contexts except localhost
-    const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    if (window.location.protocol !== "https:" && !isLocalhost) {
-      return;
-    }
+        navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
 
-    let refreshing = false;
-    const handleControllerChange = () => {
-      if (!refreshing) {
-        refreshing = true;
-        console.log("[PWA] Service Worker controller changed -> refreshing client");
-        window.location.reload();
-      }
-    };
+        navigator.serviceWorker
+          .register("/sw.js", { updateViaCache: "none" })
+          .then((reg) => {
+            registrationRef.current = reg;
+            console.log("[PWA] Service Worker registered with updateViaCache: none");
 
-    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
-
-    // Register Service Worker with zero HTTP cache
-    navigator.serviceWorker
-      .register("/sw.js", { updateViaCache: "none" })
-      .then((reg) => {
-        registrationRef.current = reg;
-        console.log("[PWA] Service Worker registered with updateViaCache: none");
-
-        // If a worker is already waiting to activate
-        if (reg.waiting) {
-          setUpdateAvailable(true);
-        }
-
-        // Detect when a new service worker is installing/installed
-        reg.addEventListener("updatefound", () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-
-          newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-              console.log("[PWA] New content is available; please refresh.");
+            if (reg.waiting) {
               setUpdateAvailable(true);
             }
-          });
-        });
-      })
-      .catch((err) => {
-        console.warn("[PWA] Service Worker registration failed:", err);
-      });
 
-    // Event listeners for active update polling
+            reg.addEventListener("updatefound", () => {
+              const newWorker = reg.installing;
+              if (!newWorker) return;
+
+              newWorker.addEventListener("statechange", () => {
+                if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                  console.log("[PWA] New content is available; please refresh.");
+                  setUpdateAvailable(true);
+                }
+              });
+            });
+          })
+          .catch((err) => {
+            console.warn("[PWA] Service Worker registration failed:", err);
+          });
+      }
+    }
+
+    // 2. Active OTA Update Poller (Works on both Web PWA & Desktop Tauri)
     const onFocus = () => checkForUpdate();
     const onOnline = () => checkForUpdate();
     const onVisibilityChange = () => {
@@ -165,14 +159,16 @@ export function usePWAUpdate() {
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
-    // Poll every 5 minutes while open
-    const intervalId = setInterval(checkForUpdate, 5 * 60 * 1000);
+    // Poll every 30 seconds for live updates
+    const intervalId = setInterval(checkForUpdate, 30 * 1000);
 
-    // Initial check after 3 seconds
-    const initialTimeout = setTimeout(checkForUpdate, 3000);
+    // Initial check after 1.5 seconds on boot
+    const initialTimeout = setTimeout(checkForUpdate, 1500);
 
     return () => {
-      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+      if (handleControllerChange && navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+      }
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisibilityChange);
