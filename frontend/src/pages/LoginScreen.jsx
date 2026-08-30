@@ -155,7 +155,12 @@ export default function LoginScreen() {
     try {
       const res = await loginWithPin(selectedStaff.id, pinInput);
       if (res.success) {
-        navigate("/dashboard");
+        // Direct doctor to Doctor Queue and other roles to their default portal
+        if (res.user?.role === "doctor") {
+          navigate("/doctor/queue");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setError(res.error?.message || "Incorrect PIN.");
         setPinInput("");

