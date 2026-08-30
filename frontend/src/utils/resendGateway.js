@@ -24,8 +24,8 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
   
   const relayUrls = [
     "/api/v1/system/send-email",
-    ...(currentOrigin && !currentOrigin.includes("localhost") ? [`${currentOrigin}/api/v1/system/send-email`] : []),
-    `${vpsApiUrl}/api/v1/system/send-email`,
+    "https://clinicore.me/api/v1/system/send-email",
+    "https://api.clinicore.me/api/v1/system/send-email",
     "http://127.0.0.1:5000/api/v1/system/send-email",
   ];
 
@@ -56,7 +56,9 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
         lastRelayError = relayData.error;
       }
     } catch (err) {
-      lastRelayError = err.message || "Failed to fetch";
+      if (!lastRelayError) {
+        lastRelayError = err.message || "Failed to fetch";
+      }
     }
   }
 

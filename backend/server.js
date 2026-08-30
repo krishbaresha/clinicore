@@ -287,7 +287,7 @@ const server = http.createServer((req, res) => {
         if (payload.clinic) systemConfig.clinic = { ...(systemConfig.clinic || {}), ...payload.clinic };
         saveJson(CONFIG_FILE, systemConfig);
 
-        executeAutonomousBackup({ force: true, triggerReason: "Admin On-Demand Web/Desktop Click" });
+        await executeAutonomousBackup({ force: true, triggerReason: "Admin On-Demand Web/Desktop Click" });
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, message: "VPS autonomous backup triggered and dispatched successfully!" }));
       } catch (err) {

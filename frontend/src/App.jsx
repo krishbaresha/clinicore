@@ -217,19 +217,24 @@ export default function App() {
 
   // Seed DB and run automated retention lifecycle check (purge patients inactive > 24 months)
   useEffect(() => {
+    let mounted = true;
     async function setupStorage() {
       try {
-        await waitForDiskCache();
+        await Promise.race([
+          waitForDiskCache(),
+          new Promise((resolve) => setTimeout(resolve, 800)),
+        ]);
         initDB();
         
-        // WhatsApp-like cloud first sync hydration on startup
-        try {
-          await syncEngine.pullLatestCloudState();
-        } catch (syncErr) {
+        // WhatsApp-like cloud first sync hydration on startup (non-blocking in background)
+        Promise.race([
+          syncEngine.pullLatestCloudState(),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]).catch((syncErr) => {
           console.warn("[Startup] Initial cloud sync deferred:", syncErr);
-        }
+        });
 
-        setStorageReady(true);
+        if (mounted) setStorageReady(true);
 
         try {
           // Auto-purge patient profiles with 0 visits in the last 2 years (24 months)
@@ -239,10 +244,20 @@ export default function App() {
         }
       } catch (err) {
         console.error("Storage setup failed:", err);
-        setStorageReady(true);
+        if (mounted) setStorageReady(true);
       }
     }
     setupStorage();
+
+    // Global fail-safe timeout (1.5s max) to guarantee app unblocks on all mobile browsers
+    const fallbackTimer = setTimeout(() => {
+      if (mounted) setStorageReady(true);
+    }, 1500);
+
+    return () => {
+      mounted = false;
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
   if (!storageReady) {
