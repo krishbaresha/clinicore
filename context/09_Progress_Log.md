@@ -33,9 +33,28 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 89 — Phase D Data Scope & Security Closure Completed (GATE PASSED)
-- **Last worked on:** Enforced data-layer direct-ID scoping (`getScopedRecordById`) in `db.js` for Purchases, Sales, B2B Sales, and Expenses. Removed hardcoded `"wh_001"` authorization fallback in `dbExpenses.add`, and enforced fail-closed anti-spoofing expense creation.
-- **Currently blocked on:** Awaiting User Approval to begin Phase E (Print Lifecycle Forensic Audit & Closing Slip Fix).
+- **Phase:** Milestone 90 — Phase E Presentation-Only Thermal Print Refinement Completed (GATE PASSED)
+- **Last worked on:** Enforced 12 Printing Invariants across `thermalPrinter.js`, `DayClosingReceiptModal.jsx`, and `FeesReports.jsx`. Hardened iframe DOM cleanup, added try-catch error boundaries for print dispatchers, and verified 100% financial immutability during print, reprint, preview, cancel, and error states.
+- **Currently blocked on:** Awaiting User Approval to begin Phase F (Master Ecosystem Integration & Multi-Device Testing).
+
+### Session: 2026-08-30 (Part 90) — Phase E Controlled Implementation & Print Lifecycle Security Audit
+
+**Task worked on:**
+Implemented Phase E presentation-only print lifecycle refinements while enforcing zero-mutation financial immutability invariants.
+
+**What was built/changed:**
+1. Modified `frontend/src/utils/thermalPrinter.js`: Added idempotency guard (`isCleanedUp`) and stale iframe deduplication before spawning thermal print iframe (`6668012`).
+2. Modified `frontend/src/components/DayClosingReceiptModal.jsx`: Wrapped `handlePrint` in try-catch error boundary and verified zero closing state mutations on print/cancel (`f1fed09`).
+3. Modified `frontend/src/pages/FeesReports.jsx`: Wrapped `handleCashBookReprint` in try-catch error boundary, preserving independent CashBook voucher posting before print (`823f832`).
+4. Verified `frontend/src/pages/ReceiptStudio.jsx`: Confirmed preview sandbox reads local branding configuration without invoking database APIs.
+
+**Verification Results:**
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+- Git Commits: `6668012`, `f1fed09`, `823f832`
+
+---
 
 ### Session: 2026-08-30 (Part 89) — Phase D Final Security Closure & Data Scope Gate
 
