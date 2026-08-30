@@ -10,7 +10,7 @@ export default function PWAUpdateBanner() {
   const [dismissed, setDismissed] = useState(() => {
     try {
       const dismissedVer = localStorage.getItem("cf_dismissed_version");
-      return dismissedVer && (dismissedVer === newVersion || dismissedVer === "2.5.2");
+      return Boolean(dismissedVer && dismissedVer === newVersion);
     } catch {
       return false;
     }
@@ -30,9 +30,11 @@ export default function PWAUpdateBanner() {
     applyUpdate();
   };
 
-  if (!updateAvailable || dismissed) {
+  if (!updateAvailable || dismissed || !newVersion) {
     return null;
   }
+
+  const versionLabel = newVersion.startsWith("v") ? newVersion : `v${newVersion}`;
 
   return (
     <aside aria-label="Application Update Notification" className="fixed top-5 right-5 left-5 md:left-auto md:w-[420px] z-[99999] animate-in fade-in slide-in-from-top-6 duration-300">
@@ -49,7 +51,7 @@ export default function PWAUpdateBanner() {
               <h4 className="font-bold text-sm text-slate-100 flex items-center gap-1.5">
                 <span>Update Available</span>
                 <span className="text-[10px] uppercase font-bold bg-teal-500/30 text-teal-300 px-2 py-0.5 rounded-full border border-teal-500/40">
-                  {newVersion || "v2.5.2"} Live
+                  {versionLabel} LIVE
                 </span>
               </h4>
               <button
@@ -62,7 +64,7 @@ export default function PWAUpdateBanner() {
             </div>
 
             <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              A newer verified release <strong className="text-teal-400">{newVersion || "v2.5.2"}</strong> is available with live fixes. Click below to upgrade seamlessly without losing any offline data.
+              A newer verified release <strong className="text-teal-400">{versionLabel}</strong> is available with live fixes. Click below to upgrade seamlessly without losing any offline data.
             </p>
           </div>
         </div>
