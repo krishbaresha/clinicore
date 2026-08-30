@@ -236,6 +236,31 @@ chmod -R 755 "$CLINICORE_DIR"
 chmod -R 775 "$BACKEND_DIR/storage"
 chmod 640 "$BACKEND_DIR/.env"
 
+# Register and start Pure Node.js API Service on Port 5000
+cat > /etc/systemd/system/clinicore-node-api.service <<NODE_SERVICE_EOF
+[Unit]
+Description=ClinicFlow Pure Node.js API Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/clinicore/backend
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production PORT=5000
+
+[Install]
+WantedBy=multi-user.target
+NODE_SERVICE_EOF
+
+systemctl daemon-reload
+systemctl enable clinicore-node-api.service 2>/dev/null || true
+systemctl restart clinicore-node-api.service 2>/dev/null || true
+echo "  Systemd service 'clinicore-node-api' registered & running."
+
 systemctl restart php8.3-fpm 2>/dev/null || systemctl restart php-fpm 2>/dev/null || echo "  (php-fpm restart skipped)"
 systemctl reload nginx || systemctl restart nginx
 echo "  Services restarted."
