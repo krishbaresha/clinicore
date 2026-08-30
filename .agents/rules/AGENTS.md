@@ -68,11 +68,17 @@ ClinicFlow/
 12. **Rule 17 — Context Engineering, AST Verification & Zero-Side-Effect Guard (Mandatory):**
     - **Scope Integrity Protocol:** Whenever an agent modifies any component, function, or memoized block, the agent MUST inspect all imports, destructured variables, and JSX references. Never drop or orphan existing variables (e.g. `todaySales`, `useRef`).
     - **Mandatory Pre-Push Validation Pipeline:** Before finishing any task or pushing to Git, the AI agent MUST execute:
-      1. `node scripts/scan_imports_and_hooks.mjs` (Deep AST Hook & Symbol Validator).
-      2. `npx oxlint` (Undeclared identifier & scope validator).
-      3. `npm test` (Full 257+ test suite).
-      4. `npm run build` (Clean Vite bundle compilation).
+      1. `node scripts/scan_secrets.mjs` (Zero Secret & Credential Leak Scanner).
+      2. `node scripts/scan_imports_and_hooks.mjs` (Deep AST Hook & Symbol Validator).
+      3. `npx oxlint` (Undeclared identifier & scope validator).
+      4. `npm test` (Full master test suite).
+      5. `npm run build` (Clean Vite bundle compilation).
     - **Zero-Guess Code Preservation:** Never delete or alter working legacy logic unless explicitly asked. Verify both the direct change and its surrounding components.
+13. **Rule 18 — Zero Secret Leak & Environment Key Protocol:**
+    - NEVER hardcode plaintext API keys (e.g. `re_xxxx`, `ghp_xxxx`, `sk_live_xxxx`, `AWS_ACCESS_KEY`) in codebase files, default arguments, or markdown logs.
+    - Always read secrets from `process.env` / `import.meta.env` or dynamic runtime user settings (`system_settings` / `localStorage.getItem("cf_resend_api_key")`).
+14. **Rule 19 — Private Repository & Gated CI/CD Resilience:**
+    - The repository is Private. In CI/CD pipelines (`.github/workflows/deploy.yml`), SSH deployments must be resilient against transient cloud firewall dropped packets (`continue-on-error: true` on non-blocking VPS steps) to ensure automated build artifacts, unit tests, and releases always succeed.
 
 ---
 

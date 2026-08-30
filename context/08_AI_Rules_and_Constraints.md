@@ -51,6 +51,8 @@ To ensure past mistakes are NEVER repeated, adhere to these hardcoded lessons le
 | 5 | **Hardcoded WhatsApp Phone Numbers** | Hardcoding arbitrary contact numbers on WhatsApp CTA buttons prevents dispatching directly to the clinic doctor's real number. | **Always pull dynamically from `activeClinic.phone` or `settings.whatsapp_gateway_no` with fallback to developer phone.** |
 | 6 | **Orphaned Memoized Variables** | Wrapping calculations in `useMemo` without returning all variables rendered in JSX (e.g. `todaySales`, `todayExpenses`) throws runtime `ReferenceError`. | **Every variable referenced in JSX must be in the return object and destructured.** Run `npx oxlint` and `scan_imports_and_hooks.mjs`. |
 | 7 | **Missing Hook Imports** | Adding new hooks (e.g. `useRef`, `useMemo`) without updating the `import { ... } from "react"` header causes runtime crashes. | **Mandatory Pre-Push AST Scan:** Always execute `node scripts/scan_imports_and_hooks.mjs` and `npx oxlint` before reporting any task complete. |
+| 8 | **Hardcoded Secrets & API Keys** | Committing API keys (e.g., Resend `re_...` or AWS keys) into source code or progress logs trips CI security scanners. | **Strict Zero-Hardcoded Secrets Policy:** Always read API keys from `process.env` / `import.meta.env` or dynamic runtime config (`localStorage`). Pre-commit verify with `node scripts/scan_secrets.mjs`. |
+| 9 | **Undeclared Context Identifiers in Refactors** | Accessing variables like `user?.assigned_warehouse_id` in components without importing and calling `useAuth()` causes oxlint compilation failures in CI. | **Scope Verification:** Always ensure `const { user } = useAuth()` is present whenever accessing user properties. Verify with `npx oxlint --quiet`. |
 
 ---
 
