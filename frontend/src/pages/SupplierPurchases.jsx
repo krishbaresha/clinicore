@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { dbSuppliers, dbPurchases, dbInventory, dbClinic, dbSupplierLedger, dbAccounts, dbGrnMetadata } from "../api/db.js";
 import { verifyAdminPasscode } from "../api/auth.js";
+import { useAuth } from "../hooks/useAuth.js";
 import { printSupplierPurchaseReceipt, printPurchaseGRNReceipt } from "../utils/thermalPrinter.js";
 
 /**
@@ -229,6 +230,7 @@ function filterInventoryByCompanyOrSupplier(inventoryList, companyOrSupplierStr,
 }
 
 export default function SupplierPurchases() {
+  const { user } = useAuth();
   const [suppliers, setSuppliers] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [inventoryList, setInventoryList] = useState([]);
