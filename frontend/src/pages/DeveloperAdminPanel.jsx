@@ -276,36 +276,36 @@ export default function DeveloperAdminPanel() {
             }
           }
 
+          const localClinic = dbClinic.get() || {};
+          const localFreq = localStorage.getItem("cf_report_frequency") || localClinic.report_frequency || sClinic.report_frequency || "daily_9pm";
+          const localKey = localStorage.getItem("cf_resend_api_key") || localClinic.resend_api_key || sClinic.resend_api_key || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts";
+          const localEmail = localStorage.getItem("cf_notification_email") || localClinic.notification_email || sClinic.notification_email || "drasifhosting@gmail.com";
+          const localWa = localStorage.getItem("cf_whatsapp_gateway_no") || localClinic.whatsapp_gateway_no || sClinic.whatsapp_gateway_no || "03473100304";
+
           if (!preserveForm) {
-            const freq = sClinic.report_frequency || "daily_9pm";
-            let type = freq;
-            if (freq.startsWith("custom_time:")) {
+            let type = localFreq;
+            if (localFreq.startsWith("custom_time:")) {
               type = "custom_time";
-              setCustomTimeInput(freq.substring(freq.indexOf(":") + 1) || "21:30");
-            } else if (freq.startsWith("custom_interval:")) {
+              setCustomTimeInput(localFreq.substring(localFreq.indexOf(":") + 1) || "21:30");
+            } else if (localFreq.startsWith("custom_interval:")) {
               type = "custom_interval";
-              setCustomIntervalInput(parseInt(freq.split(":")[1]) || 15);
+              setCustomIntervalInput(parseInt(localFreq.split(":")[1]) || 15);
             }
             setSelectedFreqType(type);
 
-            setClinicForm((prev) => ({
-              ...prev,
-              name: sClinic.name || prev.name,
-              address: sClinic.address || prev.address,
-              phone: sClinic.phone || prev.phone,
-              default_consultation_fee: Number(sClinic.default_consultation_fee) || prev.default_consultation_fee,
-              clinic_status: sClinic.clinic_status || prev.clinic_status,
-              public_notice: sClinic.public_notice || prev.public_notice,
-              resend_api_key: prev.resend_api_key || sClinic.resend_api_key || localStorage.getItem("cf_resend_api_key") || "",
-              notification_email: prev.notification_email || sClinic.notification_email || localStorage.getItem("cf_notification_email") || "",
-              report_frequency: prev.report_frequency || sClinic.report_frequency || localStorage.getItem("cf_report_frequency") || "daily_9pm",
-              whatsapp_gateway_no: prev.whatsapp_gateway_no || sClinic.whatsapp_gateway_no || localStorage.getItem("cf_whatsapp_gateway_no") || "",
-            }));
+            setClinicForm({
+              name: localClinic.name || sClinic.name || "H/Dr.Asif Ashraf Khan Clinic",
+              address: localClinic.address || sClinic.address || "Lajpat Road, Hyderabad, Sindh",
+              phone: localClinic.phone || sClinic.phone || "03473100304",
+              default_consultation_fee: Number(localClinic.default_consultation_fee) || Number(sClinic.default_consultation_fee) || 300,
+              clinic_status: localClinic.clinic_status || sClinic.clinic_status || "open",
+              public_notice: localClinic.public_notice || sClinic.public_notice || "",
+              resend_api_key: localKey,
+              notification_email: localEmail,
+              report_frequency: localFreq,
+              whatsapp_gateway_no: localWa,
+            });
           }
-          if (sClinic.resend_api_key) localStorage.setItem("cf_resend_api_key", sClinic.resend_api_key);
-          if (sClinic.notification_email) localStorage.setItem("cf_notification_email", sClinic.notification_email);
-          if (sClinic.report_frequency) localStorage.setItem("cf_report_frequency", sClinic.report_frequency);
-          if (sClinic.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", sClinic.whatsapp_gateway_no);
           if (sClinic.admin_master_passcode) setAdminPasscode(sClinic.admin_master_passcode);
           if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
 

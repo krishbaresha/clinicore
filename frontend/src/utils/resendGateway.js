@@ -20,24 +20,30 @@ export async function sendResendEmail({ apiKey, from, to, subject, html, attachm
     attachments: emailAttachments,
   };
 
-  // 1. Try VPS Backend Relay Endpoint first (https://api.clinicore.me)
-  try {
-    const apiUrl = (import.meta.env?.VITE_API_URL) || "https://api.clinicore.me";
+  // Try local backend (http://localhost:5000) first if on localhost, then VPS backend (https://api.clinicore.me)
+  const candidateUrls = [];
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    candidateUrls.push("http://localhost:5000");
+  }
+  candidateUrls.push(import.meta.env?.VITE_API_URL || "https://api.clinicore.me");
 
-    const res = await fetch(`${apiUrl}/api/v1/system/send-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  for (const baseUrl of candidateUrls) {
+    try {
+      const res = await fetch(`${baseUrl}/api/v1/system/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    if (res.ok) {
-      const backendData = await res.json().catch(() => null);
-      if (backendData?.success) {
-        return { success: true, id: backendData.id || "sent_via_backend", method: "backend_relay" };
+      if (res.ok) {
+        const backendData = await res.json().catch(() => null);
+        if (backendData?.success) {
+          return { success: true, id: backendData.id || "sent_via_relay", method: `relay (${baseUrl})` };
+        }
       }
+    } catch (err) {
+      console.warn(`Email relay unavailable at ${baseUrl}:`, err.message);
     }
-  } catch (err) {
-    console.warn("Backend email relay unavailable, using direct Resend API fallback...", err.message);
   }
 
   // 2. Direct Fallback to Resend Cloud API
