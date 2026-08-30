@@ -117,6 +117,16 @@ for (const filePath of allSrcFiles) {
     }
   }
 
+  // 2b. Check useAuth hook
+  if (/\buseAuth\s*\(/.test(content)) {
+    const useAuthImport = /import\s*\{\s*useAuth\s*\}\s*from\s*["'][^"']*useAuth(\.js)?["']/;
+    const localDef = /(const|let|var|function)\s+useAuth\b/;
+    if (!useAuthImport.test(content) && !localDef.test(content)) {
+      console.error(`❌ [MISSING AUTH HOOK] in ${relPath}: "useAuth()" is used but not imported from useAuth.js!`);
+      issuesFound++;
+    }
+  }
+
   // 3. Check DB Helpers in pages/components
   if (!isDbJs) {
     for (const dbHelper of DB_HELPERS) {

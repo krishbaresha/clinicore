@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth.js";
 import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients, dbStockTransfers, dbWarehouses, dbPurchases, dbB2BSales, dbParties } from "../api/db.js";
 import { formatCurrency, formatTodayLong, getGreeting } from "../utils/formatters.js";
 import { useTranslation } from "react-i18next";
