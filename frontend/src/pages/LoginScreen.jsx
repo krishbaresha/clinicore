@@ -27,6 +27,17 @@ export default function LoginScreen() {
   useEffect(() => {
     setClinicData(dbClinic.get() || {});
 
+    // Automatically synchronize latest staff and clinic profile from VPS on mount (critical for fresh mobile browsers)
+    const syncFromCloud = async () => {
+      try {
+        const { syncEngine } = await import("../api/syncEngine.js");
+        if (syncEngine && typeof syncEngine.pullLatestCloudState === "function") {
+          await syncEngine.pullLatestCloudState();
+        }
+      } catch (_) {}
+    };
+    syncFromCloud();
+
     // Query live version dynamically
     const fetchLiveVersion = async () => {
       try {

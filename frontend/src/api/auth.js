@@ -678,10 +678,23 @@ export function setActiveCashier(staff) {
  * Returns { success, user, error }.
  */
 export async function loginWithPin(userId, pin) {
-  const allUsers = dbUsers.getAll();
-  const user = allUsers.find((u) => u.id === userId);
+  let allUsers = dbUsers.getAll();
+  let user = allUsers.find((u) => u.id === userId);
+
+  // If user not in local memory (e.g. fresh mobile browser session), pull from VPS immediately
   if (!user) {
-    return { success: false, error: { message: "User not found." } };
+    try {
+      const { syncEngine } = await import("./syncEngine.js");
+      if (syncEngine && typeof syncEngine.pullLatestCloudState === "function") {
+        await syncEngine.pullLatestCloudState();
+        allUsers = dbUsers.getAll();
+        user = allUsers.find((u) => u.id === userId);
+      }
+    } catch (_) {}
+  }
+
+  if (!user) {
+    return { success: false, error: { message: "User not found. Please refresh the page." } };
   }
   
   if (user.status === "disabled" || user.status === "deactivated" || user.status === "inactive") {
@@ -723,6 +736,16 @@ export async function loginWithPin(userId, pin) {
     
     // Auto-set as active cashier for POS session
     setActiveCashier(user);
+
+    // Auto-trigger background state sync
+    try {
+      const { syncEngine } = await import("./syncEngine.js");
+      setTimeout(() => {
+        if (syncEngine && typeof syncEngine.pullLatestCloudState === "function") {
+          syncEngine.pullLatestCloudState();
+        }
+      }, 50);
+    } catch (_) {}
   } catch (e) {
     console.error("Failed to write session:", e);
   }
