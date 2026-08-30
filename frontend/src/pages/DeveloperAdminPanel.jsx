@@ -29,37 +29,42 @@ import {
 } from "../utils/thermalPrinter.js";
 import GodAdminPanel from "./GodAdminPanel.jsx";
 
-const DEFAULT_ADMIN_PASSCODE = "2026"; // Default Developer Passcode
-const DEFAULT_TAB_PIN = "7860"; // Default Tab Lock PIN
 const DEFAULT_API_URL = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://127.0.0.1:5000" : "https://api.clinicore.me");
 
+export function getApiUrl() {
+  return DEFAULT_API_URL;
+}
 
 export function getAdminPasscode() {
   try {
-    return localStorage.getItem("cf_admin_master_passcode") || DEFAULT_ADMIN_PASSCODE;
+    const clinic = dbClinic.get() || {};
+    return clinic.admin_master_passcode || localStorage.getItem("cf_admin_master_passcode") || "";
   } catch {
-    return DEFAULT_ADMIN_PASSCODE;
+    return "";
   }
 }
 
 export function setAdminPasscode(pass) {
   try {
     localStorage.setItem("cf_admin_master_passcode", pass);
+    dbClinic.update({ admin_master_passcode: pass });
   } catch { }
 }
 
 export function getTabPin() {
   try {
-    return localStorage.getItem("cf_admin_tab_pin") || DEFAULT_TAB_PIN;
+    const clinic = dbClinic.get() || {};
+    return clinic.tab_pin || localStorage.getItem("cf_admin_tab_pin") || "";
   } catch {
-    return DEFAULT_TAB_PIN;
+    return "";
   }
 }
 
 export function setTabPin(pin) {
   try {
     localStorage.setItem("cf_admin_tab_pin", pin);
+    dbClinic.update({ tab_pin: pin });
   } catch { }
 }
 
@@ -447,9 +452,9 @@ export default function DeveloperAdminPanel() {
         return;
       }
     } catch (netErr) {
-      // 2. Offline Fallback ONLY (Strict Case-Sensitive Match against stored custom passcode)
-      const currentAdminPasscode = (getAdminPasscode() || DEFAULT_ADMIN_PASSCODE).trim();
-      if (input === currentAdminPasscode) {
+      // 2. Offline Fallback ONLY (Strict Match against VPS/Local synchronized passcode)
+      const currentAdminPasscode = (getAdminPasscode() || "").trim();
+      if (currentAdminPasscode && input === currentAdminPasscode) {
         sessionStorage.setItem("cf_dev_auth", "true");
         try {
           sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
@@ -1122,8 +1127,8 @@ export default function DeveloperAdminPanel() {
 
     // Persist to VPS MySQL database so all devices and browsers sync automatically
     try {
-      const apiUrl = DEFAULT_API_URL;
-      await fetch(`${apiUrl}/api/v1/system/config`, {
+      const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "https://api.clinicore.me";
+      await fetch(`${vpsApiUrl}/api/v1/system/config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
