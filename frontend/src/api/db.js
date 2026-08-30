@@ -671,8 +671,19 @@ export const dbClinic = {
   get: () => {
     const raw = storageDriver.getItem(KEYS.CLINIC);
     let clinic = raw ? JSON.parse(raw) : SEED_DATA.clinic;
-    if (!clinic.resend_api_key || !clinic.resend_api_key.trim()) {
-      clinic.resend_api_key = (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") : null) || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts";
+    if (typeof window !== "undefined") {
+      if (!clinic.resend_api_key || !clinic.resend_api_key.trim()) {
+        clinic.resend_api_key = localStorage.getItem("cf_resend_api_key") || "re_93uVicu6_Py7aVeEvK1caBdcvbaFbMLts";
+      }
+      if (!clinic.notification_email || !clinic.notification_email.trim()) {
+        clinic.notification_email = localStorage.getItem("cf_notification_email") || "drasifhosting@gmail.com";
+      }
+      if (!clinic.report_frequency) {
+        clinic.report_frequency = localStorage.getItem("cf_report_frequency") || "daily_9pm";
+      }
+      if (!clinic.whatsapp_gateway_no) {
+        clinic.whatsapp_gateway_no = localStorage.getItem("cf_whatsapp_gateway_no") || "03473100304";
+      }
     }
     if (clinic && clinic.name && clinic.name.includes("Asif Ashraf Khan") && !clinic.name.startsWith("H/Dr.Asif")) {
       clinic.name = "H/Dr.Asif Ashraf Khan Clinic";

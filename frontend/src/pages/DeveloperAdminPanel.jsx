@@ -296,15 +296,16 @@ export default function DeveloperAdminPanel() {
               default_consultation_fee: Number(sClinic.default_consultation_fee) || prev.default_consultation_fee,
               clinic_status: sClinic.clinic_status || prev.clinic_status,
               public_notice: sClinic.public_notice || prev.public_notice,
-              resend_api_key: sClinic.resend_api_key || prev.resend_api_key,
-              notification_email: sClinic.notification_email || prev.notification_email,
-              report_frequency: sClinic.report_frequency || prev.report_frequency,
-              whatsapp_gateway_no: sClinic.whatsapp_gateway_no || prev.whatsapp_gateway_no,
+              resend_api_key: prev.resend_api_key || sClinic.resend_api_key || localStorage.getItem("cf_resend_api_key") || "",
+              notification_email: prev.notification_email || sClinic.notification_email || localStorage.getItem("cf_notification_email") || "",
+              report_frequency: prev.report_frequency || sClinic.report_frequency || localStorage.getItem("cf_report_frequency") || "daily_9pm",
+              whatsapp_gateway_no: prev.whatsapp_gateway_no || sClinic.whatsapp_gateway_no || localStorage.getItem("cf_whatsapp_gateway_no") || "",
             }));
           }
           if (sClinic.resend_api_key) localStorage.setItem("cf_resend_api_key", sClinic.resend_api_key);
           if (sClinic.notification_email) localStorage.setItem("cf_notification_email", sClinic.notification_email);
           if (sClinic.report_frequency) localStorage.setItem("cf_report_frequency", sClinic.report_frequency);
+          if (sClinic.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", sClinic.whatsapp_gateway_no);
           if (sClinic.admin_master_passcode) setAdminPasscode(sClinic.admin_master_passcode);
           if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
 
