@@ -78,6 +78,24 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Canonical Private Version Endpoint for Over-The-Air (OTA) Updates
+    if (url.pathname === "/api/v1/system/version" || url.pathname === "/version.json") {
+      res.writeHead(200, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+      });
+      res.end(JSON.stringify({
+        success: true,
+        version: "2.5.0",
+        build_id: "20260830.7113922",
+        release_channel: "production",
+        changelog: "Auto Machine Hardening, Multi-Warehouse Catalog Isolation & Live OTA Private Sync",
+        min_client_version: "2.4.0",
+        download_url: "https://github.com/krishbaresha/clinicore/releases/tag/v2.5.0"
+      }));
+      return;
+    }
+
     // Time Calibration
     if (url.pathname === "/api/v1/time" || url.pathname === "/api/v1/system/time") {
       res.writeHead(200, { "Content-Type": "application/json" });

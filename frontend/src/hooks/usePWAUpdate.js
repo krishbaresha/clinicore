@@ -45,41 +45,52 @@ export function usePWAUpdate() {
       }
     }
 
-    // 2. Fallback check via /version.json
+    // 2. Comprehensive check via local /version.json and VPS /api/v1/system/version
     try {
-      const res = await fetch(`/version.json?_t=${Date.now()}`, {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.version) {
-          const parseSemver = (v) => {
-            if (!v) return null;
-            const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)/);
-            return m ? { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) } : null;
-          };
-          if (!currentVersionRef.current) {
-            currentVersionRef.current = data.version;
-          } else {
-            const server = parseSemver(data.version);
-            const client = parseSemver(currentVersionRef.current);
-            let hasSemanticUpdate = false;
-            if (server && client) {
-              hasSemanticUpdate = (server.major !== client.major || server.minor !== client.minor || server.patch !== client.patch);
-            } else {
-              hasSemanticUpdate = data.version !== currentVersionRef.current;
-            }
-            if (hasSemanticUpdate) {
-              console.log(`[PWA] New version detected on server: ${data.version} (current: ${currentVersionRef.current})`);
-              setNewVersion(data.version);
-              setUpdateAvailable(true);
+      const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ? import.meta.env.VITE_API_URL : "https://api.clinicore.me";
+      const endpoints = [`/version.json?_t=${Date.now()}`, `${vpsApiUrl}/api/v1/system/version?_t=${Date.now()}`];
+      
+      for (const endpoint of endpoints) {
+        try {
+          const res = await fetch(endpoint, {
+            cache: "no-store",
+            headers: { "Cache-Control": "no-cache" }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const versionString = data?.version || (data?.data && data.data.version);
+            if (versionString) {
+              const parseSemver = (v) => {
+                if (!v) return null;
+                const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)/);
+                return m ? { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) } : null;
+              };
+              if (!currentVersionRef.current) {
+                currentVersionRef.current = versionString;
+              } else {
+                const server = parseSemver(versionString);
+                const client = parseSemver(currentVersionRef.current);
+                let hasSemanticUpdate = false;
+                if (server && client) {
+                  hasSemanticUpdate = (server.major > client.major || (server.major === client.major && server.minor > client.minor) || (server.major === client.major && server.minor === client.minor && server.patch > client.patch));
+                } else {
+                  hasSemanticUpdate = versionString !== currentVersionRef.current;
+                }
+                if (hasSemanticUpdate) {
+                  console.log(`[PWA/OTA] New version detected on server: ${versionString} (current: ${currentVersionRef.current})`);
+                  setNewVersion(versionString);
+                  setUpdateAvailable(true);
+                  break;
+                }
+              }
             }
           }
+        } catch (_) {
+          // Endpoint fallback
         }
       }
     } catch (_) {
-      // Silent fail if offline
+      // Silent fail if completely offline
     }
   }, []);
 
