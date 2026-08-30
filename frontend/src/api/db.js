@@ -368,6 +368,19 @@ export function getFromCollectionById(key, id) {
   return null;
 }
 
+export function getScopedRecordById(key, id) {
+  const record = getFromCollectionById(key, id);
+  if (!record) return null;
+  const user = getActiveSessionUser();
+  if (user && (user.role === "warehouse" || user.role === "warehouse_incharge") && !user.is_owner && user.role !== "admin") {
+    const userWh = user.assigned_warehouse_id;
+    if (userWh && record.warehouse_id && record.warehouse_id !== userWh) {
+      return null; // Fail closed: DENY cross-warehouse access to WH-B record for WH-A user
+    }
+  }
+  return record;
+}
+
 export function setCollection(key, data) {
   try {
     const raw = JSON.stringify(data);
@@ -4017,6 +4030,7 @@ export const dbTenants = {
 // ---------- Store & Wholesale Sales (Retail POS & DrCreate Sale Invoice) ----------
 export const dbSales = {
   getAll: () => getCollection(KEYS.SALES),
+  getById: (id) => getScopedRecordById(KEYS.SALES, id),
   getNextVoucherNo: () => {
     const sales = getCollection(KEYS.SALES) || [];
     const b2b = getCollection(KEYS.B2B_SALES) || [];
@@ -4231,6 +4245,7 @@ export const dbSales = {
 // ---------- Purchases (GRN Inward) ----------
 export const dbPurchases = {
   getAll: () => getCollection(KEYS.PURCHASES),
+  getById: (id) => getScopedRecordById(KEYS.PURCHASES, id),
   add: (purchase) => {
     const purchases = getCollection(KEYS.PURCHASES);
     const invoiceNo = purchase.invoice_no || generateSequentialInvoiceNo("PUR");
@@ -4431,6 +4446,7 @@ export const dbGrnMetadata = {
 // ---------- Wholesale B2B Sales (Interior Sindh Supply) ----------
 export const dbB2BSales = {
   getAll: () => getCollection(KEYS.B2B_SALES),
+  getById: (id) => getScopedRecordById(KEYS.B2B_SALES, id),
   checkout: (saleData) => {
     const sales = getCollection(KEYS.B2B_SALES);
     const invoiceNo = generateSequentialInvoiceNo("WHO");
@@ -4558,13 +4574,30 @@ export const dbStockTransfers = {
 // ---------- Expenses ----------
 export const dbExpenses = {
   getAll: () => getCollection(KEYS.EXPENSES),
+  getById: (id) => getScopedRecordById(KEYS.EXPENSES, id),
   add: (expense) => {
     const list = getCollection(KEYS.EXPENSES);
+    const sessionUser = getActiveSessionUser();
+
+    let whId = expense.warehouse_id;
+    if (sessionUser && (sessionUser.role === "warehouse" || sessionUser.role === "warehouse_incharge") && !sessionUser.is_owner && sessionUser.role !== "admin") {
+      const userWh = sessionUser.assigned_warehouse_id;
+      if (!userWh) {
+        throw new Error("Unauthorized: Missing active warehouse context for expense allocation.");
+      }
+      if (expense.warehouse_id && expense.warehouse_id !== userWh) {
+        throw new Error(`Unauthorized: Expense warehouse_id mismatch. User assigned to '${userWh}' cannot allocate expenses to '${expense.warehouse_id}'.`);
+      }
+      whId = userWh;
+    } else {
+      whId = whId || sessionUser?.assigned_warehouse_id || "wh_primary";
+    }
+
     const expDate = expense.date || expense.expense_date || new Date().toISOString();
     const newExp = {
       ...expense,
       id: generateId("exp"),
-      warehouse_id: expense.warehouse_id || (typeof window !== "undefined" && window.__CF_ACTIVE_USER__?.assigned_warehouse_id) || "wh_001",
+      warehouse_id: whId,
       amount: Number(expense.amount) || 0,
       date: expDate,
       expense_date: expDate,

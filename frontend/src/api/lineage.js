@@ -30,10 +30,12 @@ export function getActiveSessionUser() {
         id: sess.userId || sess.id || sess.username || 'system',
         name: sess.name || sess.username || 'Staff User',
         role: sess.role || 'staff',
+        assigned_warehouse_id: sess.assigned_warehouse_id || sess.warehouse_id || '',
+        is_owner: Boolean(sess.is_owner || sess.role === 'admin' || sess.role === 'owner'),
       };
     }
   } catch (_) {}
-  return { id: 'system', name: 'System Automated', role: 'system' };
+  return { id: 'system', name: 'System Automated', role: 'system', assigned_warehouse_id: '', is_owner: true };
 }
 
 export function decorateRecordLineage(record, operation = 'CREATE') {
