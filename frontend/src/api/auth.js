@@ -7,6 +7,7 @@ const MAX_ATTEMPTS = 5;
 
 export const PERMISSION_MATRIX = {
   admin: {
+    dashboard: ["view"],
     patients: ["view", "create", "edit", "delete", "export"],
     visits: ["view", "create", "edit", "delete", "export"],
     inventory: ["view", "create", "edit", "delete", "stock_adjust", "export"],
@@ -20,6 +21,7 @@ export const PERMISSION_MATRIX = {
     system_settings: ["view", "create", "edit", "delete", "admin"],
   },
   owner: {
+    dashboard: ["view"],
     patients: ["view", "create", "edit", "delete", "export"],
     visits: ["view", "create", "edit", "delete", "export"],
     inventory: ["view", "create", "edit", "delete", "stock_adjust", "export"],
@@ -33,6 +35,7 @@ export const PERMISSION_MATRIX = {
     system_settings: ["view", "create", "edit", "delete", "admin"],
   },
   doctor: {
+    dashboard: ["view"],
     patients: ["view", "create", "edit"],
     visits: ["view", "create", "edit"],
     inventory: ["view"],
@@ -46,6 +49,7 @@ export const PERMISSION_MATRIX = {
     system_settings: [],
   },
   pharmacist: {
+    dashboard: ["view"],
     patients: ["view"],
     visits: ["view"],
     inventory: ["view", "edit", "stock_adjust"],
@@ -59,6 +63,7 @@ export const PERMISSION_MATRIX = {
     system_settings: [],
   },
   cashier: {
+    dashboard: ["view"],
     patients: ["view", "create", "edit"],
     visits: ["view", "create", "edit"],
     inventory: ["view"],
@@ -72,6 +77,7 @@ export const PERMISSION_MATRIX = {
     system_settings: [],
   },
   accountant: {
+    dashboard: ["view"],
     patients: [],
     visits: [],
     inventory: ["view", "export"],
@@ -85,6 +91,7 @@ export const PERMISSION_MATRIX = {
     system_settings: [],
   },
   b2b_salesman: {
+    dashboard: ["view"],
     patients: [],
     visits: [],
     inventory: ["view"],
@@ -97,7 +104,36 @@ export const PERMISSION_MATRIX = {
     cashbook: [],
     system_settings: [],
   },
+  warehouse: {
+    dashboard: ["view"],
+    patients: [],
+    visits: [],
+    inventory: ["view", "stock_adjust", "export"],
+    pos_sales: [],
+    b2b_sales: ["view", "create"],
+    purchases: ["view", "create", "approve"],
+    suppliers: ["view"],
+    parties: ["view"],
+    warehouses: ["view", "stock_adjust"],
+    cashbook: [],
+    system_settings: [],
+  },
   warehouse_incharge: {
+    dashboard: ["view"],
+    patients: [],
+    visits: [],
+    inventory: ["view", "stock_adjust", "export"],
+    pos_sales: [],
+    b2b_sales: ["view", "create"],
+    purchases: ["view", "create", "approve"],
+    suppliers: ["view"],
+    parties: ["view"],
+    warehouses: ["view", "stock_adjust"],
+    cashbook: [],
+    system_settings: [],
+  },
+  warehouse_manager: {
+    dashboard: ["view"],
     patients: [],
     visits: [],
     inventory: ["view", "stock_adjust", "export"],
@@ -111,6 +147,7 @@ export const PERMISSION_MATRIX = {
     system_settings: [],
   },
   manager: {
+    dashboard: ["view"],
     patients: ["view", "create", "edit", "export"],
     visits: ["view", "create", "edit", "export"],
     inventory: ["view", "edit", "stock_adjust", "export"],
@@ -124,6 +161,7 @@ export const PERMISSION_MATRIX = {
     system_settings: [],
   },
   receptionist: {
+    dashboard: ["view"],
     patients: ["view", "create", "edit"],
     visits: ["view", "create", "edit"],
     inventory: ["view"],

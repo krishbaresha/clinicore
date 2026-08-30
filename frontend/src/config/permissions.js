@@ -69,6 +69,9 @@ export function canAccessRoutePath(userOrSession, path) {
     }
   }
 
+  // Dashboard is universally accessible for all authenticated users
+  if (normalizedPath === "/dashboard") return true;
+
   const mapping = ROUTE_PERMISSION_MAP[matchKey];
 
   // If route is not explicitly mapped or has role requirement
