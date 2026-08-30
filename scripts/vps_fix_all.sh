@@ -98,12 +98,16 @@ echo ""
 echo "[6/8] Writing production .env..."
 
 JWT_SECRET=$(openssl rand -hex 32)
+RESEND_KEY="${RESEND_API_KEY:-}"
+if [ -z "$RESEND_KEY" ] && [ -f "$BACKEND_DIR/.env" ]; then
+    RESEND_KEY=$(grep -E '^RESEND_API_KEY=' "$BACKEND_DIR/.env" | cut -d '=' -f2- | tr -d '"' | tr -d "'" || true)
+fi
 
 cat > "$BACKEND_DIR/.env" <<ENV_EOF
 APP_NAME=CliniCore
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=http://77.37.45.233
+APP_URL=https://api.clinicore.me
 
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -113,6 +117,9 @@ DB_PASSWORD=$DB_PASS
 
 JWT_SECRET=$JWT_SECRET
 JWT_EXPIRY=86400
+
+RESEND_API_KEY=$RESEND_KEY
+NOTIFICATION_EMAIL=drasifhosting@gmail.com
 
 STORAGE_PATH=$BACKEND_DIR/storage/files
 ENV_EOF

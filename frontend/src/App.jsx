@@ -221,8 +221,16 @@ export default function App() {
       try {
         await waitForDiskCache();
         initDB();
+        
+        // WhatsApp-like cloud first sync hydration on startup
+        try {
+          await syncEngine.pullLatestCloudState();
+        } catch (syncErr) {
+          console.warn("[Startup] Initial cloud sync deferred:", syncErr);
+        }
+
         setStorageReady(true);
-        syncEngine.pullLatestCloudState();
+
         try {
           // Auto-purge patient profiles with 0 visits in the last 2 years (24 months)
           dbPatients.autoPurgeExpiredPatients(24);
@@ -231,6 +239,7 @@ export default function App() {
         }
       } catch (err) {
         console.error("Storage setup failed:", err);
+        setStorageReady(true);
       }
     }
     setupStorage();
