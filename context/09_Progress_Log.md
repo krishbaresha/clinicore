@@ -33,9 +33,26 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 94 — Dashboard `useAuth` Import Fix & AST Validator Hardening (`v2.5.0-release` Certified)
-- **Last worked on:** Restored missing `import { useAuth } from "../hooks/useAuth.js";` in `Dashboard.jsx`. Updated `scripts/scan_imports_and_hooks.mjs` with an automated AST rule to prevent `useAuth` import regressions across all components.
+- **Phase:** Milestone 95 — Doctor Dashboard UI/UX Pro Max Redesign & Zero-Redundancy Closure (`v2.5.0-release` Certified)
+- **Last worked on:** Redesigned Doctor Dashboard (`isDoctor`) following `ui-ux-pro-max` design standards. Eliminated 100% of duplicate button replicas and redundant portal boxes. Built a clean **Live Chamber Waiting Queue Table** showing waiting tokens with 1-click `Start Consultation` buttons.
 - **Currently blocked on:** System is 100% operational in Production mode. Ready for deployment and live site monitoring.
+
+### Session: 2026-08-30 (Part 95) — Doctor Dashboard UI/UX Pro Max Redesign & Redundancy Removal
+
+**Task worked on:**
+Eliminated duplicate button replicas and redundant widgets from Doctor Dashboard view for Dr. Nargis and all doctors, following `ui-ux-pro-max` guidelines.
+
+**What was built/changed:**
+1. Modified `frontend/src/pages/Dashboard.jsx`: Replaced duplicate lower OPD consultation portal box and 4 redundant stat boxes with a high-density **Live Chamber Waiting Queue & Consultation Table** (`a0a1674`).
+2. Removed duplicate bottom `Quick Actions` buttons (`Doctor Consultation Queue` & `Patients & EMR Records`) for doctors, keeping top navigation header clean with single primary actions.
+
+**Verification Results:**
+- Git Release Tag: `v2.5.0-release` (`a0a1674`)
+- `scan_imports_and_hooks.mjs`: 0 errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run build`: Clean Vite production build
+
+---
 
 ### Session: 2026-08-30 (Part 94) — Dashboard `useAuth` Import Fix & Scanner Rule Hardening
 
