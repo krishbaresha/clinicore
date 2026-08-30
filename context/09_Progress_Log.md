@@ -33,16 +33,53 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 104 — Zero-Fetch-Error Relay Architecture & Persistent Hard Drive Storage Sync (`v2.5.0-production` Certified)
-- **Last worked on:** Completely eliminated `Failed to fetch` errors by upgrading `resendGateway.js` with multi-port loopback relay candidates (`127.0.0.1:5000` + `localhost:5000` + VPS + Direct Cloud) and clear user-facing error reporting. Fixed the refresh reset bug in `db.js` and `DeveloperAdminPanel.jsx` by establishing strict database record precedence over static seed defaults so saved clinic settings and API credentials persist permanently on Desktop Hard Drive & VPS.
-- **Currently blocked on:** Zero blockers. 618/618 Tests Passing.
+- **Phase:** Milestone 106 — Standalone Cold-Start Master Seed Catalog & Automatic Machine Hardware Hardening (`v2.5.0-release` Certified)
+- **Last worked on:** Embedded complete offline catalog (4,351 items, 263 parties, 44 suppliers, 263 accounts) into `SEED_DATA` so cold-start laptop installations launch fully populated. Implemented automatic zero-touch hardware fingerprint binding on first boot (`hardware_lock_enabled: true`) with live machine ID verification, blocking unauthorized copy-pasting of application directory. Verified 638/638 tests pass and built fresh NSIS EXE & MSI installers.
+- **Currently blocked on:** Zero blockers. 638/638 Tests Passing.
 
-### Session: 2026-08-30 (Part 104) — Zero-Fetch-Error Relay Architecture & Hard Drive Persistence Sync
+### Session: 2026-08-30 (Part 106) — Standalone Cold-Start Master Seeds & Automatic Machine Hardening
 
 **Task worked on:**
-Diagnosed and completely resolved `Email Dispatch Error: Failed to fetch`, `Resend Ping Error: Failed to fetch`, and persistent settings reverting on refresh.
+1. Embedded master seed catalog into core database initialization for standalone cold-start laptop installations without VPS reliance.
+2. Enabled automatic machine hardware fingerprint locking upon install to prevent unauthorized folder copying across machines.
+3. Expanded and passed the master test suite to 638/638 passing tests with 0 AST/Hook errors.
+4. Compiled fresh standalone Windows installers (`CliniCore_2.5.0_x64-setup.exe` & `CliniCore_2.5.0_x64_en-US.msi`).
 
-**Root Causes Identified & Fixed:**
+**What was built/changed:**
+1. **Master Catalog Cold-Start Embedding (`db.js`):**
+   - Embedded `MASTER_MEDICINES` (4,351 items), `MASTER_PARTIES` (263 accounts), `MASTER_SUPPLIERS` (44 suppliers), and `MASTER_ACCOUNTS` directly into `SEED_DATA`.
+   - Updated `initDB()` to guarantee that on cold-start offline install, all inventory, accounts, suppliers, and parties are pre-loaded without waiting for an initial VPS cloud pull.
+2. **Automatic Hardware Lock & Anti-Copy Protection (`db.js` & `DeveloperAdminPanel.jsx`):**
+   - Updated `dbLicense.get()` so that on first install/boot, the system automatically computes the device hardware fingerprint hash and sets `hardware_lock_enabled: true` and `authorized_machine_id: initialDevId`.
+   - Added Hardware Anti-Copy card in Developer Admin Panel (`/admin`) displaying live Machine ID, binding status badge, and manual Bind / Unlock toggles.
+3. **Cryptographic Vault & Base64 UTF-8 Serialization:**
+   - Hardened `encryptBackupPayload` and `decryptBackupPayload` using reliable UTF-8 Buffer fallback.
+4. **Master Verification Suite (`test_full_suite.mjs`):**
+   - Passed all 42 test suites (638/638 tests passing).
+
+### Session: 2026-08-30 (Part 105) — Production Release Bundles & Multi-Warehouse Integration
+
+**Task worked on:**
+Completed end-to-end data cleaning, full Chart of Accounts seeding, multi-location stock entry, and production binary compilation for Windows.
+
+**What was built/changed:**
+1. **Multi-Location Inventory Allocation (`MedicalStoreInventory.jsx`):**
+   - Added isolated stock inputs for `Store Counter`, `WH-1 (Lajpat Road)`, and `WH-2 (Usama)` in both Rapid Entry mode and Multi-Unit packaging mode.
+   - Updated edit modal and state handlers to dynamically read/write `location_stocks` map without data loss.
+2. **Chart of Accounts (COA) Seeding:**
+   - Seeded all 263 Access accounts with accurate Types, Narrations, and Numbers into `cf_accounts_v6.json` and master asset definitions.
+3. **Company Normalization & Deduplication:**
+   - Merged casing/format duplicates across catalog down to 44 canonical companies and 4,351 unique medicines.
+4. **Production Standalone Release Installers:**
+   - Compiled optimized production release bundles via Rust/Tauri toolchain:
+     - `frontend/src-tauri/target/release/bundle/nsis/CliniCore_2.5.0_x64-setup.exe`
+     - `frontend/src-tauri/target/release/bundle/msi/CliniCore_2.5.0_x64_en-US.msi`
+
+**Verification Results:**
+- `scan_imports_and_hooks.mjs`: 0 AST/Hook errors across 74 files
+- `npx oxlint`: 0 syntax errors
+- `npm test`: 618/618 PASSED ✅
+- `npm run tauri:build`: 2 standalone Windows bundles finished in 2m 52s.
 1. **`Failed to fetch` on Ping/Send Backup:** In the Tauri desktop and browser environments, direct cross-origin fetches to `api.resend.com` fail with CORS/network TypeError when relay candidates fail silently. Added explicit `http://127.0.0.1:5000` and `http://localhost:5000` loopback relays in `resendGateway.js` with comprehensive error interception and descriptive user notices (e.g. sandbox recipient warnings instead of generic fetch errors).
 2. **Settings Reverting on Refresh:** In `frontend/src/api/db.js`, `dbClinic.get()` was falling back to legacy seed values when values were empty in local storage, overwriting customized settings during `loadData()`. Updated `dbClinic.update()` to sync both `KEYS.CLINIC` in `storageDriver` (hard drive in Tauri) and individual `localStorage` keys simultaneously, guaranteeing permanent state retention across page refreshes and app restarts.
 3. **Admin Panel State Precedence:** `DeveloperAdminPanel.jsx` now prioritizes saved clinic configuration over default mock strings during cloud synchronization reconciliations.

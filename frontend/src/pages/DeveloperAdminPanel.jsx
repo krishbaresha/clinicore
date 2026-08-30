@@ -15,6 +15,7 @@ import {
   dbCashBook,
   dbLicense,
   dbOutbox,
+  getDeviceId,
   exportFullDatabase,
   importFullDatabase,
   resetDatabaseToDemoData,
@@ -1812,6 +1813,86 @@ export default function DeveloperAdminPanel() {
                       onSubmit={(e) => handleSaveLicense(e)}
                       className="bg-white border border-teal-100 rounded-3xl p-6 space-y-6 shadow-sm"
                     >
+                      {/* 0. HARDWARE ANTI-COPY & MACHINE LOCKING HARDENING CARD */}
+                      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-5 rounded-3xl border border-indigo-500/30 text-white space-y-4 shadow-xl">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                              <span className="material-symbols-outlined text-2xl">fingerprint</span>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm sm:text-base font-black tracking-wide text-white">
+                                  Hardware Anti-Copy &amp; Machine Lock Hardening
+                                </h4>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                  licenseForm.hardware_lock_enabled
+                                    ? "bg-emerald-500 text-slate-950"
+                                    : "bg-amber-500 text-slate-950"
+                                }`}>
+                                  {licenseForm.hardware_lock_enabled ? "🔒 LOCKED TO THIS PC" : "🔓 OPEN (UNLOCKED)"}
+                                </span>
+                              </div>
+                              <p className="text-xs text-indigo-200/80 font-medium">
+                                Prevents client from copying application files or running on unauthorized laptops/PCs.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const thisId = getDeviceId();
+                                setLicenseForm((prev) => ({
+                                  ...prev,
+                                  hardware_lock_enabled: true,
+                                  authorized_machine_id: thisId,
+                                }));
+                                showToast(`🔒 Hardware bound to this machine: ${thisId}`);
+                              }}
+                              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                            >
+                              <span className="material-symbols-outlined text-base">lock</span>
+                              <span>Bind To This PC</span>
+                            </button>
+
+                            {licenseForm.hardware_lock_enabled && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLicenseForm((prev) => ({
+                                    ...prev,
+                                    hardware_lock_enabled: false,
+                                    authorized_machine_id: "",
+                                  }));
+                                  showToast("🔓 Hardware Lock Disabled (Portable Mode)");
+                                }}
+                                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-indigo-200 text-xs font-bold rounded-xl transition-all border border-white/10 cursor-pointer"
+                              >
+                                Unlock PC
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Machine Fingerprint Display */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          <div className="bg-slate-950/60 border border-indigo-500/20 p-3 rounded-2xl">
+                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Current Machine Fingerprint:</span>
+                            <span className="font-mono font-black text-xs text-emerald-400 mt-0.5 block truncate">
+                              {getDeviceId()}
+                            </span>
+                          </div>
+                          <div className="bg-slate-950/60 border border-indigo-500/20 p-3 rounded-2xl">
+                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Authorized Machine Lock:</span>
+                            <span className="font-mono font-black text-xs text-indigo-200 mt-0.5 block truncate">
+                              {licenseForm.authorized_machine_id || "(Not Bound Yet - Click 'Bind To This PC')"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* 1. License Mode Quick Selector */}
                       <div>
                         <label className="block text-xs font-black text-teal-950 uppercase tracking-wider mb-2">

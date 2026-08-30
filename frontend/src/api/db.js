@@ -207,11 +207,61 @@ export function verifyPassword(plainPassword, storedHash) {
   return stored === input;
 }
 
+import MASTER_MEDICINES from "./master_medicines_seed.json" with { type: "json" };
+import MASTER_SUPPLIERS from "./master_suppliers_seed.json" with { type: "json" };
+import MASTER_PARTIES from "./master_parties_seed.json" with { type: "json" };
+import MASTER_ACCOUNTS from "./master_accounts_seed.json" with { type: "json" };
+
 function todayAt(hour, minute = 0) {
   const d = new Date();
   d.setHours(hour, minute, 0, 0);
   return d.toISOString();
 }
+
+const DEFAULT_WAREHOUSES = [
+  {
+    id: "wh_001",
+    clinic_id: "clinic_001",
+    name: "Lajpaat Road Warehouse",
+    code: "GDW-01",
+    location: "Lajpaat Road , Hyderabad, Sindh",
+    incharge_name: "Raza",
+    phone: "03000000000",
+    notes: "Main Central Godown",
+    status: "active",
+    is_default: true,
+    is_store_counter: false,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "wh_002",
+    clinic_id: "clinic_001",
+    name: "Usama 1",
+    code: "GDW-02",
+    location: "Inside Medical Store",
+    incharge_name: "Usama",
+    phone: "03000000000",
+    notes: "Secondary Storage Unit",
+    status: "active",
+    is_default: false,
+    is_store_counter: false,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "wh_str",
+    clinic_id: "clinic_001",
+    name: "Medical Store Counter",
+    code: "STR-01",
+    location: "Retail Counter Shelf",
+    incharge_name: "Cashier / Dispenser",
+    phone: "03000000000",
+    notes: "POS Counter Dispensing Godown",
+    status: "active",
+    is_default: false,
+    is_store_counter: true,
+    created_at: new Date().toISOString(),
+  }
+];
 
 const SEED_DATA = {
   clinic: {
@@ -230,13 +280,41 @@ const SEED_DATA = {
     created_at: new Date().toISOString(),
   },
   clinic_services: [],
-  users: [],
+  users: [
+    {
+      id: "usr_owner_asif",
+      name: "Dr. Muhammad Asif Ashraf Khan",
+      username: "doctor",
+      email: "doctor@clinicore.pk",
+      role: "doctor",
+      is_owner: true,
+      pin: "1234",
+      password_hash: "cf_s256$e7a9b1c3d5f7$3f8d9b1a5e7c2d4f6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f", // standard hashed
+      status: "active",
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "usr_admin_staff",
+      name: "Clinic Manager",
+      username: "admin",
+      email: "admin@clinicore.pk",
+      role: "admin",
+      is_owner: false,
+      pin: "2026",
+      status: "active",
+      created_at: new Date().toISOString(),
+    }
+  ],
   patients: [],
   visits: [],
-  inventory: [],
-  parties: [],
-  suppliers: [],
-  salesmen: [],
+  inventory: Array.isArray(MASTER_MEDICINES) ? MASTER_MEDICINES : [],
+  parties: Array.isArray(MASTER_PARTIES) ? MASTER_PARTIES : [],
+  suppliers: Array.isArray(MASTER_SUPPLIERS) ? MASTER_SUPPLIERS : [],
+  accounts: Array.isArray(MASTER_ACCOUNTS) ? MASTER_ACCOUNTS : [],
+  salesmen: [
+    { id: "sls_001", name: "Waheed Bhai", phone: "03000000000", territory: "Sindh Route", status: "active" },
+    { id: "sls_002", name: "Raza", phone: "03000000000", territory: "Hyderabad", status: "active" }
+  ],
   b2b_sales: [],
   stock_transfers: [],
   sales: [],
@@ -246,7 +324,7 @@ const SEED_DATA = {
   shift_closings: [],
   documents: [],
   tenants: [],
-  warehouses: [],
+  warehouses: DEFAULT_WAREHOUSES,
   supplier_ledger: []
 };
 
@@ -558,17 +636,30 @@ export function initDB() {
     storageDriver.setItem(KEYS.DOCUMENTS, JSON.stringify([]));
     storageDriver.setItem(KEYS.TENANTS, JSON.stringify(SEED_DATA.tenants));
     storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
+    storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify(SEED_DATA.accounts));
     storageDriver.setItem(KEYS.SUPPLIER_LEDGER, JSON.stringify([]));
     storageDriver.setItem(KEYS.CASHBOOK, JSON.stringify([]));
     storageDriver.setItem(KEYS.STOCK_MOVEMENTS, JSON.stringify([]));
     storageDriver.setItem(KEYS.AUDIT_LOGS, JSON.stringify([]));
   } else {
-    // Ensure essential singletons exist if missing
+    // Ensure essential singletons and collections exist if missing
     if (!storageDriver.getItem(KEYS.CLINIC)) {
       storageDriver.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
     }
-    if (!storageDriver.getItem(KEYS.WAREHOUSES)) {
+    if (!storageDriver.getItem(KEYS.WAREHOUSES) || JSON.parse(storageDriver.getItem(KEYS.WAREHOUSES) || "[]").length === 0) {
       storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
+    }
+    if (!storageDriver.getItem(KEYS.INVENTORY) || JSON.parse(storageDriver.getItem(KEYS.INVENTORY) || "[]").length === 0) {
+      storageDriver.setItem(KEYS.INVENTORY, JSON.stringify(SEED_DATA.inventory));
+    }
+    if (!storageDriver.getItem(KEYS.PARTIES) || JSON.parse(storageDriver.getItem(KEYS.PARTIES) || "[]").length === 0) {
+      storageDriver.setItem(KEYS.PARTIES, JSON.stringify(SEED_DATA.parties));
+    }
+    if (!storageDriver.getItem(KEYS.SUPPLIERS) || JSON.parse(storageDriver.getItem(KEYS.SUPPLIERS) || "[]").length === 0) {
+      storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify(SEED_DATA.suppliers));
+    }
+    if (!storageDriver.getItem(KEYS.ACCOUNTS) || JSON.parse(storageDriver.getItem(KEYS.ACCOUNTS) || "[]").length === 0) {
+      storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify(SEED_DATA.accounts));
     }
   }
   // PERMANENT PURGE: Remove legacy admin@clinicore.pk / user_admin bootstrap user from local storage
@@ -3640,6 +3731,16 @@ export const dbParties = {
   recordPayment: (partyId, amount) => {
     dbParties.updateBalance(partyId, -Number(amount));
   },
+  delete: (id) => {
+    const list = getCollection(KEYS.PARTIES) || [];
+    const target = list.find((p) => p.id === id);
+    const updated = list.filter((p) => p.id !== id);
+    setCollection(KEYS.PARTIES, updated);
+    if (target && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("parties", target, "DELETE", id);
+    }
+    return true;
+  },
 };
 
 
@@ -5061,7 +5162,17 @@ function encryptBackupPayload(plainStr) {
   for (let i = 0; i < plainStr.length; i++) {
     enc += String.fromCharCode(plainStr.charCodeAt(i) ^ key);
   }
-  return BACKUP_MAGIC_HEADER + btoa(unescape(encodeURIComponent(enc)));
+  let b64 = "";
+  try {
+    if (typeof Buffer !== "undefined") {
+      b64 = Buffer.from(enc, "binary").toString("base64");
+    } else {
+      b64 = btoa(unescape(encodeURIComponent(enc)));
+    }
+  } catch {
+    b64 = btoa(unescape(encodeURIComponent(enc)));
+  }
+  return BACKUP_MAGIC_HEADER + b64;
 }
 
 function decryptBackupPayload(encryptedStr) {
@@ -5074,9 +5185,13 @@ function decryptBackupPayload(encryptedStr) {
     if (!rawB64 || rawB64.length < 4) {
       throw new Error("Corrupted or truncated ciphertext payload.");
     }
-    let decoded;
+    let decoded = "";
     try {
-      decoded = decodeURIComponent(escape(atob(rawB64)));
+      if (typeof Buffer !== "undefined") {
+        decoded = Buffer.from(rawB64, "base64").toString("binary");
+      } else {
+        decoded = decodeURIComponent(escape(atob(rawB64)));
+      }
     } catch {
       throw new Error("Corrupted base64 encoding in vault payload.");
     }
@@ -5085,7 +5200,11 @@ function decryptBackupPayload(encryptedStr) {
     for (let i = 0; i < decoded.length; i++) {
       plain += String.fromCharCode(decoded.charCodeAt(i) ^ key);
     }
-    return JSON.parse(plain);
+    try {
+      return JSON.parse(plain);
+    } catch {
+      throw new Error("Decrypted payload is not valid JSON.");
+    }
   }
   // Fallback for standard JSON backup imports
   return JSON.parse(trimmed);
@@ -5404,15 +5523,15 @@ export function exportFullDatabase(returnEncryptedString = false) {
     data: collectionsData,
   };
 
-  const canonicalJson = JSON.stringify(payloadToSign);
-  const checksum = sha256Sync(canonicalJson);
+  const backupJsonToSign = JSON.stringify(payloadToSign);
+  const checksum = sha256Sync(backupJsonToSign);
 
   const backup = {
     ...payloadToSign,
     checksum_sha256: checksum,
   };
 
-  const plainJson = JSON.stringify(backup, null, 2);
+  const plainJson = JSON.stringify(backup);
   const encryptedPayload = encryptBackupPayload(plainJson);
 
   if (typeof document !== "undefined" && !returnEncryptedString) {
@@ -5604,13 +5723,16 @@ export const dbLicense = {
     try {
       const raw = storageDriver.getItem(KEYS.LICENSE);
       if (!raw) {
-        return {
+        const initialDevId = getDeviceId();
+        const defaultPolicy = {
           license_status: "active",
           monthly_fee: 5000,
           currency: "PKR",
           due_day: 1,
           warning_days_before: 5,
           grace_days: 10,
+          hardware_lock_enabled: true,
+          authorized_machine_id: initialDevId,
           last_paid_date: new Date().toISOString().split("T")[0],
           next_due_date: (() => {
             const d = new Date();
@@ -5624,10 +5746,23 @@ export const dbLicense = {
           developer_bank_details: "JazzCash / EasyPaisa / Bank Transfer: 03142291356 (K.B Software)",
           custom_notice: "",
         };
+        try {
+          storageDriver.setItem(KEYS.LICENSE, JSON.stringify(defaultPolicy));
+        } catch {}
+        return defaultPolicy;
       }
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      // If hardware lock is enabled but not bound yet, automatically lock to the first installing machine
+      if (parsed.hardware_lock_enabled !== false && !parsed.authorized_machine_id) {
+        parsed.hardware_lock_enabled = true;
+        parsed.authorized_machine_id = getDeviceId();
+        try {
+          storageDriver.setItem(KEYS.LICENSE, JSON.stringify(parsed));
+        } catch {}
+      }
+      return parsed;
     } catch {
-      return { license_status: "active", restricted_features: [] };
+      return { license_status: "active", restricted_features: [], hardware_lock_enabled: true };
     }
   },
 
@@ -5653,10 +5788,27 @@ export const dbLicense = {
 
   /**
    * Computes dynamic runtime status:
-   * Returns: { status: "active" | "warning" | "grace_period" | "restricted" | "locked", daysLeft, daysOverdue, isFeatureBlocked: (key) => boolean }
    */
   evaluateStatus: () => {
     const lic = dbLicense.get();
+    const currentDevId = getDeviceId();
+
+    // 0. HARDWARE ANTI-COPY & MACHINE LOCK GUARD
+    if (lic.hardware_lock_enabled && lic.authorized_machine_id) {
+      if (lic.authorized_machine_id !== currentDevId) {
+        return {
+          status: "locked",
+          isLocked: true,
+          isWarning: false,
+          isGrace: false,
+          daysLeft: 0,
+          daysOverdue: 1,
+          message: "🚫 UNAUTHORIZED MACHINE DETECTED: This software license is cryptographically bound to a specific authorized PC/Laptop hardware. Copying or running on another computer is strictly prohibited. Please contact K.B Software (03142291356) for machine re-authorization.",
+          isFeatureBlocked: () => true,
+        };
+      }
+    }
+
     if (lic.is_hard_locked || lic.license_status === "locked") {
       return {
         status: "locked",

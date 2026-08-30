@@ -189,8 +189,9 @@ export default function WarehouseManagement() {
     { inventory_id: "", medicine_name: "", qty: 1, unit_price: 0, disc_pct: 0, disc_flat: 0, line_total: 0 }
   ]);
 
-  // Add New Party Modal State
+  // Add & Edit Party Modal State
   const [showAddPartyModal, setShowAddPartyModal] = useState(false);
+  const [editingPartyId, setEditingPartyId] = useState(null);
   const [newPartyForm, setNewPartyForm] = useState({
     party_code: "",
     name: "",
@@ -200,37 +201,68 @@ export default function WarehouseManagement() {
     balance_due: "0",
   });
 
+  const handleOpenEditParty = (party) => {
+    setEditingPartyId(party.id);
+    setNewPartyForm({
+      party_code: party.party_code || "",
+      name: party.name || party.party_name || "",
+      city: party.city || "Hyderabad",
+      phone: party.phone || "",
+      address: party.address || "",
+      balance_due: String(party.balance_due || party.opening_balance || "0"),
+    });
+    setShowAddPartyModal(true);
+  };
+
+  const handleDeleteParty = (party) => {
+    if (window.confirm(`Are you sure you want to delete "${party.name || party.party_name}" (Code #${party.party_code || party.id})?`)) {
+      dbParties.delete(party.id);
+      refreshData();
+    }
+  };
+
   const handleSaveParty = (e) => {
     e.preventDefault();
     if (!newPartyForm.name.trim()) {
       alert("Please enter party / store name.");
       return;
     }
-    const created = dbParties.add(newPartyForm);
-    
-    // Auto-sync into unified dbAccounts if not already existing
-    const existingAcc = dbAccounts.getAll().find((a) => a.account_name.toLowerCase() === created.name.toLowerCase());
-    if (!existingAcc) {
-      dbAccounts.add({
-        account_name: created.name,
-        account_no: created.party_code || dbAccounts.getNextAccountNo(),
-        naration: `${created.city || ""} (${created.phone || ""}) ${created.address || ""}`.trim(),
-        account_type: created.city || "Wholesale Party",
-        opening_balance: Number(created.balance_due) || 0,
-        date: new Date().toLocaleDateString("en-US"),
+
+    if (editingPartyId) {
+      // Update existing party
+      const updated = dbParties.update(editingPartyId, {
+        party_code: newPartyForm.party_code.trim(),
+        name: newPartyForm.name.trim(),
+        party_name: newPartyForm.name.trim(),
+        city: newPartyForm.city.trim(),
+        territory: newPartyForm.city.trim(),
+        phone: newPartyForm.phone.trim(),
+        address: newPartyForm.address.trim(),
+        balance_due: Number(newPartyForm.balance_due) || 0,
+        updated_at: new Date().toISOString(),
       });
+      alert(`Party "${updated.name}" updated successfully!`);
+    } else {
+      // Create new party
+      const created = dbParties.add(newPartyForm);
+      
+      // Auto-sync into unified dbAccounts if not already existing
+      const existingAcc = dbAccounts.getAll().find((a) => a.account_name.toLowerCase() === created.name.toLowerCase());
+      if (!existingAcc) {
+        dbAccounts.add({
+          account_name: created.name,
+          account_no: created.party_code || dbAccounts.getNextAccountNo(),
+          naration: `${created.city || ""} (${created.phone || ""}) ${created.address || ""}`.trim(),
+          account_type: created.city || "Wholesale Party",
+          opening_balance: Number(created.balance_due) || 0,
+          date: new Date().toLocaleDateString("en-US"),
+        });
+      }
+      alert(`Party "${created.name}" registered successfully with Code #${created.party_code || created.id}!`);
     }
 
-
-    alert(`Party "${created.name}" registered successfully with Code #${created.party_code || created.id}!`);
     setShowAddPartyModal(false);
-
-    // Auto-select party if user was on B2B Wholesale tab
-    setSelectedPartyId(created.id);
-    setPartySearchCode(created.party_code || created.id);
-    setB2bBuyerName(created.name);
-    setB2bBuyerPhone(created.phone || "");
-    setB2bCity(created.city || "Hyderabad");
+    setEditingPartyId(null);
 
     setNewPartyForm({
       party_code: "",
@@ -626,28 +658,40 @@ export default function WarehouseManagement() {
   };
 
   // Filtered inventory list
-  const filteredInventory = inventory.filter((item) => {
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = (item.medicine_name || "").toLowerCase().includes(q);
-      const matchCode = (item.item_code || "").toLowerCase().includes(q);
-      const matchCat = (item.category || "").toLowerCase().includes(q);
-      if (!matchName && !matchCode && !matchCat) return false;
-    }
-    return true;
-  });
+  const filteredInventory = inventory
+    .filter((item) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = (item.medicine_name || "").toLowerCase().includes(q);
+        const matchCode = (item.item_code || "").toLowerCase().includes(q);
+        const matchCat = (item.category || "").toLowerCase().includes(q);
+        if (!matchName && !matchCode && !matchCat) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const nameA = (a.medicine_name || "").trim();
+      const nameB = (b.medicine_name || "").trim();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   // Filtered parties list
-  const filteredParties = parties.filter((p) => {
-    if (selectedCityFilter !== "all" && (p.city || "").toLowerCase() !== selectedCityFilter.toLowerCase()) {
-      return false;
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (p.name || "").toLowerCase().includes(q) || (p.city || "").toLowerCase().includes(q);
-    }
-    return true;
-  });
+  const filteredParties = parties
+    .filter((p) => {
+      if (selectedCityFilter !== "all" && (p.city || "").toLowerCase() !== selectedCityFilter.toLowerCase()) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (p.name || "").toLowerCase().includes(q) || (p.city || "").toLowerCase().includes(q);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const nameA = (a.party_code || a.name || "").trim();
+      const nameB = (b.party_code || b.name || "").trim();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   const uniqueCities = Array.from(new Set(parties.map((p) => p.city).filter(Boolean)));
 
@@ -2005,18 +2049,39 @@ export default function WarehouseManagement() {
                         {formatPKR(p.balance_due || 0)}
                       </td>
                       <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => {
-                            setSelectedPartyId(p.id);
-                            setB2bBuyerName(p.name);
-                            setB2bBuyerPhone(p.phone || "");
-                            setB2bCity(p.city || "Hyderabad");
-                            handleTabChange("b2b");
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-all shadow-sm"
-                        >
-                          Create B2B Invoice
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSelectedPartyId(p.id);
+                              setB2bBuyerName(p.name);
+                              setB2bBuyerPhone(p.phone || "");
+                              setB2bCity(p.city || "Hyderabad");
+                              handleTabChange("b2b");
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] transition-all shadow-sm flex items-center gap-1"
+                            title="Create B2B Invoice for this party"
+                          >
+                            <span className="material-symbols-outlined text-sm">receipt_long</span>
+                            Invoice
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenEditParty(p)}
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 font-bold text-[11px] transition-all flex items-center gap-1"
+                            title="Edit Party Code, Name, City, Phone & Details"
+                          >
+                            <span className="material-symbols-outlined text-sm text-teal-600">edit</span>
+                            Edit
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteParty(p)}
+                            className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-bold transition-all"
+                            title="Delete Party"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -2513,12 +2578,17 @@ export default function WarehouseManagement() {
           >
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2 text-teal-800 font-bold text-base">
-                <span className="material-symbols-outlined text-teal-600">add_business</span>
-                Register New Wholesale Party / Account
+                <span className="material-symbols-outlined text-teal-600">
+                  {editingPartyId ? "edit_note" : "add_business"}
+                </span>
+                {editingPartyId ? "Edit Party Profile & Territory" : "Register New Wholesale Party / Account"}
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddPartyModal(false)}
+                onClick={() => {
+                  setShowAddPartyModal(false);
+                  setEditingPartyId(null);
+                }}
                 className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -2615,7 +2685,10 @@ export default function WarehouseManagement() {
             <div className="flex gap-2 pt-3 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setShowAddPartyModal(false)}
+                onClick={() => {
+                  setShowAddPartyModal(false);
+                  setEditingPartyId(null);
+                }}
                 className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all"
               >
                 Cancel
@@ -2625,7 +2698,7 @@ export default function WarehouseManagement() {
                 className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-base">check_circle</span>
-                Save Party
+                {editingPartyId ? "Update Party Profile" : "Save Party"}
               </button>
             </div>
           </form>

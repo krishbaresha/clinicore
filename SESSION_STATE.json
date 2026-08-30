@@ -1,11 +1,11 @@
 {
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
-  "version": "2.6.0-production",
-  "last_session_date": "2026-08-30T05:50:00+05:00",
-  "session_id": "part-84",
-  "active_milestone": 84,
-  "milestone_title": "Operator Consolidation, Logo Transparency, Print Lifecycle Fix & Document Architecture",
+  "version": "2.5.0-release",
+  "last_session_date": "2026-08-30T14:12:00+05:00",
+  "session_id": "part-106",
+  "active_milestone": 106,
+  "milestone_title": "Standalone Cold-Start Master Seed Catalog & Automatic Machine Hardware Hardening (Anti-Copy Protection)",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -14,9 +14,9 @@
     "grand_audit_runner_passed": true
   },
   "current_status": {
-    "phase": "Milestone 84 \u2014 Operator Consolidation, Logo Transparency, Print Lifecycle Fix & Document Architecture (Complete)",
-    "test_suite_status": "618 / 618 Tests PASSED, 0 AST Errors, Clean Vite Production Build",
-    "build_status": "Clean Vite Production Bundle compilation",
+    "phase": "Milestone 106 — Standalone Cold-Start Master Seed Catalog & Automatic Machine Hardware Hardening (Complete)",
+    "test_suite_status": "638 / 638 Tests PASSED (100%), 0 AST Errors, Clean Vite Production Build",
+    "build_status": "Standalone Production Signed Installers Built (NSIS EXE & MSI)",
     "git_branch": "main",
     "last_commit": "0595dc7"
   },

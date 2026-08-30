@@ -24,19 +24,68 @@ export function useGlobalKeyboardNav() {
     function handleKeyDown(e) {
       // 1. F12 or (Shift + ?) -> Toggle Keyboard Shortcuts Cheatsheet Modal
       if (e.key === "F12" || (e.shiftKey && e.key === "?")) {
-        e.preventDefault();
-        setIsShortcutsModalOpen((prev) => !prev);
-        return;
+        const isInput = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
+        if (!isInput || e.key === "F12") {
+          e.preventDefault();
+          setIsShortcutsModalOpen((prev) => !prev);
+          return;
+        }
       }
 
-      // 2. Escape -> Close Shortcuts Modal if open
-      if (e.key === "Escape" && isShortcutsModalOpen) {
-        e.preventDefault();
-        setIsShortcutsModalOpen(false);
-        return;
+      // 2. Escape -> Close Shortcuts Modal or blur current input
+      if (e.key === "Escape") {
+        if (isShortcutsModalOpen) {
+          e.preventDefault();
+          setIsShortcutsModalOpen(false);
+          return;
+        }
+        if (document.activeElement && ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) {
+          document.activeElement.blur();
+        }
       }
 
-      // 3. Alt + Number / Alt + F Navigation
+      // 3. Quick Global Search Focus: Press '/' or 'Ctrl+K' / 'Alt+S' to immediately focus the main search input
+      if ((e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) || 
+          ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") || 
+          (e.altKey && e.key.toLowerCase() === "s")) {
+        const searchInput = document.querySelector('input[type="text"][placeholder*="Search" i], input[type="search"], input[id*="search" i]');
+        if (searchInput) {
+          e.preventDefault();
+          searchInput.focus();
+          searchInput.select?.();
+          return;
+        }
+      }
+
+      // 4. Arrow Navigation & Enter handling in Lists/Tables when not typing in text field
+      const activeTag = document.activeElement?.tagName;
+      const isTyping = ["INPUT", "TEXTAREA"].includes(activeTag) && !["checkbox", "radio", "button"].includes(document.activeElement?.type);
+
+      if (!isTyping) {
+        // Find all interactive table rows or list items on active screen
+        const focusableRows = Array.from(document.querySelectorAll("tbody tr, [data-keyboard-item], .keyboard-nav-item"));
+        if (focusableRows.length > 0) {
+          const currentIndex = focusableRows.findIndex(row => row === document.activeElement || row.contains(document.activeElement));
+
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            const nextIdx = currentIndex < focusableRows.length - 1 ? currentIndex + 1 : 0;
+            const target = focusableRows[nextIdx];
+            target.focus?.() || target.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+            const btn = target.querySelector("button, a, input");
+            if (btn) btn.focus();
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            const prevIdx = currentIndex > 0 ? currentIndex - 1 : focusableRows.length - 1;
+            const target = focusableRows[prevIdx];
+            target.focus?.() || target.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+            const btn = target.querySelector("button, a, input");
+            if (btn) btn.focus();
+          }
+        }
+      }
+
+      // 5. Alt + Number / Alt + Key Navigation (Instant Full Application Control)
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
         const key = e.key.toLowerCase();
         let targetPath = null;
@@ -53,6 +102,12 @@ export function useGlobalKeyboardNav() {
           case "9": targetPath = "/store/warehouse"; break;
           case "0": targetPath = "/patients"; break;
           case "f": targetPath = "/fees"; break;
+          case "n":
+            // Alt + N -> Focus New / Register primary button
+            e.preventDefault();
+            const newBtn = document.querySelector('button:has-text("Add"), button:has-text("New"), [data-action="new"]');
+            if (newBtn) newBtn.click();
+            break;
           case "h":
           case "?":
             e.preventDefault();

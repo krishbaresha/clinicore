@@ -108,11 +108,27 @@ export default function MedicalStoreInventory() {
     category: "Homeopathic Drops",
     cost_price: "",
     sale_price: "",
-    opening_balance: "15",
-    store_stock: "15",
-    warehouse_stock: "35",
+    opening_balance: "0",
+    store_stock: "0",
+    warehouse_1_stock: "0",
+    warehouse_2_stock: "0",
     minimum_level: "6",
     registration_date: new Date().toLocaleDateString("en-US"),
+  });
+
+  // Edit Form State
+  const [editFormData, setEditFormData] = useState({
+    medicine_name: "",
+    company_name: "",
+    item_code: "",
+    naration: "",
+    category: "",
+    cost_price: "0",
+    sale_price: "0",
+    store_stock: "0",
+    warehouse_1_stock: "0",
+    warehouse_2_stock: "0",
+    low_stock_threshold: "6",
   });
 
   // Advanced Multi-Unit Form State
@@ -128,7 +144,10 @@ export default function MedicalStoreInventory() {
     unit_label: "Tablet",
     strips_per_box: "10",
     units_per_strip: "10",
-    stock_boxes: "5",
+    stock_boxes: "0",
+    store_stock_boxes: "0",
+    warehouse_1_boxes: "0",
+    warehouse_2_boxes: "0",
     stock_qty: "0",
     cost_price_per_box: "450",
     box_sale_price: "600",
@@ -156,18 +175,6 @@ export default function MedicalStoreInventory() {
 
   // Edit Medicine Modal State
   const [editingItem, setEditingItem] = useState(null);
-  const [editFormData, setEditFormData] = useState({
-    medicine_name: "",
-    company_name: "BM Pvt LTD",
-    item_code: "",
-    naration: "",
-    category: "Homeopathic Drops",
-    cost_price: "0",
-    sale_price: "0",
-    store_stock: "0",
-    warehouse_stock: "0",
-    low_stock_threshold: "6",
-  });
 
   // Delete Item State
   const [deletingItem, setDeletingItem] = useState(null);
@@ -190,6 +197,11 @@ export default function MedicalStoreInventory() {
 
   const openEditFormForItem = (item) => {
     setEditingItem(item);
+    const locStocks = item.location_stocks || {};
+    const wh1Qty = locStocks.wh_001 ?? item.warehouse_stock ?? 0;
+    const wh2Qty = locStocks.wh_002 ?? 0;
+    const storeQty = locStocks.wh_str ?? item.store_stock ?? item.stock_qty ?? 0;
+
     setEditFormData({
       medicine_name: item.medicine_name || "",
       company_name: item.company_name || "BM Pvt LTD",
@@ -198,8 +210,9 @@ export default function MedicalStoreInventory() {
       category: item.category || "Homeopathic Drops",
       cost_price: String(item.cost_price_per_box || item.purchase_price || item.cost_price || "0"),
       sale_price: String(item.unit_sale_price || item.box_sale_price || item.sale_price || item.unit_price || "0"),
-      store_stock: String(item.store_stock ?? (item.stock_qty ?? 0)),
-      warehouse_stock: String(item.warehouse_stock ?? 0),
+      store_stock: String(storeQty),
+      warehouse_1_stock: String(wh1Qty),
+      warehouse_2_stock: String(wh2Qty),
       low_stock_threshold: String(item.low_stock_threshold ?? 6),
     });
   };
@@ -266,7 +279,9 @@ export default function MedicalStoreInventory() {
     const costVal = Math.max(0, Number(editFormData.cost_price) || 0);
     const saleVal = Math.max(0, Number(editFormData.sale_price) || 0);
     const storeQty = Math.max(0, Number(editFormData.store_stock) || 0);
-    const godownQty = Math.max(0, Number(editFormData.warehouse_stock) || 0);
+    const wh1Qty = Math.max(0, Number(editFormData.warehouse_1_stock) || 0);
+    const wh2Qty = Math.max(0, Number(editFormData.warehouse_2_stock) || 0);
+    const godownTotal = wh1Qty + wh2Qty;
     const threshold = Math.max(0, Number(editFormData.low_stock_threshold) || 6);
 
     const updated = {
@@ -283,14 +298,15 @@ export default function MedicalStoreInventory() {
       sale_price: saleVal,
       unit_price: saleVal,
       store_stock: storeQty,
-      warehouse_stock: godownQty,
+      warehouse_stock: godownTotal,
       stock_qty: storeQty,
-      total_base_stock: storeQty + godownQty,
+      total_base_stock: storeQty + godownTotal,
       low_stock_threshold: threshold,
       location_stocks: {
         ...(editingItem.location_stocks || {}),
         wh_str: storeQty,
-        wh_001: godownQty,
+        wh_001: wh1Qty,
+        wh_002: wh2Qty,
       },
     };
 
@@ -544,9 +560,10 @@ export default function MedicalStoreInventory() {
 
     const salePrice = parseFloat(quickForm.sale_price) || 0;
     const costPrice = parseFloat(quickForm.cost_price) || (salePrice > 0 ? salePrice * 0.7 : 0);
-    const openingStock = parseInt(quickForm.opening_balance) || 0;
-    const storeStock = parseInt(quickForm.store_stock) || openingStock;
-    const godownStock = parseInt(quickForm.warehouse_stock) || 0;
+    const storeStock = parseInt(quickForm.store_stock) || parseInt(quickForm.opening_balance) || 0;
+    const wh1Stock = parseInt(quickForm.warehouse_1_stock) || 0;
+    const wh2Stock = parseInt(quickForm.warehouse_2_stock) || 0;
+    const godownStock = wh1Stock + wh2Stock;
     const totalBase = storeStock + godownStock;
 
     const payload = {
@@ -570,7 +587,7 @@ export default function MedicalStoreInventory() {
       stock_qty: storeStock,
       store_stock: storeStock,
       warehouse_stock: godownStock,
-      location_stocks: { wh_001: godownStock, wh_str: storeStock },
+      location_stocks: { wh_str: storeStock, wh_001: wh1Stock, wh_002: wh2Stock },
       low_stock_threshold: parseInt(quickForm.minimum_level) || 6,
       expiry_date: "2028-12-31",
     };
@@ -587,6 +604,9 @@ export default function MedicalStoreInventory() {
           medicine_name: "",
           cost_price: "",
           sale_price: "",
+          store_stock: "0",
+          warehouse_1_stock: "0",
+          warehouse_2_stock: "0",
         }));
         if (quickNameRef.current) quickNameRef.current.focus();
       }
@@ -600,16 +620,19 @@ export default function MedicalStoreInventory() {
     e.preventDefault();
     setError("");
 
-    let totalBaseStock = 0;
     const stripsPerBox = parseInt(advForm.strips_per_box) || 1;
     const unitsPerStrip = parseInt(advForm.units_per_strip) || 1;
+    const unitsPerBox = stripsPerBox * unitsPerStrip;
 
-    if (advForm.has_multi_unit) {
-      const boxes = parseInt(advForm.stock_boxes) || 0;
-      totalBaseStock = boxes * (stripsPerBox * unitsPerStrip);
-    } else {
-      totalBaseStock = parseInt(advForm.stock_qty) || 0;
-    }
+    const storeBoxes = parseInt(advForm.store_stock_boxes) || parseInt(advForm.stock_boxes) || 0;
+    const wh1Boxes = parseInt(advForm.warehouse_1_boxes) || 0;
+    const wh2Boxes = parseInt(advForm.warehouse_2_boxes) || 0;
+
+    const storeUnits = storeBoxes * unitsPerBox;
+    const wh1Units = wh1Boxes * unitsPerBox;
+    const wh2Units = wh2Boxes * unitsPerBox;
+    const godownUnits = wh1Units + wh2Units;
+    const totalBaseStock = storeUnits + godownUnits;
 
     const payload = {
       ...advForm,
@@ -618,10 +641,10 @@ export default function MedicalStoreInventory() {
       strips_per_box: stripsPerBox,
       units_per_strip: unitsPerStrip,
       total_base_stock: totalBaseStock,
-      stock_qty: totalBaseStock,
-      store_stock: totalBaseStock,
-      warehouse_stock: 0,
-      location_stocks: { wh_001: 0, wh_str: totalBaseStock },
+      stock_qty: storeUnits,
+      store_stock: storeUnits,
+      warehouse_stock: godownUnits,
+      location_stocks: { wh_str: storeUnits, wh_001: wh1Units, wh_002: wh2Units },
       cost_price_per_box: parseFloat(advForm.cost_price_per_box) || 0,
       box_sale_price: parseFloat(advForm.box_sale_price) || 0,
       strip_sale_price: parseFloat(advForm.strip_sale_price) || 0,
@@ -795,7 +818,7 @@ export default function MedicalStoreInventory() {
   }, [inventory, modalCategoryFilter, modalSearchQuery]);
 
   const filteredInventory = useMemo(() => {
-    return inventory.filter((item) => {
+    const list = inventory.filter((item) => {
       if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
       if (companyFilter !== "all" && item.company_name !== companyFilter) return false;
 
@@ -813,6 +836,13 @@ export default function MedicalStoreInventory() {
         if (!mName && !mCode && !mCat && !mGen && !mComp) return false;
       }
       return true;
+    });
+
+    // Natural Alphanumeric Sort (1, 2, 3... ascending, otherwise A-Z alphabetical)
+    return list.sort((a, b) => {
+      const nameA = (a.medicine_name || "").trim();
+      const nameB = (b.medicine_name || "").trim();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [inventory, searchQuery, categoryFilter, companyFilter, stockStatusFilter]);
 
@@ -1285,34 +1315,65 @@ export default function MedicalStoreInventory() {
                   </div>
                 </div>
 
-                {/* 5. Opening Balance & Date */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <label htmlFor="quick_opening_balance" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Initial Balance
+                {/* 5. Location-Wise Stock Allocation & Reg Date */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <label className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
+                    Location Stocks (Units)
                   </label>
-                  <div className="md:col-span-4 flex items-center gap-2">
-                    <input
-                      id="quick_opening_balance"
-                      name="opening_balance"
-                      type="number"
-                      min="0"
-                      placeholder="25"
-                      value={quickForm.opening_balance}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:outline-none transition-all"
-                    />
-                    <span className="text-xs text-slate-500 font-bold">Units</span>
-                  </div>
-                  <div className="md:col-span-5 flex items-center gap-2">
-                    <span className="text-xs font-black text-slate-700 uppercase">Reg Date:</span>
-                    <input
-                      type="text"
-                      name="registration_date"
-                      value={quickForm.registration_date}
-                      onChange={handleQuickChange}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100"
-                    />
+                  <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {/* Store Counter Stock */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-teal-800 uppercase">🏪 Store Counter</span>
+                      </div>
+                      <input
+                        id="quick_store_stock"
+                        name="store_stock"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={quickForm.store_stock}
+                        onChange={handleQuickChange}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                        className="w-full border border-teal-300 rounded-xl px-3 py-1.5 text-xs font-black text-teal-900 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Warehouse 1 (Lajpat Road) Stock */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-blue-800 uppercase">🏢 WH-1 (Lajpat Rd)</span>
+                      </div>
+                      <input
+                        id="quick_warehouse_1_stock"
+                        name="warehouse_1_stock"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={quickForm.warehouse_1_stock}
+                        onChange={handleQuickChange}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                        className="w-full border border-blue-300 rounded-xl px-3 py-1.5 text-xs font-black text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Warehouse 2 (Usama) Stock */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-purple-800 uppercase">🏢 WH-2 (Usama)</span>
+                      </div>
+                      <input
+                        id="quick_warehouse_2_stock"
+                        name="warehouse_2_stock"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={quickForm.warehouse_2_stock}
+                        onChange={handleQuickChange}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                        className="w-full border border-purple-300 rounded-xl px-3 py-1.5 text-xs font-black text-purple-900 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1520,11 +1581,28 @@ export default function MedicalStoreInventory() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-2">
-                  <div className="flex flex-col gap-1 bg-white p-3.5 rounded-2xl border border-teal-100">
-                    <label htmlFor="adv_stock_boxes" className="text-xs font-bold text-teal-950">Stock Boxes</label>
-                    <input id="adv_stock_boxes" name="stock_boxes" type="number" min="0" placeholder="5" value={advForm.stock_boxes} onChange={handleAdvChange} className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold" />
+                {/* Multi-Location Box Stock Allocation */}
+                <div className="bg-white p-4 rounded-2xl border border-teal-200 space-y-3">
+                  <div className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                    Location-Wise Initial Box Stock Allocation
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex flex-col gap-1 bg-teal-50/50 p-3 rounded-xl border border-teal-200">
+                      <label htmlFor="adv_store_stock_boxes" className="text-xs font-black text-teal-900">🏪 Store Counter Boxes</label>
+                      <input id="adv_store_stock_boxes" name="store_stock_boxes" type="number" min="0" placeholder="0" value={advForm.store_stock_boxes} onChange={handleAdvChange} className="border border-teal-300 rounded-xl px-3 py-1.5 text-xs font-black bg-white focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                    </div>
+                    <div className="flex flex-col gap-1 bg-blue-50/50 p-3 rounded-xl border border-blue-200">
+                      <label htmlFor="adv_warehouse_1_boxes" className="text-xs font-black text-blue-900">🏢 WH-1 (Lajpat Rd) Boxes</label>
+                      <input id="adv_warehouse_1_boxes" name="warehouse_1_boxes" type="number" min="0" placeholder="0" value={advForm.warehouse_1_boxes} onChange={handleAdvChange} className="border border-blue-300 rounded-xl px-3 py-1.5 text-xs font-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div className="flex flex-col gap-1 bg-purple-50/50 p-3 rounded-xl border border-purple-200">
+                      <label htmlFor="adv_warehouse_2_boxes" className="text-xs font-black text-purple-900">🏢 WH-2 (Usama) Boxes</label>
+                      <input id="adv_warehouse_2_boxes" name="warehouse_2_boxes" type="number" min="0" placeholder="0" value={advForm.warehouse_2_boxes} onChange={handleAdvChange} className="border border-purple-300 rounded-xl px-3 py-1.5 text-xs font-black bg-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                   <div className="flex flex-col gap-1 bg-white p-3.5 rounded-2xl border border-teal-100">
                     <label htmlFor="adv_box_sale_price" className="text-xs font-bold text-teal-950">Box Rate (Rs)</label>
                     <input id="adv_box_sale_price" name="box_sale_price" type="number" min="0" placeholder="600" value={advForm.box_sale_price} onChange={handleAdvChange} className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold" />
@@ -2839,42 +2917,54 @@ export default function MedicalStoreInventory() {
                   </div>
                 </div>
 
-                {/* Stock Counts Box */}
-                <div className="sm:col-span-2 bg-teal-50/60 p-4 rounded-2xl border border-teal-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Stock Counts Box with Isolated Location Breakdown */}
+                <div className="sm:col-span-2 bg-teal-50/60 p-4 rounded-2xl border border-teal-200 grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <label className="text-[11px] font-black text-teal-950 uppercase tracking-wider">
-                      Counter Stock (POS)
+                      🏪 Store Counter
                     </label>
                     <input
                       type="number"
                       min="0"
                       value={editFormData.store_stock}
                       onChange={(e) => setEditFormData({ ...editFormData, store_stock: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-xl border border-teal-300 bg-white font-mono font-bold text-xs text-slate-900"
+                      className="w-full px-3 py-1.5 rounded-xl border border-teal-300 bg-white font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[11px] font-black text-teal-950 uppercase tracking-wider">
-                      Godown Stock (Warehouse)
+                    <label className="text-[11px] font-black text-blue-950 uppercase tracking-wider">
+                      🏢 WH-1 (Lajpat Rd)
                     </label>
                     <input
                       type="number"
                       min="0"
-                      value={editFormData.warehouse_stock}
-                      onChange={(e) => setEditFormData({ ...editFormData, warehouse_stock: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-xl border border-teal-300 bg-white font-mono font-bold text-xs text-slate-900"
+                      value={editFormData.warehouse_1_stock}
+                      onChange={(e) => setEditFormData({ ...editFormData, warehouse_1_stock: e.target.value })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-blue-300 bg-white font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[11px] font-black text-teal-950 uppercase tracking-wider">
-                      Low Stock Threshold
+                    <label className="text-[11px] font-black text-purple-950 uppercase tracking-wider">
+                      🏢 WH-2 (Usama)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editFormData.warehouse_2_stock}
+                      onChange={(e) => setEditFormData({ ...editFormData, warehouse_2_stock: e.target.value })}
+                      className="w-full px-3 py-1.5 rounded-xl border border-purple-300 bg-white font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-black text-amber-950 uppercase tracking-wider">
+                      ⚠️ Low Alert
                     </label>
                     <input
                       type="number"
                       min="0"
                       value={editFormData.low_stock_threshold}
                       onChange={(e) => setEditFormData({ ...editFormData, low_stock_threshold: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-xl border border-teal-300 bg-white font-mono font-bold text-xs text-slate-900"
+                      className="w-full px-3 py-1.5 rounded-xl border border-amber-300 bg-white font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
                 </div>
