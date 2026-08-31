@@ -1920,10 +1920,11 @@ export default function DeveloperAdminPanel() {
                               try {
                                 const vpsApiUrl = DEFAULT_API_URL;
                                 const endpoints = [
-                                  `/version.json?_t=${Date.now()}`,
+                                  `https://api.clinicore.me/api/v1/system/version?_t=${Date.now()}`,
                                   `https://clinicore.me/version.json?_t=${Date.now()}`,
-                                  `${vpsApiUrl}/api/v1/system/version?_t=${Date.now()}`,
+                                  `/version.json?_t=${Date.now()}`,
                                 ];
+                                const installedVersion = (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.3";
                                 let foundNewer = false;
                                 for (const ep of endpoints) {
                                   try {
@@ -1931,17 +1932,26 @@ export default function DeveloperAdminPanel() {
                                     if (res.ok) {
                                       const data = await res.json();
                                       const ver = data?.version || data?.data?.version;
-                                      if (ver && ver !== liveAdminVersion) {
-                                        foundNewer = true;
-                                        alert(`🎉 New Software Update Available: v${ver}\n\nCurrent Installed Version: v${liveAdminVersion}\n\nChangelog: ${data?.changelog || "Performance & stability updates"}\n\nClick OK to apply the update immediately!`);
-                                        window.location.reload();
-                                        return;
+                                      if (ver) {
+                                        const parseSem = (v) => {
+                                          const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)/);
+                                          return m ? { major: parseInt(m[1]), minor: parseInt(m[2]), patch: parseInt(m[3]) } : null;
+                                        };
+                                        const s = parseSem(ver);
+                                        const c = parseSem(installedVersion);
+                                        if (s && c && (s.major > c.major || (s.major === c.major && s.minor > c.minor) || (s.major === c.major && s.minor === c.minor && s.patch > c.patch))) {
+                                          foundNewer = true;
+                                          if (confirm(`🎉 New Software Update Available: v${ver}\n\nInstalled Version: v${installedVersion}\nRelease: ${data?.changelog || "Performance & stability updates"}\n\nWould you like to open GitHub release or reload to apply update?`)) {
+                                            window.open("https://github.com/krishbaresha/clinicore/releases/latest", "_blank");
+                                          }
+                                          return;
+                                        }
                                       }
                                     }
                                   } catch (_) {}
                                 }
                                 if (!foundNewer) {
-                                  alert(`✅ You are on the Latest Version (v${liveAdminVersion})!\n\nNo pending updates found on VPS Central Cloud.`);
+                                  alert(`✅ You are on the Latest Version (v${installedVersion})!\n\nNo pending updates found on VPS Central Cloud.`);
                                 }
                               } catch (err) {
                                 alert(`⚠️ Update Check Note: ${err.message}`);

@@ -1,0 +1,171 @@
+Item Code,Medicine Name,Manufacturing Company,Category,Packing / Size,Retail Price (Rs),Trade Cost (Rs),Stock Quantity
+"R-1 to R-75","R No's Specialities (R-1 to R-75)","Dr. Reckeweg Germany","Drops","22 ml",1250,0,0
+"R-76","R-76 (Asthma Drops Forte)","Dr. Reckeweg Germany","Drops","22 ml",1360,0,0
+"R-77","R-77 (Anti-Smoking Drops)","Dr. Reckeweg Germany","Drops","22 ml",1360,0,0
+"R-78","R-78 (Eye Drops)","Dr. Reckeweg Germany","Drops","22 ml",1360,0,0
+"R-81","R-81 (Analgesic Drops)","Dr. Reckeweg Germany","Drops","22 ml",1360,0,0
+"R-41P","R-41 Plain (Sexual Weakness)","Dr. Reckeweg Germany","Drops","22 ml",1700,0,0
+"R-41F","R-41 Forte","Dr. Reckeweg Germany","Drops","22 ml",1490,0,0
+"R-130","R-130","Dr. Reckeweg Germany","Drops","22 ml",2385,0,0
+"R-131","R-131","Dr. Reckeweg Germany","Drops","22 ml",2385,0,0
+"R-182-192","R-182 to R-192","Dr. Reckeweg Germany","Drops","50 ml",2000,0,0
+"R-193","R-193","Dr. Reckeweg Germany","Drops","50 ml",2350,0,0
+"R-96","R-96 (Nasal Spray)","Dr. Reckeweg Germany","Spray","15 ml",1300,0,0
+"R-95-100","R-95 Alfalfa Tonic (100ml)","Dr. Reckeweg Germany","Syrup","100 ml",1300,0,0
+"R-95-500","R-95 Alfalfa Tonic (500ml)","Dr. Reckeweg Germany","Syrup","500 ml",5460,0,0
+"AMB-1000","Ambra 1000 Drops","Dr. Reckeweg Germany","Drops","22 ml",1700,0,0
+"DAM-GOLD","Damia Gold Drops","Dr. Reckeweg Germany","Drops","50 ml",2200,0,0
+"VITA-C","Vita-C 15 Syrup","Dr. Reckeweg Germany","Syrup","250 ml",2620,0,0
+"R-8","R-8 Cough Syrup","Dr. Reckeweg Germany","Syrup","150 ml",1470,0,0
+"R-61","R-61 Ointment","Dr. Reckeweg Germany","Cream / Ointment","85 gm",2730,0,0
+"VITA-C-AMP","Vita-C 15 Forte Ampoules","Dr. Reckeweg Germany","Injections / Ampoules","12 Amp / 10ml",4100,0,0
+"R-17-AMP","R-17 Forte Ampoules","Dr. Reckeweg Germany","Injections / Ampoules","12 Amp / 10ml",4400,0,0
+"LEH-01","AMPHOSCA (FEMALE)","Lehning Laboratories Pharma","Tablets","60 TABS",1990,0,0
+"LEH-02","AMPHOSCA (MALE)","Lehning Laboratories Pharma","Tablets","60 TABS",1990,0,0
+"LEH-03","ANGIPAX TABLETS","Lehning Laboratories Pharma","Tablets","40 TABS",1340,0,0
+"LEH-04","BILLEROL TABLETS","Lehning Laboratories Pharma","Tablets","45 TABS",1640,0,0
+"LEH-05","BIOCARDE DROPS","Lehning Laboratories Pharma","Drops","30 ML",1340,0,0
+"LEH-06","BIOMAG TABLETS (ORANGE)","Lehning Laboratories Pharma","Tablets","90 TABS",2040,0,0
+"LEH-07","CAROMINTHE DROPS","Lehning Laboratories Pharma","Drops","90 ML",1690,0,0
+"LEH-08","DAMIAPAX DROPS","Lehning Laboratories Pharma","Drops","30 ML",1440,0,0
+"LEH-09","DIABENE DROPS","Lehning Laboratories Pharma","Drops","30 ML",1440,0,0
+"LEH-10","DIACURE CAPSULES","Lehning Laboratories Pharma","Capsules","60 CAPS",2190,0,0
+"LEH-L08","L 8 DROPS","Lehning Laboratories Pharma","Drops","30 ML",1590,0,0
+"LEH-L25","L 25 DROPS","Lehning Laboratories Pharma","Drops","30 ML",1590,0,0
+"LEH-L28","L 28 DROPS","Lehning Laboratories Pharma","Drops","30 ML",1590,0,0
+"LEH-L52","L 52 DROPS (Flu & Cold)","Lehning Laboratories Pharma","Drops","30 ML",1590,0,0
+"LEH-L72","L 72 DROPS (Sleep / Anxiety)","Lehning Laboratories Pharma","Drops","30 ML",1590,0,0
+"LEH-L107","L 107 DROPS","Lehning Laboratories Pharma","Drops","30 ML",1590,0,0
+"LEH-L114","L 114 DROPS","Lehning Laboratories Pharma","Drops","30 ML",1590,0,0
+"LEH-11","NERVOPAX TABLETS","Lehning Laboratories Pharma","Tablets","80 TABS",1640,0,0
+"LEH-12","NICO-STOP TABLETS","Lehning Laboratories Pharma","Tablets","60 TABS",1140,0,0
+"LEH-13","PASSIFLORA DROPS","Lehning Laboratories Pharma","Drops","30 ML",1290,0,0
+"LEH-14","PHAPAX DROPS (Headache / Migraine)","Lehning Laboratories Pharma","Drops","30 ML",1540,0,0
+"LEH-15","PHYTOBERRY DROPS","Lehning Laboratories Pharma","Drops","30 ML",1040,0,0
+"LEH-16","PHYTOTUX-H SYRUP","Lehning Laboratories Pharma","Syrup","90 ML",1140,0,0
+"LEH-17","REXORUBIA GRANULES","Lehning Laboratories Pharma","Granules","350 GMS",2490,0,0
+"LEH-18","SANTAHERBA DROPS (Asthma)","Lehning Laboratories Pharma","Drops","30 ML",1440,0,0
+"LEH-19","SINUSPAX TABLETS","Lehning Laboratories Pharma","Tablets","60 TABS",1440,0,0
+"LEH-20","SOLUDOR DROPS","Lehning Laboratories Pharma","Drops","90 ML",1690,0,0
+"LEH-21","TONIC VEGETAL SYRUP 90ML","Lehning Laboratories Pharma","Syrup","90 ML",1040,0,0
+"LEH-22","TONIC VEGETAL SYRUP 250ML","Lehning Laboratories Pharma","Syrup","250 ML",2040,0,0
+"LEH-23","TRIM DROPS","Lehning Laboratories Pharma","Drops","30 ML",1240,0,0
+"LEH-24","TRIM TABLETS","Lehning Laboratories Pharma","Tablets","60 TABS",1240,0,0
+"LEH-25","URARTHONE SYRUP","Lehning Laboratories Pharma","Syrup","250 ML",2190,0,0
+"LEH-26","VINICARDE SYRUP","Lehning Laboratories Pharma","Syrup","250 ML",2490,0,0
+"LEH-27","VOXPAX TABLETS","Lehning Laboratories Pharma","Tablets","60 TABS",1540,0,0
+"HFP-S01","ALFALFA SYRUP 120ML","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S02","ALLERGIC-N SYRUP","HFP Pvt Ltd","Syrup","120 ml",250,0,0
+"HFP-S03","ALLERGIC-S SYRUP","HFP Pvt Ltd","Syrup","120 ml",250,0,0
+"HFP-S04","ASTHAMA H SYRUP","HFP Pvt Ltd","Syrup","120 ml",250,0,0
+"HFP-S05","BIONA TONIC SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S06","BIO # 21 SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S07","BONE PLUS SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S08","COUGH CONTROL SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S09","COUGH CONTROL (SF) SUGAR FREE","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S10","COUGH CONTROL (HONEY)","HFP Pvt Ltd","Syrup","120 ml",250,0,0
+"HFP-S11","DYROFEN SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S12","FEVER KILL SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S13","FERRUM COMPOSE SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S14","GASTROGENA SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S15","GASTROGENA + PODINA SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S16","GLYCO MAX SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S17","GINGO MAX SYRUP","HFP Pvt Ltd","Syrup","120 ml",250,0,0
+"HFP-S18","GROWTH UP BABY TONIC","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S19","GYNO PLUS SYRUP","HFP Pvt Ltd","Syrup","120 ml",230,0,0
+"HFP-S20","URONAL SYRUP","HFP Pvt Ltd","Syrup","120 ml",250,0,0
+"HFP-S250-1","ALFALFA SYRUP 250ML","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-2","ALTRIS CARDIAL SYRUP","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-3","AVENA FORT TONIC","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-4","CALCI + SYRUP","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-5","GASTROGENA + PODINA 250ML","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-6","JAM-E-QALB SYRUP","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-7","NERVO + SYRUP","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-8","POWER INN SYRUP","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-9","SHARBAT FAULAD","HFP Pvt Ltd","Syrup","250 ml",375,0,0
+"HFP-S250-10","URONAL SYRUP 250ML","HFP Pvt Ltd","Syrup","250 ml",395,0,0
+"HFP-TAB1","COLD CURE TABLETS (100 Tab)","HFP Pvt Ltd","Tablets","100 Tab",375,0,0
+"HFP-TAB2","BED WEDDING TABLETS (100 Tab)","HFP Pvt Ltd","Tablets","100 Tab",275,0,0
+"HFP-TAB3","GASTROGENA TABLETS (30 Tab)","HFP Pvt Ltd","Tablets","30 Tab",175,0,0
+"HFP-TAB4","IOMAX TABLETS (20 Tab)","HFP Pvt Ltd","Tablets","20 Tab",245,0,0
+"HFP-TAB5","CALCI + TABLETS (30 Tab)","HFP Pvt Ltd","Tablets","30 Tab",450,0,0
+"HFP-DRP1","KIDNEY GOLD DROPS 20ML","HFP Pvt Ltd","Drops","20 ml",575,0,0
+"HFP-DRP2","KOREAN GINSENG TONIC 120ML","HFP Pvt Ltd","Syrup","120 ml",1170,0,0
+"HFP-DRP3","KOREAN GINSENG TONIC 250ML","HFP Pvt Ltd","Syrup","250 ml",2170,0,0
+"HFP-DRP4","HEPA GYARD FORT 120ML","HFP Pvt Ltd","Syrup","120 ml",695,0,0
+"HFP-DRP5","WEIGHT GAINER CAPSULES (60 Cap)","HFP Pvt Ltd","Capsules","60 Cap",1175,0,0
+"HFP-DRP6","SEXO FORT CAPSULES (60 Cap)","HFP Pvt Ltd","Capsules","60 Cap",1575,0,0
+"HFP-DRP7","HORSE POWER TILLA 20ML","HFP Pvt Ltd","Oil / Tilla","20 ml",1275,0,0
+"GHR-01","GHR 1 (Male Vitality / Premature Ejaculation)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-02","GHR 2 (Diabetes / Sugar Complications)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-03","GHR 3 (Obesity / Metabolism Booster)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-04","GHR 4 (Kidney & Bladder Stones)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-05","GHR 5 (Chronic Constipation / IBS-C)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-06","GHR 6 (Uric Acid / Gout / Joint Pain)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-07","GHR 7 (Thyroid Diseases / Hypo & Hyper)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-08","GHR 8 (Child Stunting & Malnutrition)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-09","GHR 9 (Sciatica / Nerve Pain)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-10","GHR 10 (Kidney & Bladder Infection / Edema)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-11","GHR 11 (Liver & Gallbladder Stones / Hepatitis)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-12","GHR 12 (Eczema / Skin Itching & Allergy)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-13","GHR 13 (Female Menstrual Complaints / PMS)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-14","GHR 14 (Anemia / Blood Deficiency)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-15","GHR 15 (General & Nervous Weakness)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-16","GHR 16 (Diarrhea / IBS-D / Dysentery)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-17","GHR 17 (Asthma / Bronchitis)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-18","GHR 18 (Prostate Enlargement / BPH)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-19","GHR 19 (Piles / Hemorrhoids / Varicose Veins)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-20","GHR 20 (Tonsillitis / Throat Swelling)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-21","GHR 21 (Heart Diseases / Palpitation)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-22","GHR 22 (Anxiety / Stress / Insomnia)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-23","GHR 23 (Memory Weakness / Brain Booster)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-24","GHR 24 (Acne / Pimples)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-25","GHR 25 (Warts / Corns / Skin Growths)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-26","GHR 26 (GERD / Gastric Acidity)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-27","GHR 27 (Sinusitis / Toothache Infection)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-28","GHR 28 (Eye Weakness / Cataract)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-29","GHR 29 (Hair Fall / Premature Greying)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-31","GHR 31 (Neuralgia / Nerve Inflammation)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-32","GHR 32 (Nasal Allergy / Sneezing)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-33","GHR 33 (Bed Wetting / Incontinence)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-34","GHR 34 (High Cholesterol / Lipid Control)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-35","GHR 35 (Psoriasis / Dry Scaling)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-37","GHR 37 (Chronic Cough / Bronchial Irritation)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-38","GHR 38 (Flu / Cold / Nasal Congestion)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-39","GHR 39 (Hypertension / High BP)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-40","GHR 40 (Appetite & Weight Gain Booster)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-41","GHR 41 (Migraine / Severe Headache)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"GHR-42","GHR 42 (Otitis Media / Ear Discharge & Tinnitus)","GHR Homoeo Pharma","Drops","30 ml",350,0,0
+"KC-A2.13","Acne Cure Cream","Kent Homoeopathic Pharmacy","Cream / Ointment","30gm",160,0,0
+"KC-A3.13","Acne Safe Ointment","Kent Homoeopathic Pharmacy","Cream / Ointment","20gm",150,0,0
+"KC-A1.20","Acnetop Capsules","Kent Homoeopathic Pharmacy","Capsules","20's",250,0,0
+"KC-E2.09","Eastlive Tonic Syrup","Kent Homoeopathic Pharmacy","Syrup","120ml",500,0,0
+"KC-A1.01","Action-1 Drops","Kent Homoeopathic Pharmacy","Drops","30ml",230,0,0
+"KC-A2.01","Action-2 Spray","Kent Homoeopathic Pharmacy","Spray","35gm",230,0,0
+"KC-A2.27","Action-3 Cream","Kent Homoeopathic Pharmacy","Cream / Ointment","35gm",220,0,0
+"KC-A4.03","Add Plus Super Complex Spray","Kent Homoeopathic Pharmacy","Spray","120ml",260,0,0
+"KC-A1.20","Add Plus Super Complex Capsule","Kent Homoeopathic Pharmacy","Capsules","20's",250,0,0
+"KC-A1.22","Addstop Slimming 21-day Program","Kent Homoeopathic Pharmacy","Drops","90's",790,0,0
+"KC-A2.16","Alfalfa Extra Drops","Kent Homoeopathic Pharmacy","Drops","60ml",170,0,0
+"KC-A1.07","Alfalfa Forte Syrup 120ml","Kent Homoeopathic Pharmacy","Syrup","120ml",230,0,0
+"KC-A1.05","Alfalfa Forte Syrup 250ml","Kent Homoeopathic Pharmacy","Syrup","250ml",440,0,0
+"KC-A3.09","Alfalfa Tonic Syrup","Kent Homoeopathic Pharmacy","Syrup","120ml",230,0,0
+"KC-A1.09","Alfalfa Cupules","Kent Homoeopathic Pharmacy","Capsules","30's",335,0,0
+"KC-A2.02","Allergy Relief Nasal Spray","Kent Homoeopathic Pharmacy","Spray","15ml",220,0,0
+"KC-B1.07","Baby Tonic Syrup","Kent Homoeopathic Pharmacy","Syrup","60ml",170,0,0
+"KC-B1.05","Baby Tonic Syrup 120ml","Kent Homoeopathic Pharmacy","Syrup","120ml",250,0,0
+"KC-B1.14","Bed Wetting Tablets","Kent Homoeopathic Pharmacy","Tablets","30's",240,0,0
+"KC-B1.09","Bonevil Tonic Syrup","Kent Homoeopathic Pharmacy","Syrup","120ml",230,0,0
+"KC-B1.07","Berberis Renal Drops","Kent Homoeopathic Pharmacy","Drops","30ml",240,0,0
+"KC-C1.07","Calcium Liquid","Kent Homoeopathic Pharmacy","Syrup","250ml",420,0,0
+"KC-C1.14","Calcium Max Liquid","Kent Homoeopathic Pharmacy","Syrup","1000ml",1500,0,0
+"KC-C9.30","Calcium Tab (Orange Flavored)","Kent Homoeopathic Pharmacy","Tablets","75's",185,0,0
+"KC-C8.27","Calcium Tablets","Kent Homoeopathic Pharmacy","Tablets","150's",180,0,0
+"KC-C19.43","Calendula Cream (Tube)","Kent Homoeopathic Pharmacy","Cream / Ointment","35gm",165,0,0
+"KC-C22.02","MFI (Computer Eye Drops)","Kent Homoeopathic Pharmacy","Eye / Ear Drops","40's",260,0,0
+"KC-C16.38","Calendula Extra (Cream)","Kent Homoeopathic Pharmacy","Cream / Ointment","200gm",425,0,0
+"KC-C11.38","Calcium Max Cream","Kent Homoeopathic Pharmacy","Cream / Ointment","15gm",115,0,0
+"KC-C20.02","Cineraria Maritima Eye Drops","Kent Homoeopathic Pharmacy","Eye / Ear Drops","10ml",200,0,0
+"KC-C17.20","Crataegus Heart Capsules","Kent Homoeopathic Pharmacy","Capsules","30's",260,0,0
+"KC-C34.03","Crataegus Gold Drops","Kent Homoeopathic Pharmacy","Drops","30ml",240,0,0
+"KC-D2.09","Damiana Tonic","Kent Homoeopathic Pharmacy","Syrup","120ml",240,0,0

@@ -1,0 +1,264 @@
+Party Code,Party Name,Account Type,City,Phone,Salesman,Opening Balance
+"1","BM Pvt LTD","Supplier","","","",0
+"2","Counter","Customer","","","",0
+"3","Cash In Hand","Cash","","","",0
+"4","MEKTUM Pvt Ltd","Supplier","","","",0
+"5","BLOSSOM","Supplier","","","",0
+"6","Paul Brooks Homoeo Lab","Supplier","","","",0
+"7","German Homeopathic Store (Dr Saqib Khan)","Local Market","","","",0
+"8","Local Purchase","Supplier","","","",0
+"9","Sufi Homeopathic Store","Local Market","","","",0
+"10","Dr Asif Homeopathic Clinic & Store","Customer","","","",0
+"11","HFP Private Limited","Supplier","","","",0
+"12","Hassan Homeopathic Store","Local Market","","","",0
+"13","Shop Expense","Expense","","","",0
+"14","Noman Homeopathic Store","Local Market","","","",0
+"15","Bilal Homoeopathic Store","Local Market","","","",0
+"16","Hamza Personal","Expense","","","",0
+"17","Sindh Homeopathic Store","Local Market","","","",0
+"18","Rafay Homeopathic Store","Local Market","","","",0
+"19","Ali Danish Homoeopathic Store","Local Market","","","",0
+"20","B.H.P Laboratory (PVT) LTD","Supplier","","","",0
+"21","Bilty Expense","Expense","","","",0
+"22","Muslim Homoeopathic Store LPR","Local Market","","","",0
+"23","ZAM ZAM Homoeo Pharma","Supplier","","","",0
+"24","Sale Tax","Other","","","",0
+"25","F.O.R","Other","","","",0
+"26","Dr Asif Personal","Cash","","","",0
+"27","Dr Asif (Investment)","Capital","","","",0
+"29","Faqir","Expense","","","",0
+"29","Discount","Expense","","","",0
+"30","Kent Homoeopathic Pharmacy","Supplier","","","",0
+"31","Chand Homoeopathic Store","Local Market","","","",0
+"32","Tawaqal Homoeopathic Store","Local Market","","","",0
+"33","(GHR) HOMOEO PHARMAA","Supplier","","","",0
+"34","H/Dr Yousuf (Kotri)","Kotri","","","",0
+"35","Dr Aftab Ahmed (HYD)","Customer","","","",0
+"36","L/Dr Sakina Aslam TMK","TMK","","","",0
+"37","H/Dr Danish karmani","SANGER","","","",0
+"38","H/Dr Azger Mughal","Khaber","","","",0
+"39","Eagle Homoeo & Harbal Pharma","Supplier","","","",0
+"40","Dua Homoeopathic Store","Local Market","","","",0
+"41","Sindh H/S Badin","Customer","","","",0
+"42","NP BM (Pvt.) Limited","Supplier","","","",0
+"43","L/Dr.Sofia Qamar (kotri)","Kotri","","","",0
+"44","Faraz Ahmed SPO BM","Sales Man","","","",0
+"45","L/Dr Najma Bloch","Hyderabad","","","",0
+"46","Sohail Homoeo & Harbal Store","Local Market","","","",0
+"47","M.Ayobe Qurashi","Customer","","","",0
+"48","NazZ Homoeo & Harbal Pharmacy","Supplier","","","",0
+"49","Shalimar Homoeo Store LPR","Local Market","","","",0
+"50","Masood Homoeo Pharma PVT","Supplier","","","",0
+"51","Al Sehat Homoeo/Pharma","Supplier","","","",0
+"52","Sulaman Madical Store","Chamber","","","",0
+"53","Muneer Medical Store","Jhand Mori","","","",0
+"54","Muslim Medical Store","Jhand Mori","","","",0
+"55","Talpur Medical Store (Jahan Mori)","Jhand Mori","","","",0
+"56","Wasaan Medical Store","Jhand Mori","","","",0
+"57","Zulfiqar (Jahan Mori)","Jahand Mori","","","",0
+"58","Waheed Bhai","Sales Man","","","",0
+"59","Star Homoeo Store","Local Market","","","",0
+"60","Dr Farhad Khanoot","Khanoot","","","",0
+"65","T.S Laboratories","Supplier","","","",0
+"66","Pakistan H/S LPR","Local Market","","","",0
+"67","Dr Shabbir (Odero Lal)","Odero Lal","","","",0
+"68","Jameel H/S LPR","Local Market","","","",0
+"69","W.S Pharmacy & Research Center","Supplier","","","",0
+"70","Dr Zahoor T.Adam","T.Adam","","","",0
+"71","Sindh Homoeo Store (Noabad)","Noabad","","","",0
+"72","Baba Homoeo Store","Local Market","","","",0
+"73","Dr Ghulam Asghar  (Pir Jo Goth)","C/O Waheed Bhai","","","",0
+"74","Hakeem Sikander Ameer","Supplier","","","",0
+"75","Abdul Wahab Pansar Store","C/O Waheed Bhai","","","",0
+"76","Mr Waheed HFP SPO","Customer","","","",0
+"77","Sheroze H/S Muzzamil","Local Market","","","",0
+"78","Makka Homoeopathic Store Nawabshah","N/S","","","",0
+"79","Dr Ajaab Khan (Khanoot)","Khanoot","","","",0
+"80","Dr Waqeel (KHANOOT)","KHANOOT","","","",0
+"81","Dr Adalat Khan (Khanoot)","Khanoot","","","",0
+"82","Dr Anwar Khan (Khanoot)","Khanoot","","","",0
+"83","Dr Saleem Qazi (NAWABSHAH)","NAWABSHAH","","","",0
+"84","Rahib Madical Store (Tando Bhago)","Tando Bhago","","","",0
+"85","Hakeem Dainsh (kunri)","Kunri","","","",0
+"86","Dr Jamaal Nasir (T.M.K)","TMK","","","",0
+"87","Ameer Madical Store (T.M.K)","TMK","","","",0
+"88","Dr Ghulam Qadir Baloch (GULAB LAGARI)","Gulab Lagari","","","",0
+"89","Dr Bhagwan DazZ (RATO DERO)","Rato Dero","","","",0
+"90","Al-Haseeb Clanic (Hala)","Hala","","","",0
+"91","Muzamil Homoeo Store (D.K.M)","D.K.M","","","",0
+"92","Dr Dav Kumar (Odero Lal)","Odero Lal","","","",0
+"93","Dr Ghulam Qadir Baloch (Ghulab Lagri)","Ghulab Lagari","","","",0
+"94","Ameer M/S (TMK)","TMK","","","",0
+"95","Panjetan Pak M/S (DKM)","D.K.M","","","",0
+"96","Bismillah Pansar (Pinjra Pol) HYD","Hyderabad","","","",0
+"97","Gul M/S (Tando Jaam)","Tando Jaam","","","",0
+"98","Danish Homoeo Store (Shadadpur)","SHADADPUR","","","",0
+"99","Al-Khadija Homoeo Store (HYD)","Local Market","","","",0
+"100","Dr Talib-ud-Din (Moro)","Moro","","","",0
+"101","Sakhi Shahbaz Homoeo Store (Moro)","Moro","","","",0
+"102","Dr Shazad Awan (Qazi Ahmed)","Qazi Ahmed","","","",0
+"103","Dr Ghafoor Malik Aman M/S (SANJHORO)","Sanjhoro","","","",0
+"104","Dr Adil (hali road)","Hyderabad","","","",0
+"105","Fazal Medical Store (Jahan Mori)","Jahan Mori","","","",0
+"106","Zulfiqar Medical Store (Jahan Mori)","Jahan Mori","","","",0
+"107","Mueer Medical Store (Jahan Mori)","Jahan Mori","","","",0
+"108","Wasan Medical Store (Jahan Mori)","Jahan Mori","","","",0
+"109","Naseer Medical Store (Jahan Mori)","Jahan Mori","","","",0
+"110","Mughal H/S","Local Market","","","",0
+"111","Dr Shah Nawaz (BANDHI)","Bandhi","","","",0
+"112","Hakeem Abid Ali (GOLARCHI)","GOLARCHI","","","",0
+"61","H/Dr.Irfan (T.A)","T.Adam","","","",0
+"62","Dr Akram (Rehman Clinic) (Shahdadpure)","SHADADPUR","","","",0
+"63","Dr Asif Blossom","Sales Man","","","",0
+"64","Cantimade Traders","Supplier","","","",0
+"113","Bhej Pagara Madical Store (SANGER)","SANGER","","","",0
+"114","Ali Homoeo Store (SANGER)","SANGER","","","",0
+"115","Hakeem Nanumal Pansar Store (PANOAQIL)","PANOAQIL","","","",0
+"116","Ghazi M/S (Kumba)","Kumba","","","",0
+"117","kashi ChachuU","Meneger","","","",0
+"118","DR Shar Bahdur (Khanoot)","Khanoot","","","",0
+"119","Al-Shaffa Pansar (Phulali)","Hyderabad","","","",0
+"120","Fazal M/S (JHAND-MORI)","Jhand Mori","","","",0
+"121","Chotay MamuU","Saleman","","","",0
+"122","AL-Shaffa H/S (KHANOOT)","Khanoot","","","",0
+"123","Bismillah M/S (DHARKI)","DHARKI","","","",0
+"124","Hassan Homoeo Clinic Herbal Store (ODEROLAL)","Odero lal","","","",0
+"125","Hoor M/S Lajpat Road","Local Market","","","",0
+"126","Faran Pharmacy","Supplier","","","",0
+"127","Dr Ahsan Mohsin H/S (SANGAR)","SANGER","","","",0
+"128","Dr Alam (Tulsi) TMK","TMK","","","",0
+"129","Pawan M/S JAMSABAD (KGM)","KGM","","","",0
+"130","Al-Fareed H/S Shehdadpur","SHADADPUR","","","",0
+"131","Aslam Belani (Tnado Bago)","Tando Bhago","","","",0
+"132","Dr Rajab Hassaan H/S (TandoBago)","Tando Bhago","","","",0
+"133","Maqsood M/S (TANDO ALAYAR)","Tando Alayar","","","",0
+"134","Dr Ismail Wasti  (TMK)","TMK","","","",0
+"135","M.A Herbal Pharmacy Kerachi","Supplier","","","",0
+"136","Al-Madina M/S (New Dambalo)","Dambalo","","","",0
+"137","Dr Rasheed Kashmiri (Tando Alayar)","Tando Alayar","","","",0
+"138","Rooshan Pansar (Tando Alayar)","Tando Alayar","","","",0
+"139","Al-Fareed H/S DR Hader Garwar","Tando Alayar","","","",0
+"140","WajuU Bhai W/S Saleman","Saleman","","","",0
+"141","Jindran M/S (Tando Adam)","T.Adam","","","",0
+"142","Dr Hanif Jokhiyo (Dolat Pur)","Dolat Pur","","","",0
+"143","Baloch Homoeo Clinic (Ghulab Lagari)","Ghulab Lagari","","","",0
+"144","Dr Shahid Ahmed (Tando Alayar)","Tando Alayar","","","",0
+"145","Talha M/S (TMK)","TMK","","","",0
+"146","MADINA M/S (TMK)","TMK","","","",0
+"147","Shokat M/S (TMK)","TMK","","","",0
+"148","Mehran H/S Dr Akram (Shadadpur)","SHADADPUR","","","",0
+"149","Hakeem Abdul Rehman (khanoot)","Khanoot","","","",0
+"150","Dr Manzoor (Shah Pur Janiya)","S P J","","","",0
+"151","Ali Khan M/S (TALHAR)","Talhar","","","",0
+"152","Dr Tayyab (Tando Adam)","T.Adam","","","",0
+"153","Hassan Homoeo Store (Larkana)","Larkana","","","",0
+"154","Dr Aslam (Qazi Ahmed)","Qazi Ahmed","","","",0
+"155","Dr Usman ( Nawab Wali Muhammed )","Qazi Ahmed","","","",0
+"156","Sarwari Pansar (Noabad)","Noabad","","","",0
+"157","Hamza Sohail H/S (Lajpat Road)","Hyderabad","","","",0
+"158","Dr Abdul Gaffar (SHADADPUR)","SHADADPUR","","","",0
+"159","Zain Dawa Khana (GOLARCHI)","GOLARCHI","","","",0
+"160","M/S Labortaries","Supplier","","","",0
+"161","DR Maqsood (Larkana)","Larkana","","","",0
+"162","Suni Madical Store (Tando Alayar)","Tando Alayar","","","",0
+"163","Mehmood Madical Store (Noabad)","Noabad","","","",0
+"164","Dr Alam Sher (Khanoot)","Khanoot","","","",0
+"165","Shahid Medical Store (Chambar)","Chamber","","","",0
+"166","Dr Yousuf Arain (Dambalo)","Dambalo","","","",0
+"167","Tahir Kent SPO","Sales Man","","","",0
+"168","JR PHARMA","Supplier","","","",0
+"169","Haji Sawan","Badain","","","",0
+"170","Dr Amir Sidiqui","Hyderabad","","","",0
+"171","Dr Abdul Ahakoor Memon","Matyari","","","",0
+"172","Dr Abdul Shakoor Memon","Matyari","","","",0
+"173","Dr Rajesh Kumar","TMK","","","",0
+"174","DR Danish kirmani","SANGER","","","",0
+"175","Dr Tayyab Ansari","T.Adam","","","",0
+"176","Dr Naseer Ahmed","Hyderabad","","","",0
+"177","Affan Bilal H/S (HYD)","Hyderabad","","","",0
+"178","Affan Muslim H/S (HYD)","Hyderabad","","","",0
+"179","Affan Noman H/S","Hyderabad","","","",0
+"180","Affan Shalimar H/S","Hyderabad","","","",0
+"181","Affan Dua H/S","Hyderabad","","","",0
+"182","Affan Chand H/S","Hyderabad","","","",0
+"183","Dr Abdul Ghani (Mehar)","Mehar","","","",0
+"184","Dr Rafeeq Bulandi","Hyderabad","","","",0
+"185","Iqbal (MASOOD)","Hyderabad","","","",0
+"186","Dr Parwar","Hyderabad","","","",0
+"187","DR SHAHI MAND KHANOT","Khanoot","","","",0
+"188","Danish Medical Store (Badin)","Badain","","","",0
+"189","GULSHAN M/Store (T.M.K)","TMK","","","",0
+"190","AFFAN QURESHI","Hyderabad","","","",0
+"191","Dr Ameen","Khanoot","","","",0
+"192","Sakhi Shahbaz H/Store (Moro)","Moro","","","",0
+"193","DR Hassan (sanger)","SANGER","","","",0
+"194","DR SUHAIB RASHEED (Dar ul shifa H/S)","Larkana","","","",0
+"195","Akram Pansar Tando Allah Yar","Tando Alayar","","","",0
+"196","Shahbaz Homoeo Store (Mirpur)","Mirpur","","","",0
+"197","Dr Aslam HYDERABAD","Hyderabad","","","",0
+"198","Dr kashif","Local Market","","","",0
+"199","DR KASHIF GERMAN","Local Market","","","",0
+"200","Khilji Dawakhana (Shahdadpur)","SHADADPUR","","","",0
+"201","Taj homeo store","Mirpur","","","",0
+"202","Latif HomoeoPathic Store (Nawabshah)","NAWABSHAH","","","",0
+"203","DR BASHIR KHAMBO","Tando Alayar","","","",0
+"204","DR Munawar (badin)","Badain","","","",0
+"205","Dr Atibar Hussain (Hasnain Homoeo Clinic) Panoaqil","PANOAQIL","","","",0
+"206","Memon Medical store (TANDO BHAGO)","Tando Bhago","","","",0
+"207","GR PVT (isalamabad pharma)","Supplier","","","",0
+"208","Dr Abdul Muiz","Mirpur","","","",0
+"209","Sindh Medical store (Tando Alayar)","Tando Alayar","","","",0
+"210","Roshan pansar (GAMBAT)","(GAMBAT)","","","",0
+"211","Dr Lal Bux Gopang (Piro Lashari)","Piro Lashari","","","",0
+"212","Boric pharma","Supplier","","","",0
+"213","Dr Atta ullah Thebo German Homoeo Clinic (Talhar)","Talhar","","","",0
+"214","Dr Manzoor Ahmed (DolatPur)","Dolat Pur","","","",0
+"215","Kosar M.S (T.M.K)","TMK","","","",0
+"216","Hakeem Qurban Ali (T.G.A)","Tando Ghulam Ali","","","",0
+"217","Areez pansar store (Tando Alayar)","Tando Alayar","","","",0
+"218","Danish saleman","Hyderabad","","","",0
+"219","Krishna M/S (Noabad)","Noabad","","","",0
+"220","DR Jabbar (Tando Jaam)","Tando Jaam","","","",0
+"221","Dr manzoor Ahmed (Tando Jaam)","Tando Jaam","","","",0
+"222","Jai Pur M/S (SANGER)","SANGER","","","",0
+"223","Rafay H/S (Larkana)DR Abdul Malik","Larkana","","","",0
+"224","Public Pharma (faisalabad)","Supplier","","","",0
+"225","Dr Shair Alam (Khairpur)","Khairpur Miras","","","",0
+"226","DR Imran Qureshi (sanger)","SANGER","","","",0
+"227","Mehtab H/S (DR Parwaiz Bhatti)","SHADADPUR","","","",0
+"228","Muslim M/S (Tando Allahyar)","Tando Alayar","","","",0
+"229","saleem pansar","Tando Alayar","","","",0
+"230","DR Arbaz Baig(hyderabad)","Hyderabad","","","",0
+"231","Shayan Pansar (Tando Bhago)","Tando Bhago","","","",0
+"232","L/DR Parveen Lalu Lashari (kali mori)","Hyderabad","","","",0
+"233","Hakeem Abdul Muqeem (Al Hafiz Pansar)(khipro)","Khipro","","","",0
+"234","DR Abdul Hameed (Tando alayar)","Tando Alayar","","","",0
+"235","Kamal","Supplier","","","",0
+"236","Dr Muhakum uddin Abro (Hala)","Hala","","","",0
+"237","Habibullah Pansar Store (Hyderabad)","Hyderabad","","","",0
+"238","Fluger","Supplier","","","",0
+"239","Dr Zulfiqar Ali       ( 03003236075)","NAWABSHAH","","","",0
+"240","Hakim Mohammed Iqbal (03403000212)","Tharparkar","","","",0
+"241","Dr Usama Ali (0310-3200577)","Hyderabad","","","",0
+"242","Dr Faraz (0313-0325200)","Hyderabad","","","",0
+"243","AL Rasheed Clinic (DR Mehrunissa)","Tharushah","","","",0
+"244","Sindh Homeo Store (Sukkar)","Sukkar","","","",0
+"245","Dr Tasawar Hussain (Gularchi)","GOLARCHI","","","",0
+"246","Armaa pharma","Supplier","","","",0
+"247","Medii Trades","Supplier","","","",0
+"248","DR Saleem","SANGER","","","",0
+"249","Faiz medical store","Jahand Mori","","","",0
+"250","Dr iqbal (Muzammil H/S)","Darya Khan Mari","","","",0
+"251","DR Shahid Ahmed","Bashirabad","","","",0
+"252","DR Bashir Ahmed (Bashirabad)","Bashirabad","","","",0
+"253","Dr Aijaz","SHADADPUR","","","",0
+"254","Memon H/S (Herabad)","Hyderabad","","","",0
+"255","Dr Sarwar (0341- 3486614)","Tando Jaam","","","",0
+"256","Jawaid Pansar Store (K.G.M)","KGM","","","",0
+"257","Poshia Clinic (jahand mori)","Jahand Mori","","","",0
+"258","Parveez M/S (jahand mori)","Jahand Mori","","","",0
+"259","Manooj M/S (jahand mori)","Jahand Mori","","","",0
+"260","DR Tariq (Puleli)","Hyderabad","","","",0
+"261","DR Ramesh Kumar (Samaro City )","Umar Kot","","","",0
+"262","Ali Raza","Supplier","","","",0
+"270","krish","C/O Waheed Bhai","","","",0
