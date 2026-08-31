@@ -71,7 +71,13 @@ PHASE_4_STEP_B/
 PHASE_5_STEP_A/
 PHASE_5_STEP_B/
 ui_redesign_docs/
-
+VERIFIED_MEDICINES_CATALOG.csv
+VERIFY_MEDICINES_PREVIEW.csv
+Software_Docs_PriceLists_Master.csv
+VERIFY_PARTIES_PREVIEW.csv
+Invextra_export.csv
+Inventory_export.csv
+Accounts_export.csv
 # Logs
 npm-debug.log*
 yarn-debug.log*
