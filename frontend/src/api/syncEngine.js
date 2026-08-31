@@ -35,7 +35,13 @@ const API_BASE =
   (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
   (typeof window !== "undefined" && window.location.origin && window.location.protocol.startsWith("http") && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("tauri")
     ? window.location.origin
-    : "https://clinicore.me");
+    : "https://api.clinicore.me");
+
+export const FALLBACK_ENDPOINTS = [
+  "https://api.clinicore.me",
+  "https://clinicore.me",
+  "http://127.0.0.1:5000"
+];
 
 
 export const SYNC_FSM_STATES = {
@@ -209,17 +215,36 @@ class SyncEngine {
 
   async checkCloudHealth() {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(`${API_BASE}/api/v1/time`, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (res.ok) {
+      const endpoints = [
+        `${API_BASE}/api/v1/time`,
+        "https://api.clinicore.me/api/v1/time",
+        "https://clinicore.me/api/v1/time",
+      ];
+      let reachable = false;
+      for (const ep of endpoints) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500);
+          const res = await fetch(ep, { signal: controller.signal, cache: "no-store" });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            reachable = true;
+            break;
+          }
+        } catch (_) {}
+      }
+
+      if (reachable) {
         if (!this.isOnline) this.handleNetworkChange(true);
       } else {
-        if (this.isOnline) this.handleNetworkChange(false);
+        if (this.isOnline && typeof navigator !== "undefined" && !navigator.onLine) {
+          this.handleNetworkChange(false);
+        }
       }
     } catch {
-      if (this.isOnline) this.handleNetworkChange(false);
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        this.handleNetworkChange(false);
+      }
     }
   }
 
@@ -264,8 +289,7 @@ class SyncEngine {
   }
 
   async processOutbox() {
-    const token = storageDriver.getItem("cf_vps_jwt");
-    if (!this.isOnline || this.isSyncing || (!token && !this.enableSnapshotSyncFallback)) return;
+    if (!this.isOnline || this.isSyncing) return;
     const allOutbox = dbOutbox?.getAll?.() || [];
     // Reset any orphaned "sending" items from prior crashes to "pending"
     const pendingMutations = allOutbox.filter((m) => m.status === "pending" || m.status === "failed" || m.status === "sending");

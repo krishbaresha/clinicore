@@ -113,10 +113,10 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.4",
-        build_id: "20260901.1001001",
+        version: "2.5.5",
+        build_id: "20260901.1001002",
         release_channel: "production",
-        changelog: "Smart POS Stock-Out Replenishment Modal, Dynamic Godowns, Direct Google Drive Sync & Full Local Persistence",
+        changelog: "Offline-First Local Storage, Instant Cloud Sync, Direct Google Drive Sync & Granular Data Purge Selector",
         min_client_version: "2.4.0",
         download_url: "https://clinicore.me"
       }));

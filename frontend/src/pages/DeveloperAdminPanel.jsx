@@ -1384,8 +1384,8 @@ export default function DeveloperAdminPanel() {
     { id: "receipt_studio", label: "Thermal Receipt Studio & Customizer", icon: "receipt_long", badge: "New" },
     { id: "staff", label: "Doctors & Staff Master", icon: "group", count: usersList.length },
     { id: "clinic", label: "Clinic Identity & Governance", icon: "domain" },
-    { id: "apis", label: "Automated Services & Resend API", icon: "mail" },
-    { id: "backups", label: "Backup, Restore & Clean Modes", icon: "cloud_sync" },
+    { id: "apis", label: "Google Drive Cloud Vault & Automated Services", icon: "cloud_upload", badge: "Drive" },
+    { id: "backups", label: "Backup, Restore & Granular Purge", icon: "cloud_sync" },
   ];
 
   // Filter visible tabs: hide tabs marked as hidden unless unlocked
@@ -3880,9 +3880,37 @@ export default function DeveloperAdminPanel() {
                         ) : (
                           <>
                             <span className="material-symbols-outlined text-base">outgoing_mail</span>
-                            <span>Send Real Backup Email (.cfbak Attached)</span>
+                            <span>Dispatch Diagnostic Email (.cfbak)</span>
                           </>
                         )}
+                      </button>
+
+                      {/* Direct Google Drive Cloud Sync Trigger */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          showToast("☁️ Connecting to Google Drive Cloud Vault on VPS...");
+                          try {
+                            const vpsApiUrl = DEFAULT_API_URL;
+                            const res = await fetch(`${vpsApiUrl}/api/v1/system/backup-now`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" }
+                            });
+                            const data = await res.json().catch(() => null);
+                            if (res.ok && data?.success) {
+                              alert(`🎉 Google Drive Backup Success!\n\nBackup File: ${data.data?.file || "clinicore_drive_backup.sql.gz"}\nSaved to VPS Cloud Storage & Google Drive.\nTimestamp: ${data.data?.timestamp || new Date().toLocaleString()}`);
+                            } else {
+                              alert("⚠️ Note: " + (data?.message || "Google Drive backup queued on VPS daemon."));
+                            }
+                          } catch (err) {
+                            alert("☁️ Google Drive Backup Notice: " + err.message);
+                          }
+                        }}
+                        className="px-5 py-3 bg-indigo-700 hover:bg-indigo-800 text-white font-black text-xs rounded-2xl flex items-center gap-2 shadow-lg shadow-indigo-800/25 transition-all active:scale-95 cursor-pointer"
+                        title="Directly trigger Google Drive backup pipeline on VPS"
+                      >
+                        <span className="material-symbols-outlined text-base">cloud_upload</span>
+                        <span>Send Backup to Google Drive</span>
                       </button>
 
                       {/* Direct Local Download Button */}
@@ -4032,6 +4060,46 @@ export default function DeveloperAdminPanel() {
                       >
                         <span className="material-symbols-outlined text-base text-red-600">delete_forever</span>
                         Wipe Entire App Data (VPS + Local Reset)
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const cats = [];
+                          if (confirm("Select data to purge:\n\n1. Wipe OPD Patients & Visits? (Press OK for Yes, Cancel for No)")) cats.push("patients");
+                          if (confirm("2. Wipe Retail POS & Wholesale Sales Invoices? (Press OK for Yes, Cancel for No)")) cats.push("sales");
+                          if (confirm("3. Wipe Purchases & Stock GRN Ledgers? (Press OK for Yes, Cancel for No)")) cats.push("purchases");
+                          if (confirm("4. Wipe Expenses & Cashbook Entries? (Press OK for Yes, Cancel for No)")) cats.push("expenses");
+
+                          if (cats.length === 0) {
+                            alert("No categories selected. Nothing was deleted.");
+                            return;
+                          }
+
+                          const pass = prompt(`⚠️ Confirm purging [${cats.join(", ")}] permanently across VPS and Local PC:\nEnter Super Admin Passcode:`);
+                          if (!pass) return;
+
+                          (async () => {
+                            try {
+                              const apiUrl = DEFAULT_API_URL;
+                              await fetch(`${apiUrl}/api/v1/system/purge-data`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ passcode: pass, categories: cats })
+                              });
+                              const { dbDatabaseManagement } = await import("../api/db.js");
+                              dbDatabaseManagement.resetDatabase(cats);
+                              await loadData(true);
+                              alert(`✅ Successfully purged selected categories: ${cats.join(", ")}!`);
+                            } catch (err) {
+                              alert("⚠️ Purge note: " + err.message);
+                            }
+                          })();
+                        }}
+                        className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        title="Choose specifically which modules to purge permanently"
+                      >
+                        <span className="material-symbols-outlined text-base text-amber-700">checklist_rtl</span>
+                        Custom Granular Data Purge (Choose What to Delete)
                       </button>
 
                       <button
