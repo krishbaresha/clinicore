@@ -429,6 +429,20 @@ export default function DeveloperAdminPanel() {
     };
   }, []);
 
+  const handleManualSyncNow = async () => {
+    setIsSyncingCloud(true);
+    try {
+      await syncEngine.forceSyncNow();
+      await loadData(true);
+      setOutboxItems(dbOutbox.getAll() || []);
+      showToast("✅ Real-Time Sync Completed across Local & VPS Cloud!");
+    } catch (err) {
+      showToast(`⚠️ Sync note: ${err.message}`);
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     const input = (passcodeInput || "").trim();
@@ -1897,8 +1911,49 @@ export default function DeveloperAdminPanel() {
                           </p>
                         </div>
 
-                        {/* Quick WhatsApp Reminder Dispatcher */}
-                        <div className="flex items-center gap-2">
+                        {/* Quick WhatsApp Reminder Dispatcher & Check for Updates */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              showToast("🔍 Checking for updates on GitHub & VPS Cloud...");
+                              try {
+                                const vpsApiUrl = DEFAULT_API_URL;
+                                const endpoints = [
+                                  `/version.json?_t=${Date.now()}`,
+                                  `https://clinicore.me/version.json?_t=${Date.now()}`,
+                                  `${vpsApiUrl}/api/v1/system/version?_t=${Date.now()}`,
+                                ];
+                                let foundNewer = false;
+                                for (const ep of endpoints) {
+                                  try {
+                                    const res = await fetch(ep, { cache: "no-store" });
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      const ver = data?.version || data?.data?.version;
+                                      if (ver && ver !== liveAdminVersion) {
+                                        foundNewer = true;
+                                        alert(`🎉 New Software Update Available: v${ver}\n\nCurrent Installed Version: v${liveAdminVersion}\n\nChangelog: ${data?.changelog || "Performance & stability updates"}\n\nClick OK to apply the update immediately!`);
+                                        window.location.reload();
+                                        return;
+                                      }
+                                    }
+                                  } catch (_) {}
+                                }
+                                if (!foundNewer) {
+                                  alert(`✅ You are on the Latest Version (v${liveAdminVersion})!\n\nNo pending updates found on VPS Central Cloud.`);
+                                }
+                              } catch (err) {
+                                alert(`⚠️ Update Check Note: ${err.message}`);
+                              }
+                            }}
+                            className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs rounded-2xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+                            title="Check for newly released updates on VPS and GitHub"
+                          >
+                            <span className="material-symbols-outlined text-base">system_update</span>
+                            <span>Check for Updates</span>
+                          </button>
+
                           <a
                             href={`https://wa.me/${cleanWaPhone || "923473100304"}?text=${encodeURIComponent(
                               `*📋 SOFTWARE MONTHLY INVOICE / REMINDER*\n` +
@@ -2817,10 +2872,10 @@ export default function DeveloperAdminPanel() {
                                     : "border-teal-100"
                                 }`}
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3">
+                              <div className="flex items-start justify-between gap-2.5">
+                                <div className="flex items-center gap-3 min-w-0">
                                   <div
-                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${gd.is_store_counter
+                                    className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${gd.is_store_counter
                                         ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
                                         : "bg-teal-50 border border-teal-200 text-teal-700"
                                       }`}
@@ -2829,9 +2884,9 @@ export default function DeveloperAdminPanel() {
                                       {gd.is_store_counter ? "storefront" : "warehouse"}
                                     </span>
                                   </div>
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <h4 className="font-black text-slate-900 text-sm leading-tight truncate">{gd.name}</h4>
-                                    <div className="flex items-center gap-2 mt-1">
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                                       <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
                                         {gd.code || gd.id}
                                       </span>
@@ -2850,7 +2905,7 @@ export default function DeveloperAdminPanel() {
                                 </div>
 
                                 <span
-                                  className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-wider shrink-0 ${gd.status === "active"
+                                  className={`text-[9.5px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider shrink-0 whitespace-nowrap ${gd.status === "active"
                                       ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                                       : "bg-slate-100 text-slate-600 border-slate-200"
                                     }`}
@@ -3287,8 +3342,8 @@ export default function DeveloperAdminPanel() {
                               </div>
                               {u.role === "doctor" && <div className="text-[11px] text-slate-500 font-medium">{u.specialization || "General Physician"}</div>}
                             </td>
-                            <td className="px-5 py-3.5">
-                              <span className={`px-3 py-1 rounded-xl text-[11px] font-black capitalize ${u.role === "doctor"
+                            <td className="px-5 py-3.5 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-xl text-[11px] font-black whitespace-nowrap shadow-2xs ${u.role === "doctor"
                                   ? "bg-teal-100 text-teal-900 border border-teal-200"
                                   : u.role === "warehouse_incharge"
                                     ? "bg-indigo-100 text-indigo-900 border border-indigo-200"

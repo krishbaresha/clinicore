@@ -6576,5 +6576,45 @@ export const dbReports = {
   },
 };
 
+/**
+ * Granular & Full Database Purge & Master Reset Management
+ */
+export const dbDatabaseManagement = {
+  purgeEntity: (entityKey) => {
+    if (KEYS[entityKey]) {
+      setCollection(KEYS[entityKey], []);
+      storageDriver.setItem(KEYS[entityKey], JSON.stringify([]));
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+      window.dispatchEvent(new Event("storage"));
+      return true;
+    }
+    return false;
+  },
+
+  resetDatabase: (categories = ["patients", "sales", "purchases", "expenses"]) => {
+    const keyMap = {
+      patients: [KEYS.PATIENTS, KEYS.VISITS, KEYS.PATIENT_LEDGER],
+      sales: [KEYS.SALES, KEYS.B2B_SALES, KEYS.SHIFT_CLOSINGS],
+      purchases: [KEYS.PURCHASES, KEYS.SUPPLIER_LEDGER, KEYS.STOCK_MOVEMENTS, KEYS.STOCK_TRANSFERS],
+      expenses: [KEYS.EXPENSES, KEYS.CASHBOOK],
+    };
+
+    categories.forEach((cat) => {
+      const keysToClear = keyMap[cat];
+      if (keysToClear) {
+        keysToClear.forEach((k) => {
+          setCollection(k, []);
+          storageDriver.setItem(k, JSON.stringify([]));
+        });
+      }
+    });
+
+    window.dispatchEvent(new Event("clinicflow_status_update"));
+    window.dispatchEvent(new Event("storage"));
+    return true;
+  },
+};
+
+
 
 

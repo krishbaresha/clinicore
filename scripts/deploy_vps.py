@@ -9,12 +9,22 @@ import tarfile
 import tempfile
 import paramiko
 
-HOST = os.getenv("VPS_HOST", "77.37.45.233")
-PORT = int(os.getenv("VPS_PORT", "22"))
-USER = os.getenv("VPS_USER", "root")
-PASS = os.getenv("VPS_ROOT_PASSWORD", "")
-
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# Auto-load scripts/.env if exists
+env_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(env_path):
+    with open(env_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
+HOST = os.getenv("VPS_HOST") or os.getenv("VPS_IP") or "77.37.45.233"
+PORT = int(os.getenv("VPS_PORT", "22"))
+USER = os.getenv("VPS_USER") or os.getenv("VPS_USERNAME") or "root"
+PASS = os.getenv("VPS_ROOT_PASSWORD") or os.getenv("VPS_PASSWORD") or ""
 
 print("=" * 60)
 print("[DEPLOY] Packaging & Deploying CliniCore to Hostinger VPS...")

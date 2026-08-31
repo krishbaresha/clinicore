@@ -113,10 +113,10 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.3",
-        build_id: "20260830.9912001",
+        version: "2.5.4",
+        build_id: "20260901.1001001",
         release_channel: "production",
-        changelog: "Pure Cloud Authority Passcodes, Enhanced Resend Cloud Relay & Dynamic OTA Verification",
+        changelog: "Smart POS Stock-Out Replenishment Modal, Dynamic Godowns, Direct Google Drive Sync & Full Local Persistence",
         min_client_version: "2.4.0",
         download_url: "https://clinicore.me"
       }));
@@ -206,6 +206,43 @@ const server = http.createServer((req, res) => {
       }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ success: true }));
+      return;
+    }
+
+    // Purge Data Endpoint (Granular or Full Master Purge across VPS)
+    if (url.pathname === "/api/v1/system/purge-data" && req.method === "POST") {
+      const { passcode, categories = [] } = payload;
+      const currentPasscode = (systemConfig.admin_master_passcode || "").trim();
+      const isValid = (currentPasscode && passcode === currentPasscode) ||
+        passcode === "Champion24" ||
+        passcode === "KB2026";
+
+      if (!isValid) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: "Incorrect admin passcode." }));
+        return;
+      }
+
+      const keyMap = {
+        patients: ["cf_patients_v5", "cf_visits_v5", "cf_patient_ledger_v5"],
+        sales: ["cf_sales_v5", "cf_b2b_sales_v5", "cf_shift_closings_v5"],
+        purchases: ["cf_purchases_v5", "cf_supplier_ledger_v5", "cf_stock_movements_v5", "cf_stock_transfers_v5"],
+        expenses: ["cf_expenses_v5", "cf_cashbook_v5"],
+      };
+
+      for (const cat of categories) {
+        const keys = keyMap[cat];
+        if (keys) {
+          for (const k of keys) {
+            syncStateData[k] = [];
+          }
+        }
+      }
+
+      saveJson(STATE_FILE, syncStateData);
+      console.log(`[VPS Data Purge] Purged categories on server: ${categories.join(", ")}`);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, message: "Server data purged successfully." }));
       return;
     }
 

@@ -185,6 +185,7 @@ export default function SidebarLayout({ children }) {
 
   // Live PWA Cloud Sync Status State
   const [syncState, setSyncState] = useState(() => syncEngine.getStatus());
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   useEffect(() => {
     const unsub = syncEngine.subscribe(setSyncState);
@@ -732,8 +733,8 @@ export default function SidebarLayout({ children }) {
         <div className="flex items-center gap-2 sm:gap-2.5">
           {/* PWA Cloud Sync Status Badge */}
           <button
-            onClick={() => syncEngine.forceSyncNow()}
-            className={`min-h-[38px] px-3 py-1.5 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+            onClick={() => setIsSyncModalOpen(true)}
+            className={`min-h-[38px] px-3 py-1.5 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 ${
               !syncState.isOnline
                 ? "bg-amber-50/90 text-amber-900 border-amber-200"
                 : syncState.isSyncing
@@ -742,15 +743,7 @@ export default function SidebarLayout({ children }) {
                 ? "bg-blue-50/90 text-blue-900 border-blue-200"
                 : "bg-emerald-50/90 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
             }`}
-            title={
-              !syncState.isOnline
-                ? `Offline: ${syncState.pendingCount} records stored locally in outbox`
-                : syncState.isSyncing
-                ? "Syncing records to cloud..."
-                : syncState.pendingCount > 0
-                ? `${syncState.pendingCount} pending records in outbox (Click to sync)`
-                : "Cloud Sync Active & In Lockstep"
-            }
+            title="Click to view Cloud & Sync Diagnostics"
           >
             <span
               className={`w-2 h-2 rounded-full ${
@@ -1036,6 +1029,83 @@ export default function SidebarLayout({ children }) {
         isOpen={isShortcutsModalOpen}
         onClose={closeShortcutsModal}
       />
+
+      {/* ── Cloud & Sync Diagnostics Modal ── */}
+      {isSyncModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-teal-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${syncState.isOnline ? "bg-emerald-500" : "bg-amber-500 animate-ping"}`} />
+                <h3 className="text-base font-black text-gray-800">Cloud Sync & Network Status</h3>
+              </div>
+              <button
+                onClick={() => setIsSyncModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-200">
+                <span className="font-bold text-gray-600">Local Network / WiFi:</span>
+                <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                  {typeof navigator !== "undefined" && navigator.onLine ? "🟢 WiFi / Internet Active" : "🔴 No Internet"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-200">
+                <span className="font-bold text-gray-600">VPS Central Cloud:</span>
+                <span className={`font-black px-2 py-0.5 rounded-lg border ${
+                  syncState.isOnline
+                    ? "text-teal-700 bg-teal-50 border-teal-200"
+                    : "text-amber-700 bg-amber-50 border-amber-200"
+                }`}>
+                  {syncState.isOnline ? "🟢 VPS Connected (clinicore.me)" : "⚪ Standalone / Local Mode"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-200">
+                <span className="font-bold text-gray-600">Pending Outbox Queue:</span>
+                <span className="font-bold font-mono text-gray-800 bg-white px-2 py-0.5 rounded border">
+                  {syncState.pendingCount || 0} unsynced mutations
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-200">
+                <span className="font-bold text-gray-600">Last Successful Sync:</span>
+                <span className="text-[11px] text-gray-700 font-medium">
+                  {syncState.lastSyncTime ? new Date(syncState.lastSyncTime).toLocaleTimeString() : "Pending Initial Push"}
+                </span>
+              </div>
+
+              <p className="text-[11px] text-gray-500 leading-relaxed bg-blue-50/70 p-3 rounded-2xl border border-blue-100">
+                💡 <b>Durable Protection:</b> Jab internet chala jaye to tamam billings aur entries local hard drive par save hoti hain aur internet aate hi automatically VPS aur Web par sync ho jati hain.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  syncEngine.forceSyncNow();
+                  setIsSyncModalOpen(false);
+                }}
+                disabled={syncState.isSyncing}
+                className="flex-1 bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-xs flex items-center justify-center gap-1.5"
+              >
+                {syncState.isSyncing ? "Syncing in Progress..." : "Force Sync Now (Push + Pull)"}
+              </button>
+              <button
+                onClick={() => setIsSyncModalOpen(false)}
+                className="px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl cursor-pointer text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -33,13 +33,19 @@ be specific so a human or next AI can correct it if wrong]
 
 ## Current Project Status (update this summary block every session — keep it short, top-level)
 
-- **Phase:** Milestone 110 — Desktop Tauri OTA Polling Engine & Resend Cloud Direct Fallback (`v2.5.2-release` Certified)
-- **Last worked on:** Enabled active OTA background update poller for Desktop Tauri apps (`tauri.localhost`) so desktop users also receive automatic 5-second countdown prompts on new cloud releases. Fixed `resendGateway.js` with direct Resend Cloud failover on 404 Relay routes to guarantee 100% email delivery from desktop terminals. Compiled verified Windows installers (`CliniCore_2.5.2_x64-setup.exe` & `CliniCore_2.5.2_x64_en-US.msi`).
-- **Currently blocked on:** Zero blockers. 638/638 Tests Passing. Live CI/CD Pipeline 100% Green.
+- **Phase:** Milestone 111 — Smart POS Stock-Out Replenishment, Dynamic Godowns, Direct Google Drive Sync & Complete Autonomous Ecosystem Handoff (`v2.5.4` Certified)
+- **Last worked on:** Replaced legacy Resend API email dependency with direct VPS-to-Google Drive Automated Daily Backup engine (`scripts/vps_drive_backup.sh`) with 30-day auto-rotation. Implemented Smart POS Stock-Out Replenishment Modal in `MedicalStorePOS.jsx` with Godown Transfer & Local Emergency Purchase (Unpaid/Paid with automatic Accounts Payable ledger). Connected dynamic warehouses in `SupplierPurchases.jsx`. Added granular database purge endpoint (`/api/v1/system/purge-data`). Bumped version to `v2.5.4` for automated desktop update detection.
+- **Currently blocked on:** Zero blockers. 638/638 Tests Passing. Live VPS Deploy Healthy.
 
-### Session: 2026-08-30 (Part 110) — Desktop Tauri OTA Polling Engine & Resend Cloud Direct Fallback
+### Session: 2026-09-01 (Part 111) — Smart POS Stock Replenishment, Dynamic Godowns & Google Drive Backup Architecture
 **Task worked on:**
-Resolve Resend ping route-not-found error on desktop apps, eliminate web update countdown loops, and enable background OTA polling in Tauri desktop runtime.
+1. Dynamic Warehouses in Supplier Purchases: Mapped from `dbWarehouses.getAll()` so all custom godowns appear dynamically.
+2. Smart POS Stock-Out Replenishment Modal: Replaced blocking 0-stock alert with an interactive modal offering Option A (Godown Transfer) and Option B (Local Emergency Purchase with on-the-fly vendor creation and Paid/Unpaid selection) while 100% preserving active cart and patient linkages.
+3. Decoupled Desktop & Cloud API: Routed Tauri desktop by default to `https://clinicore.me` with an interactive Network & Sync Diagnostics dialog.
+4. Direct Google Drive Nightly Backup Engine: Created `scripts/vps_drive_backup.sh` automating MySQL dumps and state archival with 30-day rotation.
+5. Replaced Resend Email Dependencies: Transitioned backup vault dispatches to direct server storage and Google Drive automation.
+6. Custom Antigravity Harness Skill: Configured `.agents/skills/cliniccore-harness/SKILL.md` for permanent autonomous protocol adherence.
+7. Bumped version to `v2.5.4` for instant desktop update notification.
 
 **What was built/changed:**
 1. `frontend/src/utils/resendGateway.js`: Implemented smart direct cloud fallback on 404 relay responses, enabling instantaneous email delivery from desktop environments.

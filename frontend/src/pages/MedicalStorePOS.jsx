@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, dbSuppliers, dbUsers, dbSalesmen } from "../api/db.js";
+import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, dbSuppliers, dbUsers, dbSalesmen, dbWarehouses, dbPurchases, dbSupplierLedger, dbStockTransfers } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import PhotoLightbox from "../components/PhotoLightbox.jsx";
 
@@ -196,6 +196,19 @@ export default function MedicalStorePOS() {
   const [amountPaidInput, setAmountPaidInput] = useState("");
   const [cashTenderedInput, setCashTenderedInput] = useState("");
   const [showRxModal, setShowRxModal] = useState(false);
+
+  // ── Smart POS Stock-Out Replenishment Modal State ──
+  const [replenishModalItem, setReplenishModalItem] = useState(null); // { item, requestedQty, godownStock, storeStock }
+  const [replenishMode, setReplenishMode] = useState("transfer"); // "transfer" | "emergency_purchase"
+  const [replenishSourceGodown, setReplenishSourceGodown] = useState("");
+  const [replenishTransferQty, setReplenishTransferQty] = useState("10");
+  const [replenishPurchaseVendor, setReplenishPurchaseVendor] = useState("");
+  const [replenishPurchaseQty, setReplenishPurchaseQty] = useState("20");
+  const [replenishPurchaseRate, setReplenishPurchaseRate] = useState("");
+  const [replenishPaymentStatus, setReplenishPaymentStatus] = useState("unpaid"); // "unpaid" (pay at night closing) | "paid"
+  const [showNewVendorInline, setShowNewVendorInline] = useState(false);
+  const [newVendorNameInput, setNewVendorNameInput] = useState("");
+  const [newVendorPhoneInput, setNewVendorPhoneInput] = useState("");
 
   const handleReprintLastReceipt = () => {
     const allSales = dbSales.getAll();
@@ -527,6 +540,157 @@ export default function MedicalStorePOS() {
   const tenderedCashVal = Number(cashTenderedInput) || finalTotal;
   const changeDueVal = Math.max(0, tenderedCashVal - finalTotal);
 
+  // ── Smart Replenishment Handlers ──
+  const openReplenishModal = (invItem, neededQty = 1) => {
+    const inv = dbInventory.getById(invItem.id || invItem.inventory_id) || invItem;
+    const storeAvail = inv.store_stock ?? inv.stock_qty ?? 0;
+    const godownAvail = inv.godown_stock ?? (inv.total_base_stock ? Math.max(0, inv.total_base_stock - storeAvail) : 0);
+    const warehouses = dbWarehouses.getAll() || [];
+    const nonStoreWh = warehouses.find((w) => !w.is_store_counter && w.status === "active");
+
+    setReplenishModalItem({
+      item: inv,
+      requestedQty: neededQty,
+      storeStock: storeAvail,
+      godownStock: godownAvail,
+    });
+    setReplenishMode(godownAvail > 0 ? "transfer" : "emergency_purchase");
+    setReplenishSourceGodown(nonStoreWh?.id || "wh_001");
+    setReplenishTransferQty(String(Math.max(neededQty, 10)));
+    setReplenishPurchaseQty(String(Math.max(neededQty, 20)));
+    setReplenishPurchaseRate(String(inv.cost_price || inv.trade_price || inv.unit_sale_price || "0"));
+    const sups = dbSuppliers.getAll() || [];
+    const localSup = sups.find((s) => s.is_local_market || s.name.toLowerCase().includes("local") || s.name.toLowerCase().includes("market"));
+    setReplenishPurchaseVendor(localSup?.id || sups[0]?.id || "");
+    setShowNewVendorInline(false);
+  };
+
+  const handleApplyGodownTransfer = () => {
+    if (!replenishModalItem) return;
+    const qty = parseInt(replenishTransferQty) || 0;
+    if (qty <= 0) {
+      alert("Please enter a valid transfer quantity.");
+      return;
+    }
+    const inv = dbInventory.getById(replenishModalItem.item.id);
+    if (!inv) return;
+
+    // Execute transfer in DB
+    const currentStore = inv.store_stock ?? 0;
+    const currentGodown = inv.godown_stock ?? (inv.total_base_stock ? Math.max(0, inv.total_base_stock - currentStore) : 0);
+    const newStore = currentStore + qty;
+    const newGodown = Math.max(0, currentGodown - qty);
+
+    dbInventory.update(inv.id, {
+      store_stock: newStore,
+      godown_stock: newGodown,
+      stock_qty: newStore,
+      total_base_stock: newStore + newGodown,
+    });
+
+    if (dbStockTransfers && typeof dbStockTransfers.create === "function") {
+      dbStockTransfers.create({
+        medicine_id: inv.id,
+        medicine_name: inv.medicine_name || inv.name,
+        from_warehouse_id: replenishSourceGodown || "wh_001",
+        to_warehouse_id: "wh_str",
+        quantity: qty,
+        notes: "Smart POS Auto Stock-Out Transfer",
+      });
+    }
+
+    setInventoryResults(dbInventory.getAll());
+    const targetItem = replenishModalItem.item;
+    setReplenishModalItem(null);
+    addToCart(targetItem, replenishModalItem.requestedQty || 1);
+  };
+
+  const handleApplyEmergencyPurchase = () => {
+    if (!replenishModalItem) return;
+    const qty = parseInt(replenishPurchaseQty) || 0;
+    const rate = parseFloat(replenishPurchaseRate) || 0;
+    if (qty <= 0) {
+      alert("Please enter a valid purchase quantity.");
+      return;
+    }
+
+    let vendorId = replenishPurchaseVendor;
+    let vendorName = "Local Market Vendor";
+
+    // Handle On-the-fly vendor creation
+    if (showNewVendorInline && newVendorNameInput.trim()) {
+      const newSup = dbSuppliers.create({
+        name: newVendorNameInput.trim(),
+        phone: newVendorPhoneInput.trim() || "03000000000",
+        contact_person: "Local Market Rep",
+        is_local_market: true,
+        category: "Local Market",
+        balance_payable: 0,
+      });
+      vendorId = newSup.id;
+      vendorName = newSup.name;
+    } else {
+      const existing = dbSuppliers.getById(vendorId);
+      if (existing) vendorName = existing.name;
+    }
+
+    const inv = dbInventory.getById(replenishModalItem.item.id);
+    if (!inv) return;
+
+    const totalCost = qty * rate;
+    const isUnpaid = replenishPaymentStatus === "unpaid";
+
+    // Create Purchase Record
+    dbPurchases.create({
+      supplier_id: vendorId,
+      supplier_name: vendorName,
+      destination_type: "wh_str",
+      payment_mode: isUnpaid ? "Credit (Udhaar)" : "Cash",
+      is_emergency_pos: true,
+      items: [
+        {
+          inventory_id: inv.id,
+          medicine_name: inv.medicine_name || inv.name,
+          qty,
+          cost_price: rate,
+          sale_price: inv.unit_sale_price || inv.sale_price || rate * 1.2,
+          line_total: totalCost,
+        }
+      ],
+      gross_amount: totalCost,
+      net_amount: totalCost,
+      paid_amount: isUnpaid ? 0 : totalCost,
+      balance_payable: isUnpaid ? totalCost : 0,
+    });
+
+    // Record Accounts Payable in Supplier Ledger if unpaid (Pay at night closing)
+    if (isUnpaid && dbSupplierLedger && typeof dbSupplierLedger.addCredit === "function") {
+      dbSupplierLedger.addCredit(
+        vendorId,
+        vendorName,
+        totalCost,
+        `Emergency POS Stock Purchase: ${inv.medicine_name} (${qty} units)`
+      );
+    }
+
+    // Increase Store Counter Stock
+    const currentStore = inv.store_stock ?? 0;
+    const currentGodown = inv.godown_stock ?? 0;
+    const newStore = currentStore + qty;
+
+    dbInventory.update(inv.id, {
+      store_stock: newStore,
+      stock_qty: newStore,
+      total_base_stock: newStore + currentGodown,
+      cost_price: rate || inv.cost_price,
+    });
+
+    setInventoryResults(dbInventory.getAll());
+    const targetItem = replenishModalItem.item;
+    setReplenishModalItem(null);
+    addToCart(targetItem, replenishModalItem.requestedQty || 1);
+  };
+
   function checkout() {
     if (cart.length === 0) {
       alert("Cart is empty. Please add items to checkout.");
@@ -537,7 +701,7 @@ export default function MedicalStorePOS() {
       return;
     }
 
-    // Check stock: Strict Anti-Theft Guard & FEFO Expiry Guard
+    // Check stock: Strict Anti-Theft Guard with Smart Replenish Trigger
     const todayStr = new Date().toISOString().split("T")[0];
     for (const cartItem of cart) {
       const inv = dbInventory.getById(cartItem.inventory_id);
@@ -547,7 +711,7 @@ export default function MedicalStorePOS() {
       }
       const available = inv ? (inv.store_stock ?? inv.stock_qty ?? inv.total_base_stock ?? 0) : 0;
       if (available < cartItem.quantity) {
-        alert(`🚫 Anti-Theft Guard: '${cartItem.medicine_name}' has only ${available} units available in Store Counter stock. Cannot sell ${cartItem.quantity} units.\n\nPlease request a stock transfer from Main Godown first.`);
+        openReplenishModal(inv || cartItem, cartItem.quantity);
         return;
       }
     }
@@ -1253,6 +1417,239 @@ export default function MedicalStorePOS() {
 
       {/* Receipt Output Modal */}
       {receipt && <ReceiptModal sale={receipt} onClose={() => setReceipt(null)} />}
+
+      {/* ── Smart POS Stock-Out Replenishment Modal ── */}
+      {replenishModalItem && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-amber-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-gray-100 pb-3">
+              <div>
+                <span className="inline-flex items-center gap-1 text-[11px] font-black text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full mb-1">
+                  ⚠️ Insufficient Counter Stock Detected
+                </span>
+                <h3 className="text-base font-black text-gray-900 leading-tight">
+                  {replenishModalItem.item.medicine_name || replenishModalItem.item.name}
+                </h3>
+                <p className="text-xs text-gray-500 font-medium">
+                  {replenishModalItem.item.company_name} • Required for cart: <span className="font-bold text-gray-800">{replenishModalItem.requestedQty || 1} units</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setReplenishModalItem(null)}
+                className="text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Current Stock Availability Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-center">
+                <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">Store Counter Stock</span>
+                <span className="text-xl font-black text-rose-900">{replenishModalItem.storeStock}</span>
+                <span className="text-[10px] text-rose-600 font-semibold block mt-0.5">Out of Stock</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Warehouse Godown Stock</span>
+                <span className="text-xl font-black text-emerald-900">{replenishModalItem.godownStock}</span>
+                <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">
+                  {replenishModalItem.godownStock > 0 ? "✓ Units Available" : "0 in Godown"}
+                </span>
+              </div>
+            </div>
+
+            {/* Strategy Tabs: Transfer vs Emergency Purchase */}
+            <div className="flex bg-gray-100 p-1 rounded-2xl gap-1">
+              <button
+                type="button"
+                onClick={() => setReplenishMode("transfer")}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                  replenishMode === "transfer"
+                    ? "bg-white text-teal-900 shadow-xs border border-gray-200"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                🏢 Option A: Godown Transfer
+              </button>
+              <button
+                type="button"
+                onClick={() => setReplenishMode("emergency_purchase")}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                  replenishMode === "emergency_purchase"
+                    ? "bg-white text-teal-900 shadow-xs border border-gray-200"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                ⚡ Option B: Local Emergency Purchase
+              </button>
+            </div>
+
+            {/* Option A: Transfer Form */}
+            {replenishMode === "transfer" ? (
+              <div className="space-y-3 bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
+                <p className="text-xs text-teal-900 leading-relaxed font-medium">
+                  Transfer units directly from Central Godown to the Store Counter shelf so billing can continue immediately.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Source Godown</label>
+                    <select
+                      value={replenishSourceGodown}
+                      onChange={(e) => setReplenishSourceGodown(e.target.value)}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
+                    >
+                      {(dbWarehouses.getAll() || []).filter((w) => !w.is_store_counter).map((w) => (
+                        <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Transfer Qty</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={replenishTransferQty}
+                      onChange={(e) => setReplenishTransferQty(e.target.value)}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 text-center font-mono"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleApplyGodownTransfer}
+                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-xs flex items-center justify-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-sm">move_to_inbox</span>
+                  Confirm Transfer &amp; Add to Cart
+                </button>
+              </div>
+            ) : (
+              /* Option B: Emergency Local Purchase Form */
+              <div className="space-y-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
+                <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                  Buy from a nearby local market vendor. You can record it as <b>Unpaid (Pay at Night Closing)</b> to maintain an automatic ledger!
+                </p>
+
+                {!showNewVendorInline ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-gray-700">Select Local Vendor</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewVendorInline(true)}
+                        className="text-[11px] font-black text-teal-700 hover:underline cursor-pointer"
+                      >
+                        + Add New Vendor
+                      </button>
+                    </div>
+                    <select
+                      value={replenishPurchaseVendor}
+                      onChange={(e) => setReplenishPurchaseVendor(e.target.value)}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
+                    >
+                      {(dbSuppliers.getAll() || []).map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.is_local_market ? "🏪" : "🏢"} {s.name} {s.phone ? `(${s.phone})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-white rounded-xl border border-teal-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-teal-800">Quick New Local Vendor</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewVendorInline(false)}
+                        className="text-[10px] text-gray-500 hover:text-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Vendor / Shop Name *"
+                        value={newVendorNameInput}
+                        onChange={(e) => setNewVendorNameInput(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-bold"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Phone No"
+                        value={newVendorPhoneInput}
+                        onChange={(e) => setNewVendorPhoneInput(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Purchase Qty</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={replenishPurchaseQty}
+                      onChange={(e) => setReplenishPurchaseQty(e.target.value)}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 text-center font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Unit Cost Rate (Rs.)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={replenishPurchaseRate}
+                      onChange={(e) => setReplenishPurchaseRate(e.target.value)}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 text-center font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Payment Settlement</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReplenishPaymentStatus("unpaid")}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        replenishPaymentStatus === "unpaid"
+                          ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                          : "bg-white text-gray-700 border-gray-300"
+                      }`}
+                    >
+                      🔘 Unpaid (Raat ko denge)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReplenishPaymentStatus("paid")}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        replenishPaymentStatus === "paid"
+                          ? "bg-teal-700 text-white border-teal-700 shadow-xs"
+                          : "bg-white text-gray-700 border-gray-300"
+                      }`}
+                    >
+                      ⚪ Paid in Cash Now
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleApplyEmergencyPurchase}
+                  className="w-full bg-amber-700 hover:bg-amber-800 text-white font-bold py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-xs flex items-center justify-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-sm">shopping_cart_checkout</span>
+                  Record Purchase &amp; Resume Billing
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

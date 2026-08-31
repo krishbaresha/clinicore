@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { dbSuppliers, dbPurchases, dbInventory, dbClinic, dbSupplierLedger, dbAccounts, dbGrnMetadata } from "../api/db.js";
+import { dbSuppliers, dbPurchases, dbInventory, dbClinic, dbSupplierLedger, dbAccounts, dbGrnMetadata, dbWarehouses } from "../api/db.js";
 import { verifyAdminPasscode } from "../api/auth.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { printSupplierPurchaseReceipt, printPurchaseGRNReceipt } from "../utils/thermalPrinter.js";
@@ -242,6 +242,7 @@ export default function SupplierPurchases() {
   const [tab4ShowAllCompanies, setTab4ShowAllCompanies] = useState(false);
   const [referencesList, setReferencesList] = useState([]);
   const [transportsList, setTransportsList] = useState([]);
+  const [warehousesList, setWarehousesList] = useState([]);
   const [showNewRefInput, setShowNewRefInput] = useState(false);
   const [newRefText, setNewRefText] = useState("");
   const [showNewTransportInput, setShowNewTransportInput] = useState(false);
@@ -347,6 +348,7 @@ export default function SupplierPurchases() {
     setAccountsList(dbAccounts.getAll());
     setReferencesList(dbGrnMetadata.getReferences());
     setTransportsList(dbGrnMetadata.getTransports());
+    setWarehousesList(dbWarehouses.getAll() || []);
     setGrnForm((prev) => ({
       ...prev,
       voucher_no: dbPurchases.getNextVoucherNo(),
@@ -1339,8 +1341,18 @@ export default function SupplierPurchases() {
                     onChange={(e) => setGrnForm({ ...grnForm, destination_type: e.target.value })}
                     className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-teal-800"
                   >
-                    <option value="warehouse">🏢 Central Godown (Warehouse)</option>
-                    <option value="store">🏬 Pharmacy Counter (Store)</option>
+                    {warehousesList && warehousesList.length > 0 ? (
+                      warehousesList.map((wh) => (
+                        <option key={wh.id} value={wh.id}>
+                          {wh.is_store_counter ? "🏬" : "🏢"} {wh.name} ({wh.code || wh.id})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="wh_001">🏢 Central Godown (Warehouse)</option>
+                        <option value="wh_str">🏬 Pharmacy Counter (Store)</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
