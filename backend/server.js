@@ -145,6 +145,29 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Direct Windows Executable Installer Download Endpoint
+    if (
+      url.pathname === "/api/v1/system/download-installer" ||
+      url.pathname === "/api/v1/downloads/setup.exe"
+    ) {
+      const exePath = path.join(__dirname, "..", "frontend", "dist", "downloads", "ClinicCore_Setup.exe");
+      if (fs.existsSync(exePath)) {
+        const stat = fs.statSync(exePath);
+        res.writeHead(200, {
+          "Content-Type": "application/octet-stream",
+          "Content-Length": stat.size,
+          "Content-Disposition": 'attachment; filename="ClinicCore_Setup.exe"',
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        });
+        fs.createReadStream(exePath).pipe(res);
+        return;
+      } else {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: "Installer binary not found" }));
+        return;
+      }
+    }
+
     // Canonical Private Version Endpoint for Over-The-Air (OTA) Updates
     if (url.pathname === "/api/v1/system/version" || url.pathname === "/version.json") {
       res.writeHead(200, {
@@ -158,7 +181,7 @@ const server = http.createServer((req, res) => {
         release_channel: "production",
         changelog: "Strict Password Hash Verification, Google Drive Cloud Vault Sync & Security Hardening",
         min_client_version: "2.4.0",
-        download_url: "https://clinicore.me/downloads/ClinicCore_Setup.exe"
+        download_url: "https://clinicore.me/api/v1/system/download-installer"
       }));
       return;
     }
