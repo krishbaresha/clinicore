@@ -173,7 +173,7 @@ jobs:
           strip_components: 1
           overwrite: true
 
-      - name: Fix Permissions, Restart Node Service & Reload Nginx
+      - name: Publish Release Installer to VPS Downloads Vault
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 77.37.45.233
@@ -182,8 +182,10 @@ jobs:
           port: 22
           timeout: 30s
           script: |
+            mkdir -p /var/www/clinicore/frontend/dist/downloads
             chown -R www-data:www-data /var/www/clinicore/frontend/dist
             chmod -R 755 /var/www/clinicore/frontend/dist
             systemctl restart clinicore-node-api || true
             nginx -t && systemctl reload nginx
-            echo "🎉 CliniCore VPS Deployment completed and verified successfully!"
+            echo "🎉 CliniCore VPS Deployment & Installer Release completed successfully!"
+
