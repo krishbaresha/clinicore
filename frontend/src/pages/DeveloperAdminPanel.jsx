@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { sendResendEmail } from "../utils/resendGateway.js";
 import {
   dbClinic,
   dbUsers,
@@ -85,11 +84,11 @@ export default function DeveloperAdminPanel() {
   const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window !== "undefined" ? window.innerWidth >= 1200 : true));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  const [isDispatchingBackup, setIsDispatchingBackup] = useState(false);
-  const [isPingingApi, setIsPingingApi] = useState(false);
-  const [showEmailPreviewModal, setShowEmailPreviewModal] = useState(false);
-  const [emailPreviewMode, setEmailPreviewMode] = useState("desktop"); // 'desktop' | 'mobile'
-  const [countdownDetail, setCountdownDetail] = useState(null);
+  const [isDriveUploading, setIsDriveUploading] = useState(false);
+  const [driveLastBackup, setDriveLastBackup] = useState(() => {
+    try { return localStorage.getItem("cf_drive_last_backup") || null; } catch { return null; }
+  });
+  const [driveLastStatus, setDriveLastStatus] = useState(null); // null | 'success' | 'error'
   const [liveAdminVersion, setLiveAdminVersion] = useState(() => {
     try {
       return localStorage.getItem("cf_applied_version") || (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.3";
@@ -97,50 +96,7 @@ export default function DeveloperAdminPanel() {
       return "2.5.3";
     }
   });
-  const [selectedFreqType, setSelectedFreqType] = useState(() => {
-    const c = dbClinic.get() || {};
-    const freq = c.report_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "daily_9pm" : "daily_9pm");
-    if (freq.startsWith("custom_time:")) return "custom_time";
-    if (freq.startsWith("custom_interval:")) return "custom_interval";
-    return freq;
-  });
-  const [customTimeInput, setCustomTimeInput] = useState(() => {
-    const c = dbClinic.get() || {};
-    const freq = c.report_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "21:30" : "21:30");
-    if (freq.startsWith("custom_time:")) return freq.split(":")[1] || "21:30";
-    return "21:30";
-  });
-  const [customIntervalInput, setCustomIntervalInput] = useState(() => {
-    const c = dbClinic.get() || {};
-    const freq = c.report_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "15" : "15");
-    if (freq.startsWith("custom_interval:")) return parseInt(freq.split(":")[1]) || 15;
-    return 15;
-  });
-  const [emailPreviewHtml, setEmailPreviewHtml] = useState("");
-  const [automationLogs, setAutomationLogs] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("cf_automation_execution_logs") || "[]");
-    } catch {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    const handleTick = (e) => {
-      setCountdownDetail(e?.detail || null);
-    };
-    const handleLogsUpdate = () => {
-      try {
-        setAutomationLogs(JSON.parse(localStorage.getItem("cf_automation_execution_logs") || "[]"));
-      } catch { }
-    };
-    window.addEventListener("cf_automation_tick", handleTick);
-    window.addEventListener("cf_automation_logs_updated", handleLogsUpdate);
-    return () => {
-      window.removeEventListener("cf_automation_tick", handleTick);
-      window.removeEventListener("cf_automation_logs_updated", handleLogsUpdate);
-    };
-  }, []);
+  const [showOutboxDetails, setShowOutboxDetails] = useState(false);
 
   // Sub-Tab Granular Lock & Hide State
   const [tabSecurity, setTabSecurity] = useState(() => {
@@ -256,9 +212,6 @@ export default function DeveloperAdminPanel() {
       default_consultation_fee: Number(c.default_consultation_fee) || 300,
       clinic_status: c.clinic_status || "open",
       public_notice: c.public_notice || "",
-      resend_api_key: c.resend_api_key || (typeof window !== "undefined" ? localStorage.getItem("cf_resend_api_key") || "" : ""),
-      notification_email: c.notification_email || c.backup_email || (typeof window !== "undefined" ? localStorage.getItem("cf_notification_email") || "drasifhosting@gmail.com" : "drasifhosting@gmail.com"),
-      report_frequency: c.report_frequency || c.backup_frequency || (typeof window !== "undefined" ? localStorage.getItem("cf_report_frequency") || "daily_9pm" : "daily_9pm"),
       whatsapp_gateway_no: c.whatsapp_gateway_no || (typeof window !== "undefined" ? localStorage.getItem("cf_whatsapp_gateway_no") || "03473100304" : "03473100304"),
     };
   });
@@ -329,22 +282,9 @@ export default function DeveloperAdminPanel() {
           }
 
           const localClinic = dbClinic.get() || {};
-          const localFreq = localClinic.report_frequency || localStorage.getItem("cf_report_frequency") || sClinic.report_frequency || "daily_9pm";
-          const localKey = localClinic.resend_api_key || localStorage.getItem("cf_resend_api_key") || sClinic.resend_api_key || "";
-          const localEmail = localClinic.notification_email || localStorage.getItem("cf_notification_email") || sClinic.notification_email || "drasifhosting@gmail.com";
           const localWa = localClinic.whatsapp_gateway_no || localStorage.getItem("cf_whatsapp_gateway_no") || sClinic.whatsapp_gateway_no || "03473100304";
 
           if (!preserveForm) {
-            let type = localFreq;
-            if (localFreq.startsWith("custom_time:")) {
-              type = "custom_time";
-              setCustomTimeInput(localFreq.substring(localFreq.indexOf(":") + 1) || "21:30");
-            } else if (localFreq.startsWith("custom_interval:")) {
-              type = "custom_interval";
-              setCustomIntervalInput(parseInt(localFreq.split(":")[1]) || 15);
-            }
-            setSelectedFreqType(type);
-
             setClinicForm({
               name: localClinic.name || sClinic.name || "H/Dr.Asif Ashraf Khan Clinic",
               address: localClinic.address || sClinic.address || "Lajpat Road, Hyderabad, Sindh",
@@ -352,9 +292,6 @@ export default function DeveloperAdminPanel() {
               default_consultation_fee: Number(localClinic.default_consultation_fee) || Number(sClinic.default_consultation_fee) || 300,
               clinic_status: localClinic.clinic_status || sClinic.clinic_status || "open",
               public_notice: localClinic.public_notice || sClinic.public_notice || "",
-              resend_api_key: localKey,
-              notification_email: localEmail,
-              report_frequency: localFreq,
               whatsapp_gateway_no: localWa,
             });
           }
@@ -883,9 +820,6 @@ export default function DeveloperAdminPanel() {
   const handleSaveClinicSettings = async (e) => {
     e?.preventDefault?.();
     dbClinic.update(clinicForm);
-    if (clinicForm.resend_api_key) localStorage.setItem("cf_resend_api_key", clinicForm.resend_api_key.trim());
-    if (clinicForm.notification_email) localStorage.setItem("cf_notification_email", clinicForm.notification_email.trim());
-    if (clinicForm.report_frequency) localStorage.setItem("cf_report_frequency", clinicForm.report_frequency);
     if (clinicForm.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", clinicForm.whatsapp_gateway_no.trim());
 
     try {
@@ -901,231 +835,44 @@ export default function DeveloperAdminPanel() {
       console.warn("Could not sync config to remote MySQL:", e);
     }
 
-    const frequencyLabels = {
-      every_1m: "🧪 Testing Mode: Every 1 Minute (Live Automation Test)",
-      daily_12am: "🌙 Daily at 12:00 AM Midnight (Day Closing Vault)",
-      daily_9pm: "Daily at 9:00 PM (Shift End Closure)",
-      daily_10pm: "Daily at 10:00 PM (Late Night Closure)",
-      daily_8pm: "Daily at 8:00 PM (Evening Shift Closure)",
-      every_12h: "Every 12 Hours (Twice Daily Audit)",
-      every_6h: "Every 6 Hours (High Volume Audit)",
-      hourly: "Hourly (Real-Time Background Sync)",
-      weekly_saturday: "Weekly on Saturday",
-      monthly: "Monthly Executive Report",
-      manual: "Manual On-Demand Only",
-    };
-
-    const freqName = frequencyLabels[clinicForm.report_frequency] || clinicForm.report_frequency;
-    showToast(`✅ Saved! Frequency updated to: ${freqName}`);
+    showToast("✅ Drive & Gateway config saved!");
     loadData(true);
   };
 
-  const handleManualBackupEmailDispatch = async () => {
-    if (!clinicForm.resend_api_key || !clinicForm.resend_api_key.trim()) {
-      alert("⚠️ Please enter and save your Resend API Key (re_xxxx) first!");
-      return;
-    }
-    const targetEmail = clinicForm.notification_email?.trim();
-    if (!targetEmail) {
-      alert("⚠️ Please enter a recipient notification email address!");
-      return;
-    }
-
-    setIsDispatchingBackup(true);
-    showToast("🔐 Encrypting full database vault & staging 1-click download...");
-
+  const handleDriveBackupNow = async () => {
+    setIsDriveUploading(true);
+    showToast("☁️ Connecting to Google Drive Cloud Vault on VPS...");
     try {
-      const encryptedBackupStr = exportFullDatabase(true);
-      const base64Content = btoa(unescape(encodeURIComponent(encryptedBackupStr)));
-      const now = new Date();
-      const dateStr = now.toISOString().split("T")[0];
-      const timeTag = now.toTimeString().split(" ")[0].replace(/:/g, "");
-      const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
-      const sizeBytes = new Blob([encryptedBackupStr]).size;
-      const timestampStr = now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" });
-
-      const apiUrl = DEFAULT_API_URL;
-
-      // 1. Stage backup on server to create authoritative 1-click download link
-      let downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
-      try {
-        const vpsEndpoints = [`/api/v1/system/prepare-backup`, `${apiUrl}/api/v1/system/prepare-backup`];
-        for (const ep of vpsEndpoints) {
-          try {
-            const prepRes = await fetch(ep, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                filename,
-                content: base64Content,
-              }),
-            });
-            const prepData = await prepRes.json().catch(() => ({}));
-            if (prepData?.success && prepData?.data?.download_url) {
-              downloadUrl = prepData.data.download_url;
-              break;
-            }
-          } catch (_) {}
-        }
-      } catch (prepErr) {
-        console.warn("Could not pre-stage backup file on VPS:", prepErr);
-      }
-
-      // Also notify VPS 24/7 engine to trigger autonomous cloud snapshot sync
-      try {
-        const triggerEndpoints = [`/api/v1/system/trigger-vps-backup`, `${apiUrl}/api/v1/system/trigger-vps-backup`];
-        for (const tep of triggerEndpoints) {
-          try {
-            fetch(tep, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                resend_api_key: clinicForm.resend_api_key.trim(),
-                clinic: clinicForm,
-              }),
-            }).catch(() => {});
-            break;
-          } catch (_) {}
-        }
-      } catch (_) {}
-
-      // 2. Generate email template with 1-click download CTA button and timestamp
-      const emailHtml = generateCliniCoreEmailTemplate({
-        clinicName: clinicForm.name || "Medical Clinic & Pharmacy",
-        targetEmail,
-        dateStr,
-        timestampStr,
-        totalInflows: auditMetrics.totalInflows || 0,
-        totalStockValuation: auditMetrics.totalStockValuation || 0,
-        staffCount: usersList.length || 0,
-        patientsCount: patientsList.length || 0,
-        backupFilename: filename,
-        backupSizeBytes: sizeBytes,
-        downloadUrl,
-        frequencyLabel: "Manual On-Demand Backup",
-        isTestPing: false,
+      const vpsApiUrl = DEFAULT_API_URL;
+      const headers = { "Content-Type": "application/json" };
+      const res = await fetch(`${vpsApiUrl}/api/v1/system/backup-now`, {
+        method: "POST",
+        headers,
       });
-
-      // 3. Dispatch via Dual-Gateway (Backend Relay + Direct Resend Cloud Fallback)
-      const emailRes = await sendResendEmail({
-        apiKey: clinicForm.resend_api_key.trim(),
-        from: "CliniCore System <backup@clinicore.me>",
-        to: [targetEmail],
-        subject: `🏥 CliniCore Encrypted System Audit & Vault Backup (${dateStr})`,
-        html: emailHtml,
-        attachments: [
-          {
-            filename,
-            content: base64Content,
-          },
-        ],
-      });
-
-      if (emailRes.success) {
-        showToast("✅ Full encrypted .cfbak backup delivered to " + targetEmail);
-        alert(`✅ Backup Email Successfully Delivered!\n\nEncrypted database vault (.cfbak) and executive audit delivered to:\n${targetEmail}\n\nBackup Time: ${timestampStr}\nSize: ${(sizeBytes / 1024).toFixed(1)} KB\nMethod: ${emailRes.method}\n\nRecipient can either click the 1-Click Download button inside the email or download the attached file!`);
-        if (showEmailPreviewModal) setShowEmailPreviewModal(false);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
+        const ts = new Date().toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" });
+        setDriveLastBackup(ts);
+        setDriveLastStatus("success");
+        try { localStorage.setItem("cf_drive_last_backup", ts); } catch {}
+        showToast("✅ Google Drive Backup Success!");
+        alert(`🎉 Google Drive Backup Successful!\n\nFile: ${data.data?.file || "clinicore_backup.cfbak"}\nTimestamp: ${ts}\nStatus: Saved to ClinicCore Backup Folder on Google Drive`);
       } else {
-        const errorMsg = emailRes.error || "Unknown Resend error";
-        if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails") || errorMsg.includes("testing emails")) {
-          alert(`💡 Resend Sandbox Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to any custom recipient (${targetEmail}), verify your domain on https://resend.com/domains!\n\nEncrypted database backup was generated and validated.`);
-        } else {
-          alert(`⚠️ Email Dispatch Error:\n${errorMsg}`);
-        }
+        setDriveLastStatus("error");
+        const msg = data?.message || "Drive backup failed on VPS";
+        showToast("⚠️ Drive Backup: " + msg);
+        alert("⚠️ Drive Backup Notice:\n" + msg + "\n\nCheck VPS logs or contact support.");
       }
     } catch (err) {
-      alert(`⚠️ Email dispatch failed: ${err.message}`);
+      setDriveLastStatus("error");
+      showToast("⚠️ Drive connection error: " + err.message);
+      alert("☁️ Drive Backup Error:\n" + err.message + "\n\nMake sure VPS is reachable.");
     } finally {
-      setIsDispatchingBackup(false);
+      setIsDriveUploading(false);
     }
   };
 
-  const handleOpenEmailPreview = () => {
-    const targetEmail = clinicForm.notification_email?.trim() || "admin@clinicore.pk";
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0];
-    const timeTag = now.toTimeString().split(" ")[0].replace(/:/g, "");
-    const filename = `CliniCore_Encrypted_Backup_${dateStr}_${timeTag}.cfbak`;
-    const apiUrl = DEFAULT_API_URL;
-    const downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
-
-    let sizeBytes = 145000;
-    try {
-      const encryptedBackupStr = exportFullDatabase(true);
-      sizeBytes = new Blob([encryptedBackupStr]).size;
-    } catch { }
-
-    const html = generateCliniCoreEmailTemplate({
-      clinicName: clinicForm.name || "Medical Clinic & Pharmacy",
-      targetEmail,
-      dateStr,
-      timestampStr: now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" }),
-      totalInflows: auditMetrics.totalInflows || 0,
-      totalStockValuation: auditMetrics.totalStockValuation || 0,
-      staffCount: usersList.length || 0,
-      patientsCount: patientsList.length || 0,
-      backupFilename: filename,
-      backupSizeBytes: sizeBytes,
-      downloadUrl,
-      frequencyLabel: "Live Template Preview",
-      isTestPing: false,
-    });
-
-    setEmailPreviewHtml(html);
-    setShowEmailPreviewModal(true);
-  };
-
-  const handleTestPingEmail = async () => {
-    if (!clinicForm.resend_api_key || !clinicForm.resend_api_key.trim()) {
-      alert("⚠️ Please enter and save your Resend API Key (re_xxxx) first!");
-      return;
-    }
-    const targetEmail = clinicForm.notification_email?.trim();
-    if (!targetEmail) {
-      alert("⚠️ Please enter a recipient notification email address!");
-      return;
-    }
-
-    setIsPingingApi(true);
-    showToast("📡 Sending Resend API test ping...");
-
-    try {
-      const dateStr = new Date().toISOString().split("T")[0];
-      const emailHtml = generateCliniCoreEmailTemplate({
-        clinicName: clinicForm.name || "Medical Clinic & Pharmacy",
-        targetEmail,
-        dateStr,
-        timestampStr: new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "medium" }),
-        isTestPing: true,
-      });
-
-      const emailRes = await sendResendEmail({
-        apiKey: clinicForm.resend_api_key.trim(),
-        from: "CliniCore System <backup@clinicore.me>",
-        to: [targetEmail],
-        subject: `✅ CliniCore Resend API Gateway Connectivity Test (${dateStr})`,
-        html: emailHtml,
-      });
-
-      if (emailRes.success) {
-        showToast("✅ Resend Connectivity Test Ping Verified!");
-        alert(`✅ Resend Gateway Live!\n\nTest verification ping successfully delivered to:\n${targetEmail}\n\nDispatch Method: ${emailRes.method}`);
-      } else {
-        const errorMsg = emailRes.error || "Unknown Resend error";
-        if (errorMsg.includes("You can only send testing emails to your own email address") || errorMsg.includes("only send testing emails") || errorMsg.includes("testing emails")) {
-          alert(`💡 Resend Sandbox Notice:\n\nResend Sandbox Key currently allows delivering emails to the email address registered with your Resend account.\n\nTo send to any external address (${targetEmail}), verify your domain on https://resend.com/domains!`);
-        } else {
-          alert(`⚠️ Resend Ping Error:\n${errorMsg}`);
-        }
-      }
-    } catch (err) {
-      alert(`⚠️ Test ping failed: ${err.message}`);
-    } finally {
-      setIsPingingApi(false);
-    }
-  };
-
-  // ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
   // BACKUP & RESTORE
   // ---------------------------------------------------------------------------
   const handleExportBackup = () => {
@@ -1998,9 +1745,26 @@ export default function DeveloperAdminPanel() {
 
                         <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5">
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Offline Outbox Queue</span>
-                          <span className="text-sm font-black text-teal-950 mt-0.5 block">
-                            {outboxItems.length} Mutations Pending Sync
-                          </span>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <span className={`text-sm font-black mt-0.5 block ${
+                              outboxItems.filter(m => m.status === "pending" || m.status === "sending" || m.status === "failed").length > 0
+                                ? "text-amber-700" : "text-emerald-700"
+                            }`}>
+                              {outboxItems.filter(m => m.status === "pending" || m.status === "sending" || m.status === "failed").length > 0
+                                ? `${outboxItems.filter(m => m.status === "pending" || m.status === "sending" || m.status === "failed").length} Mutations Pending`
+                                : outboxItems.length === 0 ? "✓ Everything Synced" : `${outboxItems.length} Items`
+                              }
+                            </span>
+                            {outboxItems.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setShowOutboxDetails(v => !v)}
+                                className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline cursor-pointer"
+                              >
+                                {showOutboxDetails ? "Hide" : "Details"}
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5 flex items-center justify-between">
@@ -2023,6 +1787,67 @@ export default function DeveloperAdminPanel() {
                           </button>
                         </div>
                       </div>
+
+                      {/* Expandable Outbox Mutation Log */}
+                      {showOutboxDetails && outboxItems.length > 0 && (
+                        <div className="mt-3 border border-teal-100 rounded-2xl overflow-hidden animate-fade-in">
+                          <div className="flex items-center justify-between bg-teal-50/60 px-3.5 py-2.5 border-b border-teal-100">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-teal-900">Mutation Log — {outboxItems.length} Items</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={async () => { showToast("⟳ Forcing full sync..."); await handleManualSyncNow(); }}
+                                className="text-[10px] font-bold text-teal-700 hover:text-teal-900 bg-teal-100 hover:bg-teal-200 px-2 py-1 rounded-lg cursor-pointer transition-colors"
+                              >⟳ Retry All</button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const stale = outboxItems.filter(m => m.status === "dead_letter" || m.status === "confirmed");
+                                  if (stale.length === 0) { showToast("No stale items to clear."); return; }
+                                  if (!window.confirm(`Clear ${stale.length} dead/confirmed items from outbox?`)) return;
+                                  dbOutbox.clearAll();
+                                  setOutboxItems([]);
+                                  showToast(`✅ Cleared ${stale.length} stale mutations.`);
+                                }}
+                                className="text-[10px] font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg cursor-pointer transition-colors"
+                              >Clear Dead</button>
+                            </div>
+                          </div>
+                          <div className="max-h-[240px] overflow-y-auto divide-y divide-teal-50">
+                            {outboxItems.map((m, idx) => (
+                              <div key={m.mutation_id || m.id || idx} className="flex items-start gap-2.5 px-3.5 py-2.5 hover:bg-teal-50/40 transition-colors">
+                                <span className={`text-base mt-0.5 shrink-0 ${
+                                  m.status === "confirmed" ? "text-emerald-500" :
+                                  m.status === "pending" || m.status === "sending" ? "text-amber-500" :
+                                  m.status === "dead_letter" ? "text-red-500" : "text-red-400"
+                                }`}>
+                                  {m.status === "confirmed" ? "✓" : m.status === "sending" ? "⟳" : m.status === "dead_letter" ? "✕" : "⏳"}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[11px] font-black text-teal-950">{m.operation || m.action_type || "UPDATE"}</span>
+                                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.entity || "unknown"}</span>
+                                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                                      m.status === "confirmed" ? "bg-emerald-50 text-emerald-700" :
+                                      m.status === "pending" ? "bg-amber-50 text-amber-700" :
+                                      m.status === "sending" ? "bg-blue-50 text-blue-700" :
+                                      "bg-red-50 text-red-700"
+                                    }`}>{m.status}</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+                                    ID: {(m.entity_id || m.mutation_id || "—").slice(0, 30)}
+                                    {m.retry_count > 0 && <span className="ml-2 text-amber-600">Retry: {m.retry_count}/5</span>}
+                                  </div>
+                                  {m.last_error && (
+                                    <div className="text-[10px] text-red-500 mt-0.5 truncate" title={m.last_error}>⚠ {m.last_error.slice(0, 60)}</div>
+                                  )}
+                                  <div className="text-[10px] text-slate-300 mt-0.5">{m.created_at ? new Date(m.created_at).toLocaleString("en-PK") : ""}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Master License Form */}
@@ -3472,511 +3297,115 @@ export default function DeveloperAdminPanel() {
               {/* ================================================================= */}
               {activeTab === "clinic" && (
                 <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
-                  <div className="border-b border-teal-50 pb-4">
-                    <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-teal-700">domain</span>
-                      Master Clinic Branding &amp; Public Website CMS
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                      Controls landing page hero, doctors directory, thermal receipt headers, and public portal identity
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Full Clinic &amp; Wholesale Store Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={clinicForm.name}
-                        onChange={(e) => setClinicForm({ ...clinicForm, name: e.target.value })}
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Clinic Tagline / Slogan
-                      </label>
-                      <input
-                        type="text"
-                        value={clinicForm.tagline || ""}
-                        onChange={(e) => setClinicForm({ ...clinicForm, tagline: e.target.value })}
-                        placeholder="e.g. Specialized Homeopathic Healthcare & Certified Medicine Store"
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Public Website Hero Main Title
-                      </label>
-                      <input
-                        type="text"
-                        value={clinicForm.hero_title || ""}
-                        onChange={(e) => setClinicForm({ ...clinicForm, hero_title: e.target.value })}
-                        placeholder="e.g. Specialized Homeopathic Healthcare & Family OPD Clinic in Hyderabad"
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Public Website Hero Subtitle &amp; Description
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={clinicForm.hero_description || ""}
-                        onChange={(e) => setClinicForm({ ...clinicForm, hero_description: e.target.value })}
-                        placeholder="Brief description for prospective patients visiting the clinic website..."
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Official Address (City &amp; Street)
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={clinicForm.address}
-                        onChange={(e) => setClinicForm({ ...clinicForm, address: e.target.value })}
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Official Phone / Mobile
-                      </label>
-                      <input
-                        type="text"
-                        value={clinicForm.phone}
-                        onChange={(e) => setClinicForm({ ...clinicForm, phone: e.target.value })}
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        WhatsApp Inquiry Number
-                      </label>
-                      <input
-                        type="text"
-                        value={clinicForm.whatsapp || clinicForm.phone || ""}
-                        onChange={(e) => setClinicForm({ ...clinicForm, whatsapp: e.target.value })}
-                        placeholder="923142291356"
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        OPD Chamber &amp; Pharmacy Working Hours / Timings
-                      </label>
-                      <input
-                        type="text"
-                        value={clinicForm.timings || ""}
-                        onChange={(e) => setClinicForm({ ...clinicForm, timings: e.target.value })}
-                        placeholder="e.g. Monday – Saturday: 10:00 AM – 10:00 PM | Sunday: 11:00 AM – 4:00 PM"
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Default Consultation Fee (Rs.)
-                      </label>
-                      <input
-                        type="number"
-                        value={clinicForm.default_consultation_fee}
-                        onChange={(e) => setClinicForm({ ...clinicForm, default_consultation_fee: Number(e.target.value) || 0 })}
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Chamber Live Status
-                      </label>
-                      <select
-                        value={clinicForm.clinic_status || "open"}
-                        onChange={(e) => setClinicForm({ ...clinicForm, clinic_status: e.target.value })}
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                      >
-                        <option value="open">🟢 Open for OPD Consultation &amp; Pharmacy</option>
-                        <option value="closed">🔴 Closed Today</option>
-                      </select>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Public Notice Banner (Top of Website &amp; TV Screens)
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={clinicForm.public_notice}
-                        onChange={(e) => setClinicForm({ ...clinicForm, public_notice: e.target.value })}
-                        placeholder="Leave blank if no special announcement..."
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-semibold text-teal-950"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-teal-50 flex justify-end">
-                    <button
-                      type="submit"
-                      className="bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-700/20 cursor-pointer"
-                    >
-                      Save Master Clinic &amp; Website CMS
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* ================================================================= */}
-              {/* TAB 4: AUTOMATED BACKGROUND SERVICES & RESEND EMAIL API           */}
-              {/* ================================================================= */}
-              {activeTab === "apis" && (
-                <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
+                  {/* ── Header ─────────────────────────────────────────────── */}
                   <div className="border-b border-teal-50 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-teal-700">mark_email_read</span>
-                        Automated Background Services &amp; Resend Email API
+                        <span className="material-symbols-outlined text-indigo-700">cloud_upload</span>
+                        Google Drive Cloud Vault &amp; Backup
                       </h3>
                       <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                        Configure Resend email credentials for scheduled daily closing, encrypted .cfbak database vaults, and manual backup dispatches
+                        Backup .cfbak encrypted vault directly to Google Drive via VPS cron job
                       </p>
                     </div>
-
-                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Gateway Active
-                      </span>
-                    </div>
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border self-start sm:self-auto ${driveLastStatus === "success" ? "bg-emerald-50 text-emerald-800 border-emerald-200" : driveLastStatus === "error" ? "bg-red-50 text-red-700 border-red-200" : "bg-slate-50 text-slate-600 border-slate-200"}`}>
+                      <span className={`w-2 h-2 rounded-full ${driveLastStatus === "success" ? "bg-emerald-500 animate-pulse" : driveLastStatus === "error" ? "bg-red-500" : "bg-slate-400"}`} />
+                      {driveLastStatus === "success" ? "Drive Connected" : driveLastStatus === "error" ? "Drive Error" : "Drive Standby"}
+                    </span>
                   </div>
 
-                  {/* API Credentials Grid */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Resend API Key (re_xxxx)
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="re_123456789_abcdef..."
-                        value={clinicForm.resend_api_key}
-                        onChange={(e) => setClinicForm({ ...clinicForm, resend_api_key: e.target.value })}
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-mono font-bold text-teal-900"
-                      />
-                      <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500 font-medium">
-                        <span>Relayed through VPS backend (<code className="text-teal-800 font-bold">api.clinicore.me</code>)</span>
-                        <span className="text-emerald-700 font-bold flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs">verified</span>
-                          <span>Verified Domain: <strong>backup@clinicore.me</strong></span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                          Notification Recipient Email
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          placeholder="e.g. drasifhosting@gmail.com"
-                          value={clinicForm.notification_email}
-                          onChange={(e) => setClinicForm({ ...clinicForm, notification_email: e.target.value })}
-                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                          <span>Automated Report Frequency</span>
-                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Live Active</span>
-                        </label>
-                        <select
-                          value={selectedFreqType}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setSelectedFreqType(val);
-                            let nextFreq = val;
-                            if (val === "custom_time") {
-                              nextFreq = `custom_time:${customTimeInput}`;
-                            } else if (val === "custom_interval") {
-                              nextFreq = `custom_interval:${customIntervalInput}`;
-                            }
-                            setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
-                            try {
-                              localStorage.setItem("cf_report_frequency", nextFreq);
-                            } catch { }
-                          }}
-                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 cursor-pointer shadow-inner"
-                        >
-                          <option value="every_1m" className="text-amber-700 font-bold bg-amber-50">🧪 Testing Mode: Every 1 Minute (Live Automation Verification)</option>
-                          <option value="custom_time">⚙️ Custom Daily Clock Time...</option>
-                          <option value="custom_interval">⚙️ Custom Minute Interval...</option>
-                          <option value="daily_12am">🌙 Daily at 12:00 AM Midnight (Day Closing Vault - Recommended)</option>
-                          <option value="daily_9pm">🌙 Daily at 9:00 PM (Shift End Closure)</option>
-                          <option value="daily_10pm">🌙 Daily at 10:00 PM (Late Night Closure)</option>
-                          <option value="daily_8pm">🌙 Daily at 8:00 PM (Evening Shift Closure)</option>
-                          <option value="every_12h">⏱️ Every 12 Hours (Twice Daily Audit)</option>
-                          <option value="every_6h">⏱️ Every 6 Hours (High Volume Audit)</option>
-                          <option value="hourly">⚡ Every 1 Hour (Real-Time Background Sync)</option>
-                          <option value="weekly_saturday">📅 Weekly on Saturday (Weekly Summary)</option>
-                          <option value="monthly">📊 Monthly Executive Report</option>
-                          <option value="manual">🚫 Manual On-Demand Only (Off)</option>
-                        </select>
-
-
-                        {/* Custom Clock Time Input */}
-                        {selectedFreqType === "custom_time" && (
-                          <div className="mt-2.5 space-y-1 animate-fade-in">
-                            <label className="block text-[10px] font-bold text-teal-900 uppercase">Set Custom Daily Time (24h format)</label>
-                            <input
-                              type="time"
-                              value={customTimeInput}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setCustomTimeInput(val);
-                                const nextFreq = `custom_time:${val}`;
-                                setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
-                                try {
-                                  localStorage.setItem("cf_report_frequency", nextFreq);
-                                } catch { }
-                              }}
-                              className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-teal-950 font-mono shadow-inner"
-                            />
-                          </div>
-                        )}
-
-                        {/* Custom Interval Input */}
-                        {selectedFreqType === "custom_interval" && (
-                          <div className="mt-2.5 space-y-1 animate-fade-in">
-                            <label className="block text-[10px] font-bold text-teal-900 uppercase">Set Custom Interval (in Minutes)</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="1440"
-                              value={customIntervalInput}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 15;
-                                setCustomIntervalInput(val);
-                                const nextFreq = `custom_interval:${val}`;
-                                setClinicForm((prev) => ({ ...prev, report_frequency: nextFreq }));
-                                try {
-                                  localStorage.setItem("cf_report_frequency", nextFreq);
-                                } catch { }
-                              }}
-                              className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-teal-950 font-mono shadow-inner"
-                            />
-                          </div>
-                        )}
-
-                        {/* Countdown Display Alert Badge */}
-                        {countdownDetail && countdownDetail.secondsLeft !== null && (
-                          <div className="mt-3 p-3 bg-gradient-to-r from-teal-950 to-teal-900 border border-teal-800 rounded-2xl flex items-center justify-between text-white shadow-md shadow-teal-950/20">
-                            <div className="flex items-center gap-2">
-                              <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                              </span>
-                              <span className="text-[10px] font-black uppercase tracking-wider text-teal-300">Next Auto-Email:</span>
-                            </div>
-                            <span className="text-xs font-black font-mono text-emerald-400 bg-teal-900/60 px-2 py-0.5 rounded-md border border-teal-800">
-                              {(() => {
-                                const sec = countdownDetail.secondsLeft;
-                                if (sec === null || sec === undefined) return "Calculating...";
-                                if (sec <= 0) return "Triggering now...";
-                                const h = Math.floor(sec / 3600);
-                                const m = Math.floor((sec % 3600) / 60);
-                                const s = sec % 60;
-                                if (h > 0) return `${h}h ${m}m ${s}s`;
-                                if (m > 0) return `${m}m ${s}s`;
-                                return `${s}s`;
-                              })()}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Live Automation Execution Logs */}
-                        {automationLogs.length > 0 && (
-                          <div className="mt-3 bg-white border border-teal-100 rounded-2xl p-3 shadow-sm space-y-2 max-h-[200px] overflow-y-auto">
-                            <div className="flex items-center justify-between border-b border-teal-50 pb-1.5">
-                              <span className="text-[10px] font-black uppercase text-teal-900 tracking-wider">Live Execution Logs (Real-time)</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  localStorage.removeItem("cf_automation_execution_logs");
-                                  setAutomationLogs([]);
-                                }}
-                                className="text-[9px] font-bold text-red-500 hover:text-red-700 bg-red-50 px-1.5 py-0.5 rounded"
-                              >
-                                Clear Logs
-                              </button>
-                            </div>
-                            <div className="space-y-1.5 text-[9px] font-medium font-mono">
-                              {automationLogs.map((log, idx) => (
-                                <div key={idx} className="flex flex-col gap-0.5 border-b border-slate-50 pb-1 last:border-0">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                    <span className={`px-1 rounded font-bold uppercase ${log.status === "success" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
-                                        log.status === "failed" ? "bg-red-50 text-red-600 border border-red-100" :
-                                          "bg-amber-50 text-amber-600 border border-amber-100 animate-pulse"
-                                      }`}>
-                                      {log.status}
-                                    </span>
-                                  </div>
-                                  <div className="text-slate-900 font-bold">{log.reason}</div>
-                                  <div className="text-slate-600 whitespace-pre-wrap">{log.message}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        WhatsApp Cloud Gateway Phone No
-                      </label>
-                      <input
-                        type="text"
-                        value={clinicForm.whatsapp_gateway_no}
-                        onChange={(e) => setClinicForm({ ...clinicForm, whatsapp_gateway_no: e.target.value })}
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Manual Backup Dispatch Card */}
-                  <div className="bg-gradient-to-r from-teal-50 via-emerald-50/50 to-teal-50/30 border border-teal-200/80 rounded-3xl p-5 space-y-3.5 shadow-2xs">
+                  {/* ── Drive Info Card ─────────────────────────────────────── */}
+                  <div className="bg-gradient-to-br from-indigo-50 via-blue-50/40 to-teal-50/30 border border-indigo-100 rounded-2xl p-5 space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-teal-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-teal-900/20">
-                        <span className="material-symbols-outlined text-xl">enhanced_encryption</span>
+                      <div className="w-10 h-10 rounded-xl bg-indigo-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-700/25">
+                        <span className="material-symbols-outlined text-xl">folder_shared</span>
                       </div>
                       <div>
-                        <h4 className="font-black text-sm text-teal-950">
-                          Manual On-Demand Backup Email Dispatch
-                        </h4>
-                        <p className="text-xs text-slate-600 leading-relaxed font-medium mt-0.5">
-                          Instantly compile your live database vault, generate a tamper-proof <strong>.cfbak</strong> encrypted backup attachment, format the signature clinical email report matching our web app theme, and deliver directly to <strong>{clinicForm.notification_email || "your inbox"}</strong>.
+                        <h4 className="font-black text-sm text-indigo-950">ClinicCore Backup Folder — Google Drive</h4>
+                        <p className="text-xs text-slate-600 font-medium mt-0.5 leading-relaxed">
+                          Backups <strong>ClinicCore/Backups/</strong> folder mein upload hoti hain VPS backend ke zariye.
+                          Har file timestamped aur encrypted (.cfbak) hoti hai.
                         </p>
                       </div>
                     </div>
+                    <div className="flex flex-wrap gap-3 pt-1">
+                      <div className="flex-1 min-w-[130px] bg-white/70 border border-indigo-100 rounded-xl px-3 py-2.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Last Successful Backup</span>
+                        <span className="text-xs font-black text-indigo-950 mt-0.5 block">{driveLastBackup || "Not run yet"}</span>
+                      </div>
+                      <div className="flex-1 min-w-[130px] bg-white/70 border border-indigo-100 rounded-xl px-3 py-2.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Scheduled (VPS Cron)</span>
+                        <span className="text-xs font-black text-teal-800 mt-0.5 block">Daily 12:00 AM PKT</span>
+                      </div>
+                      <div className="flex-1 min-w-[130px] bg-white/70 border border-indigo-100 rounded-xl px-3 py-2.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Retention Policy</span>
+                        <span className="text-xs font-black text-teal-800 mt-0.5 block">Keep last 30 days</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                      <span className="material-symbols-outlined text-amber-600 text-base shrink-0 mt-0.5">info</span>
+                      <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                        <strong>Google Drive Auth Setup Needed:</strong> VPS pe Google Service Account configure karna hoga.
+                        File: <code className="bg-amber-100 px-1 rounded font-mono text-amber-900">/etc/clinicore/google_service_account.json</code>.
+                        Gmail App Password se Drive access nahi hota — OAuth2 Service Account required hai.
+                      </p>
+                    </div>
+                  </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                      {/* Primary Manual Dispatch Button */}
+                  {/* ── Action Buttons ──────────────────────────────────────── */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-black text-teal-950 uppercase tracking-wider">Manual Backup Actions</h4>
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <button
                         type="button"
-                        disabled={isDispatchingBackup}
-                        onClick={handleManualBackupEmailDispatch}
-                        className="px-5 py-3 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 hover:from-emerald-800 hover:to-teal-800 text-white font-black text-xs rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-800/25 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                        disabled={isDriveUploading}
+                        onClick={handleDriveBackupNow}
+                        className="px-5 py-3 bg-gradient-to-r from-indigo-700 to-blue-700 hover:from-indigo-800 hover:to-blue-800 text-white font-black text-xs rounded-2xl flex items-center gap-2 shadow-lg shadow-indigo-700/25 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                       >
-                        {isDispatchingBackup ? (
+                        {isDriveUploading ? (
                           <>
                             <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                            <span>Compiling &amp; Dispatching .cfbak...</span>
+                            <span>Uploading to Drive...</span>
                           </>
                         ) : (
                           <>
-                            <span className="material-symbols-outlined text-base">outgoing_mail</span>
-                            <span>Dispatch Diagnostic Email (.cfbak)</span>
+                            <span className="material-symbols-outlined text-base">cloud_upload</span>
+                            <span>Send Backup to Google Drive</span>
                           </>
                         )}
                       </button>
-
-                      {/* Direct Google Drive Cloud Sync Trigger */}
                       <button
                         type="button"
-                        onClick={async () => {
-                          showToast("☁️ Connecting to Google Drive Cloud Vault on VPS...");
-                          try {
-                            const vpsApiUrl = DEFAULT_API_URL;
-                            const res = await fetch(`${vpsApiUrl}/api/v1/system/backup-now`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" }
-                            });
-                            const data = await res.json().catch(() => null);
-                            if (res.ok && data?.success) {
-                              alert(`🎉 Google Drive Backup Success!\n\nBackup File: ${data.data?.file || "clinicore_drive_backup.sql.gz"}\nSaved to VPS Cloud Storage & Google Drive.\nTimestamp: ${data.data?.timestamp || new Date().toLocaleString()}`);
-                            } else {
-                              alert("⚠️ Note: " + (data?.message || "Google Drive backup queued on VPS daemon."));
-                            }
-                          } catch (err) {
-                            alert("☁️ Google Drive Backup Notice: " + err.message);
-                          }
-                        }}
-                        className="px-5 py-3 bg-indigo-700 hover:bg-indigo-800 text-white font-black text-xs rounded-2xl flex items-center gap-2 shadow-lg shadow-indigo-800/25 transition-all active:scale-95 cursor-pointer"
-                        title="Directly trigger Google Drive backup pipeline on VPS"
-                      >
-                        <span className="material-symbols-outlined text-base">cloud_upload</span>
-                        <span>Send Backup to Google Drive</span>
-                      </button>
-
-                      {/* Direct Local Download Button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          exportFullDatabase(false);
-                          showToast("💾 CliniCore Encrypted .cfbak file downloaded to your computer!");
-                        }}
-                        className="px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-                        title="Download a local encrypted copy directly to your Downloads folder"
+                        onClick={() => { exportFullDatabase(false); showToast("💾 .cfbak downloaded!"); }}
+                        className="px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
                       >
                         <span className="material-symbols-outlined text-base text-emerald-700">download</span>
                         <span>Download .cfbak Locally</span>
                       </button>
-
-                      {/* Preview Template Modal Trigger */}
-                      <button
-                        type="button"
-                        onClick={handleOpenEmailPreview}
-                        className="px-4 py-3 bg-white border border-teal-300 hover:bg-teal-50 text-teal-950 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-                      >
-                        <span className="material-symbols-outlined text-base text-teal-700">preview</span>
-                        <span>Preview Email Template</span>
-                      </button>
-
-                      {/* Connectivity Ping Button */}
-                      <button
-                        type="button"
-                        disabled={isPingingApi}
-                        onClick={handleTestPingEmail}
-                        className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
-                      >
-                        {isPingingApi ? (
-                          <>
-                            <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                            <span>Pinging...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="material-symbols-outlined text-base text-slate-600">sensors</span>
-                            <span>Quick Ping Test</span>
-                          </>
-                        )}
-                      </button>
                     </div>
                   </div>
 
-                  {/* Bottom Action Row */}
+                  {/* ── WhatsApp Gateway ────────────────────────────────────── */}
+                  <div className="border-t border-teal-50 pt-5">
+                    <h4 className="text-xs font-black text-teal-950 uppercase tracking-wider mb-3">WhatsApp Cloud Gateway</h4>
+                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                      WhatsApp Gateway Phone No
+                    </label>
+                    <input
+                      type="text"
+                      value={clinicForm.whatsapp_gateway_no}
+                      onChange={(e) => setClinicForm({ ...clinicForm, whatsapp_gateway_no: e.target.value })}
+                      placeholder="03473100304"
+                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1.5 font-medium">Invoices share aur system alerts ke liye use hota hai.</p>
+                  </div>
+
+                  {/* ── Save ───────────────────────────────────────────────── */}
                   <div className="pt-4 border-t border-teal-50 flex items-center justify-end">
-                    <button
-                      type="submit"
-                      className="bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-900 hover:to-teal-800 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-800/20 cursor-pointer active:scale-95 flex items-center gap-1.5"
-                    >
+                    <button type="submit" className="bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-900 hover:to-teal-800 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-800/20 cursor-pointer active:scale-95 flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-base">save</span>
-                      Save API &amp; Automation Config
+                      Save Drive &amp; Gateway Config
                     </button>
                   </div>
                 </form>
@@ -4699,120 +4128,6 @@ export default function DeveloperAdminPanel() {
               </button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* ================================================================= */}
-      {/* MODAL: EMAIL TEMPLATE LIVE RESPONSIVE PREVIEW                     */}
-      {/* ================================================================= */}
-      {showEmailPreviewModal && (
-        <div className="fixed inset-0 bg-teal-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in">
-          <div className="bg-white rounded-3xl border border-teal-200 shadow-2xl max-w-4xl w-full h-[92vh] max-h-[850px] flex flex-col overflow-hidden">
-            {/* Modal Header Bar */}
-            <div className="px-6 py-4 bg-gradient-to-r from-teal-900 via-emerald-950 to-teal-950 text-white flex items-center justify-between shrink-0 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-teal-300 border border-white/20">
-                  <span className="material-symbols-outlined text-xl">mark_email_read</span>
-                </div>
-                <div>
-                  <h3 className="font-black text-sm text-white">CliniCore Signature HTML Email Template Preview</h3>
-                  <p className="text-[11px] text-teal-200/80">Matches CliniCore Clinical Dark Teal &amp; Emerald Theme with Responsive CSS</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {/* Viewport Width Switcher */}
-                <div className="bg-white/10 p-1 rounded-xl flex items-center gap-1 border border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setEmailPreviewMode("desktop")}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${emailPreviewMode === "desktop" ? "bg-white text-teal-950 shadow-xs" : "text-teal-200 hover:text-white"
-                      }`}
-                  >
-                    Desktop View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEmailPreviewMode("mobile")}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${emailPreviewMode === "mobile" ? "bg-white text-teal-950 shadow-xs" : "text-teal-200 hover:text-white"
-                      }`}
-                  >
-                    Mobile (380px)
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowEmailPreviewModal(false)}
-                  className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
-                  title="Close Preview"
-                >
-                  <span className="material-symbols-outlined text-base">close</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body: Live iframe Render */}
-            <div className="flex-1 bg-slate-100 overflow-auto p-4 sm:p-6 flex items-center justify-center">
-              <div
-                className={`bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden transition-all duration-300 ${emailPreviewMode === "mobile" ? "w-[390px] h-full" : "w-full h-full max-w-2xl"
-                  }`}
-              >
-                <iframe
-                  title="CliniCore Email Live Template Render"
-                  srcDoc={emailPreviewHtml}
-                  className="w-full h-full border-0"
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer Bar with Quick Dispatch */}
-            <div className="px-6 py-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-              <div className="text-xs text-slate-600 font-medium">
-                Destination Inbox: <strong className="text-teal-950 font-bold">{clinicForm.notification_email || "admin@clinicore.pk"}</strong>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportFullDatabase(false);
-                    showToast("💾 .cfbak file downloaded to your Downloads folder!");
-                  }}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-950 border border-emerald-300 hover:bg-emerald-100 flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Download copy directly"
-                >
-                  <span className="material-symbols-outlined text-sm text-emerald-700">download</span>
-                  <span>Download .cfbak</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowEmailPreviewModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer transition-colors"
-                >
-                  Close Preview
-                </button>
-                <button
-                  type="button"
-                  disabled={isDispatchingBackup}
-                  onClick={handleManualBackupEmailDispatch}
-                  className="px-5 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white shadow-md shadow-emerald-700/20 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {isDispatchingBackup ? (
-                    <>
-                      <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                      <span>Dispatching...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-sm">outgoing_mail</span>
-                      <span>Send Real Backup Email (.cfbak Attached)</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
