@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { dbPatients, dbVisits, dbUsers, dbClinic, dbClinicServices, dbPatientLedger } from "../api/db.js";
 import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
 import { formatPatientAge } from "../utils/formatters.js";
+import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
 import { patientInputSchema, validateSchema } from "../schemas/index.js";
 
 const RELATION_TYPES = ["father", "husband", "wife", "mother", "brother", "sister", "son", "daughter"];
@@ -370,9 +371,17 @@ function toTitleCase(str) {
           >
             {/* ── Header ── */}
             <div className="rx-header bg-gradient-to-br from-teal-700 to-teal-800 text-white p-5 text-center">
+              {/* Clinic Logo */}
+              <div className="flex justify-center mb-2">
+                <img
+                  src={clinic?.logo_url || CLINIC_LOGO_BASE64}
+                  alt="Clinic Logo"
+                  className="h-16 w-auto max-w-[200px] object-contain rounded-lg bg-white/10 p-1 backdrop-blur-xs"
+                />
+              </div>
               {/* Dynamic Clinic name */}
               <div className="rx-clinic-name text-base font-bold tracking-wide mb-0.5">
-                {clinic?.name || "Dr. Asif Ashraf's Clinic"}
+                {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
               </div>
               <div className="text-[10px] opacity-70 mb-0.5">{clinic?.address || "Lajpat Road, Hyderabad"}</div>
               {clinic?.phone && <div className="text-[10px] opacity-70 mb-1">Tel: {clinic.phone}</div>}

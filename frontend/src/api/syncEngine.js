@@ -73,11 +73,11 @@ class SyncEngine {
     this.lastSyncTime =
       (typeof localStorage !== "undefined" ? storageDriver.getItem("cf_last_cloud_sync") : null) || null;
     this.serverTimeOffsetMs = 0;
-    this.enableSnapshotSyncFallback = false;
+    this.enableSnapshotSyncFallback = true;
 
     // Register write hook with db.js for automatic debounced synchronization
     registerCollectionChangeHook(() => {
-      this.schedulePush();
+      this.schedulePush(150);
     });
 
     if (typeof window !== "undefined") {
@@ -537,13 +537,21 @@ class SyncEngine {
           for (const key of directOverwriteKeys) {
             if (remoteData[key] !== undefined && remoteData[key] !== null) {
               const remoteVal = remoteData[key];
-              if (Array.isArray(remoteVal) && remoteVal.length === 0) {
-                // If VPS returns empty array for catalog items, do NOT wipe local master catalog seeds!
-                if (!catalogKeys.has(key)) {
-                  setCollection(key, []);
+              if (Array.isArray(remoteVal)) {
+                if (remoteVal.length === 0 && catalogKeys.has(key)) {
+                  // If VPS returns empty array for catalog items, do NOT wipe local master catalog seeds!
+                  continue;
                 }
-              } else if (Array.isArray(remoteVal) && remoteVal.length > 0) {
-                setCollection(key, remoteVal);
+                
+                // Merge any in-flight pending outbox items that haven't been acknowledged on server yet
+                const localItems = (typeof localStorage !== "undefined" ? JSON.parse(storageDriver.getItem(key) || "[]") : []);
+                const remoteIds = new Set(remoteVal.map((r) => r && r.id).filter(Boolean));
+                const pendingLocals = Array.isArray(localItems)
+                  ? localItems.filter((it) => it && it.id && pendingIds.has(it.id) && !remoteIds.has(it.id))
+                  : [];
+                
+                const finalCollection = [...pendingLocals, ...remoteVal];
+                setCollection(key, finalCollection);
               } else if (remoteVal && typeof remoteVal === "object" && !Array.isArray(remoteVal)) {
                 // Singleton object (clinic config)
                 storageDriver.setItem(key, JSON.stringify(remoteVal));

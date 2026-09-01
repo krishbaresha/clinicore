@@ -12,6 +12,9 @@ const CORE_STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',
   '/version.json',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png',
   '/favicon.png',
   '/favicon.svg',
   '/clinic-logo.png'

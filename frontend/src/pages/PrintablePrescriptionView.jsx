@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getVisit } from "../api/visits.js";
 import { dbClinic, dbPatients } from "../api/db.js";
 import { formatDate, formatPatientAge } from "../utils/formatters.js";
+import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
 
 export default function PrintablePrescriptionView() {
   const { id }   = useParams();
@@ -64,14 +65,24 @@ export default function PrintablePrescriptionView() {
       <div className="print-page w-full max-w-2xl bg-white border border-outline-variant rounded-2xl shadow-xl p-xl flex flex-col gap-lg">
 
         {/* Letterhead */}
-        <header className="flex items-start justify-between border-b-2 border-primary pb-md">
-          <div>
-            <h1 className="font-headline-lg text-headline-lg font-bold text-primary">
-              {clinic?.name || "Clinic"}
-            </h1>
-            {clinic?.address && (
-              <p className="font-body-sm text-body-sm text-outline mt-1">{clinic.address}</p>
-            )}
+        <header className="flex items-center justify-between border-b-2 border-primary pb-md gap-4">
+          <div className="flex items-center gap-3">
+            <img
+              src={clinic?.logo_url || CLINIC_LOGO_BASE64}
+              alt="Clinic Logo"
+              className="h-14 w-auto max-w-[140px] object-contain"
+            />
+            <div>
+              <h1 className="font-headline-lg text-headline-lg font-bold text-primary">
+                {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
+              </h1>
+              {clinic?.address && (
+                <p className="font-body-sm text-body-sm text-outline mt-0.5">{clinic.address}</p>
+              )}
+              {clinic?.phone && (
+                <p className="font-body-sm text-body-sm font-semibold text-primary mt-0.5">Tel: {clinic.phone}</p>
+              )}
+            </div>
           </div>
           <div className="text-right">
             <p className="font-label-md text-label-md text-outline uppercase">Prescription</p>

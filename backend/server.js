@@ -176,12 +176,12 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.7",
-        build_id: "20260901.203300",
+        version: "2.5.8",
+        build_id: "20260901.212000",
         release_channel: "production",
-        changelog: "Strict Password Hash Verification, Google Drive Cloud Vault Sync & Security Hardening",
+        changelog: "Real-Time Global Cloud Mutation Sync, Dr. Asif Clinic Logo on All Receipts & Mobile PWA App Fix",
         min_client_version: "2.4.0",
-        download_url: "https://clinicore.me/api/v1/system/download-installer"
+        download_url: "https://api.clinicore.me/api/v1/system/download-installer"
       }));
       return;
     }
@@ -255,6 +255,96 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── Universal Mutation-Based Real-Time Cloud Sync Endpoint ──
+    if (url.pathname === "/api/v1/sync/push" && req.method === "POST") {
+      const ENTITY_TO_KEY = {
+        patients: "cf_patients_v5",
+        visits: "cf_visits_v5",
+        sales: "cf_sales_v5",
+        b2b_sales: "cf_b2b_sales_v5",
+        inventory: "cf_inventory_v5",
+        purchases: "cf_purchases_v5",
+        suppliers: "cf_suppliers_v5",
+        parties: "cf_parties_v5",
+        salesmen: "cf_salesmen_v5",
+        warehouses: "cf_warehouses_v6",
+        accounts: "cf_accounts_v6",
+        cashbook: "cf_cashbook_v6",
+        expenses: "cf_expenses_v5",
+        returns: "cf_returns_v5",
+        stock_transfers: "cf_stock_transfers_v5",
+        stock_movements: "cf_stock_movements_v1",
+        shift_closings: "cf_shift_closings_v5",
+        patient_ledger: "cf_patient_ledger_v5",
+        supplier_ledger: "cf_supplier_ledger_v6",
+        documents: "cf_documents_v5",
+        users: "cf_users_v5",
+        audit_logs: "cf_audit_logs_v1",
+        clinic: "cf_clinic_v5",
+        license: "cf_license_config_v1",
+      };
+
+      const mutations = Array.isArray(payload.mutations) ? payload.mutations : [];
+      const results = [];
+
+      for (const m of mutations) {
+        const mId = m.mutation_id || m.id;
+        try {
+          const entity = m.entity || "";
+          const targetKey = ENTITY_TO_KEY[entity] || entity;
+          const action = (m.action || "CREATE").toUpperCase();
+          const targetId = m.entity_id || m.payload?.id;
+          const data = m.payload;
+
+          if (entity === "clinic" || entity === "license") {
+            syncStateData[targetKey] = { ...(syncStateData[targetKey] || {}), ...(data || {}) };
+          } else if (targetKey) {
+            if (!Array.isArray(syncStateData[targetKey])) {
+              syncStateData[targetKey] = [];
+            }
+
+            const arr = syncStateData[targetKey];
+            const existingIdx = targetId ? arr.findIndex((it) => it && it.id === targetId) : -1;
+
+            if (action === "DELETE") {
+              if (existingIdx !== -1) {
+                arr.splice(existingIdx, 1);
+              }
+            } else if (action === "UPDATE") {
+              if (existingIdx !== -1) {
+                arr[existingIdx] = { ...arr[existingIdx], ...data };
+              } else if (data) {
+                arr.unshift(data);
+              }
+            } else {
+              // CREATE
+              if (existingIdx !== -1) {
+                arr[existingIdx] = { ...arr[existingIdx], ...data };
+              } else if (data) {
+                arr.unshift(data);
+              }
+            }
+
+            // Keep users in sync
+            if (targetKey === "cf_users_v5") {
+              users = arr.filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
+              saveJson(USERS_FILE, users);
+            }
+          }
+
+          results.push({ mutation_id: mId, status: "confirmed" });
+        } catch (mErr) {
+          console.warn("[Sync Push Error]:", mErr.message);
+          results.push({ mutation_id: mId, status: "rejected", reason: mErr.message });
+        }
+      }
+
+      saveJson(STATE_FILE, syncStateData);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, data: { results } }));
+      return;
+    }
+
     // Sync Pull (State Pull)
     if (url.pathname === "/api/v1/system/sync-state" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -262,13 +352,28 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Sync Push (State Push)
+    // Sync Push (State Push — Non-destructive deep merge)
     if (url.pathname === "/api/v1/system/sync-state" && req.method === "POST") {
-      syncStateData = payload;
-      saveJson(STATE_FILE, syncStateData);
-      if (payload && Array.isArray(payload["cf_users_v5"])) {
-        users = payload["cf_users_v5"].filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
-        saveJson(USERS_FILE, users);
+      if (payload && typeof payload === "object") {
+        const protectedCatalogKeys = new Set(["cf_inventory_v5", "cf_parties_v5", "cf_suppliers_v5", "cf_accounts_v6", "cf_warehouses_v6"]);
+        
+        for (const [key, val] of Object.entries(payload)) {
+          if (Array.isArray(val)) {
+            if (val.length === 0 && protectedCatalogKeys.has(key) && Array.isArray(syncStateData[key]) && syncStateData[key].length > 0) {
+              // Preserve existing catalog data on VPS if incoming array is empty
+              continue;
+            }
+            syncStateData[key] = val;
+          } else if (val && typeof val === "object") {
+            syncStateData[key] = { ...(syncStateData[key] || {}), ...val };
+          }
+        }
+        
+        saveJson(STATE_FILE, syncStateData);
+        if (Array.isArray(payload["cf_users_v5"]) && payload["cf_users_v5"].length > 0) {
+          users = payload["cf_users_v5"].filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
+          saveJson(USERS_FILE, users);
+        }
       }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ success: true }));
