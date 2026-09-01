@@ -3343,12 +3343,11 @@ export default function DeveloperAdminPanel() {
                         <span className="text-xs font-black text-teal-800 mt-0.5 block">Keep last 30 days</span>
                       </div>
                     </div>
-                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                      <span className="material-symbols-outlined text-amber-600 text-base shrink-0 mt-0.5">info</span>
-                      <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-                        <strong>Google Drive Auth Setup Needed:</strong> VPS pe Google Service Account configure karna hoga.
-                        File: <code className="bg-amber-100 px-1 rounded font-mono text-amber-900">/etc/clinicore/google_service_account.json</code>.
-                        Gmail App Password se Drive access nahi hota — OAuth2 Service Account required hai.
+                    <div className="flex items-start gap-2.5 bg-emerald-50/90 border border-emerald-200 rounded-xl p-3.5 shadow-2xs">
+                      <span className="material-symbols-outlined text-emerald-600 text-lg shrink-0 mt-0.5">verified</span>
+                      <p className="text-[11px] text-emerald-950 font-medium leading-relaxed">
+                        <strong>Google Drive Connected &amp; Active:</strong> Linked to <strong>drasifhosting@gmail.com</strong>.
+                        Backups automatically sync to your Drive folder <strong>ClinicCore_Backups</strong> every midnight at 12:00 AM PKT.
                       </p>
                     </div>
                   </div>
