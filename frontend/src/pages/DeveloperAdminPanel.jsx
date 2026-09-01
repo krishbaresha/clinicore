@@ -1689,7 +1689,27 @@ export default function DeveloperAdminPanel() {
                                         const c = parseSem(installedVersion);
                                         if (s && c && (s.major > c.major || (s.major === c.major && s.minor > c.minor) || (s.major === c.major && s.minor === c.minor && s.patch > c.patch))) {
                                           foundNewer = true;
-                                          if (confirm(`🎉 New Software Update Available: v${ver}\n\nInstalled Version: v${installedVersion}\nRelease: ${data?.changelog || "Performance & stability updates"}\n\nWould you like to open GitHub release or reload to apply update?`)) {
+                                          const choice = confirm(
+                                            `🚀 New Software Update Available: v${ver}\n` +
+                                            `Installed Version: v${installedVersion}\n\n` +
+                                            `Changelog: ${data?.changelog || "Performance, UI polish & Google Drive Vault updates"}\n\n` +
+                                            `• Click OK to Apply & Force Reload Application immediately.\n` +
+                                            `• Click Cancel to open GitHub Release for fresh Installer download.`
+                                          );
+                                          if (choice) {
+                                            try {
+                                              localStorage.setItem("cf_applied_version", ver);
+                                              if ('serviceWorker' in navigator) {
+                                                const registrations = await navigator.serviceWorker.getRegistrations();
+                                                for (const reg of registrations) await reg.unregister();
+                                              }
+                                              if (typeof caches !== 'undefined') {
+                                                const keys = await caches.keys();
+                                                for (const key of keys) await caches.delete(key);
+                                              }
+                                            } catch {}
+                                            window.location.href = window.location.pathname + `?_v=${ver}_${Date.now()}`;
+                                          } else {
                                             window.open("https://github.com/krishbaresha/clinicore/releases/latest", "_blank");
                                           }
                                           return;
