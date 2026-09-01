@@ -3314,6 +3314,132 @@ export default function DeveloperAdminPanel() {
               )}
 
               {/* ================================================================= */}
+              {/* TAB 3: CLINIC IDENTITY & GOVERNANCE CMS                           */}
+              {/* ================================================================= */}
+              {activeTab === "clinic" && (
+                <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
+                  {/* Header */}
+                  <div className="border-b border-teal-50 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-teal-700">domain</span>
+                        Clinic Identity &amp; Public Governance CMS
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                        Configure clinic brand identity, official address, default fees, OPD status, and public announcements
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-teal-50 text-teal-800 border border-teal-200 self-start sm:self-auto">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Tenant Live
+                    </span>
+                  </div>
+
+                  {/* Fields Grid */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Clinic / Medical Store Full Official Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={clinicForm.name || ""}
+                        onChange={(e) => setClinicForm({ ...clinicForm, name: e.target.value })}
+                        placeholder="e.g. H/Dr. Asif Ashraf Khan Clinic &amp; Wholesale Medical Store"
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                          Official Contact Phone / Helpline
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={clinicForm.phone || ""}
+                          onChange={(e) => setClinicForm({ ...clinicForm, phone: e.target.value })}
+                          placeholder="03473100304"
+                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                          Default OPD Consultation Fee (Rs.)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="50"
+                          value={clinicForm.default_consultation_fee || 300}
+                          onChange={(e) => setClinicForm({ ...clinicForm, default_consultation_fee: Number(e.target.value) })}
+                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Clinic Physical Address &amp; Location Details
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={clinicForm.address || ""}
+                        onChange={(e) => setClinicForm({ ...clinicForm, address: e.target.value })}
+                        placeholder="Lajpat Road, Hyderabad, Sindh"
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                          Clinic Operational Status
+                        </label>
+                        <select
+                          value={clinicForm.clinic_status || "open"}
+                          onChange={(e) => setClinicForm({ ...clinicForm, clinic_status: e.target.value })}
+                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 cursor-pointer"
+                        >
+                          <option value="open">🟢 Open (Normal Operations)</option>
+                          <option value="closed">🔴 Closed (OPD Suspended)</option>
+                          <option value="maintenance">🟡 Maintenance / System Break</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                          Public Notice / Patient Banner Announcement
+                        </label>
+                        <input
+                          type="text"
+                          value={clinicForm.public_notice || ""}
+                          onChange={(e) => setClinicForm({ ...clinicForm, public_notice: e.target.value })}
+                          placeholder="e.g. Clinic will remain closed on Sunday."
+                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save */}
+                  <div className="pt-4 border-t border-teal-50 flex items-center justify-end">
+                    <button
+                      type="submit"
+                      className="bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-900 hover:to-teal-800 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-800/20 cursor-pointer active:scale-95 flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-base">save</span>
+                      Save Clinic Identity &amp; Settings
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* ================================================================= */}
               {/* TAB 4: GOOGLE DRIVE CLOUD VAULT & BACKUP                          */}
               {/* ================================================================= */}
               {activeTab === "apis" && (
