@@ -153,12 +153,12 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.5",
-        build_id: "20260901.1001002",
+        version: "2.5.7",
+        build_id: "20260901.203300",
         release_channel: "production",
-        changelog: "Offline-First Local Storage, Instant Cloud Sync, Direct Google Drive Sync & Granular Data Purge Selector",
+        changelog: "Strict Password Hash Verification, Google Drive Cloud Vault Sync & Security Hardening",
         min_client_version: "2.4.0",
-        download_url: "https://clinicore.me"
+        download_url: "https://clinicore.me/downloads/ClinicCore_Setup.exe"
       }));
       return;
     }
