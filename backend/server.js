@@ -1,6 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,6 +32,45 @@ function saveJson(file, data) {
   try {
     fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
   } catch (e) { }
+}
+
+function sha256Sync(str) {
+  return crypto.createHash("sha256").update(str).digest("hex");
+}
+
+function verifyPassword(plainPassword, storedHash) {
+  if (!plainPassword || !storedHash) return false;
+  const input = String(plainPassword).trim();
+  const stored = String(storedHash).trim();
+
+  // 1. Salted SHA-256 (cf_s256$<salt>$<hash>)
+  if (stored.startsWith("cf_s256$")) {
+    const parts = stored.split("$");
+    if (parts.length === 3) {
+      const salt = parts[1];
+      const targetHash = parts[2];
+      const computedHash = sha256Sync(salt + "::" + input);
+      return computedHash === targetHash;
+    }
+  }
+
+  // 2. Legacy DJB2 hash (hashed_xxxxxxxx)
+  if (stored.startsWith("hashed_")) {
+    let hash = 5381;
+    for (let i = 0; i < input.length; i++) {
+      hash = ((hash << 5) + hash + input.charCodeAt(i)) >>> 0;
+    }
+    const legacyHash = "hashed_" + hash.toString(16).padStart(8, "0");
+    return stored === legacyHash;
+  }
+
+  // 3. Raw SHA-256 (64 hex characters)
+  if (/^[a-f0-9]{64}$/i.test(stored)) {
+    return sha256Sync(input).toLowerCase() === stored.toLowerCase();
+  }
+
+  // 4. Plaintext matching
+  return stored === input;
 }
 
 let systemConfig = loadJson(CONFIG_FILE, {
@@ -130,7 +170,7 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Verify Passcode — Robust Master Authentication with Bootstrap Auto-Adoption
+    // Verify Passcode — Master Authentication
     if (url.pathname === "/api/v1/system/verify-passcode" && req.method === "POST") {
       const inputPass = (payload.passcode || "").trim();
       let currentPasscode = (systemConfig.admin_master_passcode || "").trim();
@@ -143,16 +183,9 @@ const server = http.createServer((req, res) => {
         console.log(`[Admin Passcode] Auto-adopted master passcode on first login.`);
       }
 
-      // Valid if matches stored passcode OR bootstrap recovery keys
-      const isValid = (currentPasscode && inputPass === currentPasscode) ||
-        inputPass === "Champion24" ||
-        inputPass === "KB2026";
+      const isValid = Boolean(currentPasscode && inputPass === currentPasscode);
 
       if (isValid) {
-        if (inputPass && inputPass !== currentPasscode) {
-          systemConfig.admin_master_passcode = inputPass;
-          saveJson(CONFIG_FILE, systemConfig);
-        }
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true, data: { token: "node_admin_jwt_token_" + Date.now() } }));
       } else {
@@ -162,17 +195,40 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Auth Login
+    // Auth Login — Strict User Search & Password Hash Verification
     if (url.pathname === "/api/v1/auth/login" && req.method === "POST") {
       const { username, password } = payload;
-      const user = users.find((u) => u.username === username || u.email === username || u.phone === username);
+      const cleanIdent = (username || "").toString().trim().toLowerCase();
+      const cleanSlug = cleanIdent.replace(/[\s._-]+/g, "");
+      const cleanPhone = cleanIdent.replace(/\D/g, "");
+
+      const allUsers = (syncStateData && Array.isArray(syncStateData["cf_users_v5"]) && syncStateData["cf_users_v5"].length > 0)
+        ? syncStateData["cf_users_v5"]
+        : users;
+
+      const user = allUsers.find((u) => {
+        if (!u) return false;
+        if (u.id && u.id.toLowerCase() === cleanIdent) return true;
+        if (u.username && u.username.toLowerCase() === cleanIdent) return true;
+        if (u.email && u.email.trim().toLowerCase() === cleanIdent) return true;
+        if (cleanPhone && u.phone && u.phone.replace(/\D/g, "") === cleanPhone) return true;
+        if (u.name && u.name.trim().toLowerCase() === cleanIdent) return true;
+        if (u.name && u.name.toLowerCase().replace(/[\s._-]+/g, "") === cleanSlug) return true;
+        return false;
+      });
+
       if (user) {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, token: "node_jwt_token_" + Date.now(), user }));
-      } else {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: false, error: "Invalid credentials" }));
+        const storedHash = user.password || user.password_hash || "";
+        const isMatch = verifyPassword(password, storedHash);
+        if (isMatch) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true, token: "node_jwt_token_" + Date.now(), user }));
+          return;
+        }
       }
+
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: false, error: "Invalid credentials" }));
       return;
     }
 

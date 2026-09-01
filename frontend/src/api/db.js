@@ -927,6 +927,8 @@ export const dbUsers = {
   },
   add: (user) => {
     const users = getCollection(KEYS.USERS);
+    const passPlain = user.password || user.pin || "";
+    const passHash = passPlain ? (passPlain.startsWith("cf_s256$") ? passPlain : hashPassword(passPlain)) : "";
     const newUser = { 
       ...user, 
       id: user.id || generateId("user"), 
@@ -935,6 +937,8 @@ export const dbUsers = {
       assigned_warehouse_id: user.assigned_warehouse_id || "",
       can_give_discounts: user.can_give_discounts ?? true,
       max_discount_pct: Number(user.max_discount_pct) || 15,
+      password: passHash,
+      password_hash: passHash,
       created_at: new Date().toISOString()
     };
     setCollection(KEYS.USERS, [...users, newUser]);
@@ -950,7 +954,14 @@ export const dbUsers = {
     const existingUser = dbUsers.getById(id);
     const updated = users.map((u) => {
       if (u.id === id) {
-        updatedUser = { ...u, ...data };
+        let patch = { ...data };
+        if (patch.password && !patch.password.startsWith("cf_s256$")) {
+          patch.password_hash = hashPassword(patch.password);
+          patch.password = patch.password_hash;
+        } else if (patch.password_hash) {
+          patch.password = patch.password_hash;
+        }
+        updatedUser = { ...u, ...patch };
         return updatedUser;
       }
       return u;
@@ -977,6 +988,16 @@ export const dbUsers = {
     }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return updatedUser;
+  },
+  resetPassword: (id, newPlainPassword) => {
+    if (!id || !newPlainPassword) return null;
+    const plain = String(newPlainPassword).trim();
+    const salted = hashPassword(plain);
+    return dbUsers.update(id, {
+      password: salted,
+      password_hash: salted,
+      pin: plain,
+    });
   },
   updateDoctorStatus: (doctorId, status, note, room) => {
     const users = getCollection(KEYS.USERS);
