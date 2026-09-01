@@ -3294,9 +3294,9 @@ export default function DeveloperAdminPanel() {
               )}
 
               {/* ================================================================= */}
-              {/* TAB 3: CLINIC IDENTITY & PUBLIC SITE CMS                          */}
+              {/* TAB 4: GOOGLE DRIVE CLOUD VAULT & BACKUP                          */}
               {/* ================================================================= */}
-              {activeTab === "clinic" && (
+              {activeTab === "apis" && (
                 <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
                   {/* ── Header ─────────────────────────────────────────────── */}
                   <div className="border-b border-teal-50 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
