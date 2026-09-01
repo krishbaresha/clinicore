@@ -26,6 +26,7 @@ import {
   printExecutiveAuditReceipt,
   printExecutiveAuditDocument,
 } from "../utils/thermalPrinter.js";
+import { formatDateTime } from "../utils/formatters.js";
 import GodAdminPanel from "./GodAdminPanel.jsx";
 
 const DEFAULT_API_URL =
@@ -851,7 +852,7 @@ export default function DeveloperAdminPanel() {
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.success) {
-        const ts = new Date().toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" });
+        const ts = formatDateTime(new Date());
         setDriveLastBackup(ts);
         setDriveLastStatus("success");
         try { localStorage.setItem("cf_drive_last_backup", ts); } catch {}
@@ -1841,7 +1842,7 @@ export default function DeveloperAdminPanel() {
                                   {m.last_error && (
                                     <div className="text-[10px] text-red-500 mt-0.5 truncate" title={m.last_error}>⚠ {m.last_error.slice(0, 60)}</div>
                                   )}
-                                  <div className="text-[10px] text-slate-300 mt-0.5">{m.created_at ? new Date(m.created_at).toLocaleString("en-PK") : ""}</div>
+                                  <div className="text-[10px] text-slate-300 mt-0.5">{m.created_at ? formatDateTime(m.created_at) : ""}</div>
                                 </div>
                               </div>
                             ))}
