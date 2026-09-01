@@ -87,9 +87,11 @@ export default function DeveloperAdminPanel() {
 
   const [isDriveUploading, setIsDriveUploading] = useState(false);
   const [driveLastBackup, setDriveLastBackup] = useState(() => {
-    try { return localStorage.getItem("cf_drive_last_backup") || null; } catch { return null; }
+    try { return localStorage.getItem("cf_drive_last_backup") || ""; } catch { return ""; }
   });
-  const [driveLastStatus, setDriveLastStatus] = useState(null); // null | 'success' | 'error'
+  const [driveLastStatus, setDriveLastStatus] = useState(() => {
+    try { return localStorage.getItem("cf_drive_last_status") || "success"; } catch { return "success"; }
+  });
   const [liveAdminVersion, setLiveAdminVersion] = useState(() => {
     try {
       return localStorage.getItem("cf_applied_version") || (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.3";
@@ -856,16 +858,19 @@ export default function DeveloperAdminPanel() {
         setDriveLastBackup(ts);
         setDriveLastStatus("success");
         try { localStorage.setItem("cf_drive_last_backup", ts); } catch {}
+        try { localStorage.setItem("cf_drive_last_status", "success"); } catch {}
         showToast("✅ Google Drive Backup Success!");
         alert(`🎉 Google Drive Backup Successful!\n\nFile: ${data.data?.file || "clinicore_backup.cfbak"}\nTimestamp: ${ts}\nStatus: Saved to ClinicCore Backup Folder on Google Drive`);
       } else {
         setDriveLastStatus("error");
+        try { localStorage.setItem("cf_drive_last_status", "error"); } catch {}
         const msg = data?.message || "Drive backup failed on VPS";
         showToast("⚠️ Drive Backup: " + msg);
         alert("⚠️ Drive Backup Notice:\n" + msg + "\n\nCheck VPS logs or contact support.");
       }
     } catch (err) {
       setDriveLastStatus("error");
+      try { localStorage.setItem("cf_drive_last_status", "error"); } catch {}
       showToast("⚠️ Drive connection error: " + err.message);
       alert("☁️ Drive Backup Error:\n" + err.message + "\n\nMake sure VPS is reachable.");
     } finally {
