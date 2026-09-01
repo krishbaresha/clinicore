@@ -209,6 +209,28 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Manual Google Drive Backup Trigger Endpoint
+    if (url.pathname === "/api/v1/system/backup-now" && req.method === "POST") {
+      const { exec } = require("child_process");
+      exec("python3 /var/www/clinicore/scripts/run_drive_backup.py", (err, stdout, stderr) => {
+        if (err) {
+          console.error("[Backup Endpoint Error]:", err.message, stderr);
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: false, message: "VPS python backup execution error: " + err.message }));
+          return;
+        }
+        try {
+          const parsed = JSON.parse(stdout.trim());
+          res.writeHead(parsed.success ? 200 : 500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(parsed));
+        } catch {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true, message: "Backup completed", raw: stdout }));
+        }
+      });
+      return;
+    }
+
     // Purge Data Endpoint (Granular or Full Master Purge across VPS)
     if (url.pathname === "/api/v1/system/purge-data" && req.method === "POST") {
       const { passcode, categories = [] } = payload;
