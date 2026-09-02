@@ -983,9 +983,7 @@ export default function DeveloperAdminPanel() {
     { id: "god_audit", label: "God-Level Staff & Audit Stream", icon: "security", badge: "God-Level" },
     { id: "audits", label: "Multi-Godown & Clinic Audits", icon: "analytics", badge: "Live" },
     { id: "godowns", label: "Godowns & Multi-Warehouse Portal", icon: "warehouse", count: warehousesList.length, badge: "Stock" },
-    { id: "receipt_studio", label: "Thermal Receipt Studio & Customizer", icon: "receipt_long", badge: "New" },
     { id: "staff", label: "Doctors & Staff Master", icon: "group", count: usersList.length },
-    { id: "clinic", label: "Clinic Identity & Governance", icon: "domain" },
   ];
 
   // All navigation items always clean and visible
@@ -2682,80 +2680,7 @@ export default function DeveloperAdminPanel() {
                 </div>
               )}
 
-              {/* ================================================================= */}
-              {/* TAB: THERMAL RECEIPT STUDIO & CUSTOMIZER                          */}
-              {/* ================================================================= */}
-              {activeTab === "receipt_studio" && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl -z-0 pointer-events-none" />
-                    <div className="relative z-10 max-w-2xl space-y-4">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-700/60 border border-teal-500/30 text-teal-200 text-xs font-bold">
-                        <span className="material-symbols-outlined text-sm">palette</span>
-                        Universal Thermal Print Engine Synchronizer
-                      </div>
-                      <h3 className="text-2xl font-black tracking-tight text-white">
-                        80mm Thermal Receipt Studio &amp; Customizer
-                      </h3>
-                      <p className="text-sm text-teal-100/80 leading-relaxed font-medium">
-                        Customize clinic logos, titles, taglines, phone/address lines, doctor info, paper width, and block drag-and-drop order. All changes made in the Studio dynamically reflect across Counter POS, OPD Tokens, Wholesale Invoices, GRN Vouchers, and Day-End statements.
-                      </p>
-                      <div className="pt-2 flex flex-wrap items-center gap-3">
-                        <Link
-                          to="/receipt-studio"
-                          className="px-6 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-teal-950 font-black text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer active:scale-95"
-                        >
-                          <span className="material-symbols-outlined">launch</span>
-                          Open Fullscreen Receipt Studio
-                        </Link>
-                        <button
-                          onClick={() => {
-                            const win = window.open("/receipt-studio", "_blank");
-                            if (win) win.focus();
-                          }}
-                          className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined">open_in_new</span>
-                          Open in New Tab
-                        </button>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Feature Cards Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
-                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
-                        <span className="material-symbols-outlined">drag_indicator</span>
-                      </div>
-                      <h4 className="font-bold text-slate-900 text-sm">Drag &amp; Drop Block Order</h4>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        Re-order receipt sections (Logo, Meta Info, Customer, Doctor, Items Table, Totals, Urdu Terms) with instant live preview.
-                      </p>
-                    </div>
-
-                    <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
-                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
-                        <span className="material-symbols-outlined">verified</span>
-                      </div>
-                      <h4 className="font-bold text-slate-900 text-sm">Permanent Verified Branding</h4>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        Mandatory CliniCore Software and developer contact watermark (<span className="font-mono font-bold text-teal-800">0314-2291356</span>) locked across all prints.
-                      </p>
-                    </div>
-
-                    <div className="bg-white border border-teal-100 p-5 rounded-3xl shadow-sm space-y-2">
-                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
-                        <span className="material-symbols-outlined">crop</span>
-                      </div>
-                      <h4 className="font-bold text-slate-900 text-sm">Auto-Crop Logo Scanner</h4>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        Canvas pixel boundary scanner automatically trims whitespace padding to eliminate paper roll and ink bloat.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* ================================================================= */}
               {/* TAB 2: STAFF & DOCTOR MASTER ACCESS (Password Reset, Add, Delete) */}
@@ -2928,131 +2853,7 @@ export default function DeveloperAdminPanel() {
                 </div>
               )}
 
-              {/* ================================================================= */}
-              {/* TAB 3: CLINIC IDENTITY & GOVERNANCE CMS                           */}
-              {/* ================================================================= */}
-              {activeTab === "clinic" && (
-                <form onSubmit={handleSaveClinicSettings} className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm animate-fade-in max-w-4xl mx-auto">
-                  {/* Header */}
-                  <div className="border-b border-teal-50 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-teal-700">domain</span>
-                        Clinic Identity &amp; Public Governance CMS
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                        Configure clinic brand identity, official address, default fees, OPD status, and public announcements
-                      </p>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-teal-50 text-teal-800 border border-teal-200 self-start sm:self-auto">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Tenant Live
-                    </span>
-                  </div>
 
-                  {/* Fields Grid */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Clinic / Medical Store Full Official Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={clinicForm.name || ""}
-                        onChange={(e) => setClinicForm({ ...clinicForm, name: e.target.value })}
-                        placeholder="e.g. H/Dr. Asif Ashraf Khan Clinic &amp; Wholesale Medical Store"
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                          Official Contact Phone / Helpline
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={clinicForm.phone || ""}
-                          onChange={(e) => setClinicForm({ ...clinicForm, phone: e.target.value })}
-                          placeholder="03473100304"
-                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                          Default OPD Consultation Fee (Rs.)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="50"
-                          value={clinicForm.default_consultation_fee || 300}
-                          onChange={(e) => setClinicForm({ ...clinicForm, default_consultation_fee: Number(e.target.value) })}
-                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                        Clinic Physical Address &amp; Location Details
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={clinicForm.address || ""}
-                        onChange={(e) => setClinicForm({ ...clinicForm, address: e.target.value })}
-                        placeholder="Lajpat Road, Hyderabad, Sindh"
-                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                          Clinic Operational Status
-                        </label>
-                        <select
-                          value={clinicForm.clinic_status || "open"}
-                          onChange={(e) => setClinicForm({ ...clinicForm, clinic_status: e.target.value })}
-                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 cursor-pointer"
-                        >
-                          <option value="open">🟢 Open (Normal Operations)</option>
-                          <option value="closed">🔴 Closed (OPD Suspended)</option>
-                          <option value="maintenance">🟡 Maintenance / System Break</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                          Public Notice / Patient Banner Announcement
-                        </label>
-                        <input
-                          type="text"
-                          value={clinicForm.public_notice || ""}
-                          onChange={(e) => setClinicForm({ ...clinicForm, public_notice: e.target.value })}
-                          placeholder="e.g. Clinic will remain closed on Sunday."
-                          className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Save */}
-                  <div className="pt-4 border-t border-teal-50 flex items-center justify-end">
-                    <button
-                      type="submit"
-                      className="bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-900 hover:to-teal-800 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-800/20 cursor-pointer active:scale-95 flex items-center gap-1.5"
-                    >
-                      <span className="material-symbols-outlined text-base">save</span>
-                      Save Clinic Identity &amp; Settings
-                    </button>
-                  </div>
-                </form>
-              )}
 
               {/* ================================================================= */}
               {/* TAB 4: GOOGLE DRIVE CLOUD VAULT & BACKUP                          */}
