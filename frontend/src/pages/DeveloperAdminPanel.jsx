@@ -20,6 +20,7 @@ import {
   resetDatabaseToDemoData,
   clearAllTransactionalData,
   hashPassword,
+  verifyPassword,
 } from "../api/db.js";
 import {
   printExecutiveAuditReceipt,
@@ -85,6 +86,7 @@ export default function DeveloperAdminPanel() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const [isDriveUploading, setIsDriveUploading] = useState(false);
+  const [, setIsSyncingCloud] = useState(false);
   const [driveLastBackup, setDriveLastBackup] = useState(() => {
     try { return localStorage.getItem("cf_drive_last_backup") || ""; } catch { return ""; }
   });
