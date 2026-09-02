@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { autoCropLogoImage } from "../utils/imageCompressor.js";
 import { Link } from "react-router-dom";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
+import { RECEIPT_HEADER_IMAGE_BASE64 } from "../utils/receiptHeaderBase64.js";
 import { formatDate } from "../utils/formatters.js";
 import { executeThermalPrint } from "../utils/thermalPrinter.js";
 
@@ -42,17 +43,22 @@ export default function ReceiptStudio() {
       if (saved) return JSON.parse(saved);
     } catch {}
     return {
-      clinic_name: "H/Dr.Asif Ashraf Khan Clinic Homoeo Store",
-      tagline: "Homoeopathic Consultant & Bulk Distributors (Interior Sindh)",
-      address: "Near Gul Center / Lajpat Road, Hyderabad, Sindh",
-      phone: "0300-1234567 / 022-2780000",
+      clinic_name: "M.Ashraf Khan",
+      tagline: "Homeopathic Clinic",
+      address: "Lajpat Road, Hyderabad, Sindh, Pakistan",
+      phone: "0311 4234777\n0343 9376363",
       logo_base64: CLINIC_LOGO_BASE64,
-      logo_size: 135,
+      logo_size: 62,
+      logo_width: 53,
+      logo_height: 60,
+      name_size: 15,
+      subtitle_size: 9,
+      contact_size: 9.5,
       paper_width: "80mm",
-      font_family: "monospace",
-      urdu_footer_text: "نوٹ: خریدی ہوئی ادویات 3 دن میں تبدیل ہو سکتی ہیں۔ بغیر بل کے واپسی ممکن نہیں۔",
+      font_family: "Georgia, 'Times New Roman', serif",
+      urdu_footer_text: "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔",
       custom_policy_note: "Thanks for visiting! Get well soon.",
-      doctor_name: "Dr. Muhammad Asif Ashraf Khan",
+      doctor_name: "Dr. M.Ashraf Khan",
       doctor_qualifications: "D.H.M.S, R.H.M.P, Consultant Homoeopath",
       doctor_room: "Room # 1",
     };
@@ -748,6 +754,108 @@ export default function ReceiptStudio() {
                 </div>
               </div>
 
+              {/* Precise Vector Dimensions & Typography Controls (Builder Match) */}
+              <div className="pt-3 border-t border-slate-100 space-y-3">
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  80mm Header Dimensions &amp; Text Size Tuning
+                </h4>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>Logo Size:</span>
+                      <span className="font-mono text-teal-800">{clinicConfig.logo_size || 62} px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="30"
+                      max="100"
+                      value={clinicConfig.logo_size || 62}
+                      onChange={(e) => setClinicConfig({ ...clinicConfig, logo_size: Number(e.target.value) })}
+                      className="w-full accent-teal-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>Logo Box Width:</span>
+                      <span className="font-mono text-teal-800">{clinicConfig.logo_width || 53} px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="38"
+                      max="85"
+                      value={clinicConfig.logo_width || 53}
+                      onChange={(e) => setClinicConfig({ ...clinicConfig, logo_width: Number(e.target.value) })}
+                      className="w-full accent-teal-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>Logo Box Height:</span>
+                      <span className="font-mono text-teal-800">{clinicConfig.logo_height || 60} px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="45"
+                      max="90"
+                      value={clinicConfig.logo_height || 60}
+                      onChange={(e) => setClinicConfig({ ...clinicConfig, logo_height: Number(e.target.value) })}
+                      className="w-full accent-teal-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>Clinic Name Size:</span>
+                      <span className="font-mono text-teal-800">{clinicConfig.name_size || 15} px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="24"
+                      value={clinicConfig.name_size || 15}
+                      onChange={(e) => setClinicConfig({ ...clinicConfig, name_size: Number(e.target.value) })}
+                      className="w-full accent-teal-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>Subtitle Size:</span>
+                      <span className="font-mono text-teal-800">{clinicConfig.subtitle_size || 9} px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="7"
+                      max="16"
+                      value={clinicConfig.subtitle_size || 9}
+                      onChange={(e) => setClinicConfig({ ...clinicConfig, subtitle_size: Number(e.target.value) })}
+                      className="w-full accent-teal-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>Contact / Address Size:</span>
+                      <span className="font-mono text-teal-800">{clinicConfig.contact_size || 9.5} px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="14"
+                      step="0.5"
+                      value={clinicConfig.contact_size || 9.5}
+                      onChange={(e) => setClinicConfig({ ...clinicConfig, contact_size: Number(e.target.value) })}
+                      className="w-full accent-teal-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Logo Settings */}
               <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -759,19 +867,6 @@ export default function ReceiptStudio() {
                     Upload Custom Logo Image
                     <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                   </label>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="font-bold text-slate-600">Logo Size:</span>
-                  <input
-                    type="range"
-                    min="80"
-                    max="180"
-                    value={clinicConfig.logo_size || 135}
-                    onChange={(e) => setClinicConfig({ ...clinicConfig, logo_size: Number(e.target.value) })}
-                    className="accent-teal-600 cursor-pointer"
-                  />
-                  <span className="font-mono text-slate-500">{clinicConfig.logo_size || 135}px</span>
                 </div>
               </div>
 

@@ -26,17 +26,14 @@ const ReceptionQueue        = lazyWithRetry(() => import("./pages/ReceptionQueue
 const PendingReports        = lazyWithRetry(() => import("./pages/PendingReports.jsx"));
 const DoctorQueue           = lazyWithRetry(() => import("./pages/DoctorQueue.jsx"));
 const ConsultationScreen    = lazyWithRetry(() => import("./pages/ConsultationScreen.jsx"));
-const MedicalStorePOS       = lazyWithRetry(() => import("./pages/MedicalStorePOS.jsx"));
+const SaleInvoicePOSPage    = lazyWithRetry(() => import("./pages/SaleInvoicePOSPage.jsx"));
 const SupplierPurchases     = lazyWithRetry(() => import("./pages/SupplierPurchases.jsx"));
 const MedicalStoreSalesLog  = lazyWithRetry(() => import("./pages/MedicalStoreSalesLog.jsx"));
 const WarehouseManagement   = lazyWithRetry(() => import("./pages/WarehouseManagement.jsx"));
 const PublicLiveQueue       = lazyWithRetry(() => import("./pages/PublicLiveQueue.jsx"));
-const LandingPage           = lazyWithRetry(() => import("./pages/LandingPage.jsx"));
 const ClinicPublicPage      = lazyWithRetry(() => import("./pages/ClinicPublicPage.jsx"));
 const DeveloperAdminPanel   = lazyWithRetry(() => import("./pages/DeveloperAdminPanel.jsx"));
 const ReceiptStudio         = lazyWithRetry(() => import("./pages/ReceiptStudio.jsx"));
-
-import { syncEngine } from "./api/syncEngine.js";
 
 function PageLoadingFallback() {
   return (
@@ -160,9 +157,9 @@ function AppRoutes() {
   return (
     <Suspense fallback={<PageLoadingFallback />}>
       <Routes>
-        {/* Public & Admin Landing Pages — Bypassed in Desktop App mode */}
-        <Route path="/"            element={desktopMode ? <Navigate to="/login" replace /> : <LandingPage />} />
-        <Route path="/landing"     element={desktopMode ? <Navigate to="/login" replace /> : <LandingPage />} />
+        {/* Public & Admin Landing Pages */}
+        <Route path="/"            element={<Navigate to="/login" replace />} />
+        <Route path="/landing"     element={<Navigate to="/login" replace />} />
         <Route path="/admin"       element={<DeveloperAdminPanel />} />
         <Route path="/developer-admin" element={<DeveloperAdminPanel />} />
         <Route path="/developer"   element={<DeveloperAdminPanel />} />
@@ -188,7 +185,7 @@ function AppRoutes() {
 
         {/* ─── Medical Store (Cashier / Pharmacist / Admin) ─────────────────────────── */}
         <Route path="/pos"             element={<Navigate to="/store/pos" replace />} />
-        <Route path="/store/pos"       element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'admin', 'owner', 'manager']}><MedicalStorePOS /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/store/pos"       element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'admin', 'owner', 'manager']}><SaleInvoicePOSPage /></RoleProtectedRoute></AuthenticatedLayout>} />
         <Route path="/store/purchases" element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['pharmacist', 'warehouse', 'admin', 'owner', 'manager']}><SupplierPurchases /></RoleProtectedRoute></AuthenticatedLayout>} />
         <Route path="/purchases"       element={<Navigate to="/store/purchases" replace />} />
         <Route path="/store/sales"     element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'admin', 'owner', 'manager']}><MedicalStoreSalesLog /></RoleProtectedRoute></AuthenticatedLayout>} />
@@ -225,37 +222,6 @@ export default function App() {
           new Promise((resolve) => setTimeout(resolve, 800)),
         ]);
         initDB();
-        
-        // ─── Hydrate VPS-authoritative passcodes into localStorage on every startup ───
-        // This ensures admin_master_passcode & tab_pin are always synced from VPS
-        (async () => {
-          try {
-            const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-              (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost")
-                ? window.location.origin
-                : typeof window !== "undefined" && window.location.hostname === "localhost"
-                ? "http://127.0.0.1:5000"
-                : "https://clinicore.me");
-            if (vpsApiUrl) {
-              const cfgRes = await fetch(`${vpsApiUrl}/api/v1/system/config`, { cache: "no-store" });
-              if (cfgRes.ok) {
-                const cfgJson = await cfgRes.json();
-                const vpsPass = (cfgJson?.data?.admin_master_passcode || "").trim();
-                const vpsPin  = (cfgJson?.data?.tab_pin || "").trim();
-                if (vpsPass) localStorage.setItem("cf_admin_master_passcode", vpsPass);
-                if (vpsPin)  localStorage.setItem("cf_admin_tab_pin", vpsPin);
-              }
-            }
-          } catch (_) { /* silent — offline is fine */ }
-        })();
-
-        // WhatsApp-like cloud first sync hydration on startup (non-blocking in background)
-        Promise.race([
-          syncEngine.pullLatestCloudState(),
-          new Promise((resolve) => setTimeout(resolve, 1500)),
-        ]).catch((syncErr) => {
-          console.warn("[Startup] Initial cloud sync deferred:", syncErr);
-        });
 
         if (mounted) setStorageReady(true);
 

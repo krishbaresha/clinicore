@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { verifyAdminPasscode } from "../api/auth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
-import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
+import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, dbCategories, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
 import { formatCurrency, downloadCSV } from "../utils/formatters.js";
 import { printInventoryListReceipt, printProductPricingListReceipt } from "../utils/thermalPrinter.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
@@ -77,7 +77,6 @@ export default function MedicalStoreInventory() {
 
   const [inventory, setInventory] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [formTab, setFormTab] = useState("quick"); // "quick" | "advanced"
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [companyFilter, setCompanyFilter] = useState("all");
@@ -93,6 +92,14 @@ export default function MedicalStoreInventory() {
   const [showStockLedgerModal, setShowStockLedgerModal] = useState(false);
   const [ledgerInitialItem, setLedgerInitialItem] = useState(null);
 
+  // Dynamic Categories from dbCategories & active inventory
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
+  const [showAddCategoryInput, setShowAddCategoryInput] = useState(false);
+
+  const allCategories = useMemo(() => {
+    return dbCategories.getAll();
+  }, [inventory]);
+
   // Popup Modal States for DrCreate.xlsm / Access style
   const [showInventoryListModal, setShowInventoryListModal] = useState(false);
   const [showPricingListModal, setShowPricingListModal] = useState(false);
@@ -102,9 +109,9 @@ export default function MedicalStoreInventory() {
   // Registration Form State (Matching DrCreate / Access layout)
   const [quickForm, setQuickForm] = useState({
     medicine_name: "",
+    product_description: "",
     company_name: "BM Pvt LTD",
     item_code: "BM",
-    naration: "Drops 20ml",
     category: "Homeopathic Drops",
     cost_price: "",
     sale_price: "",
@@ -119,41 +126,16 @@ export default function MedicalStoreInventory() {
   // Edit Form State
   const [editFormData, setEditFormData] = useState({
     medicine_name: "",
+    product_description: "",
     company_name: "",
     item_code: "",
-    naration: "",
-    category: "",
+    category: "Homeopathic Drops",
     cost_price: "0",
     sale_price: "0",
     store_stock: "0",
     warehouse_1_stock: "0",
     warehouse_2_stock: "0",
     low_stock_threshold: "6",
-  });
-
-  // Advanced Multi-Unit Form State
-  const [advForm, setAdvForm] = useState({
-    medicine_name: "",
-    company_name: "Local Pharma Market / OTC",
-    item_code: "LPM",
-    category: "Tablet",
-    strength: "500 mg",
-    has_multi_unit: true,
-    box_label: "Box",
-    strip_label: "Strip",
-    unit_label: "Tablet",
-    strips_per_box: "10",
-    units_per_strip: "10",
-    stock_boxes: "0",
-    store_stock_boxes: "0",
-    warehouse_1_boxes: "0",
-    warehouse_2_boxes: "0",
-    stock_qty: "0",
-    cost_price_per_box: "450",
-    box_sale_price: "600",
-    strip_sale_price: "65",
-    unit_sale_price: "7",
-    low_stock_threshold: "20",
   });
 
   const [error, setError] = useState("");
@@ -201,16 +183,23 @@ export default function MedicalStoreInventory() {
     const wh1Qty = locStocks.wh_001 ?? item.warehouse_stock ?? 0;
     const wh2Qty = locStocks.wh_002 ?? 0;
     const storeQty = locStocks.wh_str ?? item.store_stock ?? item.stock_qty ?? 0;
+    
+    // Build dynamic warehouse stock dictionary
+    const whStockMap = {};
+    allWarehouses.forEach((wh) => {
+      whStockMap[wh.id] = String(locStocks[wh.id] ?? (wh.id === "wh_001" ? (item.warehouse_stock ?? 0) : 0));
+    });
 
     setEditFormData({
       medicine_name: item.medicine_name || "",
+      product_description: item.product_description || item.generic_name || item.naration || item.strength || "",
       company_name: item.company_name || "BM Pvt LTD",
       item_code: item.item_code || "",
-      naration: item.naration || item.strength || "",
       category: item.category || "Homeopathic Drops",
       cost_price: String(item.cost_price_per_box || item.purchase_price || item.cost_price || "0"),
       sale_price: String(item.unit_sale_price || item.box_sale_price || item.sale_price || item.unit_price || "0"),
       store_stock: String(storeQty),
+      location_stocks: whStockMap,
       warehouse_1_stock: String(wh1Qty),
       warehouse_2_stock: String(wh2Qty),
       low_stock_threshold: String(item.low_stock_threshold ?? 6),
@@ -248,18 +237,24 @@ export default function MedicalStoreInventory() {
   };
 
   const handleVerifyAdminPasscode = (e) => {
-    e?.preventDefault?.();
-    const isPassValid = verifyAdminPasscode(adminAuthModal.passcode);
-    if (!isPassValid) {
+    e.preventDefault();
+    if (!verifyAdminPasscode(adminAuthModal.passcode)) {
       setAdminAuthModal((prev) => ({
         ...prev,
-        error: "Incorrect Admin Passcode. Please contact clinic admin/doctor.",
+        error: "Incorrect Admin Passcode. Please try again.",
       }));
       return;
     }
 
     const { action, targetItem } = adminAuthModal;
-    setAdminAuthModal({ isOpen: false, action: "", targetItem: null, passcode: "", error: "", showPass: false });
+    setAdminAuthModal({
+      isOpen: false,
+      action: "",
+      targetItem: null,
+      passcode: "",
+      error: "",
+      showPass: false,
+    });
 
     if (action === "edit" && targetItem) {
       openEditFormForItem(targetItem);
@@ -268,28 +263,38 @@ export default function MedicalStoreInventory() {
     }
   };
 
-  const handleSaveEditedItem = (e) => {
+  const handleSaveEdit = (e) => {
     e.preventDefault();
     if (!editingItem) return;
-    if (!editFormData.medicine_name.trim()) {
-      alert("Medicine name cannot be empty.");
-      return;
-    }
 
     const costVal = Math.max(0, Number(editFormData.cost_price) || 0);
     const saleVal = Math.max(0, Number(editFormData.sale_price) || 0);
     const storeQty = Math.max(0, Number(editFormData.store_stock) || 0);
-    const wh1Qty = Math.max(0, Number(editFormData.warehouse_1_stock) || 0);
-    const wh2Qty = Math.max(0, Number(editFormData.warehouse_2_stock) || 0);
-    const godownTotal = wh1Qty + wh2Qty;
+    
+    // Dynamic warehouse stocks aggregation
+    const updatedLocationStocks = {
+      ...(editingItem.location_stocks || {}),
+      wh_str: storeQty,
+    };
+    let godownTotal = 0;
+
+    allWarehouses.forEach((wh) => {
+      const qty = Math.max(0, Number(editFormData.location_stocks?.[wh.id] ?? (wh.id === "wh_001" ? editFormData.warehouse_1_stock : editFormData.warehouse_2_stock)) || 0);
+      updatedLocationStocks[wh.id] = qty;
+      godownTotal += qty;
+    });
+
     const threshold = Math.max(0, Number(editFormData.low_stock_threshold) || 6);
+    const desc = editFormData.product_description?.trim() || "";
 
     const updated = {
       medicine_name: editFormData.medicine_name.trim(),
+      product_description: desc,
+      generic_name: desc,
+      naration: desc,
       company_name: editFormData.company_name.trim(),
       item_code: editFormData.item_code.trim(),
-      naration: editFormData.naration.trim(),
-      category: editFormData.category,
+      category: editFormData.category || "Homeopathic Drops",
       cost_price_per_box: costVal,
       purchase_price: costVal,
       cost_price: costVal,
@@ -302,12 +307,7 @@ export default function MedicalStoreInventory() {
       stock_qty: storeQty,
       total_base_stock: storeQty + godownTotal,
       low_stock_threshold: threshold,
-      location_stocks: {
-        ...(editingItem.location_stocks || {}),
-        wh_str: storeQty,
-        wh_001: wh1Qty,
-        wh_002: wh2Qty,
-      },
+      location_stocks: updatedLocationStocks,
     };
 
     dbInventory.update(editingItem.id, updated);
@@ -323,6 +323,35 @@ export default function MedicalStoreInventory() {
     setDeletingItem(null);
     load();
     triggerToast(`🗑️ "${name}" permanently removed from catalog.`);
+  };
+
+  // Bulk Selection State & Handlers
+  const [selectedItems, setSelectedItems] = useState(new Set());
+
+  const toggleSelectItem = (itemId) => {
+    setSelectedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === paginatedInventory?.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set((paginatedInventory || []).map((i) => i.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedItems.size === 0) return;
+    const count = selectedItems.size;
+    selectedItems.forEach((id) => dbInventory.delete(id));
+    setSelectedItems(new Set());
+    load();
+    triggerToast(`🗑️ ${count} items permanently removed from catalog.`);
   };
 
   function load() {
@@ -521,34 +550,6 @@ export default function MedicalStoreInventory() {
     });
   }
 
-  function handleAdvChange(e) {
-    const { name, value, type, checked } = e.target;
-    setAdvForm((prev) => {
-      const next = {
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      };
-
-      // Case A: User selected Company Name -> Auto-fill item_code
-      if (name === "company_name") {
-        const found = allCompanyOptions.find((c) => c.name.toLowerCase() === value.toLowerCase().trim());
-        if (found) {
-          next.item_code = found.code;
-        }
-      }
-
-      // Case B: User typed Product Code -> Auto-fill company_name
-      if (name === "item_code") {
-        const found = findCompanyByCode(value);
-        if (found) {
-          next.company_name = found.name;
-        }
-      }
-
-      return next;
-    });
-  }
-
   // Quick Fast-Add / DrCreate Submit Submission (supports Enter key loop)
   function handleQuickAdd(closeAfter = false) {
     setError("");
@@ -561,17 +562,28 @@ export default function MedicalStoreInventory() {
     const salePrice = parseFloat(quickForm.sale_price) || 0;
     const costPrice = parseFloat(quickForm.cost_price) || (salePrice > 0 ? salePrice * 0.7 : 0);
     const storeStock = parseInt(quickForm.store_stock) || parseInt(quickForm.opening_balance) || 0;
-    const wh1Stock = parseInt(quickForm.warehouse_1_stock) || 0;
-    const wh2Stock = parseInt(quickForm.warehouse_2_stock) || 0;
-    const godownStock = wh1Stock + wh2Stock;
+    
+    // Dynamic location stocks mapping for all registered warehouses
+    const finalLocationStocks = { wh_str: storeStock };
+    let godownStock = 0;
+
+    allWarehouses.forEach((wh) => {
+      const qty = parseInt(quickForm.location_stocks?.[wh.id]) || 0;
+      finalLocationStocks[wh.id] = qty;
+      godownStock += qty;
+    });
+
     const totalBase = storeStock + godownStock;
+    const desc = quickForm.product_description?.trim() || "";
 
     const payload = {
       medicine_name: quickForm.medicine_name.trim(),
+      product_description: desc,
+      generic_name: desc,
+      naration: desc,
       company_name: quickForm.company_name || "BM Pvt LTD",
       item_code: quickForm.item_code || "BM",
-      generic_name: quickForm.naration || "Homeopathic Medicine",
-      category: quickForm.category || (quickForm.naration ? `${quickForm.naration}` : "Homeopathic Drops"),
+      category: quickForm.category || "Homeopathic Drops",
       has_multi_unit: false,
       strips_per_box: 1,
       units_per_strip: 1,
@@ -587,13 +599,16 @@ export default function MedicalStoreInventory() {
       stock_qty: storeStock,
       store_stock: storeStock,
       warehouse_stock: godownStock,
-      location_stocks: { wh_str: storeStock, wh_001: wh1Stock, wh_002: wh2Stock },
+      location_stocks: finalLocationStocks,
       low_stock_threshold: parseInt(quickForm.minimum_level) || 6,
       expiry_date: "2028-12-31",
     };
 
     const result = addInventoryItem(payload);
     if (result.success) {
+      if (payload.category) {
+        dbCategories.add(payload.category);
+      }
       triggerToast(`✅ "${payload.medicine_name}" registered successfully!`);
       load();
       if (closeAfter) {
@@ -602,6 +617,7 @@ export default function MedicalStoreInventory() {
         setQuickForm((prev) => ({
           ...prev,
           medicine_name: "",
+          product_description: "",
           cost_price: "",
           sale_price: "",
           store_stock: "0",
@@ -614,56 +630,6 @@ export default function MedicalStoreInventory() {
       setError(result.error?.message || "Failed to register medicine.");
     }
   }
-
-  // Advanced Multi-Unit Form Submission
-  function handleAdvSubmit(e) {
-    e.preventDefault();
-    setError("");
-
-    const stripsPerBox = parseInt(advForm.strips_per_box) || 1;
-    const unitsPerStrip = parseInt(advForm.units_per_strip) || 1;
-    const unitsPerBox = stripsPerBox * unitsPerStrip;
-
-    const storeBoxes = parseInt(advForm.store_stock_boxes) || parseInt(advForm.stock_boxes) || 0;
-    const wh1Boxes = parseInt(advForm.warehouse_1_boxes) || 0;
-    const wh2Boxes = parseInt(advForm.warehouse_2_boxes) || 0;
-
-    const storeUnits = storeBoxes * unitsPerBox;
-    const wh1Units = wh1Boxes * unitsPerBox;
-    const wh2Units = wh2Boxes * unitsPerBox;
-    const godownUnits = wh1Units + wh2Units;
-    const totalBaseStock = storeUnits + godownUnits;
-
-    const payload = {
-      ...advForm,
-      medicine_name: advForm.medicine_name.trim(),
-      has_multi_unit: advForm.has_multi_unit,
-      strips_per_box: stripsPerBox,
-      units_per_strip: unitsPerStrip,
-      total_base_stock: totalBaseStock,
-      stock_qty: storeUnits,
-      store_stock: storeUnits,
-      warehouse_stock: godownUnits,
-      location_stocks: { wh_str: storeUnits, wh_001: wh1Units, wh_002: wh2Units },
-      cost_price_per_box: parseFloat(advForm.cost_price_per_box) || 0,
-      box_sale_price: parseFloat(advForm.box_sale_price) || 0,
-      strip_sale_price: parseFloat(advForm.strip_sale_price) || 0,
-      unit_sale_price: parseFloat(advForm.unit_sale_price) || parseFloat(advForm.unit_price) || 0,
-      unit_price: parseFloat(advForm.unit_sale_price) || parseFloat(advForm.unit_price) || 0,
-      low_stock_threshold: parseInt(advForm.low_stock_threshold) || 20,
-    };
-
-    const result = addInventoryItem(payload);
-    if (result.success) {
-      triggerToast(`✅ "${payload.medicine_name}" added successfully!`);
-      setShowForm(false);
-      load();
-    } else {
-      setError(result.error?.message || "Failed to save medicine.");
-    }
-  }
-
-
 
   // CSV File Handler
   function handleCsvFileSelected(e) {
@@ -1167,391 +1133,109 @@ export default function MedicalStoreInventory() {
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setFormTab("quick")}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-                  formTab === "quick"
-                    ? "bg-emerald-500 text-slate-950 shadow-md"
-                    : "text-slate-300 hover:text-white"
-                }`}
+                onClick={() => setShowForm(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+                title="Close Form"
               >
-                <span className="material-symbols-outlined text-base">bolt</span>
-                DrCreate Form (Access Format)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormTab("advanced")}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-                  formTab === "advanced"
-                    ? "bg-emerald-500 text-slate-950 shadow-md"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                <span className="material-symbols-outlined text-base">widgets</span>
-                Multi-Unit Mode (Box / Strip)
+                <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
           </div>
 
-          {/* TAB 1: DrCreate Rapid Entry Form */}
-          {formTab === "quick" && (
-            <div className="p-6 md:p-8 space-y-6 bg-slate-50/50">
-              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs text-emerald-950 flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
-                    ↵
-                  </div>
-                  <div>
-                    <strong>Continuous Rapid Loop:</strong> Type details and press{" "}
-                    <kbd className="bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono font-black text-emerald-800">
-                      Enter
-                    </kbd>{" "}
-                    to instantly save and jump straight to the next medicine.
-                  </div>
+          {/* DrCreate Rapid Entry Form */}
+          <div className="p-6 md:p-8 space-y-6 bg-slate-50/50">
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs text-emerald-950 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
+                  ↵
                 </div>
-                <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-800">
-                  <span>Margin:</span>
-                  <span className="bg-white px-2.5 py-1 rounded-lg border border-emerald-300 font-mono">
-                    Rs. {quickProfitMargin.rs.toFixed(0)} ({quickProfitMargin.pct}%)
-                  </span>
+                <div>
+                  <strong>Continuous Rapid Loop:</strong> Type details and press{" "}
+                  <kbd className="bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono font-black text-emerald-800">
+                    Enter
+                  </kbd>{" "}
+                  to instantly save and jump straight to the next medicine.
                 </div>
               </div>
-
-              {/* Form Grid */}
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-                {/* 1. Product Name */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <label htmlFor="quick_medicine_name" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Product Name <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="md:col-span-9">
-                    <input
-                      ref={quickNameRef}
-                      id="quick_medicine_name"
-                      name="medicine_name"
-                      type="text"
-                      placeholder="e.g. 15 Ghr 20Ml or Chaaston 30 Cap"
-                      value={quickForm.medicine_name}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* 2. Product Code & Company */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <label htmlFor="quick_item_code" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Product Code &amp; Brand
-                  </label>
-                  <div className="md:col-span-4">
-                    <input
-                      id="quick_item_code"
-                      name="item_code"
-                      type="text"
-                      placeholder="e.g. BM, PB, SCH, SK, Al S"
-                      value={quickForm.item_code}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-mono font-bold text-emerald-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
-                    />
-                  </div>
-                  <div className="md:col-span-5">
-                    <select
-                      name="company_name"
-                      value={quickForm.company_name}
-                      onChange={handleQuickChange}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold bg-white text-slate-800 focus:border-emerald-600 focus:outline-none transition-all"
-                    >
-                      {allCompanyOptions.map((c) => (
-                        <option key={`${c.name}_${c.code}`} value={c.name}>
-                          {c.name} ({c.code})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* 3. Naration / Form */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <label htmlFor="quick_naration" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Naration / Form
-                  </label>
-                  <div className="md:col-span-9">
-                    <input
-                      id="quick_naration"
-                      name="naration"
-                      type="text"
-                      placeholder="e.g. Drops 20ml, Tablet, Syrup, Ointment, Eye Care"
-                      value={quickForm.naration}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* 4. Minimum Alert Level */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <label htmlFor="quick_minimum_level" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Minimum Level (Alert)
-                  </label>
-                  <div className="md:col-span-9">
-                    <input
-                      id="quick_minimum_level"
-                      name="minimum_level"
-                      type="number"
-                      min="0"
-                      placeholder="6"
-                      value={quickForm.minimum_level}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* 5. Location-Wise Stock Allocation & Reg Date */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <label className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Location Stocks (Units)
-                  </label>
-                  <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    {/* Store Counter Stock */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-teal-800 uppercase">🏪 Store Counter</span>
-                      </div>
-                      <input
-                        id="quick_store_stock"
-                        name="store_stock"
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={quickForm.store_stock}
-                        onChange={handleQuickChange}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                        className="w-full border border-teal-300 rounded-xl px-3 py-1.5 text-xs font-black text-teal-900 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                      />
-                    </div>
-
-                    {/* Warehouse 1 (Lajpat Road) Stock */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-blue-800 uppercase">🏢 WH-1 (Lajpat Rd)</span>
-                      </div>
-                      <input
-                        id="quick_warehouse_1_stock"
-                        name="warehouse_1_stock"
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={quickForm.warehouse_1_stock}
-                        onChange={handleQuickChange}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                        className="w-full border border-blue-300 rounded-xl px-3 py-1.5 text-xs font-black text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    {/* Warehouse 2 (Usama) Stock */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-purple-800 uppercase">🏢 WH-2 (Usama)</span>
-                      </div>
-                      <input
-                        id="quick_warehouse_2_stock"
-                        name="warehouse_2_stock"
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={quickForm.warehouse_2_stock}
-                        onChange={handleQuickChange}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                        className="w-full border border-purple-300 rounded-xl px-3 py-1.5 text-xs font-black text-purple-900 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 6. Pricing Details */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200">
-                  <label className="md:col-span-3 text-xs font-black text-emerald-950 uppercase tracking-wider">
-                    Rates &amp; Valuation
-                  </label>
-                  <div className="md:col-span-4 flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Cost (Rs):</span>
-                    <input
-                      id="quick_cost_price"
-                      name="cost_price"
-                      type="number"
-                      min="0"
-                      placeholder="420"
-                      value={quickForm.cost_price}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white text-slate-900 focus:outline-none focus:border-emerald-600"
-                    />
-                  </div>
-                  <div className="md:col-span-5 flex items-center gap-2">
-                    <span className="text-xs font-bold text-emerald-950 whitespace-nowrap">
-                      Sale Price: <span className="text-rose-500">*</span>
-                    </span>
-                    <input
-                      id="quick_sale_price"
-                      name="sale_price"
-                      type="number"
-                      min="0"
-                      placeholder="595"
-                      value={quickForm.sale_price}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border-2 border-emerald-500 rounded-xl px-3 py-2 text-xs font-black text-emerald-950 bg-white focus:ring-2 focus:ring-emerald-400 focus:outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {error && <p role="alert" className="text-rose-600 font-bold text-xs">{error}</p>}
-
-              {/* Bottom Action Row */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalCategoryFilter(quickForm.item_code || "All");
-                      setModalSearchQuery("");
-                      setShowInventoryListModal(true);
-                    }}
-                    className="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
-                    Show Catalog List
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalCategoryFilter(quickForm.item_code || "All");
-                      setModalSearchQuery("");
-                      setShowPricingListModal(true);
-                    }}
-                    className="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-sm">price_change</span>
-                    Price Sheet
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="px-5 py-2.5 rounded-2xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickAdd(false)}
-                    className="px-7 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg shadow-emerald-700/20 transition-all flex items-center gap-2 active:scale-95"
-                  >
-                    <span className="material-symbols-outlined text-base">check</span>
-                    Save Medicine [Enter]
-                  </button>
-                </div>
+              <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-800">
+                <span>Margin:</span>
+                <span className="bg-white px-2.5 py-1 rounded-lg border border-emerald-300 font-mono">
+                  Rs. {quickProfitMargin.rs.toFixed(0)} ({quickProfitMargin.pct}%)
+                </span>
               </div>
             </div>
-          )}
 
-          {/* TAB 2: Advanced Multi-Unit Form */}
-          {formTab === "advanced" && (
-            <form onSubmit={handleAdvSubmit} className="p-6 md:p-8 flex flex-col gap-6 bg-slate-50/50" noValidate>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="adv_medicine_name" className="text-xs font-bold text-slate-800">
-                    Medicine Name <span className="text-rose-500">*</span>
-                  </label>
+            {/* Form Grid */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+              {/* 1. Product Name */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <label htmlFor="quick_medicine_name" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Product Name <span className="text-rose-500">*</span>
+                </label>
+                <div className="md:col-span-9">
                   <input
-                    id="adv_medicine_name"
+                    ref={quickNameRef}
+                    id="quick_medicine_name"
                     name="medicine_name"
                     type="text"
-                    placeholder="e.g. Panadol 500mg"
-                    value={advForm.medicine_name}
-                    onChange={handleAdvChange}
-                    className="border border-slate-300 rounded-2xl px-4 py-2.5 font-bold text-sm bg-white focus:border-emerald-600 focus:outline-none"
+                    placeholder="e.g. 15 Ghr 20Ml or Chaaston 30 Cap"
+                    value={quickForm.medicine_name}
+                    onChange={handleQuickChange}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                    className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
                     required
                   />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="adv_category" className="text-xs font-bold text-slate-800">
-                    Category / Form
-                  </label>
-                  <select
-                    id="adv_category"
-                    name="category"
-                    value={advForm.category}
-                    onChange={handleAdvChange}
-                    className="border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold bg-white text-slate-800 focus:border-emerald-600 focus:outline-none"
-                  >
-                    <option value="Tablet">Tablet (Solid)</option>
-                    <option value="Capsule">Capsule (Hard/Softgel)</option>
-                    <option value="Syrup / Suspension">Syrup / Suspension (Liquid)</option>
-                    <option value="Injection / IV">Injection / IV Drip</option>
-                    <option value="Cream / Ointment / Gel">Cream / Ointment / Gel</option>
-                    <option value="Eye / Ear Drops">Eye / Ear Drops</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="adv_strength" className="text-xs font-bold text-slate-800">
-                    Packing Strength
-                  </label>
+              </div>
+
+              {/* 2. Product Description */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <label htmlFor="quick_product_description" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Product Description
+                </label>
+                <div className="md:col-span-9">
                   <input
-                    id="adv_strength"
-                    name="strength"
+                    id="quick_product_description"
+                    name="product_description"
                     type="text"
-                    placeholder="e.g. 500 mg, 120 ml"
-                    value={advForm.strength}
-                    onChange={handleAdvChange}
-                    className="border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold bg-white focus:border-emerald-600 focus:outline-none"
+                    placeholder="e.g. Drops 20ml, 500mg Sugar Free, Sugar Coated, Pediatric..."
+                    value={quickForm.product_description}
+                    onChange={handleQuickChange}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                    className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-semibold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
                   />
                 </div>
               </div>
 
-              {/* Advanced Company & Product Code Row */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white p-4 rounded-2xl border border-slate-200">
-                <div className="md:col-span-4 flex flex-col gap-1.5">
-                  <label htmlFor="adv_item_code" className="text-xs font-bold text-slate-800">
-                    Product Code (Auto-Matches Brand)
-                  </label>
+              {/* 3. Product Code & Brand */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <label htmlFor="quick_item_code" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Product Code &amp; Brand
+                </label>
+                <div className="md:col-span-4">
                   <input
-                    id="adv_item_code"
+                    id="quick_item_code"
                     name="item_code"
                     type="text"
-                    placeholder="e.g. BM, PB, SCH, HFP, GHR"
-                    value={advForm.item_code}
-                    onChange={handleAdvChange}
-                    className="border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-emerald-900 bg-slate-50 focus:bg-white focus:border-emerald-600 focus:outline-none"
+                    placeholder="e.g. BM, PB, SCH, SK, Al S"
+                    value={quickForm.item_code}
+                    onChange={handleQuickChange}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                    className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-mono font-bold text-emerald-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
                   />
                 </div>
-                <div className="md:col-span-8 flex flex-col gap-1.5">
-                  <label htmlFor="adv_company_name" className="text-xs font-bold text-slate-800">
-                    Manufacturing Company / Supplier
-                  </label>
+                <div className="md:col-span-5">
                   <select
-                    id="adv_company_name"
                     name="company_name"
-                    value={advForm.company_name}
-                    onChange={handleAdvChange}
-                    className="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white text-slate-800 focus:border-emerald-600 focus:outline-none"
+                    value={quickForm.company_name}
+                    onChange={handleQuickChange}
+                    className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold bg-white text-slate-800 focus:border-emerald-600 focus:outline-none transition-all"
                   >
                     {allCompanyOptions.map((c) => (
-                      <option key={`adv_${c.name}_${c.code}`} value={c.name}>
+                      <option key={`${c.name}_${c.code}`} value={c.name}>
                         {c.name} ({c.code})
                       </option>
                     ))}
@@ -1559,76 +1243,275 @@ export default function MedicalStoreInventory() {
                 </div>
               </div>
 
-              {/* Hierarchy Box Section */}
-              <div className="bg-teal-50/70 p-5 rounded-3xl border border-teal-200 space-y-4">
-                <div className="text-xs font-black text-teal-900 uppercase tracking-wider flex items-center gap-2">
-                  <span className="material-symbols-outlined text-base">widgets</span>
-                  Packaging Hierarchy Breakdown (Box ➔ Strips / Packs ➔ Single Tablets / Units)
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1 bg-white p-3.5 rounded-2xl border border-teal-100">
-                    <label htmlFor="adv_box_label" className="text-xs font-bold text-slate-700">1. Box / Pack Label</label>
-                    <input id="adv_box_label" name="box_label" type="text" placeholder="Box" value={advForm.box_label} onChange={handleAdvChange} className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold" />
-                  </div>
-                  <div className="flex flex-col gap-1 bg-white p-3.5 rounded-2xl border border-teal-100">
-                    <label htmlFor="adv_strips_per_box" className="text-xs font-bold text-slate-700">2. Strips Per Box (Pattay)</label>
-                    <input id="adv_strips_per_box" name="strips_per_box" type="number" min="1" placeholder="10" value={advForm.strips_per_box} onChange={handleAdvChange} className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold" />
-                  </div>
-                  <div className="flex flex-col gap-1 bg-white p-3.5 rounded-2xl border border-teal-100">
-                    <label htmlFor="adv_units_per_strip" className="text-xs font-bold text-slate-700">3. Tablets Per Strip</label>
-                    <input id="adv_units_per_strip" name="units_per_strip" type="number" min="1" placeholder="10" value={advForm.units_per_strip} onChange={handleAdvChange} className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold" />
-                  </div>
-                </div>
-
-                {/* Multi-Location Box Stock Allocation */}
-                <div className="bg-white p-4 rounded-2xl border border-teal-200 space-y-3">
-                  <div className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                    Location-Wise Initial Box Stock Allocation
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex flex-col gap-1 bg-teal-50/50 p-3 rounded-xl border border-teal-200">
-                      <label htmlFor="adv_store_stock_boxes" className="text-xs font-black text-teal-900">🏪 Store Counter Boxes</label>
-                      <input id="adv_store_stock_boxes" name="store_stock_boxes" type="number" min="0" placeholder="0" value={advForm.store_stock_boxes} onChange={handleAdvChange} className="border border-teal-300 rounded-xl px-3 py-1.5 text-xs font-black bg-white focus:outline-none focus:ring-2 focus:ring-teal-500" />
+              {/* 4. Category Selector with On-the-Fly Custom Category Creation */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <label htmlFor="quick_category" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Medicine Category
+                </label>
+                <div className="md:col-span-9">
+                  {!showAddCategoryInput ? (
+                    <div className="flex items-center gap-2">
+                      <select
+                        id="quick_category"
+                        name="category"
+                        value={quickForm.category}
+                        onChange={handleQuickChange}
+                        className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold bg-white text-slate-800 focus:border-emerald-600 focus:outline-none transition-all"
+                      >
+                        {allCategories.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddCategoryInput(true);
+                          setCustomCategoryInput("");
+                        }}
+                        className="px-3.5 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs whitespace-nowrap flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                        title="Add New Custom Category"
+                      >
+                        <span className="material-symbols-outlined text-base">add</span>
+                        <span>New Category</span>
+                      </button>
                     </div>
-                    <div className="flex flex-col gap-1 bg-blue-50/50 p-3 rounded-xl border border-blue-200">
-                      <label htmlFor="adv_warehouse_1_boxes" className="text-xs font-black text-blue-900">🏢 WH-1 (Lajpat Rd) Boxes</label>
-                      <input id="adv_warehouse_1_boxes" name="warehouse_1_boxes" type="number" min="0" placeholder="0" value={advForm.warehouse_1_boxes} onChange={handleAdvChange} className="border border-blue-300 rounded-xl px-3 py-1.5 text-xs font-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  ) : (
+                    <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Type new category name e.g. Herbal Syrup, Inhaler..."
+                        value={customCategoryInput}
+                        onChange={(e) => setCustomCategoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (customCategoryInput.trim()) {
+                              const created = dbCategories.add(customCategoryInput.trim());
+                              setQuickForm((prev) => ({ ...prev, category: created }));
+                              setShowAddCategoryInput(false);
+                              setCustomCategoryInput("");
+                              triggerToast(`✅ Category "${created}" added!`);
+                            }
+                          } else if (e.key === "Escape") {
+                            setShowAddCategoryInput(false);
+                          }
+                        }}
+                        className="w-full border-2 border-emerald-500 rounded-2xl px-4 py-2 text-xs font-bold bg-white text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (customCategoryInput.trim()) {
+                            const created = dbCategories.add(customCategoryInput.trim());
+                            setQuickForm((prev) => ({ ...prev, category: created }));
+                            setShowAddCategoryInput(false);
+                            setCustomCategoryInput("");
+                            triggerToast(`✅ Category "${created}" added!`);
+                          }
+                        }}
+                        className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs whitespace-nowrap flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                      >
+                        <span className="material-symbols-outlined text-sm">check</span>
+                        <span>Add</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCategoryInput(false)}
+                        className="px-3 py-2.5 rounded-2xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold text-xs whitespace-nowrap transition-all cursor-pointer shrink-0"
+                      >
+                        Cancel
+                      </button>
                     </div>
-                    <div className="flex flex-col gap-1 bg-purple-50/50 p-3 rounded-xl border border-purple-200">
-                      <label htmlFor="adv_warehouse_2_boxes" className="text-xs font-black text-purple-900">🏢 WH-2 (Usama) Boxes</label>
-                      <input id="adv_warehouse_2_boxes" name="warehouse_2_boxes" type="number" min="0" placeholder="0" value={advForm.warehouse_2_boxes} onChange={handleAdvChange} className="border border-purple-300 rounded-xl px-3 py-1.5 text-xs font-black bg-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                  <div className="flex flex-col gap-1 bg-white p-3.5 rounded-2xl border border-teal-100">
-                    <label htmlFor="adv_box_sale_price" className="text-xs font-bold text-teal-950">Box Rate (Rs)</label>
-                    <input id="adv_box_sale_price" name="box_sale_price" type="number" min="0" placeholder="600" value={advForm.box_sale_price} onChange={handleAdvChange} className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold" />
-                  </div>
-                  <div className="flex flex-col gap-1 bg-white p-3.5 rounded-2xl border border-teal-100">
-                    <label htmlFor="adv_strip_sale_price" className="text-xs font-bold text-teal-950">Strip Rate (Rs)</label>
-                    <input id="adv_strip_sale_price" name="strip_sale_price" type="number" min="0" placeholder="65" value={advForm.strip_sale_price} onChange={handleAdvChange} className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold" />
-                  </div>
-                  <div className="flex flex-col gap-1 bg-white p-3.5 rounded-2xl border border-teal-100">
-                    <label htmlFor="adv_unit_sale_price" className="text-xs font-bold text-teal-950">Single Tab Rate (Rs)</label>
-                    <input id="adv_unit_sale_price" name="unit_sale_price" type="number" min="0" placeholder="7" value={advForm.unit_sale_price} onChange={handleAdvChange} className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold" />
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {error && <p role="alert" className="text-rose-600 font-bold text-xs">{error}</p>}
-              <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="px-5 py-2.5 rounded-2xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100">
+              {/* 4. Minimum Alert Level */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <label htmlFor="quick_minimum_level" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Minimum Level (Alert)
+                </label>
+                <div className="md:col-span-9">
+                  <input
+                    id="quick_minimum_level"
+                    name="minimum_level"
+                    type="number"
+                    min="0"
+                    placeholder="6"
+                    value={quickForm.minimum_level}
+                    onChange={handleQuickChange}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                    className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* 5. Location-Wise Stock Allocation & Reg Date */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <label className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Location Stocks (Units)
+                </label>
+                <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {/* Store Counter Stock (Always Available) */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-teal-800 uppercase">🏪 Store Counter</span>
+                    </div>
+                    <input
+                      id="quick_store_stock"
+                      name="store_stock"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={quickForm.store_stock}
+                      onChange={handleQuickChange}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                      className="w-full border border-teal-300 rounded-xl px-3 py-1.5 text-xs font-black text-teal-900 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Registered Warehouses / Godowns (Only shown if actually registered in DB) */}
+                  {allWarehouses.map((wh, idx) => {
+                    const colorClasses = idx % 2 === 0 
+                      ? { text: "text-blue-800", border: "border-blue-300", textVal: "text-blue-900", ring: "focus:ring-blue-500" }
+                      : { text: "text-purple-800", border: "border-purple-300", textVal: "text-purple-900", ring: "focus:ring-purple-500" };
+                    return (
+                      <div key={wh.id} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-black uppercase ${colorClasses.text}`}>
+                            🏢 {wh.name}
+                          </span>
+                        </div>
+                        <input
+                          id={`quick_wh_${wh.id}`}
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={quickForm.location_stocks?.[wh.id] || "0"}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setQuickForm((prev) => ({
+                              ...prev,
+                              location_stocks: {
+                                ...(prev.location_stocks || {}),
+                                [wh.id]: val,
+                              },
+                              // Maintain backward compatibility with warehouse_1 / warehouse_2 if wh_001 / wh_002
+                              ...(wh.id === "wh_001" ? { warehouse_1_stock: val } : {}),
+                              ...(wh.id === "wh_002" ? { warehouse_2_stock: val } : {}),
+                            }));
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                          className={`w-full border rounded-xl px-3 py-1.5 text-xs font-black bg-white focus:ring-2 focus:outline-none ${colorClasses.border} ${colorClasses.textVal} ${colorClasses.ring}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 6. Pricing Row: Purchase / Cost Rate & Retail Sale Price */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <label className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Pricing (Rs.) <span className="text-rose-500">*</span>
+                </label>
+                <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="quick_cost_price" className="block text-[10px] font-bold text-slate-500 mb-1">
+                      Purchase / Cost Rate (Rs)
+                    </label>
+                    <input
+                      id="quick_cost_price"
+                      name="cost_price"
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 100"
+                      value={quickForm.cost_price}
+                      onChange={handleQuickChange}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="quick_sale_price" className="block text-[10px] font-bold text-slate-500 mb-1">
+                      Retail Sale Price (Rs) <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      id="quick_sale_price"
+                      name="sale_price"
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 140"
+                      value={quickForm.sale_price}
+                      onChange={handleQuickChange}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined text-base">error</span>
+                {error}
+              </div>
+            )}
+
+            {/* Quick Form Action Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalCategoryFilter(quickForm.item_code || "All");
+                    setModalSearchQuery("");
+                    setShowInventoryListModal(true);
+                  }}
+                  className="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
+                  Show Catalog List
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalCategoryFilter(quickForm.item_code || "All");
+                    setModalSearchQuery("");
+                    setShowPricingListModal(true);
+                  }}
+                  className="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">price_change</span>
+                  Price Sheet
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-5 py-2.5 rounded-2xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-all cursor-pointer"
+                >
                   Cancel
                 </button>
-                <button type="submit" className="px-7 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg shadow-emerald-700/20">
-                  Save Multi-Unit Medicine
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd(false)}
+                  className="px-7 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg shadow-emerald-700/20 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">check</span>
+                  Save Medicine [Enter]
                 </button>
               </div>
-            </form>
-          )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1741,7 +1624,7 @@ export default function MedicalStoreInventory() {
         {/* Category Pill Tabs */}
         <div className="relative flex items-center w-full">
           <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 w-full scroll-smooth">
-            {["all", "Homeopathic Drops", "Syrup / Suspension", "Specialized Drops", "Tablet", "Capsule", "Allopathic OTC"].map((cat) => (
+            {["all", ...allCategories].map((cat) => (
               <button
                 key={cat}
                 onClick={() => {
@@ -1817,177 +1700,149 @@ export default function MedicalStoreInventory() {
           </div>
         </div>
       ) : viewMode === "table" ? (
-        /* Modern Table View */
-        <div className="glass-card rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto custom-scrollbar table-scroll-container">
-            <table className="w-full text-left border-collapse min-w-[760px]">
-              <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200 z-10">
-                <tr className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                  <th className="py-4 px-6">Medicine &amp; Company</th>
-                  <th className="py-4 px-4 text-center">Category / Code</th>
-                  <th className="py-4 px-4 text-center">
-                    {isLocationLocked
-                      ? `Stock in ${userAssignedWh?.nickname || "Location"}`
-                      : effectiveLocationId === "all"
-                      ? "Stock Breakdown"
-                      : `Stock in ${currentWarehouseInfo?.nickname || "Location"}`}
+        /* Clean Corporate Data Table View */
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Bulk Actions Bar */}
+          {selectedItems.size > 0 && (
+            <div className="bg-rose-50 border-b border-rose-200 px-5 py-2.5 flex items-center justify-between">
+              <span className="text-xs font-black text-rose-900">
+                {selectedItems.size} item{selectedItems.size > 1 ? "s" : ""} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedItems(new Set())}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-all"
+                >
+                  Clear Selection
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition-all"
+                >
+                  Delete Selected ({selectedItems.size})
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[1050px]">
+              <thead className="bg-slate-900 text-white z-10 text-[10px] font-black uppercase tracking-wider">
+                <tr>
+                  <th className="py-3 px-3 text-center w-10 border-b border-slate-800">
+                    <input
+                      type="checkbox"
+                      checked={paginatedInventory.length > 0 && selectedItems.size === paginatedInventory.length}
+                      onChange={toggleSelectAll}
+                      className="w-3.5 h-3.5 accent-teal-500 cursor-pointer"
+                      title="Select All"
+                    />
                   </th>
-                  <th className="py-4 px-4 text-right">Cost Rate</th>
-                  <th className="py-4 px-4 text-right">Sale Price</th>
-                  <th className="py-4 px-6 text-right">Actions &amp; Ledger</th>
+                  <th className="py-3 px-2 text-center w-10 border-b border-slate-800">#</th>
+                  <th className="py-3 px-4 border-b border-slate-800">Medicine Name &amp; Description</th>
+                  <th className="py-3 px-3 border-b border-slate-800">Company</th>
+                  <th className="py-3 px-3 text-center border-b border-slate-800">Category</th>
+                  <th className="py-3 px-3 text-center border-b border-slate-800">Code</th>
+                  <th className="py-3 px-3 text-center border-b border-slate-800 text-teal-300">Godown</th>
+                  <th className="py-3 px-3 text-center border-b border-slate-800 text-amber-300">Counter</th>
+                  <th className="py-3 px-3 text-center border-b border-slate-800 text-emerald-300">Total</th>
+                  <th className="py-3 px-3 text-right border-b border-slate-800">Cost</th>
+                  <th className="py-3 px-3 text-right border-b border-slate-800 text-emerald-300">Sale</th>
+                  <th className="py-3 px-4 text-right border-b border-slate-800">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-semibold">
-                {paginatedInventory.map((item) => {
+              <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                {paginatedInventory.map((item, idx) => {
+                  const itemIndex = (currentPage - 1) * PAGE_SIZE + idx + 1;
                   const low = isLowStock(item);
                   const out = isOutOfStock(item);
-                  const base = getItemLocationStock(item);
-                  const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || 0);
-                  const cost = Number(item.cost_price_per_box || item.purchase_price || (sale * 0.7));
+                  const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || item.sale_price || 0);
+                  const cost = Number(item.cost_price_per_box || item.purchase_price || item.cost_price || (sale * 0.7));
+                  const godownStock = item.warehouse_stock ?? 0;
+                  const counterStock = item.store_stock ?? (item.stock_qty ?? 0);
+                  const totalStock = item.total_base_stock ?? (godownStock + counterStock);
+                  const isSelected = selectedItems.has(item.id);
 
                   return (
                     <tr
                       key={item.id}
                       id={`inv-row-${item.id}`}
-                      className={`hover:bg-teal-50/40 transition-colors ${
-                        out ? "bg-rose-50/20" : low ? "bg-amber-50/20" : ""
+                      className={`hover:bg-slate-50 transition-colors ${
+                        isSelected ? "bg-teal-50/50" : out ? "bg-rose-50/20" : low ? "bg-amber-50/20" : ""
                       }`}
                     >
-                      {/* Name & Brand */}
-                      <td className="py-3.5 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center font-black shrink-0 shadow-2xs">
-                            {item.has_multi_unit ? "📦" : "💧"}
-                          </div>
-                          <div>
-                            <div className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                              {item.medicine_name}
-                              {out ? (
-                                <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-2 py-0.5 rounded-full">
-                                  Out of Stock
-                                </span>
-                              ) : low ? (
-                                <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full">
-                                  Low Stock ({base})
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5">
-                              <span className="font-bold text-teal-800">{item.company_name || "BM Pvt LTD"}</span>
-                              {item.generic_name && (
-                                <>
-                                  <span>•</span>
-                                  <span>{item.generic_name}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                      {/* Checkbox */}
+                      <td className="py-2.5 px-3 text-center border-r border-slate-50">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectItem(item.id)}
+                          className="w-3.5 h-3.5 accent-teal-600 cursor-pointer"
+                        />
                       </td>
 
-                      {/* Category / Code */}
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="inline-flex flex-col items-center">
-                          <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-bold">
-                            {item.category || "Homeopathic Drops"}
-                          </span>
-                          {item.item_code && (
-                            <span className="font-mono text-[10px] font-extrabold text-emerald-800 mt-1">
-                              Code: {item.item_code}
-                            </span>
-                          )}
-                        </div>
+                      {/* Row # */}
+                      <td className="py-2.5 px-2 text-center text-slate-400 font-mono text-[10px] font-bold border-r border-slate-50">
+                        {itemIndex}
                       </td>
 
-                      {/* Stock Breakdown */}
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="inline-flex flex-col items-center">
-                          <span className={`font-black text-sm ${out ? "text-rose-600" : low ? "text-amber-700" : "text-slate-900"}`}>
-                            {base} <span className="text-xs font-medium text-slate-500">Units</span>
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-medium mt-0.5">
-                            {isLocationLocked
-                              ? `📍 ${userAssignedWh?.nickname || "Assigned Location"}`
-                              : effectiveLocationId === "all"
-                              ? formatStockBreakdown(item)
-                              : `📍 ${currentWarehouseInfo?.nickname || "Selected Location"}`}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Cost Rate */}
-                      <td className="py-3.5 px-4 text-right">
-                        {canViewFinancials ? (
-                          <div className="font-bold text-slate-500 text-xs">
-                            Rs. {cost.toLocaleString()}
-                          </div>
-                        ) : (
-                          <div className="font-medium text-slate-400 text-xs">
-                            🔒 Confidential
-                          </div>
+                      {/* Name + Description (same line) */}
+                      <td className="py-2.5 px-4">
+                        <span className="font-bold text-slate-900 text-[13px]">{item.medicine_name}</span>
+                        {(item.product_description || item.generic_name || item.naration) && (
+                          <span className="text-slate-500 text-[11px] font-medium ml-2">— {item.product_description || item.generic_name || item.naration}</span>
                         )}
+                        {out && <span className="text-rose-600 text-[10px] font-bold ml-2">[0]</span>}
+                        {low && !out && <span className="text-amber-600 text-[10px] font-bold ml-2">[{totalStock}]</span>}
                       </td>
 
-                      {/* Sale Price */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="font-black text-emerald-900 text-sm">
-                          {formatCurrency(sale)}
-                        </div>
-                        {sale > cost && canViewFinancials && (
-                          <div className="text-[10px] text-emerald-600 font-bold">
-                            +Rs. {(sale - cost).toFixed(0)} ({(((sale - cost) / (cost || 1)) * 100).toFixed(0)}%)
-                          </div>
-                        )}
+                      {/* Company */}
+                      <td className="py-2.5 px-3 text-slate-700 font-bold text-[11px]">
+                        {item.company_name || "—"}
+                      </td>
+
+                      {/* Category */}
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="text-slate-600 text-[11px] font-medium">
+                          {item.category || "Homeopathic Drops"}
+                        </span>
+                      </td>
+
+                      {/* Code */}
+                      <td className="py-2.5 px-3 text-center font-mono text-[10px] font-black text-emerald-800">
+                        {item.item_code || "—"}
+                      </td>
+
+                      {/* Godown */}
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-800 text-[11px]">
+                        {godownStock}
+                      </td>
+
+                      {/* Counter */}
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-800 text-[11px]">
+                        {counterStock}
+                      </td>
+
+                      {/* Total */}
+                      <td className={`py-2.5 px-3 text-center font-black text-[12px] ${out ? "text-rose-600" : low ? "text-amber-700" : "text-slate-900"}`}>
+                        {totalStock}
+                      </td>
+
+                      {/* Cost */}
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-500 text-[11px]">
+                        {canViewFinancials ? `Rs.${cost.toLocaleString()}` : "—"}
+                      </td>
+
+                      {/* Sale */}
+                      <td className="py-2.5 px-3 text-right font-black text-emerald-900 text-[12px]">
+                        Rs.{sale.toLocaleString()}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-6 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Edit Item */}
-                          <button
-                            onClick={() => handleRequestEdit(item)}
-                            className="touch-target-44 min-h-[38px] px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-800 text-xs font-black flex items-center gap-1 border border-blue-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
-                            title="Edit Medicine Details / Stock / Pricing (Admin Permission)"
-                          >
-                            <span className="material-symbols-outlined text-sm">edit</span>
-                            <span>Edit</span>
-                          </button>
-
-                          {/* Ledger */}
-                          <button
-                            onClick={() => {
-                              setLedgerInitialItem(item);
-                              setShowStockLedgerModal(true);
-                            }}
-                            className="touch-target-44 min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 text-xs font-black flex items-center gap-1 border border-emerald-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
-                            title="DrCreate 4-Level Stock Ledger"
-                          >
-                            <span className="material-symbols-outlined text-sm">menu_book</span>
-                            <span>Ledger</span>
-                          </button>
-
-                          {/* Stock Card */}
-                          <button
-                            onClick={() => {
-                              setSelectedMovementItem(item);
-                              setIsMovementOpen(true);
-                            }}
-                            className="touch-target-44 min-h-[38px] px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 text-xs font-black flex items-center gap-1 border border-teal-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
-                            title="Stock Movement Card & Adjustments"
-                          >
-                            <span className="material-symbols-outlined text-sm">analytics</span>
-                            <span>Stock Card</span>
-                          </button>
-
-                          {/* Delete Item */}
-                          <button
-                            onClick={() => handleRequestDelete(item)}
-                            className="touch-target-44 min-h-[38px] px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 text-xs font-black flex items-center gap-1 border border-rose-200 transition-all active:scale-95 shadow-2xs cursor-pointer"
-                            title="Delete Item (Admin Permission)"
-                          >
-                            <span className="material-symbols-outlined text-sm">delete</span>
-                            <span>Delete</span>
-                          </button>
+                      <td className="py-2.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => handleRequestEdit(item)} className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-800 hover:text-white text-slate-600 text-[10px] font-bold transition-all" title="Edit">Edit</button>
+                          <button onClick={() => { setLedgerInitialItem(item); setShowStockLedgerModal(true); }} className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-700 hover:text-white text-emerald-700 text-[10px] font-bold transition-all" title="Ledger">Ledger</button>
+                          <button onClick={() => setDeletingItem(item)} className="px-2 py-1 rounded bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 text-[10px] font-bold transition-all" title="Delete">Del</button>
                         </div>
                       </td>
                     </tr>
@@ -2805,7 +2660,7 @@ export default function MedicalStoreInventory() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveEditedItem} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Product Name */}
                 <div className="sm:col-span-2 space-y-1">
@@ -2847,14 +2702,9 @@ export default function MedicalStoreInventory() {
                     onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold text-slate-900"
                   >
-                    <option value="Homeopathic Drops">Homeopathic Drops</option>
-                    <option value="Syrup / Suspension">Syrup / Suspension</option>
-                    <option value="Specialized Drops">Specialized Drops</option>
-                    <option value="Tablet">Tablet</option>
-                    <option value="Capsule">Capsule</option>
-                    <option value="Allopathic OTC">Allopathic OTC</option>
-                    <option value="Ointment / Cream">Ointment / Cream</option>
-                    <option value="General Item">General Item</option>
+                    {allCategories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -2872,17 +2722,17 @@ export default function MedicalStoreInventory() {
                   />
                 </div>
 
-                {/* Naration / Formula */}
-                <div className="space-y-1">
+                {/* Product Description */}
+                <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
-                    Naration / Pack Spec
+                    Product Description
                   </label>
                   <input
                     type="text"
-                    value={editFormData.naration}
-                    onChange={(e) => setEditFormData({ ...editFormData, naration: e.target.value })}
+                    value={editFormData.product_description}
+                    onChange={(e) => setEditFormData({ ...editFormData, product_description: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold text-slate-900"
-                    placeholder="e.g. Drops 20ml / 500mg"
+                    placeholder="e.g. Drops 20ml, 500mg Sugar Free, Pediatric..."
                   />
                 </div>
 
@@ -2917,8 +2767,8 @@ export default function MedicalStoreInventory() {
                   </div>
                 </div>
 
-                {/* Stock Counts Box with Isolated Location Breakdown */}
-                <div className="sm:col-span-2 bg-teal-50/60 p-4 rounded-2xl border border-teal-200 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                {/* Stock Counts Box with Dynamic Registered Warehouses Breakdown */}
+                <div className="sm:col-span-2 bg-teal-50/60 p-4 rounded-2xl border border-teal-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <label className="text-[11px] font-black text-teal-950 uppercase tracking-wider">
                       🏪 Store Counter
@@ -2931,30 +2781,39 @@ export default function MedicalStoreInventory() {
                       className="w-full px-3 py-1.5 rounded-xl border border-teal-300 bg-white font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-black text-blue-950 uppercase tracking-wider">
-                      🏢 WH-1 (Lajpat Rd)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={editFormData.warehouse_1_stock}
-                      onChange={(e) => setEditFormData({ ...editFormData, warehouse_1_stock: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-xl border border-blue-300 bg-white font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-black text-purple-950 uppercase tracking-wider">
-                      🏢 WH-2 (Usama)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={editFormData.warehouse_2_stock}
-                      onChange={(e) => setEditFormData({ ...editFormData, warehouse_2_stock: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-xl border border-purple-300 bg-white font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                    />
-                  </div>
+
+                  {/* Registered Warehouses / Godowns */}
+                  {allWarehouses.map((wh, idx) => {
+                    const colorClasses = idx % 2 === 0
+                      ? { label: "text-blue-950", border: "border-blue-300", ring: "focus:ring-blue-500" }
+                      : { label: "text-purple-950", border: "border-purple-300", ring: "focus:ring-purple-500" };
+                    return (
+                      <div key={`edit_wh_${wh.id}`} className="space-y-1">
+                        <label className={`text-[11px] font-black uppercase tracking-wider ${colorClasses.label}`}>
+                          🏢 {wh.name}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editFormData.location_stocks?.[wh.id] ?? (wh.id === "wh_001" ? editFormData.warehouse_1_stock : editFormData.warehouse_2_stock) ?? "0"}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditFormData((prev) => ({
+                              ...prev,
+                              location_stocks: {
+                                ...(prev.location_stocks || {}),
+                                [wh.id]: val,
+                              },
+                              ...(wh.id === "wh_001" ? { warehouse_1_stock: val } : {}),
+                              ...(wh.id === "wh_002" ? { warehouse_2_stock: val } : {}),
+                            }));
+                          }}
+                          className={`w-full px-3 py-1.5 rounded-xl border bg-white font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:outline-none ${colorClasses.border} ${colorClasses.ring}`}
+                        />
+                      </div>
+                    );
+                  })}
+
                   <div className="space-y-1">
                     <label className="text-[11px] font-black text-amber-950 uppercase tracking-wider">
                       ⚠️ Low Alert

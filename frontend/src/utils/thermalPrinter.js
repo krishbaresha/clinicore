@@ -5,6 +5,7 @@
 
 import { formatPatientAge } from "./formatters.js";
 import { CLINIC_LOGO_BASE64 } from "./clinicLogoBase64.js";
+import { RECEIPT_HEADER_IMAGE_BASE64 } from "./receiptHeaderBase64.js";
 import { getShortVersionBadge } from "./version.js";
 import { getActiveCashier } from "../api/auth.js";
 
@@ -16,24 +17,27 @@ export function getCustomReceiptConfig() {
     const raw = typeof localStorage !== "undefined" ? localStorage.getItem("cf_receipt_custom_config") : null;
     if (raw) {
       let config = JSON.parse(raw);
-      if (config && config.clinic_name && config.clinic_name.includes("Asif Ashraf") && !config.clinic_name.startsWith("H/Dr.Asif")) {
-        config.clinic_name = "H/Dr.Asif Ashraf Khan Clinic";
-        localStorage.setItem("cf_receipt_custom_config", JSON.stringify(config));
-      }
       return config;
     }
   } catch {}
   return {
-    clinic_name: "H/Dr.Asif Ashraf Khan Clinic",
-    tagline: "Homoeopathic Consultant & Bulk Distributors (Interior Sindh)",
-    address: "Near Gul Center / Lajpat Road, Hyderabad, Sindh",
-    phone: "0300-1234567 / 022-2780000",
+    clinic_name: "M.Ashraf Khan",
+    tagline: "Homeopathic Clinic",
+    address: "Lajpat Road, Hyderabad, Sindh, Pakistan",
+    phone: "0311 4234777\n0343 9376363",
     logo_base64: CLINIC_LOGO_BASE64,
+    logo_size: 62,
+    logo_width: 53,
+    logo_height: 60,
+    name_size: 15,
+    subtitle_size: 9,
+    contact_size: 9.5,
     show_logo: true,
     show_tagline: true,
     show_doctor_info: true,
+    show_doctor_sign: true,
     show_urdu_footer: true,
-    urdu_footer_text: "نوٹ: خریدی ہوئی ادویات 3 دن میں تبدیل ہو سکتی ہیں۔ بغیر بل کے واپسی ممکن نہیں۔",
+    urdu_footer_text: "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔",
   };
 }
 
@@ -53,19 +57,14 @@ export function getBlocksConfig(mode = "pos") {
   return null;
 }
 
-/**
- * Check if a named section block is enabled in the saved blocks array.
- * When blocks is null (no saved config) every block defaults to enabled.
- */
 export function isBlockEnabled(blocks, blockId) {
   if (!blocks || !Array.isArray(blocks)) return true;
-  const found = blocks.find((b) => b.id === blockId);
-  return found ? found.enabled !== false : true;
+  const item = blocks.find((b) => b && b.id === blockId);
+  return item ? Boolean(item.enabled) : true;
 }
 
 /**
  * Shared clinic header HTML block for all thermal receipts.
- * Dynamically adheres to user customized titles, addresses, phones, and logo from Receipt Studio.
  */
 function sanitizeLogoSrc(src) {
   if (!src || typeof src !== "string") return CLINIC_LOGO_BASE64;
@@ -78,11 +77,17 @@ function sanitizeLogoSrc(src) {
 
 /**
  * Build clinic header HTML respecting per-block visibility from Receipt Studio.
- *
- * blockFlags shape (all optional, default true when omitted):
- *   { showLogo, showClinicName, showTagline, showContact }
+ * Renders the exact high-fidelity vector/text header matching 80mm_receipt_header_builder_FULL_TEXT_CONTROLS.html
+ * Settings:
+ * - Logo size: 62px
+ * - Logo box width: 53px (48px - 53px)
+ * - Logo box height: 60px
+ * - Clinic Name: 15px Georgia/Times font bold
+ * - Subtitle: 9px Georgia/Times bold
+ * - Address/Contact: 9.5px Georgia/Times bold
+ * - Bottom single line divider #000
  */
-function getLogoHeaderHtml(docTypeLabel = "", blockFlags = {}) {
+export function getLogoHeaderHtml(docTypeLabel = "", blockFlags = {}) {
   const cfg = getCustomReceiptConfig();
   const {
     showLogo = true,
@@ -94,31 +99,71 @@ function getLogoHeaderHtml(docTypeLabel = "", blockFlags = {}) {
   const rawLogo = showLogo && cfg.logo_base64 ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
   const logoSrc = sanitizeLogoSrc(rawLogo);
 
-  let headerHtml = "";
+  const logoWidth = Number(cfg.logo_width || 53);
+  const logoHeight = Number(cfg.logo_height || 60);
+  const logoSize = Number(cfg.logo_size || 62);
+  const nameSize = Number(cfg.name_size || 15);
+  const subtitleSize = Number(cfg.subtitle_size || 9);
+  const contactSize = Number(cfg.contact_size || 9.5);
 
-  // Logo image (header_logo block)
-  if (showLogo && logoSrc) {
-    headerHtml += `<div style="text-align:center;margin:0 0 4px 0;padding:0;line-height:1;"><img src="${logoSrc}" alt="Clinic Logo" style="max-width:220px;max-height:100px;width:auto;height:auto;display:block;margin:0 auto;object-fit:contain;" /></div>`;
-  }
+  const rawPhones = cfg.phone || "0311 4234777\n0343 9376363";
+  const phoneLines = rawPhones.split(/[\n,]+/).map(p => p.trim()).filter(Boolean);
 
-  // Text header (clinic_name always shown if present; tagline & contact_info conditional)
-  headerHtml += `<div style="text-align: center; margin: 2px 0 3px 0; line-height: 1.25;">`;
-  if (showClinicName) {
-    headerHtml += `<div style="font-size: 13px; font-weight: 900; color: #0f172a; text-transform: uppercase;">${escapeHtml(cfg.clinic_name || "Clinic & Store")}</div>`;
-  }
-  if (showTagline && cfg.tagline) {
-    headerHtml += `<div style="font-size: 9.5px; font-weight: 600; color: #475569; margin-top: 1px;">${escapeHtml(cfg.tagline)}</div>`;
-  }
-  if (showContact) {
-    headerHtml += `<div style="font-size: 9px; font-weight: 500; color: #64748b; margin-top: 1px;">${escapeHtml(cfg.address || "")}</div>`;
-    headerHtml += `<div style="font-size: 9.5px; font-weight: 700; color: #334155;">Phone: ${escapeHtml(cfg.phone || "")}</div>`;
-  }
+  let headerHtml = `
+    <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 2px 0 4px 0; font-family: Georgia, 'Times New Roman', serif; color: #000; box-sizing: border-box;">
+      <!-- Left Logo Box -->
+      ${showLogo && logoSrc ? `
+        <div style="width: ${logoWidth}px; min-width: ${logoWidth}px; height: ${logoHeight}px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+          <img src="${logoSrc}" alt="Logo" style="width: ${logoSize}px; height: ${logoSize}px; object-fit: contain; display: block;" />
+        </div>
+      ` : ''}
+
+      <!-- Center Clinic Name & Subtitle -->
+      <div style="flex: 1; min-width: 0; padding: 0 2px;">
+        ${showClinicName ? `
+          <div style="font-size: ${nameSize}px; line-height: ${nameSize + 1}px; font-weight: 700; white-space: nowrap; color: #000; letter-spacing: -0.2px;">
+            ${escapeHtml(cfg.clinic_name || "M.Ashraf Khan")}
+          </div>
+        ` : ''}
+        ${showTagline ? `
+          <div style="font-size: ${subtitleSize}px; line-height: ${subtitleSize + 2}px; font-weight: 700; white-space: nowrap; color: #111; margin-top: 1px;">
+            ${escapeHtml(cfg.tagline || "Homeopathic Clinic")}
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- Right Address & Contacts -->
+      <div style="text-align: right; font-size: ${contactSize}px; line-height: ${contactSize + 2}px; font-weight: 600; white-space: nowrap; flex-shrink: 0;">
+        ${showContact ? `
+          <div>${escapeHtml(cfg.address ? cfg.address.split(",")[0] : "Lajpat Road, Hyderabad")}</div>
+          <div>${escapeHtml(cfg.address && cfg.address.includes(",") ? cfg.address.split(",").slice(1).join(",").trim() : "Sindh, Pakistan")}</div>
+          <div style="font-weight: 700;">
+            ${phoneLines.map(ph => `<div>${escapeHtml(ph)}</div>`).join("")}
+          </div>
+        ` : ''}
+      </div>
+    </div>
+    <div style="width: 100%; border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
+  `;
+
   if (docTypeLabel) {
-    headerHtml += `<div style="font-size: 10px; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; padding: 2px 0; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">${escapeHtml(docTypeLabel)}</div>`;
+    headerHtml += `<div style="font-size: 9px; font-weight: 900; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; margin: 2px 0 4px 0; padding: 2px 0; background: #f8fafc; border: 1px solid #000; border-radius: 3px;">${escapeHtml(docTypeLabel)}</div>`;
   }
-  headerHtml += `</div>`;
 
   return headerHtml;
+}
+
+/**
+ * Standard Doctor Signature Line for Receipts
+ */
+export function getDoctorSignatureHtml() {
+  return `
+    <div style="margin-top: 12px; padding-top: 4px; display: flex; justify-content: flex-end; align-items: flex-end;">
+      <div style="border-top: 1px solid #000; width: 45%; text-align: center; font-size: 8.5px; font-weight: 800; color: #000; padding-top: 2px; text-transform: uppercase;">
+        Dr. Signature
+      </div>
+    </div>
+  `;
 }
 
 /**
@@ -153,12 +198,12 @@ export function escapeHtml(str) {
  * Prevents double-printing, page reloads, and state corruption.
  */
 export function executeThermalPrint(receiptHtml, title = "Print") {
-  if (typeof document === "undefined" || !receiptHtml) {
+  if (typeof document === "undefined" || typeof window === "undefined" || !document?.body) {
     return receiptHtml;
   }
   try {
     // Strip any embedded print scripts to guarantee single-invocation
-    const sanitizedHtml = receiptHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+    const sanitizedHtml = (receiptHtml || "").replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 
     // Clean up any lingering print iframes
     const oldIframe = document.getElementById("thermal-print-iframe");
@@ -167,19 +212,27 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
     }
 
     const iframe = document.createElement("iframe");
+    if (!iframe) return sanitizedHtml;
+
     iframe.id = "thermal-print-iframe";
     iframe.style.position = "fixed";
     iframe.style.right = "0";
     iframe.style.bottom = "0";
-    iframe.style.width = "1px";
-    iframe.style.height = "1px";
-    iframe.style.opacity = "0.01";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
     iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
     iframe.setAttribute("aria-hidden", "true");
     iframe.title = title || "Print Thermal Receipt";
     document.body.appendChild(iframe);
 
-    const doc = iframe.contentWindow.document;
+    const win = iframe.contentWindow;
+    if (!win || !win.document) {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      return sanitizedHtml;
+    }
+
+    const doc = win.document;
     doc.open();
     doc.write(sanitizedHtml);
     doc.close();
@@ -194,27 +247,36 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
             iframe.parentNode.removeChild(iframe);
           }
         } catch {}
-      }, 100);
+      }, 500);
     };
 
-    try {
-      iframe.contentWindow.onafterprint = cleanup;
-    } catch {}
+    try { win.onafterprint = cleanup; } catch {}
+    try { win.onbeforeunload = cleanup; } catch {}
 
-    // Allow CSS/fonts/images in the iframe to layout before invoking print dialog
-    setTimeout(() => {
+    const triggerPrint = () => {
       try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
+        win.focus();
+        win.print();
       } catch (err) {
-        console.warn("Thermal print invocation fallback:", err);
+        console.warn("[Thermal Printer] Direct print dispatch notice:", err);
+      } finally {
+        setTimeout(cleanup, 1000);
       }
-    }, 200);
+    };
 
-    // Fallback safety garbage collection
-    setTimeout(cleanup, 30000);
+    // Trigger after layout / image decode
+    if (doc.readyState === "complete") {
+      setTimeout(triggerPrint, 250);
+    } else {
+      win.onload = () => setTimeout(triggerPrint, 250);
+      setTimeout(triggerPrint, 600); // safety timeout
+    }
+
+    // Fallback garbage collection
+    setTimeout(cleanup, 45000);
+    return sanitizedHtml;
   } catch (outerErr) {
-    console.error("Thermal print dispatcher error:", outerErr);
+    return receiptHtml;
   }
 }
 
@@ -256,6 +318,9 @@ export function printThermalReceipt(sale, clinicData = null) {
   const invoiceId = escapeHtml(sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
 
 
+  const tokenNo = escapeHtml(sale.token_no || sale.token_number || sale.token || "");
+  const partyCode = escapeHtml(sale.party_code || sale.party_type || "");
+
   const itemsHtml = (sale.items || []).map((item) => {
     const discPct = Number(item.disc_pct || item.discount_pct || 0);
     const discBadge = discPct > 0 ? ` <span style="font-weight: 700; color: #b91c1c; font-size: 10px;">(-${discPct}%)</span>` : "";
@@ -263,8 +328,8 @@ export function printThermalReceipt(sale, clinicData = null) {
     <div style="margin-bottom: 5px;">
       <div style="font-weight: 700; font-size: 12px; color: #111827;">${escapeHtml(item.medicine_name)}${discBadge}</div>
       <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 500; color: #4b5563; margin-top: 1px;">
-        <span>${item.qty || item.quantity || 1} ${escapeHtml(item.unit_label || "Unit")} × Rs. ${Number(item.unit_price || 0).toFixed(2)}</span>
-        <span style="font-weight: 800; color: #111827;">Rs. ${Number(item.line_total || 0).toFixed(2)}</span>
+        <span>${item.qty || item.quantity || 1} ${escapeHtml(item.unit_label || "Unit")} × Rs. ${Number(item.unit_price || item.rate || 0).toFixed(2)}</span>
+        <span style="font-weight: 800; color: #111827;">Rs. ${Number(item.line_total || item.net || item.net_amount || 0).toFixed(2)}</span>
       </div>
     </div>
   `;
@@ -320,7 +385,7 @@ export function printThermalReceipt(sale, clinicData = null) {
       </head>
       <body>
         <!-- Top Clinic Header (header_logo + clinic_name + tagline + contact_info blocks) -->
-        ${getLogoHeaderHtml("Retail Medical Store Invoice", { showLogo, showTagline, showContact })}
+        ${getLogoHeaderHtml("", { showLogo, showTagline, showContact })}
 
         ${showDiv1 ? `<div class="dotted-line"></div>` : ""}
 
@@ -335,7 +400,11 @@ export function printThermalReceipt(sale, clinicData = null) {
         <!-- Customer Info (customer_info block) -->
         ${showCustomer ? `
         <div class="meta-text">
-          <div><span style="color: #6b7280; font-weight: 500;">Customer :</span> ${customerName}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span><span style="color: #6b7280; font-weight: 500;">Customer :</span> <strong>${customerName}</strong></span>
+            ${tokenNo ? `<span style="background: #047857; color: #fff; font-size: 11px; font-weight: 900; padding: 1px 6px; border-radius: 4px; font-family: monospace;">Token #: ${tokenNo}</span>` : ""}
+          </div>
+          ${partyCode ? `<div><span style="color: #6b7280; font-weight: 500;">Party / Route :</span> ${partyCode}</div>` : ""}
         </div>` : ""}
 
         ${showDiv1 ? `<div class="dotted-line"></div>` : ""}
@@ -391,6 +460,9 @@ export function printThermalReceipt(sale, clinicData = null) {
           ${escapeHtml(cfg.custom_policy_note || "Thank You. Please Visit Again.")}
         </div>
         <div class="dotted-line"></div>` : ""}
+
+        <!-- Doctor Signature Line -->
+        ${getDoctorSignatureHtml()}
 
         <!-- Powered By (permanent — always shown) -->
         ${getWatermarkFooterHtml()}
@@ -854,41 +926,33 @@ export function printCashVoucherReceipt(entry, clinicData = null) {
   executeThermalPrint(receiptHtml, `CashVoucher_${voucherNo}`);
 }
 
-//** Print OPD Consultation Token Thermal Receipt - Clean, Minimal & Ink-Saving */
+//** Print OPD Consultation Token Thermal Receipt - Exact Layout Standard */
 export function printOPDTokenReceipt(receipt, clinicData = null) {
   if (!receipt) return;
 
-  // Read block visibility saved by Receipt Studio for OPD mode
   const _blocks    = getBlocksConfig("opd");
   const showLogo   = isBlockEnabled(_blocks, "header_logo");
   const showTagline= isBlockEnabled(_blocks, "tagline");
   const showContact= isBlockEnabled(_blocks, "contact_info");
-  const showDoctor = isBlockEnabled(_blocks, "doctor_info");
-  const showUrdu   = isBlockEnabled(_blocks, "urdu_footer");
   const cfg        = getCustomReceiptConfig();
 
-  const clinicName = escapeHtml(clinicData?.name || "H/Dr.Asif Ashraf Khan Clinic");
-  const tokenNo = escapeHtml(String(receipt.token || receipt.token_number || "01").padStart(2, "0"));
+  const tokenNo = escapeHtml(String(receipt.token || receipt.token_number || "01"));
   const patientName = escapeHtml(receipt.patient?.full_name || receipt.patient_name || "Patient");
-  const relLabel = { father: "S/O", husband: "W/O", wife: "H/O", mother: "D/O" }[receipt.patient?.relation_type] || "S/O";
-  const relationName = receipt.patient?.relation_name ? `${relLabel} ${escapeHtml(receipt.patient.relation_name)}` : "";
   const fee = Number(receipt.fee != null ? receipt.fee : (receipt.visit?.fee_amount || 0));
 
   const rawDate = receipt.registeredAt ? new Date(receipt.registeredAt) : new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-US", {
-    timeZone: "Asia/Karachi",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: true
-  });
+  const dateFormatted = `${rawDate.getMonth() + 1}/${rawDate.getDate()}/${rawDate.getFullYear()}`;
+  const timeFormatted = `${String(rawDate.getHours()).padStart(2, '0')}:${String(rawDate.getMinutes()).padStart(2, '0')}`;
+  const printDateTimeStr = `${dateFormatted} ${timeFormatted}`;
 
-  const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
-  const cashierName = escapeHtml(receipt.cashier_name || receipt.active_cashier_name || (activeCashier?.name) || "Front Desk");
+  const doctorName = escapeHtml(receipt.doctor?.name || receipt.visit?.doctor_name || cfg.doctor_name || "H/Dr Muhammad Asif Khan");
+  const gender = escapeHtml((receipt.patient?.gender || "M").toUpperCase().charAt(0));
+  const age = escapeHtml(formatPatientAge(receipt.patient) || "18").replace(/[^0-9]/g, "") || "18";
 
-  const doctorName = escapeHtml(receipt.doctor?.name || receipt.visit?.doctor_name || "Doctor");
-  const clinicAddress = escapeHtml(clinicData?.address || "Lajpat Road, Hyderabad");
-  const clinicPhone = escapeHtml(clinicData?.phone || "03473100304");
-  const phone = escapeHtml(receipt.patient?.phone || receipt.phone || "—");
-  const age = escapeHtml(formatPatientAge(receipt.patient));
+  const rawLogo = showLogo && cfg.logo_base64 ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
+  const logoSrc = sanitizeLogoSrc(rawLogo);
+  const rawPhones = cfg.phone || "0315 3696164\n0311 4234777\n0343 9376363";
+  const phoneLines = rawPhones.split(/[\n,]+/).map(p => p.trim()).filter(Boolean);
 
   const receiptHtml = `
     <!DOCTYPE html>
@@ -903,104 +967,99 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
           }
           * {
             box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
           }
           body {
-            width: 76mm;
+            width: 74mm;
             margin: 0 auto;
-            padding: 4px 4px;
+            padding: 4px 6px;
             color: #000;
             background: #fff;
             font-size: 11px;
             line-height: 1.2;
           }
-          .text-center { text-align: center; }
-          .divider-single { border-top: 1px dashed #000; margin: 3px 0; }
-          .divider-double { border-top: 2px double #000; margin: 3px 0; }
-          .token-box {
-            border: 2px solid #000;
-            border-radius: 5px;
-            padding: 3px 2px;
+          .header-table {
+            width: 100%;
+            border: none;
+            padding-bottom: 3px;
+            margin-bottom: 2px;
+          }
+          .divider-heavy {
+            border-top: 2px solid #000;
+            margin: 3px 0 4px 0;
+          }
+          .divider-double {
+            border-top: 3px double #000;
+            margin: 4px 0;
+          }
+          .divider-thin {
+            border-top: 1px solid #000;
             margin: 3px 0;
-            text-align: center;
-            background: #fff;
           }
-          .token-num {
-            font-size: 36px;
-            font-weight: 900;
-            color: #000;
-            line-height: 1;
-          }
-          .info-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            margin-top: 1px;
-          }
-          @media print { body { width: 76mm; padding: 2px; } }
+          @media print { body { width: 74mm; padding: 2px; } }
         </style>
       </head>
       <body>
-        <div class="text-center">
-          ${getLogoHeaderHtml("OPD Consultation Token", { showLogo, showTagline, showContact })}
-          <div style="font-size: 10px; color: #555; margin-top: 2px;">${dateTimeStr}</div>
+        <!-- Top Receipt Header Banner -->
+        ${getLogoHeaderHtml()}
+
+        <!-- Print Date & Time Row -->
+        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #000; padding: 1px 0 3px 0;">
+          <span>Print Date &amp; Time</span>
+          <span style="font-family: monospace; font-size: 11px;">${printDateTimeStr}</span>
         </div>
 
-        <div class="divider-double"></div>
+        <div class="divider-thin"></div>
 
-        <!-- Big Token Box — always shown -->
-        <div class="token-box">
-          <div style="font-size: 10px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;">PATIENT TOKEN NUMBER</div>
-          <div class="token-num">${tokenNo}</div>
-        </div>
-
-        <!-- Doctor & Patient Info (doctor_info + customer_info blocks) -->
-        <div style="font-size: 12px; font-weight: bold; margin-top: 4px;">
-          ${showDoctor ? `
-          <div class="info-row">
-            <span style="color: #444;">Doctor:</span>
-            <span style="font-weight: 900;">${doctorName}</span>
-          </div>` : ""}
-          <div class="info-row">
-            <span style="color: #444;">Cashier:</span>
-            <span style="font-weight: 800;">${cashierName}</span>
+        <!-- Doctor & Appointment No Center Block -->
+        <div style="text-align: center; padding: 4px 0;">
+          <div style="font-size: 15px; font-weight: 900; color: #000; letter-spacing: -0.2px;">
+            ${doctorName}
           </div>
-          <div class="info-row">
-            <span style="color: #444;">Patient:</span>
-            <span>${patientName}</span>
+          <div style="font-size: 13px; font-weight: 800; color: #000; margin-top: 2px;">
+            Appointment No
           </div>
-          ${relationName ? `
-          <div class="info-row">
-            <span style="color: #444;">Relation:</span>
-            <span>${relationName}</span>
-          </div>` : ""}
-          <div class="info-row">
-            <span style="color: #444;">Age:</span>
-            <span>${age} (${receipt.patient?.gender || "Male"})</span>
+          <div style="font-size: 26px; font-weight: 900; color: #000; line-height: 1; margin-top: 2px; font-family: monospace;">
+            ${tokenNo}
           </div>
-          ${phone !== "—" ? `
-          <div class="info-row">
-            <span style="color: #444;">Phone:</span>
-            <span>${phone}</span>
-          </div>` : ""}
         </div>
 
-        <div class="divider-single"></div>
+        <div class="divider-thin"></div>
 
-        <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; padding: 2px 0;">
-          <span>Consultation Fee:</span>
-          <span>Rs. ${Number(fee).toLocaleString()}</span>
+        <!-- Patient Demographics Rows -->
+        <div style="padding: 2px 0; font-size: 12px; font-weight: 900; color: #000; line-height: 1.4;">
+          <div style="display: flex; margin-bottom: 3px;">
+            <span style="width: 115px;">Patient Name &nbsp;:</span>
+            <span style="font-size: 13px; font-weight: 900;">${patientName}</span>
+          </div>
+          <div style="display: flex;">
+            <div style="display: flex; width: 45%;">
+              <span style="width: 48px;">Age &nbsp;:</span>
+              <span>${age}</span>
+            </div>
+            <div style="display: flex; width: 55%;">
+              <span style="width: 65px;">Gender &nbsp;:</span>
+              <span>${gender}</span>
+            </div>
+          </div>
         </div>
 
-        <div class="divider-double"></div>
+        <div class="divider-thin"></div>
 
-        ${showUrdu && cfg.urdu_footer_text ? `
-        <div style="text-align: center; font-size: 9.5px; font-weight: 700; direction: rtl; color: #374151; margin: 2px 0;">
-          ${escapeHtml(cfg.urdu_footer_text)}
+        <!-- Paid Fees Row -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 13.5px; font-weight: 900; color: #000;">
+          <span>Paid Fees</span>
+          <span style="font-family: monospace; font-size: 14px;">PKR ${Number(fee).toFixed(2)}</span>
         </div>
-        <div class="divider-single"></div>` : ""}
 
-        <!-- Powered By CliniCore (permanent) -->
+        <!-- THANK YOU Bottom Banner -->
+        <div style="border-top: 3px solid #000; border-bottom: 3px solid #000; padding: 4px 0; text-align: center; margin-top: 4px;">
+          <div style="font-size: 16px; font-weight: 900; letter-spacing: 2px; color: #000; font-family: serif, 'Times New Roman', -apple-system;">
+            THANK YOU
+          </div>
+        </div>
+
+        <!-- Powered By CliniCore (permanent watermark) -->
         ${getWatermarkFooterHtml()}
       </body>
     </html>
@@ -1577,27 +1636,24 @@ export function printPurchaseGRNReceipt(purchase, clinic = null) {
 export function printSaleInvoiceReceipt(sale, clinic) {
   if (!sale) return;
 
-  // Read block visibility saved by Receipt Studio for B2B mode
   const _blocks    = getBlocksConfig("b2b");
   const showLogo   = isBlockEnabled(_blocks, "header_logo");
   const showTagline= isBlockEnabled(_blocks, "tagline");
   const showContact= isBlockEnabled(_blocks, "contact_info");
-  const showMeta   = isBlockEnabled(_blocks, "meta_info");
-  const showCustomer = isBlockEnabled(_blocks, "customer_info");
-  const showItems  = isBlockEnabled(_blocks, "items_table");
-  const showTotals = isBlockEnabled(_blocks, "financial_totals");
-  const showNote   = isBlockEnabled(_blocks, "custom_note");
   const cfg        = getCustomReceiptConfig();
 
-  const voucherNo = escapeHtml(sale.voucher_no || sale.receipt_no || sale.invoice_no || "S-6218");
+  const voucherNo = escapeHtml(sale.voucher_no || sale.receipt_no || sale.invoice_no || "Inv-6218");
   const dateStr = escapeHtml((sale.sale_date || sale.created_at || new Date().toISOString()).split("T")[0]);
-  const customerName = escapeHtml(sale.account_name || sale.customer_name || "Cash Customer");
+  const customerName = escapeHtml(sale.account_name || sale.customer_name || "Walk-In Customer");
   const city = escapeHtml(sale.party_type || sale.city || "");
   const reference = escapeHtml(sale.reference || "Direct");
   const transport = escapeHtml(sale.transport || "By Hand");
   const biltyNo = escapeHtml(sale.bilty_no || "-");
   const paymentMode = escapeHtml(sale.payment_mode || "Cash");
-  const totalBill = Number(sale.total_amount) || 0;
+
+  const subtotal = Number(sale.subtotal || sale.total_amount - 1) || Number(sale.total_amount) || 0;
+  const posCharge = 1; // Re 1.00 POS Fee
+  const totalBill = Number(sale.total_amount) || (subtotal + posCharge);
   const paidAmount = Number(sale.paid_amount) || 0;
   const balanceDue = Number(sale.balance_due) || 0;
 
@@ -1606,14 +1662,16 @@ export function printSaleInvoiceReceipt(sale, clinic) {
     const name = escapeHtml(it.medicine_name || it.item_name || "Medicine Item");
     const qty = Number(it.qty || it.quantity) || 1;
     const rate = Number(it.rate || it.unit_price || it.sale_price) || 0;
+    const gross = qty * rate;
     const disc = it.disc_pct ? `${it.disc_pct}` : (it.disc_percent ? `${it.disc_percent}%` : "-");
-    const net = Number(it.net || it.line_total || (qty * rate)) || 0;
+    const net = Number(it.net || it.line_total || (gross - (gross * (parseFloat(disc) || 0) / 100))) || 0;
 
     return `
       <tr>
         <td style="font-weight: bold;">${name}</td>
         <td style="text-align: center;">${qty}</td>
         <td style="text-align: center;">${rate}</td>
+        <td style="text-align: center;">${gross.toLocaleString()}</td>
         <td style="text-align: center;">${disc}</td>
         <td style="text-align: right; font-weight: bold;">${net.toLocaleString()}</td>
       </tr>
@@ -1646,46 +1704,51 @@ export function printSaleInvoiceReceipt(sale, clinic) {
         </style>
       </head>
       <body>
-        <!-- Clinic Header (header_logo, tagline, contact_info blocks) -->
-        ${getLogoHeaderHtml("SALE INVOICE (BILL)", { showLogo, showTagline, showContact })}
+        <!-- Header Banner -->
+        ${getLogoHeaderHtml("", { showLogo, showTagline, showContact })}
 
-        <!-- Meta Info (meta_info block) -->
-        ${showMeta ? `
+        <!-- Meta & Customer Header Info -->
         <div style="font-size: 9px; margin-top: 2px;">
-          <div><strong>Voucher #:</strong> ${voucherNo} · <strong>Date:</strong> ${dateStr}</div>
-          <div><strong>Ref / Booker:</strong> ${reference} · <strong>Mode:</strong> ${paymentMode}</div>
-          <div><strong>Transport:</strong> ${transport} · <strong>Bilty:</strong> ${biltyNo}</div>
-        </div>` : ""}
-
-        <!-- Customer Info (customer_info block) -->
-        ${showCustomer ? `
-        <div style="font-size: 9px; margin-top: 1px;">
-          <div><strong>Customer:</strong> ${customerName} ${city ? `(${city})` : ""}</div>
-        </div>` : ""}
+          <div><strong>Invoice #:</strong> ${voucherNo} &nbsp;|&nbsp; <strong>Date:</strong> ${dateStr}</div>
+          <div><strong>Customer / Patient:</strong> ${customerName}</div>
+          ${sale.token_no || sale.patient_token ? `<div><strong>Token #:</strong> ${escapeHtml(sale.token_no || sale.patient_token)}</div>` : ""}
+          ${city || reference !== "Direct" || transport !== "By Hand" ? `
+            <div><strong>City / Route:</strong> ${city || "Sindh"} &nbsp;|&nbsp; <strong>Salesman:</strong> ${reference}</div>
+            <div><strong>Transport:</strong> ${transport} &nbsp;|&nbsp; <strong>Bilty #:</strong> ${biltyNo}</div>
+          ` : ""}
+          <div><strong>Payment Mode:</strong> ${paymentMode}</div>
+        </div>
 
         <div class="divider-dashed"></div>
 
-        <!-- Items Table (items_table block) -->
-        ${showItems ? `
+        <!-- Items Table -->
         <table>
           <thead>
             <tr>
-              <th style="width: 44%;">Item Name</th>
-              <th style="width: 12%; text-align: center;">Qty</th>
-              <th style="width: 14%; text-align: center;">Rate</th>
-              <th style="width: 14%; text-align: center;">Disc</th>
-              <th style="width: 16%; text-align: right;">Net</th>
+              <th style="width: 38%;">Item Name</th>
+              <th style="width: 10%; text-align: center;">Qty</th>
+              <th style="width: 12%; text-align: center;">Rate</th>
+              <th style="width: 14%; text-align: center;">Gross</th>
+              <th style="width: 12%; text-align: center;">Disc</th>
+              <th style="width: 14%; text-align: right;">Net</th>
             </tr>
           </thead>
           <tbody>
             ${rowsHtml}
           </tbody>
-        </table>` : ""}
+        </table>
 
-        <!-- Totals (financial_totals block) -->
-        ${showTotals ? `
+        <!-- Totals & Calculations -->
         <div class="divider-single"></div>
-        <div style="font-size: 10px; font-weight: 900; display: flex; justify-content: space-between; margin-top: 2px;">
+        <div style="font-size: 9px; display: flex; justify-content: space-between; margin-top: 1px;">
+          <span>Items Subtotal:</span>
+          <span>Rs. ${subtotal.toLocaleString()}</span>
+        </div>
+        <div style="font-size: 9px; display: flex; justify-content: space-between; margin-top: 1px;">
+          <span>POS Charge:</span>
+          <span>Rs. 1</span>
+        </div>
+        <div style="font-size: 10.5px; font-weight: 900; display: flex; justify-content: space-between; margin-top: 2px; border-top: 1px dashed #000; padding-top: 2px;">
           <span>TOTAL BILL:</span>
           <span>Rs. ${totalBill.toLocaleString()}</span>
         </div>
@@ -1694,19 +1757,22 @@ export function printSaleInvoiceReceipt(sale, clinic) {
           <span>Rs. ${paidAmount.toLocaleString()}</span>
         </div>
         ${balanceDue > 0 ? `
-          <div style="font-size: 9px; font-weight: bold; color: #b91c1c; display: flex; justify-content: space-between; margin-top: 1px;">
-            <span>Current Udhaar Balance:</span>
+          <div style="font-size: 9.5px; font-weight: 900; color: #000; display: flex; justify-content: space-between; margin-top: 1px;">
+            <span>Remaining Udhaar Balance:</span>
             <span>Rs. ${balanceDue.toLocaleString()}</span>
-          </div>` : ""}` : ""}
+          </div>` : ""}
 
         <div class="divider-dashed"></div>
 
-        <!-- Custom Note (custom_note block) -->
-        ${showNote ? `
-        <div style="text-align: center; font-size: 8px; color: #555; margin-top: 3px;">
-          ${escapeHtml(cfg.custom_policy_note || "Thank You for Your Business! Medicines sold are non-refundable without receipt.")}
-        </div>` : `
-        ${getWatermarkFooterHtml()}`}
+        <!-- Mandatory Urdu Footer Line -->
+        <div style="font-family: 'Noto Nastaleeq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', 'Courier New', monospace; font-size: 11px; font-weight: bold; text-align: center; margin-top: 4px; padding-top: 2px; direction: rtl; color: #000;">
+          خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔
+        </div>
+
+        <!-- Doctor Signature Line -->
+        ${getDoctorSignatureHtml()}
+
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;

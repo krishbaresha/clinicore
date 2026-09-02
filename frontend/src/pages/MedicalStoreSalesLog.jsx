@@ -218,26 +218,7 @@ export default function MedicalStoreSalesLog() {
           </h1>
           <p className="font-body-sm text-body-sm text-outline">Track Invoices, Medicine Returns/Exchanges, Daily Expenses &amp; Shift Cash Reconciliation</p>
         </div>
-        <div className="flex gap-sm flex-wrap">
-          <button
-            type="button"
-            onClick={() => setShowSaleInvoiceModal(true)}
-            className="text-xs bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-4 py-2 rounded-2xl flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95"
-            title="Open DrCreate & MS Access Style Sale Invoice (Form & History List)"
-          >
-            <span className="material-symbols-outlined text-sm">point_of_sale</span>
-            Sale Invoice (DrCreate)
-          </button>
-          <button id="view-inventory-btn" onClick={() => navigate("/store")} className="btn-secondary">
 
-            <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-            Inventory
-          </button>
-          <button id="pos-btn" onClick={() => navigate("/store/pos")} className="btn-pill">
-            <span className="material-symbols-outlined text-sm">point_of_sale</span>
-            Open POS Billing
-          </button>
-        </div>
       </div>
 
       {/* Summary KPI Cards */}

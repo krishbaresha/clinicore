@@ -400,7 +400,10 @@ export default function ClinicSettings() {
                     role: staffForm.role,
                   };
                   if (staffForm.password && staffForm.password.trim()) {
-                    payload.password = hashPassword(staffForm.password.trim());
+                    const salted = hashPassword(staffForm.password.trim());
+                    payload.password = salted;
+                    payload.password_hash = salted;
+                    payload.pin = salted; // Store pin as hash
                   }
                   dbUsers.update(editingStaff.id, payload);
                   const updated = dbUsers.getAll();
@@ -422,7 +425,8 @@ export default function ClinicSettings() {
                     phone: staffForm.phone.trim(),
                     role: staffForm.role,
                     status: "active",
-                    password: hashPassword(staffForm.password?.trim() || "password")
+                    password: hashPassword(staffForm.password?.trim() || "password"),
+                    pin: hashPassword(staffForm.password?.trim() || "password") // Store pin as hash
                   };
                   dbUsers.add(newUser);
                   const updated = dbUsers.getAll();
@@ -1085,16 +1089,7 @@ export default function ClinicSettings() {
                         if (typeof content === "string") {
                           const result = importFullDatabase(content);
                           if (result.success) {
-                            // Force sync to VPS immediately before reloading the window!
-                            try {
-                              const { syncEngine } = await import("../api/syncEngine.js");
-                              if (syncEngine && typeof syncEngine.pushLocalStateToCloud === "function") {
-                                await syncEngine.pushLocalStateToCloud();
-                              }
-                            } catch (syncErr) {
-                              console.warn("[Restore] Auto-push notice:", syncErr);
-                            }
-                            alert("✅ Database restored successfully and synchronized to Cloud! Reloading...");
+                            alert("✅ Database restored successfully! Reloading...");
                             window.location.reload();
                           } else {
                             alert("⚠️ Failed to restore backup: " + (result.error || "Corrupted file"));

@@ -218,50 +218,7 @@ function todayAt(hour, minute = 0) {
   return d.toISOString();
 }
 
-const DEFAULT_WAREHOUSES = [
-  {
-    id: "wh_001",
-    clinic_id: "clinic_001",
-    name: "Lajpaat Road Warehouse",
-    code: "GDW-01",
-    location: "Lajpaat Road , Hyderabad, Sindh",
-    incharge_name: "Raza",
-    phone: "03000000000",
-    notes: "Main Central Godown",
-    status: "active",
-    is_default: true,
-    is_store_counter: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "wh_002",
-    clinic_id: "clinic_001",
-    name: "Usama 1",
-    code: "GDW-02",
-    location: "Inside Medical Store",
-    incharge_name: "Usama",
-    phone: "03000000000",
-    notes: "Secondary Storage Unit",
-    status: "active",
-    is_default: false,
-    is_store_counter: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "wh_str",
-    clinic_id: "clinic_001",
-    name: "Medical Store Counter",
-    code: "STR-01",
-    location: "Retail Counter Shelf",
-    incharge_name: "Cashier / Dispenser",
-    phone: "03000000000",
-    notes: "POS Counter Dispensing Godown",
-    status: "active",
-    is_default: false,
-    is_store_counter: true,
-    created_at: new Date().toISOString(),
-  }
-];
+const DEFAULT_WAREHOUSES = [];
 
 const SEED_DATA = {
   clinic: {
@@ -282,94 +239,28 @@ const SEED_DATA = {
   clinic_services: [],
   users: [
     {
-      id: "user_1788046718402_3dsjz",
-      name: "Mustafa",
-      username: "mustafa",
-      email: "mustafa@example.com",
-      role: "cashier",
-      pin: "12345",
-      is_owner: false,
-      can_view_financials: true,
-      can_give_discounts: true,
-      max_discount_pct: 15,
-      assigned_warehouse_id: "wh_str",
-      status: "active",
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: "user_1788052208532_ojsa5",
-      name: "Raza",
-      username: "raza",
-      email: "raza@example.com",
-      role: "warehouse_incharge",
-      pin: "1122",
-      is_owner: false,
-      can_view_financials: false,
-      can_give_discounts: true,
-      max_discount_pct: 15,
-      assigned_warehouse_id: "wh_001",
-      status: "active",
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: "user_1788052242123_oypkr",
-      name: "H/Dr.Asif Ashraf Khan",
-      username: "drasif",
-      email: "h/dr.asifashrafkhan@example.com",
-      role: "doctor",
-      pin: "0000",
+      id: "user_admin_001",
+      name: "Clinic Administrator",
+      role: "admin",
+      pin: hashPassword("7860"),
+      password: hashPassword("7860"),
+      password_hash: hashPassword("7860"),
       is_owner: true,
       is_principal_doctor: true,
       can_view_financials: true,
       can_give_discounts: true,
-      max_discount_pct: 15,
-      specialization: "General Physician / Homeopath",
-      consultation_fee: 500,
-      status: "active",
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: "user_1788052290147_6vdcm",
-      name: "H/Dr.Nargis Khan",
-      username: "drnargis",
-      email: "h/dr.nargiskhan@example.com",
-      role: "doctor",
-      pin: "0000",
-      is_owner: false,
-      can_view_financials: false,
-      can_give_discounts: true,
-      max_discount_pct: 15,
-      specialization: "Gynecologist",
-      consultation_fee: 200,
-      status: "active",
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: "user_1788052389491_3eqmr",
-      name: "Usama",
-      username: "usama",
-      email: "usama@example.com",
-      role: "warehouse_incharge",
-      pin: "2222",
-      is_owner: false,
-      can_view_financials: false,
-      can_give_discounts: true,
-      max_discount_pct: 15,
-      assigned_warehouse_id: "wh_002",
+      max_discount_pct: 100,
       status: "active",
       created_at: new Date().toISOString(),
     }
   ],
   patients: [],
   visits: [],
-  inventory: Array.isArray(MASTER_MEDICINES) ? MASTER_MEDICINES : [],
-  parties: Array.isArray(MASTER_PARTIES) ? MASTER_PARTIES : [],
-  suppliers: Array.isArray(MASTER_SUPPLIERS) ? MASTER_SUPPLIERS : [],
-  accounts: Array.isArray(MASTER_ACCOUNTS) ? MASTER_ACCOUNTS : [],
-  salesmen: [
-    { id: "sls_001", name: "Waheed Bhai", phone: "03000000000", territory: "Sindh Route", status: "active" },
-    { id: "sls_002", name: "Raza", phone: "03000000000", territory: "Hyderabad", status: "active" }
-  ],
+  inventory: [],
+  parties: [],
+  suppliers: [],
+  accounts: [],
+  salesmen: [],
   b2b_sales: [],
   stock_transfers: [],
   sales: [],
@@ -422,6 +313,7 @@ export const KEYS = {
   ADMIN_MASTER_PASSCODE: "cf_admin_master_passcode",
   ADMIN_TAB_PIN:         "cf_admin_tab_pin",
   ADMIN_TAB_SECURITY:    "cf_admin_tab_security",
+  CATEGORIES:            "cf_medicine_categories_v1",
 };
 
 // High-performance In-Memory Memoization Cache for Zero-Lag Operations
@@ -612,6 +504,21 @@ export function factoryResetAllData() {
     _COLLECTION_CACHE.clear();
     _ID_MAP_CACHE.clear();
 
+    // Seed clean empty database arrays (0 inventory, 0 suppliers, 0 sales, 0 patients)
+    storageDriver.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
+    storageDriver.setItem(KEYS.USERS, JSON.stringify(SEED_DATA.users));
+    storageDriver.setItem(KEYS.PATIENTS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.VISITS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.INVENTORY, JSON.stringify([]));
+    storageDriver.setItem(KEYS.PARTIES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SALESMEN, JSON.stringify([]));
+    storageDriver.setItem(KEYS.PURCHASES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.B2B_SALES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SALES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.PATIENT_LEDGER, JSON.stringify([]));
+    storageDriver.setItem(KEYS.EXPENSES, JSON.stringify([]));
+
     // Notify all tabs
     if (_syncChannel) {
       try { _syncChannel.postMessage({ type: "FACTORY_RESET" }); } catch {}
@@ -654,6 +561,19 @@ export function initDB() {
     console.error("Schema migration runtime notice:", migErr);
   }
 
+  // Mandatory One-Time Clean Purge of Dummy Parties and Godowns
+  try {
+    if (!storageDriver.getItem("cf_purged_parties_wh_v1")) {
+      storageDriver.setItem(KEYS.PARTIES, JSON.stringify([]));
+      storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify([]));
+      _COLLECTION_CACHE.delete(KEYS.PARTIES);
+      _COLLECTION_CACHE.delete(KEYS.ACCOUNTS);
+      _COLLECTION_CACHE.delete(KEYS.WAREHOUSES);
+      storageDriver.setItem("cf_purged_parties_wh_v1", "1");
+    }
+  } catch (e) {}
+
   // 2. If already seeded or has existing clinical records, ensure essentials and return safely
   if (storageDriver.getItem(KEYS.SEEDED)) {
     return;
@@ -689,9 +609,9 @@ export function initDB() {
     storageDriver.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
     storageDriver.setItem(KEYS.SHIFT_CLOSINGS, JSON.stringify([]));
     storageDriver.setItem(KEYS.DOCUMENTS, JSON.stringify([]));
-    storageDriver.setItem(KEYS.TENANTS, JSON.stringify(SEED_DATA.tenants));
-    storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
-    storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify(SEED_DATA.accounts));
+    storageDriver.setItem(KEYS.TENANTS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify([]));
     storageDriver.setItem(KEYS.SUPPLIER_LEDGER, JSON.stringify([]));
     storageDriver.setItem(KEYS.CASHBOOK, JSON.stringify([]));
     storageDriver.setItem(KEYS.STOCK_MOVEMENTS, JSON.stringify([]));
@@ -701,23 +621,8 @@ export function initDB() {
     if (!storageDriver.getItem(KEYS.CLINIC)) {
       storageDriver.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
     }
-    if (!storageDriver.getItem(KEYS.WAREHOUSES) || JSON.parse(storageDriver.getItem(KEYS.WAREHOUSES) || "[]").length === 0) {
-      storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
-    }
-    if (!storageDriver.getItem(KEYS.INVENTORY) || JSON.parse(storageDriver.getItem(KEYS.INVENTORY) || "[]").length === 0) {
-      storageDriver.setItem(KEYS.INVENTORY, JSON.stringify(SEED_DATA.inventory));
-    }
-    if (!storageDriver.getItem(KEYS.PARTIES) || JSON.parse(storageDriver.getItem(KEYS.PARTIES) || "[]").length === 0) {
-      storageDriver.setItem(KEYS.PARTIES, JSON.stringify(SEED_DATA.parties));
-    }
-    if (!storageDriver.getItem(KEYS.SUPPLIERS) || JSON.parse(storageDriver.getItem(KEYS.SUPPLIERS) || "[]").length === 0) {
-      storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify(SEED_DATA.suppliers));
-    }
-    if (!storageDriver.getItem(KEYS.ACCOUNTS) || JSON.parse(storageDriver.getItem(KEYS.ACCOUNTS) || "[]").length === 0) {
-      storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify(SEED_DATA.accounts));
-    }
   }
-  // PERMANENT PURGE: Remove legacy admin@clinicore.pk / user_admin bootstrap user from local storage
+  // PERMANENT PURGE: Clean all pre-seeded dummy parties, accounts, and godowns
   try {
     const rawUsers = storageDriver.getItem(KEYS.USERS);
     if (rawUsers) {
@@ -728,6 +633,18 @@ export function initDB() {
         _COLLECTION_CACHE.delete(KEYS.USERS);
       }
     }
+    
+    // Purge mock parties
+    storageDriver.setItem(KEYS.PARTIES, JSON.stringify([]));
+    _COLLECTION_CACHE.delete(KEYS.PARTIES);
+
+    // Purge mock accounts
+    storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify([]));
+    _COLLECTION_CACHE.delete(KEYS.ACCOUNTS);
+
+    // Purge mock warehouses
+    storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify([]));
+    _COLLECTION_CACHE.delete(KEYS.WAREHOUSES);
   } catch (err) {}
 
   storageDriver.setItem(KEYS.LICENSE, JSON.stringify({
@@ -883,8 +800,19 @@ export const dbClinicServices = {
 export const dbUsers = {
   getAll: () => {
     let list = getCollection(KEYS.USERS);
+    // Purge legacy sample/demo doctor & staff profiles
+    const DUMMY_IDS = ["user_1788046718402_3dsjz", "user_1788052208532_ojsa5", "user_1788052290147_6vdcm", "user_1788052389491_3eqmr", "user_1788052242123_oypkr"];
+    if (Array.isArray(list) && list.length > 0) {
+      list = list.filter((u) => !DUMMY_IDS.includes(u.id));
+    }
     if (!list || list.length === 0) {
       list = SEED_DATA.users;
+      setCollection(KEYS.USERS, list);
+    }
+    // Ensure primary admin account is always present
+    const hasAdmin = list.some((u) => u.id === "user_admin_001" || u.role === "admin" || u.role === "owner" || u.is_owner);
+    if (!hasAdmin) {
+      list = [...SEED_DATA.users, ...list];
       setCollection(KEYS.USERS, list);
     }
     return list;
@@ -957,9 +885,13 @@ export const dbUsers = {
         let patch = { ...data };
         if (patch.password && !patch.password.startsWith("cf_s256$")) {
           patch.password_hash = hashPassword(patch.password);
+          patch.pin = patch.password;
           patch.password = patch.password_hash;
         } else if (patch.password_hash) {
           patch.password = patch.password_hash;
+          if (patch.pin === undefined) {
+            patch.pin = "";
+          }
         }
         updatedUser = { ...u, ...patch };
         return updatedUser;
@@ -1065,13 +997,6 @@ export const dbUsers = {
       });
     }
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
-  },
-  resetPassword: (id, newPlainPassword) => {
-    const users = getCollection(KEYS.USERS);
-    const updated = users.map((u) => (u.id === id ? { ...u, password: hashPassword(newPlainPassword), pin: newPlainPassword } : u));
-    setCollection(KEYS.USERS, updated);
-    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
-    return true;
   },
 };
 
@@ -1320,12 +1245,35 @@ export const dbVisits = {
   },
   getTodayAll: (doctorId = null) => {
     const today = getPKTDateStr();
-    return getCollection(KEYS.VISITS)
+    const rawVisits = getCollection(KEYS.VISITS) || [];
+    const patients = getCollection(KEYS.PATIENTS) || [];
+    const patientMap = new Map();
+    for (let i = 0; i < patients.length; i++) {
+      if (patients[i] && patients[i].id) patientMap.set(patients[i].id, patients[i]);
+    }
+    const users = getCollection(KEYS.USERS) || [];
+    const userMap = new Map();
+    for (let i = 0; i < users.length; i++) {
+      if (users[i] && users[i].id) userMap.set(users[i].id, users[i]);
+    }
+
+    return rawVisits
       .filter((v) => {
         const isToday = getPKTDateStr(new Date(v.visit_date)) === today;
         if (!isToday) return false;
         if (!doctorId) return true;
         return v.doctor_id === doctorId || (!v.doctor_id && (doctorId === "user_owner" || doctorId === "user_001")) || (v.doctor_id === "user_001" && doctorId === "user_owner");
+      })
+      .map((v) => {
+        const pat = patientMap.get(v.patient_id);
+        const doc = userMap.get(v.doctor_id);
+        return {
+          ...v,
+          patient_name: v.patient_name || pat?.full_name || pat?.name || "Patient",
+          patient_phone: v.patient_phone || pat?.phone || "",
+          patient_mr_number: v.patient_mr_number || pat?.mr_number || "",
+          doctor_name: v.doctor_name || doc?.name || "Doctor",
+        };
       })
       .sort((a, b) => (a.token_number || 0) - (b.token_number || 0));
   },
@@ -1369,11 +1317,17 @@ export const dbVisits = {
     const cashierId = visit.cashier_id || visit.active_cashier_id || activeCashier?.id || "user_admin";
     const cashierName = visit.cashier_name || visit.active_cashier_name || activeCashier?.name || "Front Desk";
 
+    const pat = visit.patient_id ? dbPatients.getById(visit.patient_id) : null;
+    const doc = visit.doctor_id ? dbUsers.getById(visit.doctor_id) : null;
+    const patName = visit.patient_name || pat?.full_name || pat?.name || "Patient";
+
     const newVisit = {
       ...visit,
       id: generateId("visit"),
       clinic_id: "clinic_001",
       token_number,
+      patient_name: patName,
+      doctor_name: visit.doctor_name || doc?.name || "Doctor",
       status: visit.status || "waiting",
       visit_date: visit.visit_date || new Date().toISOString(),
       prescription_image_url: null,
@@ -2579,6 +2533,71 @@ export const dbAccounts = {
     const filtered = list.filter((a) => a.id !== id && String(a.account_no) !== String(id));
     setCollection(KEYS.ACCOUNTS, filtered);
     return true;
+  },
+};
+
+// ---------- Medicine Categories Engine ----------
+export const DEFAULT_STANDARD_CATEGORIES = [
+  "Homeopathic Drops",
+  "Syrup / Suspension",
+  "Specialized Drops",
+  "Tablet",
+  "Capsule",
+  "Allopathic OTC",
+  "Ointment / Cream",
+  "Injection / IV",
+  "Eye / Ear Drops",
+  "General Item",
+];
+
+export const dbCategories = {
+  getAll: () => {
+    const saved = getCollection(KEYS.CATEGORIES);
+    const seen = new Set();
+    const result = [];
+
+    // 1. Add custom saved categories
+    (saved || []).forEach((c) => {
+      const name = typeof c === "string" ? c.trim() : (c?.name || "").trim();
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        result.push(name);
+      }
+    });
+
+    // 2. Add standard categories
+    DEFAULT_STANDARD_CATEGORIES.forEach((name) => {
+      if (!seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        result.push(name);
+      }
+    });
+
+    // 3. Add any categories from active inventory
+    const inv = getCollection(KEYS.INVENTORY) || [];
+    inv.forEach((item) => {
+      const cat = (item.category || "").trim();
+      if (cat && !seen.has(cat.toLowerCase())) {
+        seen.add(cat.toLowerCase());
+        result.push(cat);
+      }
+    });
+
+    return result;
+  },
+  add: (categoryName) => {
+    if (!categoryName || !categoryName.trim()) return false;
+    const clean = categoryName.trim();
+    const current = getCollection(KEYS.CATEGORIES) || [];
+    const exists = current.some((c) => {
+      const n = typeof c === "string" ? c : c?.name;
+      return (n || "").toLowerCase().trim() === clean.toLowerCase();
+    });
+    if (!exists) {
+      setCollection(KEYS.CATEGORIES, [...current, { id: generateId("cat"), name: clean, created_at: new Date().toISOString() }]);
+      notifyStatusUpdate();
+    }
+    return clean;
   },
 };
 
@@ -4225,18 +4244,32 @@ export const dbTenants = {
 export const dbSales = {
   getAll: () => getCollection(KEYS.SALES),
   getById: (id) => getScopedRecordById(KEYS.SALES, id),
-  getNextVoucherNo: () => {
+  getNextVoucherNo: (billingType = "patient") => {
     const sales = getCollection(KEYS.SALES) || [];
     const b2b = getCollection(KEYS.B2B_SALES) || [];
-    let maxNum = 6217; // DrCreate baseline sequence S-6218
-    [...sales, ...b2b].forEach((s) => {
-      const vNo = s.voucher_no || s.receipt_no || s.invoice_no || "";
-      const match = vNo.match(/^S-(\d+)$/i);
-      if (match) {
-        maxNum = Math.max(maxNum, parseInt(match[1], 10));
-      }
-    });
-    return `S-${maxNum + 1}`;
+    const allSales = [...sales, ...b2b];
+
+    if (billingType === "wholesale_party" || billingType === "b2b") {
+      let maxNum = 0;
+      allSales.forEach((s) => {
+        const vNo = s.voucher_no || s.receipt_no || s.invoice_no || "";
+        const match = vNo.match(/^(?:WS|B2B|W)-(\d+)$/i);
+        if (match) {
+          maxNum = Math.max(maxNum, parseInt(match[1], 10));
+        }
+      });
+      return `WS-${maxNum + 1}`;
+    } else {
+      let maxNum = 0;
+      allSales.forEach((s) => {
+        const vNo = s.voucher_no || s.receipt_no || s.invoice_no || "";
+        const match = vNo.match(/^(?:POS|RET|Inv|S)-(\d+)$/i);
+        if (match) {
+          maxNum = Math.max(maxNum, parseInt(match[1], 10));
+        }
+      });
+      return `POS-${maxNum + 1}`;
+    }
   },
   exportCSV: (salesList, filename = "Sale_Invoice_List.csv") => {
     const list = salesList || getCollection(KEYS.SALES);

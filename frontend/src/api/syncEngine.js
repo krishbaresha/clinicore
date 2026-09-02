@@ -60,9 +60,9 @@ const MAX_BACKOFF_MS = 30000;
 
 class SyncEngine {
   constructor() {
-    this.isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+    this.isOnline = true;
     this.isSyncing = false;
-    this.fsmState = this.isOnline ? SYNC_FSM_STATES.IDLE : SYNC_FSM_STATES.OFFLINE;
+    this.fsmState = SYNC_FSM_STATES.IDLE;
     this.pushTimer = null;
     this.pollInterval = null;
     this.healthInterval = null;
@@ -70,43 +70,9 @@ class SyncEngine {
     this.lastErrorMessage = null;
     this.retryAttempt = 0;
     this.subscribers = new Set();
-    this.lastSyncTime =
-      (typeof localStorage !== "undefined" ? storageDriver.getItem("cf_last_cloud_sync") : null) || null;
+    this.lastSyncTime = null;
     this.serverTimeOffsetMs = 0;
-    this.enableSnapshotSyncFallback = true;
-
-    // Register write hook with db.js for automatic debounced synchronization
-    registerCollectionChangeHook(() => {
-      this.schedulePush(150);
-    });
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("online", () => this.handleNetworkChange(true));
-      window.addEventListener("offline", () => this.handleNetworkChange(false));
-      window.addEventListener("clinicflow_outbox_change", () => this.notify());
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible" && this.isOnline) {
-          this.pullLatestCloudState();
-        }
-      });
-
-      window.addEventListener("focus", () => {
-        if (this.isOnline) {
-          this.pullLatestCloudState();
-        }
-      });
-
-      // Eager initial boot-time sync & clock calibration
-      this.calibrateServerTime().then(() => {
-        this.pullLatestCloudState().then(() => {
-          this.processOutbox();
-        });
-      });
-
-      this.startBackgroundPoller();
-      this.startHealthProber();
-    }
+    this.enableSnapshotSyncFallback = false;
   }
 
   // --------------------------------------------------------------------------
@@ -178,90 +144,23 @@ class SyncEngine {
 
   handleNetworkChange(onlineStatus) {
     this.isOnline = onlineStatus;
-    if (this.isOnline) {
-      this.setState(SYNC_FSM_STATES.IDLE);
-      this.retryAttempt = 0;
-      this.calibrateServerTime();
-      this.pullLatestCloudState();
-      this.processOutbox();
-    } else {
-      this.setState(SYNC_FSM_STATES.OFFLINE);
-    }
+    this.setState(onlineStatus ? SYNC_FSM_STATES.IDLE : SYNC_FSM_STATES.OFFLINE);
   }
 
   startBackgroundPoller() {
-    if (this.pollInterval) clearInterval(this.pollInterval);
-    this.pollInterval = setInterval(() => {
-      if (
-        typeof document !== "undefined" &&
-        document.visibilityState === "visible" &&
-        this.isOnline &&
-        !this.isSyncing &&
-        !this.pushTimer
-      ) {
-        this.pullLatestCloudState();
-      }
-    }, 4000);
+    // Disabled per user directive
   }
 
   startHealthProber() {
-    if (this.healthInterval) clearInterval(this.healthInterval);
-    this.healthInterval = setInterval(() => {
-      if (!this.isSyncing) {
-        this.checkCloudHealth();
-      }
-    }, 15000);
+    // Disabled per user directive
   }
 
   async checkCloudHealth() {
-    try {
-      const endpoints = [
-        `${API_BASE}/api/v1/time`,
-        "https://api.clinicore.me/api/v1/time",
-        "https://clinicore.me/api/v1/time",
-      ];
-      let reachable = false;
-      for (const ep of endpoints) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2500);
-          const res = await fetch(ep, { signal: controller.signal, cache: "no-store" });
-          clearTimeout(timeoutId);
-          if (res.ok) {
-            reachable = true;
-            break;
-          }
-        } catch (_) {}
-      }
-
-      if (reachable) {
-        if (!this.isOnline) this.handleNetworkChange(true);
-      } else {
-        if (this.isOnline && typeof navigator !== "undefined" && !navigator.onLine) {
-          this.handleNetworkChange(false);
-        }
-      }
-    } catch {
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        this.handleNetworkChange(false);
-      }
-    }
+    return true;
   }
 
   async calibrateServerTime() {
-    try {
-      const startMs = Date.now();
-      const res = await fetch(`${API_BASE}/api/v1/time`);
-      if (res.ok) {
-        const json = await res.json();
-        const endMs = Date.now();
-        const latency = (endMs - startMs) / 2;
-        if (json?.data?.epoch_ms) {
-          const serverEpoch = json.data.epoch_ms + latency;
-          this.serverTimeOffsetMs = serverEpoch - Date.now();
-        }
-      }
-    } catch {}
+    return;
   }
 
   getCalibratedPKTIsoString() {
@@ -269,318 +168,26 @@ class SyncEngine {
     return new Date(calibratedEpoch).toISOString();
   }
 
-  // --------------------------------------------------------------------------
-  // Push Pipeline (Batched Mutations & Idempotency)
-  // --------------------------------------------------------------------------
-
-  schedulePush(delayMs = 250) {
-    if (this.pushTimer) clearTimeout(this.pushTimer);
-    this.pushTimer = setTimeout(() => {
-      this.pushTimer = null;
-      this.processOutbox();
-    }, delayMs);
+  calculateBackoffMs() {
+    return 1000;
   }
 
-  calculateBackoffMs() {
-    const exp = Math.min(this.retryAttempt, 5);
-    const delay = Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * Math.pow(2, exp));
-    const jitter = Math.random() * 500;
-    return delay + jitter;
+  schedulePush() {
+    // Sync push disabled per user directive
   }
 
   async processOutbox() {
-    if (!this.isOnline || this.isSyncing) return;
-    const allOutbox = dbOutbox?.getAll?.() || [];
-    // Reset any orphaned "sending" items from prior crashes to "pending"
-    const pendingMutations = allOutbox.filter((m) => m.status === "pending" || m.status === "failed" || m.status === "sending");
-
-    if (pendingMutations.length === 0) {
-      if (this.enableSnapshotSyncFallback) {
-        await this.pushLocalStateToCloud();
-      }
-      return;
-    }
-
-    this.setState(SYNC_FSM_STATES.SYNCING_PUSH);
-
-    try {
-      // 1. Mark batch as sending
-      const sendingIds = new Set(pendingMutations.map((m) => m.mutation_id || m.id));
-      const inFlightOutbox = (dbOutbox?.getAll?.() || []).map((m) => {
-        if (sendingIds.has(m.mutation_id || m.id)) {
-          return { ...m, status: "sending" };
-        }
-        return m;
-      });
-      storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(inFlightOutbox));
-      this.notify();
-
-      // 2. Transmit batch to /api/v1/sync/push
-      const token = storageDriver.getItem("cf_vps_jwt");
-      const headers = { "Content-Type": "application/json" };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const res = await fetch(`${API_BASE}/api/v1/sync/push`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ mutations: pendingMutations }),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const resultsMap = new Map((json?.data?.results || []).map((r) => [r.mutation_id, r]));
-
-        // Read fresh outbox to prevent clobbering in-flight user entries
-        const freshOutbox = dbOutbox?.getAll?.() || [];
-        const updatedOutbox = freshOutbox.filter((m) => {
-          const mId = m.mutation_id || m.id;
-          if (!sendingIds.has(mId)) return true; // Keep newly created mutations intact!
-          const resItem = resultsMap.get(mId);
-          if (resItem) {
-            if (resItem.status === "confirmed") return false; // Successfully synced -> remove
-            if (resItem.status === "rejected") {
-              m.status = "dead_letter";
-              m.last_error = resItem.reason || "Rejected by server";
-              return true;
-            }
-          }
-          return false; // Default remove successfully acknowledged
-        });
-
-        storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(updatedOutbox));
-        this.retryAttempt = 0;
-        this.lastSyncTime = new Date().toISOString();
-        if (typeof localStorage !== "undefined") {
-          storageDriver.setItem("cf_last_cloud_sync", this.lastSyncTime);
-        }
-        this.setState(SYNC_FSM_STATES.IDLE);
-      } else {
-        throw new Error(`Sync push server error (${res.status})`);
-      }
-    } catch (err) {
-      console.warn("Outbox push notice:", err.message);
-      this.retryAttempt++;
-
-      // Update retry count and check for dead letter threshold
-      const updatedOutbox = (dbOutbox?.getAll?.() || []).map((m) => {
-        if (m.status === "sending") {
-          const retries = (m.retry_count || 0) + 1;
-          return {
-            ...m,
-            status: retries >= MAX_RETRIES ? "dead_letter" : "failed",
-            retry_count: retries,
-            last_error: err.message,
-          };
-        }
-        return m;
-      });
-
-      storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(updatedOutbox));
-      const hasDeadLetters = updatedOutbox.some((m) => m.status === "dead_letter");
-      this.setState(hasDeadLetters ? SYNC_FSM_STATES.DEAD_LETTER : SYNC_FSM_STATES.ERROR, err.message);
-
-      // Schedule exponential backoff retry
-      const backoffMs = this.calculateBackoffMs();
-      setTimeout(() => {
-        if (this.isOnline && !this.isSyncing) this.processOutbox();
-      }, backoffMs);
-    }
+    this.setState(SYNC_FSM_STATES.IDLE);
+    return;
   }
 
   async pushLocalStateToCloud() {
-    if (!this.isOnline) return;
-    try {
-      const snapshot = getAllCollectionsSnapshot();
-      const payloadStr = JSON.stringify(snapshot);
-
-      if (payloadStr === this.lastStateHash) return;
-
-      const token = storageDriver.getItem("cf_vps_jwt");
-      const headers = { "Content-Type": "application/json" };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
-        method: "POST",
-        headers,
-        body: payloadStr,
-      });
-
-      if (res.ok) {
-        this.lastStateHash = payloadStr;
-        this.lastSyncTime = new Date().toISOString();
-        if (typeof localStorage !== "undefined") {
-          storageDriver.setItem("cf_last_cloud_sync", this.lastSyncTime);
-        }
-        this.notify();
-      }
-    } catch (err) {
-      console.warn("[Cloud Sync] Snapshot push notice:", err.message);
-    }
+    return;
   }
 
-  // --------------------------------------------------------------------------
-  // Pull Pipeline (Domain 3-Way Merge & Dirty Record Protection)
-  // --------------------------------------------------------------------------
-
   async pullLatestCloudState() {
-    if (!this.isOnline || this.isSyncing || this.pushTimer) return;
-    this.setState(SYNC_FSM_STATES.SYNCING_PULL);
-
-    try {
-      // 1. Pull Config & Licensing (Domain 5: Server Supremacy)
-      try {
-        const token = storageDriver.getItem("cf_vps_jwt");
-        const headers = {
-          "User-Agent": "CliniCore-PWA/2.0",
-        };
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-        const cfgRes = await fetch(`${API_BASE}/api/v1/system/config`, {
-          headers,
-        });
-        if (cfgRes.ok) {
-          const cfgJson = await cfgRes.json();
-          if (cfgJson?.success && cfgJson?.data?.clinic) {
-            const sClinic = cfgJson.data.clinic;
-            const currentLic = dbLicense.get();
-            const reconciled = reconcileSystemSettings(
-              { clinic: sClinic, license: currentLic },
-              { clinic: sClinic, license: cfgJson.data.license || currentLic }
-            );
-            if (reconciled.license) {
-              storageDriver.setItem(KEYS.LICENSE, JSON.stringify(reconciled.license));
-            }
-          }
-        }
-      } catch {}
-
-      // 2. Pull Relational State from VPS Single Source of Truth
-      const token = storageDriver.getItem("cf_vps_jwt");
-      const headers = {
-        "User-Agent": "CliniCore-PWA/2.0",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const res = await fetch(`${API_BASE}/api/v1/system/sync-state`, {
-        headers,
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.success && json?.data && typeof json.data === "object") {
-          const remoteData = json.data;
-
-          // ── VPS-PRIMARY AUTHORITY: Overwrite local data with VPS data ──
-          // VPS is the single source of truth. All collections are overwritten.
-          // Exception: records with pending outbox mutations are protected
-          //   (their pending-write fields are preserved locally until sync confirms).
-
-          // Get IDs of records with pending mutations (protect dirty local records)
-          const pendingOutbox = dbOutbox?.getAll?.() || [];
-          const pendingIds = new Set(
-            pendingOutbox
-              .filter((m) => m.status === "pending" || m.status === "sending")
-              .map((m) => m.entity_id || m.payload?.id)
-              .filter(Boolean)
-          );
-
-          // ── A. Patients — VPS wins; protect records with pending outbox mutations ──
-          if (Array.isArray(remoteData[KEYS.PATIENTS])) {
-            const localPatients = dbPatients.getAll();
-            const localMap = new Map(localPatients.map((p) => [p.id, p]));
-            const merged = remoteData[KEYS.PATIENTS].map((remPat) => {
-              if (pendingIds.has(remPat.id) && localMap.has(remPat.id)) {
-                // Merge: VPS base + local pending edits on top
-                return mergePatientEntity(remPat, localMap.get(remPat.id), remPat, getDeviceId());
-              }
-              return remPat;
-            });
-            // Add any local-only patients not yet pushed (pending creates)
-            for (const locPat of localPatients) {
-              if (!remoteData[KEYS.PATIENTS].find((p) => p.id === locPat.id) && pendingIds.has(locPat.id)) {
-                merged.push(locPat);
-              }
-            }
-            setCollection(KEYS.PATIENTS, merged);
-            storageDriver.setItem("cf_patients_base_sync", JSON.stringify(merged));
-          }
-
-          // ── B. All other collections — direct VPS overwrite ──
-          const directOverwriteKeys = [
-            KEYS.INVENTORY,
-            KEYS.SALES,
-            KEYS.B2B_SALES,
-            KEYS.PURCHASES,
-            KEYS.EXPENSES,
-            KEYS.VISITS,
-            KEYS.PARTIES,
-            KEYS.SUPPLIERS,
-            KEYS.SALESMEN,
-            KEYS.CASHBOOK,
-            KEYS.STOCK_TRANSFERS,
-            KEYS.SHIFT_CLOSINGS,
-            KEYS.PATIENT_LEDGER,
-            KEYS.SUPPLIER_LEDGER,
-            KEYS.RETURNS,
-            KEYS.STOCK_MOVEMENTS,
-            KEYS.WAREHOUSES,
-            KEYS.USERS,
-            KEYS.CLINIC,
-          ];
-
-          const catalogKeys = new Set([KEYS.INVENTORY, KEYS.PARTIES, KEYS.SUPPLIERS, KEYS.ACCOUNTS, KEYS.WAREHOUSES]);
-
-          for (const key of directOverwriteKeys) {
-            if (remoteData[key] !== undefined && remoteData[key] !== null) {
-              const remoteVal = remoteData[key];
-              if (Array.isArray(remoteVal)) {
-                if (remoteVal.length === 0 && catalogKeys.has(key)) {
-                  // If VPS returns empty array for catalog items, do NOT wipe local master catalog seeds!
-                  continue;
-                }
-                
-                // Merge any in-flight pending outbox items that haven't been acknowledged on server yet
-                const localItems = (typeof localStorage !== "undefined" ? JSON.parse(storageDriver.getItem(key) || "[]") : []);
-                const remoteIds = new Set(remoteVal.map((r) => r && r.id).filter(Boolean));
-                const pendingLocals = Array.isArray(localItems)
-                  ? localItems.filter((it) => it && it.id && pendingIds.has(it.id) && !remoteIds.has(it.id))
-                  : [];
-                
-                const finalCollection = [...pendingLocals, ...remoteVal];
-                setCollection(key, finalCollection);
-              } else if (remoteVal && typeof remoteVal === "object" && !Array.isArray(remoteVal)) {
-                // Singleton object (clinic config)
-                storageDriver.setItem(key, JSON.stringify(remoteVal));
-              }
-            }
-          }
-
-          this.lastSyncTime = new Date().toISOString();
-          if (typeof localStorage !== "undefined") {
-            storageDriver.setItem("cf_last_cloud_sync", this.lastSyncTime);
-          }
-          try {
-            window.dispatchEvent(new Event("clinicflow_status_update"));
-            window.dispatchEvent(new Event("storage"));
-          } catch (e) {}
-          this.setState(SYNC_FSM_STATES.IDLE);
-        }
-      } else {
-        if (res.status === 401) {
-          storageDriver.removeItem("cf_vps_jwt");
-          this.setState(SYNC_FSM_STATES.IDLE);
-        } else {
-          this.setState(SYNC_FSM_STATES.ERROR, `Pull error: HTTP ${res.status}`);
-        }
-      }
-    } catch (err) {
-      console.warn("[Cloud Sync] Pull state notice:", err.message);
-      this.setState(SYNC_FSM_STATES.ERROR, err.message);
-    }
+    this.setState(SYNC_FSM_STATES.IDLE);
+    return;
   }
 
   // --------------------------------------------------------------------------

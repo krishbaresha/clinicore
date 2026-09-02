@@ -342,105 +342,7 @@ export async function login(identifier, password) {
   };
 
   // ─────────────────────────────────────────────────────────
-  // STEP 1: Try VPS API authentication first (when online)
-  // ─────────────────────────────────────────────────────────
-  const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
-  if (isOnline) {
-    try {
-      const API_BASE =
-        (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-        (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost")
-          ? window.location.origin
-          : typeof window !== "undefined" && window.location.hostname === "localhost"
-          ? "http://127.0.0.1:5000"
-          : "https://clinicore.me");
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-      const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: identifier, password }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.success && json?.data?.user && json?.data?.token) {
-          const vpsUser = json.data.user;
-
-          // Save JWT token for sync engine API calls
-          try { storageDriver.setItem("cf_vps_jwt", json.data.token); } catch {}
-
-          // Update local user cache from VPS record so offline login works next time
-          try {
-            const { dbUsers } = await import("./db.js");
-            const existingUser = dbUsers.getAll().find((u) => u.id === vpsUser.id);
-            if (existingUser) {
-              dbUsers.update(vpsUser.id, { ...vpsUser });
-            } else {
-              dbUsers.add({ ...vpsUser, password: "", password_hash: "" });
-            }
-          } catch {}
-
-          // Build session from VPS user data
-          const session = {
-            userId: vpsUser.id,
-            name: vpsUser.name || vpsUser.display_label,
-            role: vpsUser.role,
-            clinic_id: vpsUser.clinic_id,
-            assigned_warehouse_id: vpsUser.assigned_warehouse_id || "",
-            is_owner: Boolean(vpsUser.is_principal_doctor || vpsUser.is_owner),
-            can_view_financials: Boolean(vpsUser.can_view_financials),
-            is_principal_doctor: Boolean(vpsUser.is_principal_doctor),
-            sessionToken: "st_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-            authenticatedAt: new Date().toISOString(),
-            auth_source: "vps",
-          };
-
-          try {
-            if (typeof sessionStorage !== "undefined") {
-              sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-            }
-            storageDriver.setItem(SESSION_KEY, JSON.stringify(session));
-          } catch {}
-
-          setRateLimitState({ failedAttempts: 0, lockoutUntil: 0 });
-
-          // ── IMMEDIATE POST-LOGIN SYNC ──────────────────────────────────────
-          // JWT is now in localStorage. Trigger pull immediately so MySQL data
-          // hydrates into the browser without waiting for the 4-second poller.
-          // This is what makes "clear localStorage → login → data appears" work.
-          try {
-            const { syncEngine } = await import("./syncEngine.js");
-            // Small tick so session storage write settles first
-            setTimeout(() => {
-              syncEngine.pullLatestCloudState().then(() => {
-                syncEngine.processOutbox();
-              });
-            }, 100);
-          } catch (_) {}
-          // ──────────────────────────────────────────────────────────────────
-
-          return { success: true, user: session, error: null };
-        }
-
-        // VPS returned 401 — check if account exists in local restored cache before outright rejecting
-        if (res.status === 401) {
-          console.warn("[Auth] VPS rejected credentials (401), checking local restored database...");
-        }
-      }
-    } catch (networkErr) {
-      // Network error / timeout → fall through to offline local auth
-      console.warn("[Auth] VPS auth unreachable, trying local fallback:", networkErr?.message || networkErr);
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────
-  // STEP 2: Offline fallback — use local localStorage users
-  // (cached from last successful VPS pull)
+  // Local Authentication Engine (PIN / Credential Check)
   // ─────────────────────────────────────────────────────────
   const idLower = (identifier || "").toString().trim().toLowerCase();
   const idSlug = idLower.replace(/[\s._-]+/g, "");
@@ -528,7 +430,7 @@ export async function login(identifier, password) {
     actor_id: user.id, actor_name: user.name, role: user.role,
     action: "LOGIN_SUCCESS", entity: "auth", entity_id: user.id,
     session_token: session.sessionToken,
-    reason: isOnline ? "VPS unavailable — local cache used" : "Offline mode",
+    reason: "Local PIN authentication",
   });
 
   return { success: true, user: session, error: null };
@@ -549,16 +451,7 @@ export function getSession() {
     const dbUser = dbUsers.getById(session.userId);
 
     if (!dbUser) {
-      // ── VPS-issued session trust ───────────────────────────────────────────
-      // If the session was issued by the VPS (auth_source="vps") but the local
-      // user cache is empty (e.g. localStorage was just cleared and a fresh VPS
-      // login was done), trust the session as-is.
-      // The pull triggered after login will repopulate the local user cache.
-      // We must NOT invalidate here or the user gets logged out immediately.
-      if (session.auth_source === "vps" && session.userId && session.role) {
-        return session; // Trust VPS-issued session while local cache repopulates
-      }
-      // Local-only session with no user record → purge
+      // Local session with no user record → purge
       sessionStorage.removeItem(SESSION_KEY);
       storageDriver.removeItem(SESSION_KEY);
       return null;
@@ -683,20 +576,8 @@ export function setActiveCashier(staff) {
  * Returns { success, user, error }.
  */
 export async function loginWithPin(userId, pin) {
-  let allUsers = dbUsers.getAll();
-  let user = allUsers.find((u) => u.id === userId);
-
-  // If user not in local memory (e.g. fresh mobile browser session), pull from VPS immediately
-  if (!user) {
-    try {
-      const { syncEngine } = await import("./syncEngine.js");
-      if (syncEngine && typeof syncEngine.pullLatestCloudState === "function") {
-        await syncEngine.pullLatestCloudState();
-        allUsers = dbUsers.getAll();
-        user = allUsers.find((u) => u.id === userId);
-      }
-    } catch (_) {}
-  }
+  const allUsers = dbUsers.getAll();
+  const user = allUsers.find((u) => u.id === userId);
 
   if (!user) {
     return { success: false, error: { message: "User not found. Please refresh the page." } };
@@ -709,18 +590,13 @@ export async function loginWithPin(userId, pin) {
     };
   }
 
-  // Verify PIN (matches either raw user.pin, user.password, verifies against hash, or accepts master recovery keys)
+  // Verify PIN strictly against user hash or pin — zero bypasses allowed
   const isMatch =
-    (user.pin && user.pin.toString() === pin.toString()) ||
-    (user.password && user.password.toString() === pin.toString()) ||
     verifyPassword(pin, user.password || user.password_hash || "") ||
-    pin === "0000" ||
-    pin === "1234" ||
-    pin === "Champion24" ||
-    pin === "KB2026";
+    (user.pin && (user.pin.toString() === pin.toString() || verifyPassword(pin, user.pin.toString())));
 
   if (!isMatch) {
-    return { success: false, error: { message: "Incorrect PIN. Default PIN is 0000 or 1234." } };
+    return { success: false, error: { message: "Incorrect PIN." } };
   }
 
   // Create session
@@ -746,16 +622,6 @@ export async function loginWithPin(userId, pin) {
     
     // Auto-set as active cashier for POS session
     setActiveCashier(user);
-
-    // Auto-trigger background state sync
-    try {
-      const { syncEngine } = await import("./syncEngine.js");
-      setTimeout(() => {
-        if (syncEngine && typeof syncEngine.pullLatestCloudState === "function") {
-          syncEngine.pullLatestCloudState();
-        }
-      }, 50);
-    } catch (_) {}
   } catch (e) {
     console.error("Failed to write session:", e);
   }

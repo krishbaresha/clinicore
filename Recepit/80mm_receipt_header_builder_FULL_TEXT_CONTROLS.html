@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>80mm Receipt Header Builder</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#eee;font-family:Arial,sans-serif;color:#111}
+.builder{max-width:1050px;margin:auto;display:grid;grid-template-columns:320px 1fr;gap:18px}
+.panel,.preview-panel{background:#fff;border:1px solid #ddd;border-radius:12px;padding:18px}
+h2{margin:0 0 16px;font-size:19px}
+label{display:block;font-size:12px;font-weight:700;margin:12px 0 6px}
+input[type=text]{width:100%;padding:9px;border:1px solid #ccc;border-radius:7px}
+input[type=range]{width:100%}
+.row{display:flex;align-items:center;gap:8px}
+.value{min-width:48px;text-align:right;font-weight:700;font-size:12px}
+input[type=file]{width:100%;font-size:12px}
+.phone{display:flex;gap:6px;margin-bottom:6px}
+.phone input{flex:1}
+button{border:0;border-radius:7px;padding:9px 12px;font-weight:700;cursor:pointer}
+.dark{background:#111;color:#fff}
+.light{background:#eee}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.hint{font-size:11px;color:#666;line-height:1.45;margin-top:12px}
+.preview-panel{overflow:hidden}
+.preview-title{font-size:12px;color:#666;margin-bottom:10px}
+.stage{background:#ddd;border-radius:9px;padding:25px;overflow:auto}
+.receipt{width:302px;margin:auto;background:#fff;padding:5px 7px 9px}
+.header{display:grid;grid-template-columns:var(--logo-col) minmax(0,1fr) auto;gap:5px;align-items:center;padding:2px 0 6px}
+.logo-box{width:var(--logo-col);height:var(--logo-height);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.logo-box img{width:var(--logo-size);height:var(--logo-size);object-fit:contain;display:block}
+.info{min-width:0}
+.name{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:17px;font-weight:700;white-space:nowrap}
+.subtitle{font-family:Georgia,"Times New Roman",serif;font-size:10px;line-height:12px;font-weight:700;white-space:nowrap}
+.contact{font-family:Georgia,"Times New Roman",serif;text-align:right;font-size:7.2px;line-height:9px;font-weight:600;white-space:nowrap}
+.divider{border-bottom:1px solid #000}
+.code-section{margin-top:18px}
+textarea{width:100%;height:250px;resize:vertical;border:1px solid #ccc;border-radius:8px;padding:10px;font-family:Consolas,monospace;font-size:11px;line-height:1.4}
+@media(max-width:760px){.builder{grid-template-columns:1fr}}
+@media print{
+ body{padding:0;background:#fff}
+ .panel,.code-section,.preview-title{display:none}
+ .builder{display:block}
+ .preview-panel{border:0;padding:0}
+ .stage{padding:0;background:#fff}
+ .receipt{width:80mm}
+}
+@page{size:80mm auto;margin:0}
+</style>
+</head>
+<body>
+<div class="builder">
+
+<div class="panel">
+<h2>80mm Header Controls</h2>
+
+<label>Upload Logo</label>
+<input id="logoUpload" type="file" accept="image/*">
+
+<label>Logo Size</label>
+<div class="row">
+<input id="logoSize" type="range" min="30" max="100" value="62">
+<span class="value"><span id="logoSizeVal">62</span> px</span>
+</div>
+
+<label>Logo Area Width</label>
+<div class="row">
+<input id="logoWidth" type="range" min="38" max="85" value="58">
+<span class="value"><span id="logoWidthVal">58</span> px</span>
+</div>
+
+<label>Logo Area Height</label>
+<div class="row">
+<input id="logoHeight" type="range" min="45" max="90" value="68">
+<span class="value"><span id="logoHeightVal">68</span> px</span>
+</div>
+
+<label>Clinic Name Text Size</label>
+<div class="row">
+<input id="nameSize" type="range" min="10" max="24" value="16">
+<span class="value"><span id="nameSizeVal">16</span> px</span>
+</div>
+
+<label>Subtitle Text Size</label>
+<div class="row">
+<input id="subtitleSize" type="range" min="7" max="16" value="10">
+<span class="value"><span id="subtitleSizeVal">10</span> px</span>
+</div>
+
+<label>Address / Contact Text Size</label>
+<div class="row">
+<input id="contactSize" type="range" min="5" max="12" step="0.5" value="7.2">
+<span class="value"><span id="contactSizeVal">7.2</span> px</span>
+</div>
+
+<label>Clinic / Store Name</label>
+<input id="name" type="text" value="M.Ashraf Khan">
+
+<label>Subtitle</label>
+<input id="subtitle" type="text" value="Homeopathic Clinic">
+
+<label>Address</label>
+<input id="address" type="text" value="Lajpat Road, Hyderabad">
+
+<label>City / Country</label>
+<input id="city" type="text" value="Sindh, Pakistan">
+
+<label>Phone Numbers</label>
+<div id="phones"></div>
+<button class="dark" id="addPhone">+ Add Phone</button>
+
+<div class="actions">
+<button class="dark" id="copyCode">Copy Header Code</button>
+<button class="light" id="downloadCode">Download Header Code</button>
+<button class="light" id="print">Print Preview</button>
+<button class="light" id="reset">Reset</button>
+</div>
+
+<div class="hint">
+Move the sliders until the header looks right. The <b>Copy Header Code</b> button copies only the receipt-header HTML/CSS/JS configuration block, while Download saves that generated block as a file.
+</div>
+</div>
+
+<div class="preview-panel">
+<div class="preview-title">LIVE 80mm RECEIPT PREVIEW</div>
+<div class="stage">
+<div class="receipt" id="receipt">
+<div class="header" id="header">
+<div class="logo-box"><img id="outLogo"></div>
+<div class="info">
+<div class="name" id="outName"></div>
+<div class="subtitle" id="outSubtitle"></div>
+</div>
+<div class="contact">
+<div id="outAddress"></div>
+<div id="outCity"></div>
+<div id="outPhones"></div>
+</div>
+</div>
+<div class="divider"></div>
+</div>
+</div>
+</div>
+
+<div class="code-section">
+<div class="preview-title">GENERATED HEADER CODE</div>
+<textarea id="code" spellcheck="false"></textarea>
+</div>
+</div>
+</div>
+
+<script>
+const defaultLogo = "https://dummyimage.com/120x160/ffffff/000000.png&text=LOGO";
+const defaults = {
+  name:"M.Ashraf Khan",
+  subtitle:"Homeopathic Clinic",
+  address:"Lajpat Road, Hyderabad",
+  city:"Sindh, Pakistan",
+  phones:["0311 4234777","0343 9376363"]
+};
+
+const $=id=>document.getElementById(id);
+let logoData=defaultLogo;
+
+function phones(){return [...$("phones").querySelectorAll("input")].map(x=>x.value.trim()).filter(Boolean)}
+
+function renderPhones(values){
+  $("phones").innerHTML="";
+  values.forEach(value=>{
+    const row=document.createElement("div"); row.className="phone";
+    const input=document.createElement("input"); input.type="text"; input.value=value; input.placeholder="Phone number";
+    input.oninput=update;
+    const del=document.createElement("button"); del.className="light"; del.textContent="×";
+    del.onclick=()=>{row.remove();update()};
+    row.append(input,del); $("phones").append(row);
+  });
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+function generateCode(){
+  const size=$("logoSize").value, width=$("logoWidth").value, height=$("logoHeight").value;
+  const nameSize=$("nameSize").value, subtitleSize=$("subtitleSize").value, contactSize=$("contactSize").value;
+  const phoneHTML=phones().map(p=>`<div>${escapeHtml(p)}</div>`).join("");
+  return `<!-- DYNAMIC 80MM RECEIPT HEADER -->
+<style>
+.receipt-header{width:100%;display:grid;grid-template-columns:${width}px minmax(0,1fr) auto;gap:5px;align-items:center;padding:2px 0 6px;font-family:Georgia,"Times New Roman",serif;color:#000}
+.receipt-logo{width:${width}px;height:${height}px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.receipt-logo img{width:${size}px;height:${size}px;object-fit:contain;display:block}
+.receipt-info{min-width:0}
+.receipt-name{font-size:${nameSize}px;line-height:${nameSize}px;font-weight:700;white-space:nowrap}
+.receipt-subtitle{font-size:${subtitleSize}px;line-height:${subtitleSize + 2}px;font-weight:700;white-space:nowrap}
+.receipt-contact{text-align:right;font-size:${contactSize}px;line-height:${contactSize + 1.8}px;font-weight:600;white-space:nowrap}
+.receipt-divider{width:100%;border-bottom:1px solid #000;margin-top:1px}
+</style>
+
+<div class="receipt-header">
+  <div class="receipt-logo">
+    <img src="YOUR_LOGO_URL_OR_PATH" alt="Clinic Logo">
+  </div>
+
+  <div class="receipt-info">
+    <div class="receipt-name">${escapeHtml($("name").value)}</div>
+    <div class="receipt-subtitle">${escapeHtml($("subtitle").value)}</div>
+  </div>
+
+  <div class="receipt-contact">
+    <div>${escapeHtml($("address").value)}</div>
+    <div>${escapeHtml($("city").value)}</div>
+    ${phoneHTML}
+  </div>
+</div>
+
+<div class="receipt-divider"></div>
+
+<!-- Replace YOUR_LOGO_URL_OR_PATH with the logo uploaded by your POS/Admin settings. -->`;
+}
+
+function update(){
+  const size=+$("logoSize").value, width=+$("logoWidth").value, height=+$("logoHeight").value;
+  const nameSize=+$("nameSize").value, subtitleSize=+$("subtitleSize").value, contactSize=+$("contactSize").value;
+  $("logoSizeVal").textContent=size;
+  $("logoWidthVal").textContent=width;
+  $("logoHeightVal").textContent=height;
+  $("nameSizeVal").textContent=nameSize;
+  $("subtitleSizeVal").textContent=subtitleSize;
+  $("contactSizeVal").textContent=contactSize;
+
+  $("header").style.setProperty("--logo-col",width+"px");
+  $("header").querySelector(".name").style.fontSize=nameSize+"px";
+  $("header").querySelector(".name").style.lineHeight=nameSize+"px";
+  $("header").querySelector(".subtitle").style.fontSize=subtitleSize+"px";
+  $("header").querySelector(".subtitle").style.lineHeight=(subtitleSize+2)+"px";
+  $("header").querySelector(".contact").style.fontSize=contactSize+"px";
+  $("header").querySelector(".contact").style.lineHeight=(contactSize+1.8)+"px";
+  $("header").style.setProperty("--logo-size",size+"px");
+  $("header").style.setProperty("--logo-height",height+"px");
+
+  $("outLogo").src=logoData;
+  $("outName").textContent=$("name").value;
+  $("outSubtitle").textContent=$("subtitle").value;
+  $("outAddress").textContent=$("address").value;
+  $("outCity").textContent=$("city").value;
+  $("outPhones").innerHTML=phones().map(p=>"<div>"+escapeHtml(p)+"</div>").join("");
+  $("code").value=generateCode();
+}
+
+["logoSize","logoWidth","logoHeight","nameSize","subtitleSize","contactSize","name","subtitle","address","city"].forEach(id=>$(id).addEventListener("input",update));
+
+$("logoUpload").onchange=e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{logoData=ev.target.result;update()};
+  reader.readAsDataURL(file);
+};
+
+$("addPhone").onclick=()=>{
+  renderPhones([...phones(),""]);
+  update();
+  const all=$("phones").querySelectorAll("input"); all[all.length-1].focus();
+};
+
+$("copyCode").onclick=async()=>{
+  try{
+    await navigator.clipboard.writeText($("code").value);
+    $("copyCode").textContent="Copied ✓";
+    setTimeout(()=>$("copyCode").textContent="Copy Header Code",1200);
+  }catch(e){
+    $("code").select(); document.execCommand("copy");
+  }
+};
+
+$("downloadCode").onclick=()=>{
+  const blob=new Blob([$("code").value],{type:"text/html;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="receipt-header-80mm.html";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+$("print").onclick=()=>window.print();
+
+$("reset").onclick=()=>{
+  localStorage.removeItem("receiptHeaderBuilder");
+  $("logoSize").value=62;$("logoWidth").value=58;$("logoHeight").value=68;
+  $("nameSize").value=16;$("subtitleSize").value=10;$("contactSize").value=7.2;
+  $("name").value=defaults.name;$("subtitle").value=defaults.subtitle;
+  $("address").value=defaults.address;$("city").value=defaults.city;
+  renderPhones(defaults.phones);logoData=defaultLogo;update();
+};
+
+renderPhones(defaults.phones);update();
+</script>
+</body>
+</html>

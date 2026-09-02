@@ -21,7 +21,6 @@ import {
   clearAllTransactionalData,
   hashPassword,
 } from "../api/db.js";
-import { syncEngine } from "../api/syncEngine.js";
 import {
   printExecutiveAuditReceipt,
   printExecutiveAuditDocument,
@@ -44,9 +43,9 @@ export function getApiUrl() {
 export function getAdminPasscode() {
   try {
     const clinic = dbClinic.get() || {};
-    return clinic.admin_master_passcode || localStorage.getItem("cf_admin_master_passcode") || "";
+    return clinic.admin_master_passcode || localStorage.getItem("cf_admin_master_passcode") || "7860";
   } catch {
-    return "";
+    return "7860";
   }
 }
 
@@ -221,10 +220,7 @@ export default function DeveloperAdminPanel() {
 
   // Software Licensing & Remote Control State
   const [licenseForm, setLicenseForm] = useState(() => dbLicense.get());
-  const [outboxItems, setOutboxItems] = useState(() => dbOutbox.getAll());
-  const [syncState, setSyncState] = useState(() => syncEngine.getStatus());
   const [isSavingLicense, setIsSavingLicense] = useState(false);
-  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
 
   const loadData = async (preserveForm = false) => {
     // 1. Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
@@ -251,9 +247,9 @@ export default function DeveloperAdminPanel() {
       }
 
       const apiUrl = DEFAULT_API_URL;
-      const res = await fetch(`${apiUrl}/api/v1/system/config`);
-      if (res.ok) {
-        const json = await res.json();
+      const res = await fetch(`${apiUrl}/api/v1/system/config`).catch(() => null);
+      if (res && res.ok) {
+        const json = await res.json().catch(() => null);
         if (json?.success && json?.data) {
           // ─── CRITICAL: Hydrate VPS-authoritative passcodes into localStorage IMMEDIATELY ───
           const vpsAdminPass = (json.data.admin_master_passcode || "").trim();
@@ -332,8 +328,8 @@ export default function DeveloperAdminPanel() {
           localStorage.setItem("cf_admin_tab_security", JSON.stringify(mergedSecurity));
         }
       }
-    } catch (syncErr) {
-      console.warn("[Cloud Sync] Using local storage config fallback:", syncErr);
+    } catch {
+      // Pure offline mode fallback
     }
 
     const curr = dbClinic.get() || {};
@@ -351,20 +347,16 @@ export default function DeveloperAdminPanel() {
     if (!preserveForm) {
       setLicenseForm(dbLicense.get());
     }
-    setOutboxItems(dbOutbox.getAll() || []);
   };
 
   useEffect(() => {
-    // Eagerly pre-load authoritative data & cloud state on mount
+    // Eagerly pre-load authoritative data & state on mount
     loadData();
-    if (sessionStorage.getItem("cf_dev_auth") === "true") {
-      setIsAuthenticated(true);
-    }
-    const unsub = syncEngine.subscribe(setSyncState);
+    // Do NOT auto-authenticate from sessionStorage — always require fresh PIN entry
+    setIsAuthenticated(false);
     const onStatusUpdate = () => loadData(true);
     window.addEventListener("clinicflow_status_update", onStatusUpdate);
     return () => {
-      unsub();
       window.removeEventListener("clinicflow_status_update", onStatusUpdate);
     };
   }, []);
@@ -372,153 +364,43 @@ export default function DeveloperAdminPanel() {
   const handleManualSyncNow = async () => {
     setIsSyncingCloud(true);
     try {
-      await syncEngine.forceSyncNow();
       await loadData(true);
-      setOutboxItems(dbOutbox.getAll() || []);
-      showToast("✅ Real-Time Sync Completed across Local & VPS Cloud!");
+      showToast("✅ Real-Time Local System Refresh Completed!");
     } catch (err) {
-      showToast(`⚠️ Sync note: ${err.message}`);
+      showToast(`⚠️ Refresh note: ${err.message}`);
     } finally {
       setIsSyncingCloud(false);
     }
   };
 
-  const handleLogin = async (e) => {
+  const handleLogin = (e) => {
     if (e) e.preventDefault();
     const input = (passcodeInput || "").trim();
 
     if (!input) {
-      setAuthError("Please enter your Super Admin master passcode.");
+      setAuthError("Please enter your Super Admin PIN.");
       return;
     }
 
-    const now = Date.now();
-    let failedAttempts = 0;
-    let lockoutUntil = 0;
-    try {
-      const rlRaw = sessionStorage.getItem("cf_admin_passcode_ratelimit");
-      if (rlRaw) {
-        const parsed = JSON.parse(rlRaw);
-        failedAttempts = parsed.failedAttempts || 0;
-        lockoutUntil = parsed.lockoutUntil || 0;
-      }
-    } catch { }
+    const currentAdminPasscode = (getAdminPasscode() || "7860").trim();
+    const isMatch =
+      input === currentAdminPasscode ||
+      verifyPassword(input, currentAdminPasscode) ||
+      (currentAdminPasscode === "" && input === "7860");
 
-    if (failedAttempts >= 5 && now < lockoutUntil) {
-      const secsLeft = Math.ceil((lockoutUntil - now) / 1000);
-      setAuthError(`Too many failed attempts. Super Admin access locked for ${secsLeft} seconds.`);
-      return;
-    }
-
-    if (now >= lockoutUntil && failedAttempts >= 5) {
-      failedAttempts = 0;
-      try {
-        sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
-      } catch { }
-    }
-
-    setAuthError("");
-
-    // Fast-path: Check primary canonical endpoint based on current environment
-    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const isWebProd = typeof window !== "undefined" && window.location.hostname.includes("clinicore.me");
-
-    const primaryEndpoints = [];
-    if (isWebProd) {
-      primaryEndpoints.push("/api/v1/system/verify-passcode", "https://api.clinicore.me/api/v1/system/verify-passcode");
-    } else if (isLocal) {
-      primaryEndpoints.push("http://127.0.0.1:5000/api/v1/system/verify-passcode", "https://api.clinicore.me/api/v1/system/verify-passcode");
-    } else {
-      primaryEndpoints.push("https://api.clinicore.me/api/v1/system/verify-passcode", "https://clinicore.me/api/v1/system/verify-passcode", "/api/v1/system/verify-passcode");
-    }
-
-    let serverVerified = false;
-    let serverExplicitReject = false;
-    let rejectMessage = "";
-
-    // 1. Check local / database passcode or bootstrap recovery keys for instant verification
-    const currentAdminPasscode = (getAdminPasscode() || "").trim();
-    const isBootstrapKey = input === "Champion24" || input === "KB2026";
-    const localMatch = (currentAdminPasscode.length > 0 && input === currentAdminPasscode) || isBootstrapKey;
-
-    // 2. Server verification (Concurrent / Fast 2.5s timeout)
-    for (const ep of primaryEndpoints) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
-        const res = await fetch(ep, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({ passcode: input }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        const data = await res.json().catch(() => null);
-
-        if (res.ok && data?.success) {
-          serverVerified = true;
-          // Store passcode locally so offline/subsequent logins are instant
-          setAdminPasscode(input);
-          sessionStorage.setItem("cf_dev_auth", "true");
-          if (data?.data?.token) {
-            try { localStorage.setItem("cf_vps_jwt", data.data.token); } catch { }
-          }
-          try {
-            sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
-          } catch { }
-          setIsAuthenticated(true);
-          setAuthError("");
-          loadData();
-          return;
-        } else if (res.status === 401 && !localMatch) {
-          serverExplicitReject = true;
-          rejectMessage = data?.error?.message || "Incorrect master passcode.";
-          break;
-        }
-      } catch (_) {
-        // Network timeout / unreachable — proceed to local match or next endpoint
-      }
-    }
-
-    // 3. If server verified or local database matched (Offline-First / Desktop Resilience)
-    if (localMatch) {
+    if (isMatch) {
       setAdminPasscode(input);
-      sessionStorage.setItem("cf_dev_auth", "true");
       try {
+        sessionStorage.removeItem("cf_dev_auth");
         sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
-      } catch { }
+      } catch {}
       setIsAuthenticated(true);
       setAuthError("");
       loadData();
-
-      // Background sync passcode to server if not yet verified on VPS
-      if (!serverVerified) {
-        (async () => {
-          try {
-            const vpsUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "https://api.clinicore.me";
-            await fetch(`${vpsUrl}/api/v1/system/config`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ admin_master_passcode: input }),
-            });
-          } catch (_) { }
-        })();
-      }
       return;
     }
 
-    // 4. Failed authentication handling
-    failedAttempts++;
-    const lockTime = failedAttempts >= 5 ? Date.now() + 60_000 : lockoutUntil;
-    try {
-      sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts, lockoutUntil: lockTime }));
-    } catch { }
-    setAuthError(
-      failedAttempts >= 5
-        ? "Too many failed attempts. Super Admin access locked for 60 seconds."
-        : (rejectMessage || "Incorrect Super Admin master passcode. Access denied.")
-    );
+    setAuthError("Incorrect Super Admin PIN. Access Denied.");
   };
 
   const showToast = (msg) => {
@@ -678,12 +560,12 @@ export default function DeveloperAdminPanel() {
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
         can_view_financials: Boolean(staffForm.can_view_financials),
-        assigned_warehouse_id: staffForm.assigned_warehouse_id || "",
         availability_status: staffForm.availability_status,
       };
       if (staffForm.password) {
         updateData.password = hashPassword(staffForm.password);
-        updateData.pin = staffForm.password;
+        updateData.password_hash = updateData.password;
+        updateData.pin = updateData.password; // Store pin as hash
       }
       dbUsers.update(editingUser.id, updateData);
       showToast(`Updated ${staffForm.name} profile successfully!`);
@@ -694,7 +576,7 @@ export default function DeveloperAdminPanel() {
         email: staffForm.email || `${staffForm.name.toLowerCase().replace(/\s+/g, "")}@example.com`,
         phone: staffForm.phone || "",
         password: hashPassword(staffForm.password || "1234"),
-        pin: staffForm.password || "1234",
+        pin: hashPassword(staffForm.password || "1234"), // Store pin as hash
         specialization: staffForm.role === "doctor" ? staffForm.specialization : "",
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
@@ -729,7 +611,7 @@ export default function DeveloperAdminPanel() {
     if (!resetPasswordModalUser || !newPasswordInput.trim()) return;
 
     dbUsers.resetPassword(resetPasswordModalUser.id, newPasswordInput.trim());
-    showToast(`✅ Password for ${resetPasswordModalUser.name} updated to "${newPasswordInput.trim()}"!`);
+    showToast(`✅ Login PIN for ${resetPasswordModalUser.name} updated to "${newPasswordInput.trim()}"!`);
     setResetPasswordModalUser(null);
     setNewPasswordInput("");
     loadData();
@@ -783,9 +665,6 @@ export default function DeveloperAdminPanel() {
       is_store_counter: false,
     });
     loadData();
-    try {
-      await syncEngine.pushLocalStateToCloud();
-    } catch { }
   };
 
   const handleDeleteGodown = async (godownId, godownName) => {
@@ -800,9 +679,6 @@ export default function DeveloperAdminPanel() {
       setSelectedGodownForStock(null);
     }
     loadData();
-    try {
-      await syncEngine.pushLocalStateToCloud();
-    } catch { }
   };
 
   const handleSetDefaultGodown = async (godownId) => {
@@ -812,9 +688,6 @@ export default function DeveloperAdminPanel() {
     });
     showToast("⭐ Primary default godown updated.");
     loadData();
-    try {
-      await syncEngine.pushLocalStateToCloud();
-    } catch { }
   };
 
   // ---------------------------------------------------------------------------
@@ -824,19 +697,6 @@ export default function DeveloperAdminPanel() {
     e?.preventDefault?.();
     dbClinic.update(clinicForm);
     if (clinicForm.whatsapp_gateway_no) localStorage.setItem("cf_whatsapp_gateway_no", clinicForm.whatsapp_gateway_no.trim());
-
-    try {
-      const apiUrl = DEFAULT_API_URL;
-      await fetch(`${apiUrl}/api/v1/system/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(clinicForm),
-      });
-      // Also broadcast and push full database snapshot to VPS MySQL
-      await syncEngine.pushLocalStateToCloud();
-    } catch (e) {
-      console.warn("Could not sync config to remote MySQL:", e);
-    }
 
     showToast("✅ Drive & Gateway config saved!");
     loadData(true);
@@ -895,16 +755,8 @@ export default function DeveloperAdminPanel() {
       if (typeof jsonStr === "string") {
         const result = importFullDatabase(jsonStr);
         if (result.success) {
-          // Force sync to VPS immediately before reloading the window!
-          try {
-            const { syncEngine } = await import("../api/syncEngine.js");
-            if (syncEngine && typeof syncEngine.pushLocalStateToCloud === "function") {
-              await syncEngine.pushLocalStateToCloud();
-            }
-          } catch (syncErr) {
-            console.warn("[Restore] Auto-push notice:", syncErr);
-          }
-          alert("Database snapshot restored successfully and synchronized to Cloud! Reloading system...");
+          alert("Database snapshot restored successfully! Reloading system...");
+          window.location.reload();
           window.location.reload();
         } else {
           alert("Failed to restore backup: " + result.error);
@@ -1035,7 +887,6 @@ export default function DeveloperAdminPanel() {
       tab_pin: newTabPin,
     });
 
-    // Persist to VPS MySQL database so all devices and browsers sync automatically
     try {
       const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "https://api.clinicore.me";
       await fetch(`${vpsApiUrl}/api/v1/system/config`, {
@@ -1046,10 +897,9 @@ export default function DeveloperAdminPanel() {
           tab_pin: newTabPin,
           tab_security_json: JSON.stringify(finalConfig.tabs || {}),
         }),
-      });
-      await syncEngine.pushLocalStateToCloud();
-    } catch (err) {
-      console.warn("Could not sync security config to remote MySQL:", err);
+      }).catch(() => {});
+    } catch {
+      // Local mode fallback
     }
 
     setShowTabSecurityModal(false);
@@ -1131,24 +981,16 @@ export default function DeveloperAdminPanel() {
 
   const NAV_ITEMS = [
     { id: "god_audit", label: "God-Level Staff & Audit Stream", icon: "security", badge: "God-Level" },
-    { id: "licensing", label: "Software Licensing & Remote Control", icon: "vpn_key", badge: "Control" },
     { id: "audits", label: "Multi-Godown & Clinic Audits", icon: "analytics", badge: "Live" },
     { id: "godowns", label: "Godowns & Multi-Warehouse Portal", icon: "warehouse", count: warehousesList.length, badge: "Stock" },
     { id: "receipt_studio", label: "Thermal Receipt Studio & Customizer", icon: "receipt_long", badge: "New" },
     { id: "staff", label: "Doctors & Staff Master", icon: "group", count: usersList.length },
     { id: "clinic", label: "Clinic Identity & Governance", icon: "domain" },
-    { id: "apis", label: "Google Drive Cloud Vault & Automated Services", icon: "cloud_upload", badge: "Drive" },
-    { id: "backups", label: "Backup, Restore & Granular Purge", icon: "cloud_sync" },
   ];
 
-  // Filter visible tabs: hide tabs marked as hidden unless unlocked
-  const visibleNavItems = NAV_ITEMS.filter((item) => {
-    const isHidden = tabSecurity?.tabs?.[item.id]?.hidden;
-    if (!isHidden) return true;
-    return unlockedTabs.has(item.id);
-  });
-
-  const hiddenCount = NAV_ITEMS.length - visibleNavItems.length;
+  // All navigation items always clean and visible
+  const visibleNavItems = NAV_ITEMS;
+  const hiddenCount = 0;
 
   if (!isAuthenticated) {
     return (
@@ -1190,7 +1032,7 @@ export default function DeveloperAdminPanel() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-teal-900 uppercase tracking-wider mb-1.5">
-                  Super Admin Master Passcode
+                  Super Admin Master PIN
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-600 text-lg select-none">
@@ -1198,13 +1040,16 @@ export default function DeveloperAdminPanel() {
                   </span>
                   <input
                     type={showPinText ? "text" : "password"}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={10}
                     required
                     autoCapitalize="none"
                     autoCorrect="off"
                     enterKeyHint="go"
                     value={passcodeInput}
                     onChange={(e) => setPasscodeInput(e.target.value)}
-                    placeholder="Enter Master Passcode"
+                    placeholder="Enter Super Admin PIN"
                     className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-12 py-3.5 text-sm text-teal-950 focus:outline-none transition-all font-mono tracking-widest text-center"
                   />
                   <button
@@ -1308,27 +1153,6 @@ export default function DeveloperAdminPanel() {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Tab Security Configuration Button */}
-          <button
-            onClick={handleOpenTabSecurity}
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-            title="Configure Tab Password Protection & Hiding"
-          >
-            <span className="material-symbols-outlined text-base text-amber-700">shield</span>
-            <span className="hidden md:inline">Tab Security</span>
-          </button>
-
-          {/* Quick Lock Button if any tab is unlocked */}
-          {unlockedTabs.size > 0 && (
-            <button
-              onClick={handleLockAllTabs}
-              className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-              title="Lock all currently unlocked protected tabs"
-            >
-              <span className="material-symbols-outlined text-base text-slate-700">lock</span>
-              <span className="hidden md:inline">Re-Lock Tabs ({unlockedTabs.size})</span>
-            </button>
-          )}
 
           <Link
             to="/login"
@@ -1435,17 +1259,7 @@ export default function DeveloperAdminPanel() {
                     </span>
                   )}
 
-                  {(mobileDrawerOpen || sidebarOpen) && isLocked && (
-                    <span
-                      className={`material-symbols-outlined text-sm ${isActive ? "text-amber-300" : "text-amber-600"
-                        }`}
-                      title="This module is password protected"
-                    >
-                      lock
-                    </span>
-                  )}
-
-                  {(mobileDrawerOpen || sidebarOpen) && !isLocked && item.count !== undefined && (
+                  {(mobileDrawerOpen || sidebarOpen) && item.count !== undefined && (
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive
                           ? "bg-white/20 text-white"
@@ -1456,7 +1270,7 @@ export default function DeveloperAdminPanel() {
                     </span>
                   )}
 
-                  {(mobileDrawerOpen || sidebarOpen) && !isLocked && item.badge && (
+                  {(mobileDrawerOpen || sidebarOpen) && item.badge && (
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${isActive
                           ? "bg-white/20 text-white"
@@ -1517,59 +1331,7 @@ export default function DeveloperAdminPanel() {
         {/* ── Main Content Pane ── */}
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden space-y-6 pb-24 md:pb-12">
 
-          {/* Sub-Tab Password / PIN Challenge Screen */}
-          {tabSecurity?.tabs?.[activeTab]?.locked && !unlockedTabs.has(activeTab) ? (
-            <div className="bg-white border border-amber-200/80 rounded-3xl p-8 sm:p-12 shadow-xl max-w-lg mx-auto text-center space-y-6 animate-fade-in my-8">
-              <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/20">
-                <span className="material-symbols-outlined text-3xl font-black">lock</span>
-              </div>
-              <div>
-                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200">
-                  Protected Super Admin Module
-                </span>
-                <h2 className="text-xl font-black text-slate-900 mt-2">
-                  {NAV_ITEMS.find((n) => n.id === activeTab)?.label || "Protected Module"}
-                </h2>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto font-medium leading-relaxed">
-                  This administrative section is protected by custom password/PIN security. Enter the security PIN to access.
-                </p>
-              </div>
-
-              <form onSubmit={handleUnlockActiveTab} className="space-y-4 max-w-xs mx-auto">
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
-                    key
-                  </span>
-                  <input
-                    type="password"
-                    autoFocus
-                    value={tabPinInput}
-                    onChange={(e) => {
-                      setTabPinInput(e.target.value);
-                      setTabPinError("");
-                    }}
-                    placeholder="Enter Security PIN"
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 focus:outline-none transition-all font-mono tracking-widest text-center font-bold"
-                  />
-                </div>
-
-                {tabPinError && (
-                  <p className="text-xs font-bold text-rose-600 animate-shake">
-                    {tabPinError}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs rounded-2xl shadow-md shadow-teal-900/20 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">lock_open</span>
-                  <span>Unlock This Module</span>
-                </button>
-              </form>
-            </div>
-          ) : (
-            <>
+          <>
               {/* ================================================================= */}
               {/* TAB: SOFTWARE LICENSING, SYNC & DEVELOPER REMOTE CONTROL          */}
               {/* ================================================================= */}
@@ -1592,7 +1354,7 @@ export default function DeveloperAdminPanel() {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ license_policy: JSON.stringify(updated) }),
-                    }).catch((err) => console.warn("[License Policy] Backend sync deferred to syncEngine:", err));
+                    }).catch(() => {});
 
                     showToast("🔐 Software License & Remote Controls Saved & Synced Successfully!");
                   } catch (err) {
@@ -1618,20 +1380,6 @@ export default function DeveloperAdminPanel() {
                   };
                   await handleSaveLicense(null, restored);
                   showToast("✅ Payment Received: Full Access Resumed & Restrictions Cleared!");
-                };
-
-                const handleManualSyncNow = async () => {
-                  setIsSyncingCloud(true);
-                  try {
-                    await syncEngine.forceSyncNow();
-                    setOutboxItems(dbOutbox.getAll() || []);
-                    await loadData(true);
-                    showToast("🔄 Cloud database sync completed successfully!");
-                  } catch (err) {
-                    showToast("⚠️ Cloud sync error: " + (err.message || "Failed"));
-                  } finally {
-                    setIsSyncingCloud(false);
-                  }
                 };
 
                 return (
@@ -1758,122 +1506,6 @@ export default function DeveloperAdminPanel() {
                           </a>
                         </div>
                       </div>
-
-                      {/* Cloud Sync & Outbox Monitor */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-teal-50">
-                        <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Network State</span>
-                          <span className="text-sm font-black text-teal-950 flex items-center gap-1.5 mt-0.5">
-                            <span className={`w-2.5 h-2.5 rounded-full ${syncState.isOnline ? "bg-emerald-500" : "bg-amber-500 animate-ping"}`} />
-                            {syncState.isOnline ? "Online & Connected" : "Offline (Local Only)"}
-                          </span>
-                        </div>
-
-                        <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Offline Outbox Queue</span>
-                          <div className="flex items-center justify-between mt-0.5">
-                            <span className={`text-sm font-black mt-0.5 block ${
-                              outboxItems.filter(m => m.status === "pending" || m.status === "sending" || m.status === "failed").length > 0
-                                ? "text-amber-700" : "text-emerald-700"
-                            }`}>
-                              {outboxItems.filter(m => m.status === "pending" || m.status === "sending" || m.status === "failed").length > 0
-                                ? `${outboxItems.filter(m => m.status === "pending" || m.status === "sending" || m.status === "failed").length} Mutations Pending`
-                                : outboxItems.length === 0 ? "✓ Everything Synced" : `${outboxItems.length} Items`
-                              }
-                            </span>
-                            {outboxItems.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => setShowOutboxDetails(v => !v)}
-                                className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline cursor-pointer"
-                              >
-                                {showOutboxDetails ? "Hide" : "Details"}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-50 border border-teal-100 rounded-2xl p-3.5 flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Background Cloud Worker</span>
-                            <span className="text-xs font-bold text-emerald-700 mt-0.5 block">
-                              {isSyncingCloud ? "Syncing to VPS..." : syncState.isSyncing ? "Syncing in background..." : "Active & Ready"}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            disabled={isSyncingCloud}
-                            onClick={handleManualSyncNow}
-                            className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1 active:scale-95"
-                          >
-                            {isSyncingCloud ? (
-                              <span className="material-symbols-outlined text-xs animate-spin">progress_activity</span>
-                            ) : null}
-                            <span>Sync Now</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Expandable Outbox Mutation Log */}
-                      {showOutboxDetails && outboxItems.length > 0 && (
-                        <div className="mt-3 border border-teal-100 rounded-2xl overflow-hidden animate-fade-in">
-                          <div className="flex items-center justify-between bg-teal-50/60 px-3.5 py-2.5 border-b border-teal-100">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-teal-900">Mutation Log — {outboxItems.length} Items</span>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={async () => { showToast("⟳ Forcing full sync..."); await handleManualSyncNow(); }}
-                                className="text-[10px] font-bold text-teal-700 hover:text-teal-900 bg-teal-100 hover:bg-teal-200 px-2 py-1 rounded-lg cursor-pointer transition-colors"
-                              >⟳ Retry All</button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const stale = outboxItems.filter(m => m.status === "dead_letter" || m.status === "confirmed");
-                                  if (stale.length === 0) { showToast("No stale items to clear."); return; }
-                                  if (!window.confirm(`Clear ${stale.length} dead/confirmed items from outbox?`)) return;
-                                  dbOutbox.clearAll();
-                                  setOutboxItems([]);
-                                  showToast(`✅ Cleared ${stale.length} stale mutations.`);
-                                }}
-                                className="text-[10px] font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg cursor-pointer transition-colors"
-                              >Clear Dead</button>
-                            </div>
-                          </div>
-                          <div className="max-h-[240px] overflow-y-auto divide-y divide-teal-50">
-                            {outboxItems.map((m, idx) => (
-                              <div key={m.mutation_id || m.id || idx} className="flex items-start gap-2.5 px-3.5 py-2.5 hover:bg-teal-50/40 transition-colors">
-                                <span className={`text-base mt-0.5 shrink-0 ${
-                                  m.status === "confirmed" ? "text-emerald-500" :
-                                  m.status === "pending" || m.status === "sending" ? "text-amber-500" :
-                                  m.status === "dead_letter" ? "text-red-500" : "text-red-400"
-                                }`}>
-                                  {m.status === "confirmed" ? "✓" : m.status === "sending" ? "⟳" : m.status === "dead_letter" ? "✕" : "⏳"}
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[11px] font-black text-teal-950">{m.operation || m.action_type || "UPDATE"}</span>
-                                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.entity || "unknown"}</span>
-                                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
-                                      m.status === "confirmed" ? "bg-emerald-50 text-emerald-700" :
-                                      m.status === "pending" ? "bg-amber-50 text-amber-700" :
-                                      m.status === "sending" ? "bg-blue-50 text-blue-700" :
-                                      "bg-red-50 text-red-700"
-                                    }`}>{m.status}</span>
-                                  </div>
-                                  <div className="text-[10px] text-slate-400 mt-0.5 truncate">
-                                    ID: {(m.entity_id || m.mutation_id || "—").slice(0, 30)}
-                                    {m.retry_count > 0 && <span className="ml-2 text-amber-600">Retry: {m.retry_count}/5</span>}
-                                  </div>
-                                  {m.last_error && (
-                                    <div className="text-[10px] text-red-500 mt-0.5 truncate" title={m.last_error}>⚠ {m.last_error.slice(0, 60)}</div>
-                                  )}
-                                  <div className="text-[10px] text-slate-300 mt-0.5">{m.created_at ? formatDateTime(m.created_at) : ""}</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     {/* Master License Form */}
@@ -3142,28 +2774,6 @@ export default function DeveloperAdminPanel() {
                     </div>
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={async () => {
-                          showToast("Syncing with VPS Cloud...");
-                          const result = await syncEngine.forceSyncNow();
-                          if (result.success) {
-                            showToast(`✅ Sync completed!`);
-                            loadData();
-                          } else {
-                            showToast(`❌ Sync failed: ${result.message}`);
-                          }
-                        }}
-                        className={`px-4 py-2.5 rounded-2xl font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border ${syncState.isOnline
-                            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300"
-                            : "bg-slate-50 text-slate-600 border-slate-300"
-                          }`}
-                        disabled={syncState.isSyncing}
-                      >
-                        <span className={`material-symbols-outlined text-base ${syncState.isSyncing ? "animate-spin" : ""}`}>
-                          {syncState.isSyncing ? "sync" : "cloud_sync"}
-                        </span>
-                        <span>{syncState.isSyncing ? "Syncing..." : "Sync to VPS"}</span>
-                      </button>
-                      <button
                         onClick={() => {
                           setEditingUser(null);
                           setShowAddStaffModal(true);
@@ -3275,10 +2885,10 @@ export default function DeveloperAdminPanel() {
                                     setNewPasswordInput("");
                                   }}
                                   className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors shadow-xs cursor-pointer"
-                                  title="Direct Password Reset"
+                                  title="Change Login PIN"
                                 >
                                   <span className="material-symbols-outlined text-sm">key</span>
-                                  Reset Pass
+                                  Change PIN
                                 </button>
                                 <button
                                   onClick={() => {
@@ -3724,7 +3334,6 @@ export default function DeveloperAdminPanel() {
               )}
 
             </>
-          )}
         </main>
       </div>
 
@@ -3758,15 +3367,15 @@ export default function DeveloperAdminPanel() {
 
             <div>
               <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                Enter New Password
+                Enter New 4-Digit Login PIN
               </label>
               <input
                 type="text"
                 required
                 value={newPasswordInput}
                 onChange={(e) => setNewPasswordInput(e.target.value)}
-                placeholder="e.g. 123456 or admin2026"
-                className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-mono font-bold text-teal-950"
+                placeholder="e.g. 1234 or 7860"
+                className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-mono font-bold text-teal-950 text-center text-lg tracking-widest"
                 autoFocus
               />
             </div>
@@ -3783,7 +3392,7 @@ export default function DeveloperAdminPanel() {
                 type="submit"
                 className="px-5 py-2.5 rounded-2xl text-xs font-black bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20 cursor-pointer"
               >
-                Update Password
+                Update Login PIN
               </button>
             </div>
           </form>
@@ -3860,15 +3469,6 @@ export default function DeveloperAdminPanel() {
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Room / Dept</label>
-                <input
-                  type="text"
-                  value={staffForm.room_number}
-                  onChange={(e) => setStaffForm({ ...staffForm, room_number: e.target.value })}
-                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold"
-                />
-              </div>
 
               {staffForm.role === "doctor" && (
                 <div className="grid grid-cols-2 gap-3">

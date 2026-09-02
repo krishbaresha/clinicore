@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { dbSales, dbInventory, dbParties, dbAccounts, dbClinic, dbGrnMetadata } from "../api/db.js";
+import { dbSales, dbInventory, dbParties, dbAccounts, dbClinic, dbGrnMetadata, dbVisits, dbPatients } from "../api/db.js";
 import { printSaleInvoiceReceipt } from "../utils/thermalPrinter.js";
+import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
+import { RECEIPT_HEADER_IMAGE_BASE64 } from "../utils/receiptHeaderBase64.js";
+import { useAuth } from "../hooks/useAuth.js";
 
 /**
  * Expandable Combobox with built-in instant search and tall scrollable dropdown (DrCreate / MS Access Style)
@@ -173,7 +176,10 @@ function ExpandableCombobox({
   );
 }
 
-export default function SaleInvoiceModal({ isOpen, onClose }) {
+export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = false, onSave }) {
+  const authContext = useAuth();
+  const activeUser = authContext?.user?.name || authContext?.user?.username || "Admin Staff";
+
   const [inventoryList, setInventoryList] = useState([]);
   const [partiesList, setPartiesList] = useState([]);
   const [accountsList, setAccountsList] = useState([]);
@@ -189,12 +195,21 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
   const [showNewTransportInput, setShowNewTransportInput] = useState(false);
   const [newTransportText, setNewTransportText] = useState("");
 
+  const [billingType, setBillingType] = useState("patient"); // "patient" | "wholesale_party"
+
+  // Salesman PIN Verification Challenge Modal State
+  const [pendingSalesmanStaff, setPendingSalesmanStaff] = useState(null);
+  const [showSalesmanPinModal, setShowSalesmanPinModal] = useState(false);
+  const [salesmanPinInput, setSalesmanPinInput] = useState("");
+  const [salesmanPinError, setSalesmanPinError] = useState("");
+
   const [saleForm, setSaleForm] = useState({
     date: new Date().toLocaleDateString("en-US"),
-    voucher_no: "S-6218",
+    voucher_no: "Inv-1000",
     grn_no: "0",
-    reference: "",
+    reference: activeUser || "",
     account_name: "",
+    token_no: "",
     buyer_id: "",
     naration: "",
     party_type: "",
@@ -218,20 +233,27 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
     rate: "",
     gross: "",
     disc_pct: "40",
-    disc_flat: "0",
-    net_amount: "",
   });
 
   const [saleItems, setSaleItems] = useState([]);
   const [showListModal, setShowListModal] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [historyFilterMode, setHistoryFilterMode] = useState("All");
+  const [showNewPartyModal, setShowNewPartyModal] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
+  const [todayVisits, setTodayVisits] = useState([]);
 
   const productCodeInputRef = useRef(null);
   const qtyInputRef = useRef(null);
+  const rateInputRef = useRef(null);
+  const customerNameInputRef = useRef(null);
+  const partyCodeInputRef = useRef(null);
+  const cityInputRef = useRef(null);
+  const biltyInputRef = useRef(null);
+  const discPctInputRef = useRef(null);
+  const discFlatInputRef = useRef(null);
   const saleItemsEndRef = useRef(null);
   const tableContainerRef = useRef(null);
-
 
   const refreshData = () => {
     setInventoryList(dbInventory.getAll());
@@ -241,11 +263,53 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
     setReferencesList(dbGrnMetadata.getReferences());
     setTransportsList(dbGrnMetadata.getTransports());
     setSalesHistory(dbSales.getAll());
+    setTodayVisits(dbVisits.getTodayAll());
 
     setSaleForm((prev) => ({
       ...prev,
-      voucher_no: dbSales.getNextVoucherNo(),
+      voucher_no: dbSales.getNextVoucherNo(billingType),
     }));
+  };
+
+  useEffect(() => {
+    setSaleForm((prev) => ({
+      ...prev,
+      voucher_no: dbSales.getNextVoucherNo(billingType),
+    }));
+  }, [billingType]);
+
+  const handleSelectTodayPatient = (visitId) => {
+    if (!visitId) return;
+    const visit = todayVisits.find((v) => v.id === visitId);
+    if (visit) {
+      setSaleForm((prev) => ({
+        ...prev,
+        account_name: visit.patient_name || "",
+        token_no: String(visit.token_number || ""),
+        visit_id: visit.id,
+        patient_id: visit.patient_id,
+      }));
+    }
+  };
+
+  const handleTokenNumberChange = (val) => {
+    setSaleForm((prev) => ({ ...prev, token_no: val }));
+    if (!val || !val.trim()) return;
+    const num = parseInt(val.replace(/\D/g, ""), 10);
+    if (!num) return;
+    
+    // Check in today's visits list
+    const matchedVisit = todayVisits.find((v) => Number(v.token_number) === num) || dbVisits.getTodayAll().find((v) => Number(v.token_number) === num);
+    if (matchedVisit) {
+      const pat = matchedVisit.patient_id ? dbPatients.getById(matchedVisit.patient_id) : null;
+      const patientFullName = matchedVisit.patient_name || pat?.full_name || pat?.name || "Patient";
+      setSaleForm((prev) => ({
+        ...prev,
+        account_name: patientFullName,
+        visit_id: matchedVisit.id,
+        patient_id: matchedVisit.patient_id,
+      }));
+    }
   };
 
   const handlePartyCodeChange = (code) => {
@@ -264,10 +328,10 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
   };
 
   const matchedParty = useMemo(() => {
-    if (!saleForm.account_name) return null;
+    if (billingType !== "wholesale_party" || !saleForm.account_name) return null;
     const lower = saleForm.account_name.toLowerCase().trim();
-    return partiesList.find((p) => p.name.toLowerCase().trim() === lower) || null;
-  }, [partiesList, saleForm.account_name]);
+    return partiesList.find((p) => p.name && p.name.toLowerCase().trim() === lower) || null;
+  }, [partiesList, saleForm.account_name, billingType]);
 
   useEffect(() => {
     if (isOpen) {
@@ -376,6 +440,13 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
     if (party?.code || party?.account_code) {
       setPartyCodeSearch(party.code || party.account_code);
     }
+  };
+
+  const handleSelectSalesman = (staffName) => {
+    setSaleForm((prev) => ({
+      ...prev,
+      reference: staffName || "",
+    }));
   };
 
   // Product Code Auto-Lookup
@@ -522,12 +593,15 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
     setSaleItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const posServiceFee = billingType === "patient" ? 1 : 0;
+
   const totalBillCalculated = useMemo(() => {
     const subtotal = saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
     const extraDisc = Number(saleForm.extra_bill_discount) || 0;
     const freight = Number(saleForm.freight_charges) || 0;
-    return Math.max(0, subtotal - extraDisc + freight);
-  }, [saleItems, saleForm.extra_bill_discount, saleForm.freight_charges]);
+    const posFee = billingType === "patient" ? 1 : 0;
+    return Math.max(0, subtotal - extraDisc + freight + posFee);
+  }, [saleItems, saleForm.extra_bill_discount, saleForm.freight_charges, billingType]);
 
   const handleAddNewReference = () => {
     if (!newRefText.trim()) return;
@@ -551,11 +625,13 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
   const handleSaveSaleBill = (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (saleItems.length === 0) {
-      alert("Please add at least 1 medicine item to the sale cart.");
+      setSaveSuccessMsg("❌ Please add at least 1 medicine item to the sale cart.");
+      setTimeout(() => setSaveSuccessMsg(""), 3500);
       return;
     }
     if (!saleForm.account_name.trim()) {
-      alert("Please select or enter Customer Account Name.");
+      setSaveSuccessMsg("❌ Please select or enter Customer / Patient Account Name.");
+      setTimeout(() => setSaveSuccessMsg(""), 3500);
       return;
     }
 
@@ -570,11 +646,13 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
       subtotal: itemsSubtotal,
       extra_discount: extraDisc,
       freight_charges: freight,
+      pos_service_fee: posServiceFee,
       total_amount: grandTotal,
       paid_amount: saleForm.payment_mode === "Cash" ? grandTotal : 0,
       balance_due: saleForm.payment_mode === "Credit" ? grandTotal : 0,
     });
 
+    // ✅ Trigger print FIRST (non-blocking iframe), then reset state
     const clinic = dbClinic.get();
     try {
       printSaleInvoiceReceipt(createdSale, clinic);
@@ -582,23 +660,35 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
       console.warn("Print error:", err);
     }
 
-    alert(`✅ Sale Invoice ${createdSale.voucher_no} saved successfully! Stock deducted and ledger updated.`);
+    // Non-blocking success toast (no alert() which would block print dialog)
+    setSaveSuccessMsg(`✅ Invoice ${createdSale.voucher_no} saved! Printing...`);
+    setTimeout(() => setSaveSuccessMsg(""), 4000);
+
     setSaleItems([]);
     setSaleForm((prev) => ({
       ...prev,
       voucher_no: dbSales.getNextVoucherNo(),
+      account_name: "",
+      token_no: "",
+      buyer_id: "",
+      naration: "",
+      party_type: "",
+      payment_mode: "Cash",
+      transport: "",
+      bilty_no: "",
       extra_bill_discount: "0",
       freight_charges: "0",
     }));
     setPartyCodeSearch("");
     refreshData();
+    if (onSave) onSave(createdSale);
   };
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl border border-emerald-300 overflow-hidden my-auto flex flex-col max-h-[92vh]">
+  const modalBody = (
+    <>
+      <div className={`bg-white w-full ${isPage ? 'rounded-3xl shadow-xl border border-emerald-300' : 'max-w-7xl rounded-3xl shadow-2xl border border-emerald-300 my-auto max-h-[95vh]'} overflow-hidden flex flex-col`}>
         {/* Visual Green Gradient Header */}
         <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 p-4 sm:p-5 text-white flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
@@ -643,540 +733,821 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
           </div>
-        </div>
-
-        {/* Scrollable Form Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
-          {/* Section 1: Basic Info */}
-          <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 space-y-3.5">
-            <div className="text-xs font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-base text-emerald-700">receipt_long</span>
-              Sale Invoice &amp; Customer Details (انوائس اور گاہک کی تفصیل)
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              {/* Date */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">Invoice Date (تاریخ)</label>
-                <input
-                  type="text"
-                  value={saleForm.date}
-                  onChange={(e) => setSaleForm({ ...saleForm, date: e.target.value })}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
-                />
-              </div>
-
-              {/* Sale Invoice # */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">Sale Invoice # (انوائس نمبر)</label>
-                <input
-                  type="text"
-                  value={saleForm.voucher_no}
-                  readOnly
-                  className="w-full bg-emerald-100/70 border border-emerald-300 text-emerald-900 rounded-xl px-3 py-2 text-xs font-black tracking-wider"
-                />
-              </div>
-
-              {/* Manual Bill # */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">Manual Bill # (دستی بل نمبر)</label>
-                <input
-                  type="text"
-                  value={saleForm.grn_no}
-                  onChange={(e) => setSaleForm({ ...saleForm, grn_no: e.target.value })}
-                  placeholder="Optional manual ref"
-                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
-                />
-              </div>
-
-              {/* Salesman / Reference with + New */}
-              <div>
-                {showNewRefInput ? (
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">New Salesman / Booker</label>
-                    <div className="flex gap-1">
-                      <input
-                        type="text"
-                        value={newRefText}
-                        onChange={(e) => setNewRefText(e.target.value)}
-                        placeholder="e.g. Asif Raza, Imran..."
-                        className="flex-1 bg-white border border-emerald-400 rounded-xl px-2 py-1.5 text-xs font-bold"
-                        autoFocus
-                        onKeyDown={(e) => e.key === "Enter" && handleAddNewReference()}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddNewReference}
-                        className="bg-emerald-600 text-white px-2 py-1.5 rounded-xl font-black text-xs"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowNewRefInput(false)}
-                        className="bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl font-bold text-xs"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+        </div>        {/* Scrollable Workspace with Real-Time Thermal Receipt Preview Grid */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/50">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            {/* Left Main Form Column (8 cols on XL screens) */}
+            <div className="xl:col-span-8 space-y-5">
+              {/* Section 1: Basic Info */}
+              <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 space-y-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200 pb-2.5">
+                  <div className="text-xs font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-base text-emerald-700">receipt_long</span>
+                    Sale Invoice &amp; Customer Details (انوائس اور گاہک کی تفصیل)
                   </div>
-                ) : (
-                  <ExpandableCombobox
-                    label="Salesman / Order Booker (سیلز مین / آرڈر بکر)"
-                    value={saleForm.reference}
-                    onChange={(val) => setSaleForm({ ...saleForm, reference: val })}
-                    options={referenceOptions}
-                    placeholder="Select or Type Salesman..."
-                    searchPlaceholder="Search or type new Salesman..."
-                    onAddNew={() => setShowNewRefInput(true)}
-                    addNewLabel="+ New Salesman"
-                  />
-                )}
-              </div>
 
-              {/* Quick Party Code Auto-Fill */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-amber-900">
-                    <span className="material-symbols-outlined text-sm text-amber-600">bolt</span>
-                    Party Code
-                  </span>
-                  {partyCodeSearch && (
-                    <span className="text-[10px] text-emerald-700 font-bold">✓ Linked</span>
-                  )}
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={partyCodeSearch}
-                    onChange={(e) => handlePartyCodeChange(e.target.value)}
-                    placeholder="e.g. 001, Muslim"
-                    className="w-full bg-amber-50/70 border border-amber-300 rounded-xl px-3 py-2 text-xs font-mono font-black text-amber-950 uppercase tracking-wider focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                  />
-                  {partyCodeSearch && (
+                  {/* Billing Mode Switcher (Patient vs Wholesale B2B Party) */}
+                  <div className="inline-flex bg-emerald-100/90 p-0.5 rounded-xl text-xs font-bold border border-emerald-300 shadow-xs">
                     <button
                       type="button"
-                      onClick={() => handlePartyCodeChange("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
-                      title="Clear Code"
+                      onClick={() => setBillingType("patient")}
+                      className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        billingType === "patient"
+                          ? "bg-emerald-800 text-white shadow-xs"
+                          : "text-emerald-900 hover:text-emerald-950"
+                      }`}
                     >
-                      <span className="material-symbols-outlined text-xs">close</span>
+                      👤 Patient / Walk-In Customer
                     </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Customer Account Name */}
-              <div className="sm:col-span-2">
-                <ExpandableCombobox
-                  label="Customer / Medical Store Party (گاہک / میڈیکل اسٹور کا نام)"
-                  value={saleForm.account_name}
-                  onChange={handleSelectAccount}
-                  options={accountOptions}
-                  placeholder="Select or Search Customer Party..."
-                  searchPlaceholder="Search 260+ Parties & Accounts..."
-                  required={true}
-                />
-              </div>
-
-              {/* Naration */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">Naration</label>
-                <input
-                  type="text"
-                  value={saleForm.naration}
-                  onChange={(e) => setSaleForm({ ...saleForm, naration: e.target.value })}
-                  placeholder="e.g. Dharki (0300-3266572) LED"
-                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
-                />
-              </div>
-
-              {/* Type (City) */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">Type (City / Route)</label>
-                <input
-                  type="text"
-                  value={saleForm.party_type}
-                  onChange={(e) => setSaleForm({ ...saleForm, party_type: e.target.value })}
-                  placeholder="e.g. DHARKI, HYD"
-                  className="w-full bg-gray-100 border border-gray-300 rounded-xl px-3 py-2 text-xs font-black text-gray-700"
-                />
-              </div>
-
-              {/* Matched Party Udhaar Banner */}
-              {matchedParty && (
-                <div className="col-span-1 sm:col-span-2 md:col-span-4 bg-amber-50/90 border border-amber-300 rounded-2xl p-3 flex flex-wrap items-center justify-between text-xs text-amber-950 gap-2 shadow-xs animate-fadeIn">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg text-amber-700">account_balance_wallet</span>
-                    <span className="font-bold">
-                      Party: <strong className="font-mono bg-white px-2 py-0.5 rounded-lg border border-amber-300 text-amber-900">#{matchedParty.party_code || matchedParty.id}</strong> — {matchedParty.name} ({matchedParty.city || "Sindh"})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-bold text-slate-700">
-                      Current Udhaar / Ledger Due: <strong className="text-rose-700 font-black text-sm">Rs. {Number(matchedParty.current_balance || matchedParty.balance_due || 0).toLocaleString()}</strong>
-                    </span>
-                    <span className="text-[10px] bg-amber-700 text-white px-2.5 py-0.5 rounded-full font-black">
-                      ⚡ Live Ledger Sync
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Payment Mode Radio Toggle & Company Filter */}
-              <div className="sm:col-span-2 flex flex-wrap items-center gap-4 bg-white p-2.5 rounded-xl border border-gray-200">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Payment Mode</label>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer text-gray-800">
-                      <input
-                        type="radio"
-                        name="payment_mode"
-                        value="Credit"
-                        checked={saleForm.payment_mode === "Credit"}
-                        onChange={() => setSaleForm({ ...saleForm, payment_mode: "Credit" })}
-                        className="text-rose-600 focus:ring-rose-500 w-3.5 h-3.5"
-                      />
-                      Credit (Udhaar)
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer text-gray-800">
-                      <input
-                        type="radio"
-                        name="payment_mode"
-                        value="Cash"
-                        checked={saleForm.payment_mode === "Cash"}
-                        onChange={() => setSaleForm({ ...saleForm, payment_mode: "Cash" })}
-                        className="text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
-                      />
-                      Cash
-                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setBillingType("wholesale_party")}
+                      className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        billingType === "wholesale_party"
+                          ? "bg-amber-800 text-white shadow-xs"
+                          : "text-amber-900 hover:text-amber-950"
+                      }`}
+                    >
+                      🏢 Wholesale B2B Party
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex-1 min-w-[160px]">
-                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Filter Brand / Company</label>
-                  <select
-                    value={selectedCompany}
-                    onChange={(e) => setSelectedCompany(e.target.value)}
-                    className="w-full bg-gray-50 border border-emerald-300 rounded-xl px-2.5 py-1.5 text-xs font-black text-emerald-900 focus:border-emerald-500"
-                  >
-                    {companyOptions.map((c) => (
-                      <option key={c} value={c}>{c === "All" ? "🏢 All Companies / Brands" : `🏢 ${c}`}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Transport Carrier */}
-              <div className="sm:col-span-2">
-                {showNewTransportInput ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                  {/* Date (Locked) */}
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">New Transport Carrier</label>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={newTransportText}
-                        onChange={(e) => setNewTransportText(e.target.value)}
-                        placeholder="e.g. Ali Raza By Hand..."
-                        className="flex-1 bg-white border border-emerald-400 rounded-xl px-2.5 py-1.5 text-xs font-bold"
-                        autoFocus
-                        onKeyDown={(e) => e.key === "Enter" && handleAddNewTransport()}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddNewTransport}
-                        className="bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl font-black text-xs"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowNewTransportInput(false)}
-                        className="bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl font-bold text-xs"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Invoice Date (تاریخ) (Locked)</label>
+                    <input
+                      type="text"
+                      readOnly={true}
+                      value={saleForm.date}
+                      className="w-full bg-gray-100 border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-600 font-sans"
+                    />
                   </div>
-                ) : (
-                  <ExpandableCombobox
-                    label="Transport"
-                    value={saleForm.transport}
-                    onChange={(val) => setSaleForm({ ...saleForm, transport: val })}
-                    options={transportOptions}
-                    placeholder="Select Transport..."
-                    searchPlaceholder="Search Transport..."
-                    onAddNew={() => setShowNewTransportInput(true)}
-                    addNewLabel="+ New Carrier"
-                  />
-                )}
-              </div>
 
-              {/* Bilty # */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">Bilty#</label>
-                <input
-                  type="text"
-                  value={saleForm.bilty_no}
-                  onChange={(e) => setSaleForm({ ...saleForm, bilty_no: e.target.value })}
-                  placeholder="0000"
-                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
-                />
-              </div>
-            </div>
-          </div>
+                  {/* Voucher / Invoice # (Locked Inv- Prefix) */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-950 mb-1">Sale Invoice # (انوائس نمبر)</label>
+                    <input
+                      type="text"
+                      readOnly={true}
+                      value={saleForm.voucher_no}
+                      className="w-full bg-emerald-100/80 border border-emerald-300 rounded-xl px-3 py-2 text-xs font-black text-emerald-950 font-mono tracking-wider"
+                    />
+                  </div>
 
-          {/* Section 2: Cart Detail (Fast Line Item Add Bar) */}
-          <div className="bg-teal-50/60 border border-teal-200 rounded-2xl p-4 space-y-3">
-            <div className="text-xs font-black text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
-              Cart Detail (Fast Keyboard Entry &amp; Product Code Auto-Lookup)
-            </div>
+                  {/* Patient / Retail Customer Mode Layout */}
+                  {billingType === "patient" ? (
+                    <>
+                      {/* Select Today's OPD Patient Dropdown */}
+                      <div className="col-span-1 sm:col-span-2 md:col-span-4 bg-teal-50/80 border border-teal-300 rounded-2xl p-3 space-y-1">
+                        <label className="block text-[11px] font-black text-teal-950 mb-1 flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm text-teal-700">badge</span>
+                            Select Today's OPD Patient (آج کے OPD مریض کا ٹوکن منتخب کریں)
+                          </span>
+                          <span className="text-[10px] bg-teal-800 text-white px-2 py-0.5 rounded-full font-bold">
+                            {todayVisits.length} Patients Today
+                          </span>
+                        </label>
+                        <select
+                          onChange={(e) => handleSelectTodayPatient(e.target.value)}
+                          className="w-full bg-white border border-teal-400 rounded-xl px-3 py-2 text-xs font-bold text-teal-950 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 cursor-pointer"
+                        >
+                          <option value="">-- 🔍 Select Patient from Today's OPD Queue --</option>
+                          {todayVisits.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              🎟️ Token #{v.token_number} — {v.patient_name || "Patient"} {v.doctor_name ? `(${v.doctor_name})` : ""} [{v.status === "completed" ? "✓ Doctor Seen" : v.status}]
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-12 gap-2.5 items-end">
-              {/* Product Code */}
-              <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-gray-600 mb-1">Product Code</label>
-                <input
-                  ref={productCodeInputRef}
-                  type="text"
-                  value={saleCart.product_code}
-                  onChange={(e) => handleProductCodeChange(e.target.value)}
-                  placeholder="e.g. BM-01"
-                  className="w-full bg-white border border-teal-400 rounded-xl px-2.5 py-2 text-xs font-mono font-bold text-gray-900 text-center focus:border-teal-600 focus:ring-1 focus:ring-teal-500"
-                />
-              </div>
+                      {/* Customer / Patient Name Input */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          Customer / Patient Name (گاہک یا مریض کا نام) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          ref={customerNameInputRef}
+                          type="text"
+                          required={true}
+                          value={saleForm.account_name}
+                          onChange={(e) => setSaleForm({ ...saleForm, account_name: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              productCodeInputRef.current?.focus();
+                            }
+                          }}
+                          placeholder="Enter Customer or Patient Name (e.g. Ali Raza, Dr. Kashif)..."
+                          className="w-full bg-white border border-emerald-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 rounded-xl px-3 py-2 text-xs font-bold text-gray-900"
+                        />
+                      </div>
 
-              {/* Product Name Search */}
-              <div className="col-span-2 sm:col-span-3 md:col-span-3">
-                <ExpandableCombobox
-                  label="Product Name"
-                  value={saleCart.inventory_id}
-                  onChange={handleSelectProduct}
-                  options={productOptions}
-                  placeholder="-- Select or Search Product --"
-                  searchPlaceholder="Search medicines, formulas..."
-                  required={true}
-                />
-              </div>
+                      {/* Token Number Field */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-teal-800 mb-1 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm text-teal-600">confirmation_number</span>
+                          Token # (ٹوکن نمبر)
+                        </label>
+                        <input
+                          type="text"
+                          value={saleForm.token_no}
+                          onChange={(e) => handleTokenNumberChange(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              productCodeInputRef.current?.focus();
+                            }
+                          }}
+                          placeholder="e.g. 14, T-05"
+                          className="w-full bg-teal-50/70 border border-teal-300 rounded-xl px-3 py-2 text-xs font-mono font-black text-teal-950 text-center focus:bg-white focus:border-teal-600"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Wholesale B2B Mode Fields */}
+                      {/* Quick Party Code Auto-Fill */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center justify-between">
+                          <span className="flex items-center gap-1 text-amber-900">
+                            <span className="material-symbols-outlined text-sm text-amber-600">bolt</span>
+                            Party Code
+                          </span>
+                          {partyCodeSearch && (
+                            <span className="text-[10px] text-emerald-700 font-bold">✓ Linked</span>
+                          )}
+                        </label>
+                        <div className="relative">
+                          <input
+                            ref={partyCodeInputRef}
+                            type="text"
+                            value={partyCodeSearch}
+                            onChange={(e) => handlePartyCodeChange(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                cityInputRef.current?.focus();
+                              }
+                            }}
+                            placeholder="e.g. 001, Muslim"
+                            className="w-full bg-amber-50/70 border border-amber-300 rounded-xl px-3 py-2 text-xs font-mono font-black text-amber-950 uppercase tracking-wider focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                          />
+                          {partyCodeSearch && (
+                            <button
+                              type="button"
+                              onClick={() => handlePartyCodeChange("")}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                              title="Clear Code"
+                            >
+                              <span className="material-symbols-outlined text-xs">close</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-              {/* Qty */}
-              <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Qty</label>
-                <input
-                  ref={qtyInputRef}
-                  type="number"
-                  min="1"
-                  value={saleCart.qty}
-                  onChange={(e) => handleUpdateCartMath("qty", e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddSaleItem(e)}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-black text-center text-gray-900 focus:border-teal-500"
-                />
-              </div>
+                      {/* Customer / Party Name */}
+                      <div className="sm:col-span-2">
+                        <ExpandableCombobox
+                          label="Party Name (پارٹی کا نام)"
+                          value={saleForm.account_name}
+                          onChange={handleSelectAccount}
+                          options={accountOptions}
+                          placeholder="Select or Search Party Name..."
+                          searchPlaceholder="Search Parties..."
+                          onAddNew={() => setShowNewPartyModal(true)}
+                          addNewLabel="+ New Party"
+                          required={true}
+                        />
+                      </div>
 
-              {/* Rate */}
-              <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Rate</label>
-                <input
-                  type="number"
-                  value={saleCart.rate}
-                  onChange={(e) => handleUpdateCartMath("rate", e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddSaleItem(e)}
-                  placeholder="Rate"
-                  className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900 focus:border-teal-500"
-                />
-              </div>
+                      {/* Salesman / Booker */}
+                      <div>
+                        <ExpandableCombobox
+                          label="Salesman / Order Booker (سیلز مین)"
+                          value={saleForm.reference || activeUser}
+                          onChange={handleSelectSalesman}
+                          options={referenceOptions}
+                          placeholder="Select Salesman..."
+                          searchPlaceholder="Search registered staff..."
+                          required={true}
+                        />
+                      </div>
 
-              {/* Gross */}
-              <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Gross</label>
-                <input
-                  type="text"
-                  value={saleCart.gross}
-                  readOnly
-                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-700"
-                />
-              </div>
+                      {/* Type (City) */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">Type (City / Route)</label>
+                        <input
+                          ref={cityInputRef}
+                          type="text"
+                          value={saleForm.party_type}
+                          onChange={(e) => setSaleForm({ ...saleForm, party_type: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              biltyInputRef.current?.focus();
+                            }
+                          }}
+                          placeholder="e.g. DHARKI, HYD"
+                          className="w-full bg-gray-100 border border-gray-300 rounded-xl px-3 py-2 text-xs font-black text-gray-700"
+                        />
+                      </div>
 
-              {/* Disc % */}
-              <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc %</label>
-                <input
-                  type="number"
-                  value={saleCart.disc_pct}
-                  onChange={(e) => handleUpdateCartMath("disc_pct", e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddSaleItem(e)}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900"
-                />
-              </div>
+                      {/* Transport Carrier */}
+                      <div className="sm:col-span-2">
+                        {showNewTransportInput ? (
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-700 mb-1">New Transport Carrier</label>
+                            <div className="flex gap-1.5">
+                              <input
+                                type="text"
+                                value={newTransportText}
+                                onChange={(e) => setNewTransportText(e.target.value)}
+                                placeholder="e.g. Ali Raza By Hand..."
+                                className="flex-1 bg-white border border-emerald-400 rounded-xl px-2.5 py-1.5 text-xs font-bold"
+                                autoFocus
+                                onKeyDown={(e) => e.key === "Enter" && handleAddNewTransport()}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddNewTransport}
+                                className="bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl font-black text-xs"
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowNewTransportInput(false)}
+                                className="bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl font-bold text-xs"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <ExpandableCombobox
+                            label="Transport"
+                            value={saleForm.transport}
+                            onChange={(val) => setSaleForm({ ...saleForm, transport: val })}
+                            options={transportOptions}
+                            placeholder="Select Transport..."
+                            searchPlaceholder="Search Transport..."
+                            onAddNew={() => setShowNewTransportInput(true)}
+                            addNewLabel="+ New Carrier"
+                          />
+                        )}
+                      </div>
 
-              {/* Disc 0 */}
-              <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc 0</label>
-                <input
-                  type="number"
-                  value={saleCart.disc_flat}
-                  onChange={(e) => handleUpdateCartMath("disc_flat", e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddSaleItem(e)}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900"
-                />
-              </div>
+                      {/* Bilty # */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">Bilty#</label>
+                        <input
+                          ref={biltyInputRef}
+                          type="text"
+                          value={saleForm.bilty_no}
+                          onChange={(e) => setSaleForm({ ...saleForm, bilty_no: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              productCodeInputRef.current?.focus();
+                            }
+                          }}
+                          placeholder="0000"
+                          className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
+                        />
+                      </div>
+                    </>
+                  )}
 
-              {/* Net Amount */}
-              <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-emerald-800 mb-1 text-center">Net Amt</label>
-                <input
-                  type="text"
-                  value={saleCart.net_amount}
-                  readOnly
-                  className="w-full bg-emerald-100/80 border border-emerald-300 rounded-xl px-2 py-2 text-xs font-black text-center text-emerald-950"
-                />
-              </div>
-
-              {/* Add Button */}
-              <div className="md:col-span-1">
-                <button
-                  type="button"
-                  onClick={handleAddSaleItem}
-                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-black py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 shadow-md shadow-emerald-200"
-                >
-                  <span className="material-symbols-outlined text-sm">add</span>
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Itemized Table Grid with Smooth Scroll */}
-          <div
-            ref={tableContainerRef}
-            className="rounded-2xl border border-gray-200 shadow-sm max-h-72 min-h-[160px] overflow-y-auto custom-scrollbar relative bg-white"
-          >
-            <table className="w-full text-left text-xs">
-              <thead className="bg-emerald-700 text-white font-black uppercase tracking-wider text-[11px] sticky top-0 z-10">
-                <tr>
-                  <th className="px-4 py-3">Item Name</th>
-                  <th className="px-3 py-3 text-center">Qty</th>
-                  <th className="px-3 py-3 text-center">Rate</th>
-                  <th className="px-3 py-3 text-center">Gross</th>
-                  <th className="px-3 py-3 text-center">Disc(%)</th>
-                  <th className="px-3 py-3 text-center">Disc(0)</th>
-                  <th className="px-4 py-3 text-right">Net</th>
-                  <th className="px-3 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 font-medium">
-                {saleItems.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="text-center py-12 text-gray-400 font-semibold">
-                      <span className="material-symbols-outlined text-4xl block mb-1 text-gray-300">point_of_sale</span>
-                      No medicine items in this Sale Invoice yet. Select a product or type Product Code to add.
-                    </td>
-                  </tr>
-                ) : (
-                  <>
-                    {saleItems.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-emerald-50/40 transition-colors">
-                        <td className="px-4 py-3 font-bold text-gray-900">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span>{item.medicine_name}</span>
-                            {item.product_code && (
-                              <span className="text-[10px] text-gray-400 font-mono">[{item.product_code}]</span>
-                            )}
-                            {item.packing && (
-                              <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">
-                                {item.packing}
+                  {/* Matched Party Udhaar Box */}
+                  {billingType === "wholesale_party" && matchedParty && (
+                    <div className="col-span-1 sm:col-span-2 md:col-span-4 bg-amber-50/95 border-2 border-amber-400 rounded-2xl p-3 flex flex-wrap items-center justify-between text-xs text-amber-950 gap-2 shadow-sm animate-fadeIn">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-xl text-amber-700">account_balance_wallet</span>
+                        <div>
+                          <div className="text-[10px] font-black uppercase text-amber-800 tracking-wider">Party Outstanding Balance (پرانا ادھار)</div>
+                          <div className="font-extrabold text-slate-900 text-sm">
+                            {matchedParty.name} {matchedParty.city ? `(${matchedParty.city})` : ""}
+                            {matchedParty.party_code && (
+                              <span className="ml-1.5 text-xs font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-amber-300">
+                                #{matchedParty.party_code}
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="px-3 py-3 text-center font-black text-emerald-800">{item.qty}</td>
-                        <td className="px-3 py-3 text-center text-gray-700">Rs. {Number(item.rate).toLocaleString()}</td>
-                        <td className="px-3 py-3 text-center text-gray-700">Rs. {Number(item.gross).toLocaleString()}</td>
-                        <td className="px-3 py-3 text-center text-gray-600">{item.disc_pct}</td>
-                        <td className="px-3 py-3 text-center text-gray-600">Rs. {item.disc_flat}</td>
-                        <td className="px-4 py-3 text-right font-black text-gray-900">Rs. {Number(item.net).toLocaleString()}</td>
-                        <td className="px-3 py-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSaleItem(idx)}
-                            className="text-rose-600 hover:text-rose-800 p-1 rounded-lg hover:bg-rose-50 transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-base">delete</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    <tr ref={saleItemsEndRef}>
-                      <td colSpan="8" className="p-0 border-0" />
-                    </tr>
-                  </>
-                )}
-              </tbody>
-            </table>
-          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="text-[10px] font-bold text-slate-600 uppercase">Current Udhaar / Balance</div>
+                          <div className={`text-base font-black font-mono ${Number(matchedParty.current_balance || matchedParty.opening_balance || 0) > 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                            Rs. {Number(matchedParty.current_balance || matchedParty.opening_balance || 0).toLocaleString()}
+                          </div>
+                        </div>
+                        {Number(matchedParty.current_balance || matchedParty.opening_balance || 0) > 0 ? (
+                          <span className="text-[10px] bg-rose-600 text-white px-2.5 py-1 rounded-full font-black uppercase shadow-xs">
+                            ⚠️ Udhaar Due
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-emerald-600 text-white px-2.5 py-1 rounded-full font-black uppercase shadow-xs">
+                            ✓ No Udhaar (Rs. 0)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-          {/* Section 4: Footer Controls with Extra Bill Discount & Freight */}
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 pt-3 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => setShowListModal(true)}
-              className="w-full lg:w-auto bg-slate-900 hover:bg-slate-800 text-white font-black px-5 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md"
-            >
-              <span className="material-symbols-outlined text-base">list_alt</span>
-              Invoices Logbook (بل ریکارڈ)
-            </button>
+                  {/* Payment Mode Radio Toggle & Company Filter */}
+                  <div className="sm:col-span-2 flex flex-wrap items-center gap-4 bg-white p-2.5 rounded-xl border border-gray-200">
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Payment Mode</label>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer text-gray-800">
+                          <input
+                            type="radio"
+                            name="payment_mode"
+                            value="Credit"
+                            checked={saleForm.payment_mode === "Credit"}
+                            onChange={() => setSaleForm({ ...saleForm, payment_mode: "Credit" })}
+                            className="text-rose-600 focus:ring-rose-500 w-3.5 h-3.5"
+                          />
+                          Credit (Udhaar)
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer text-gray-800">
+                          <input
+                            type="radio"
+                            name="payment_mode"
+                            value="Cash"
+                            checked={saleForm.payment_mode === "Cash"}
+                            onChange={() => setSaleForm({ ...saleForm, payment_mode: "Cash" })}
+                            className="text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+                          />
+                          Cash
+                        </label>
+                      </div>
+                    </div>
 
-            {/* Financial Summary Controls */}
-            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
-              {/* Items Subtotal */}
-              <div className="bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-xl text-right min-w-[110px]">
-                <div className="text-[9.5px] font-bold text-gray-500 uppercase">Subtotal</div>
-                <div className="text-sm font-black text-gray-900">
-                  Rs. {saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0).toLocaleString()}
+                    <div className="flex-1 min-w-[160px]">
+                      <label className="block text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">Filter Brand / Company</label>
+                      <select
+                        value={selectedCompany}
+                        onChange={(e) => setSelectedCompany(e.target.value)}
+                        className="w-full bg-gray-50 border border-emerald-300 rounded-xl px-2.5 py-1.5 text-xs font-black text-emerald-900 focus:border-emerald-500"
+                      >
+                        {companyOptions.map((c) => (
+                          <option key={c} value={c}>{c === "All" ? "🏢 All Companies / Brands" : `🏢 ${c}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Extra Bill Discount */}
-              <div className="bg-amber-50/70 border border-amber-200 px-3 py-1 rounded-xl text-right">
-                <label className="block text-[9.5px] font-bold text-amber-800 uppercase">Extra Disc (Rs.)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={saleForm.extra_bill_discount}
-                  onChange={(e) => setSaleForm({ ...saleForm, extra_bill_discount: e.target.value })}
-                  placeholder="0"
-                  className="w-20 bg-white border border-amber-300 rounded-lg px-2 py-0.5 text-xs font-black text-amber-950 text-right"
-                />
+              {/* Section 2: Cart Detail (Fast Line Item Add Bar) */}
+              <div className="bg-teal-50/60 border border-teal-200 rounded-2xl p-4 space-y-3">
+                <div className="text-xs font-black text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
+                  Cart Detail (Fast Keyboard Entry &amp; Product Code Auto-Lookup)
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-12 gap-2.5 items-end">
+                  {/* Product Code */}
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold text-gray-600 mb-1">Product Code</label>
+                    <input
+                      ref={productCodeInputRef}
+                      type="text"
+                      value={saleCart.product_code}
+                      onChange={(e) => handleProductCodeChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          qtyInputRef.current?.focus();
+                        }
+                      }}
+                      placeholder="e.g. BM-01, T-1"
+                      className="w-full bg-white border border-teal-400 rounded-xl px-2.5 py-2 text-xs font-mono font-bold text-gray-900 text-center focus:border-teal-600 focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  {/* Product Name Search */}
+                  <div className="col-span-2 sm:col-span-3 md:col-span-3">
+                    <ExpandableCombobox
+                      label="Product Name"
+                      value={saleCart.inventory_id}
+                      onChange={handleSelectProduct}
+                      options={productOptions}
+                      placeholder="-- Select or Search Product --"
+                      searchPlaceholder="Search medicines, formulas, T-1..."
+                      required={true}
+                    />
+                  </div>
+
+                  {/* Qty */}
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Qty</label>
+                    <input
+                      ref={qtyInputRef}
+                      type="number"
+                      min="1"
+                      value={saleCart.qty}
+                      onChange={(e) => handleUpdateCartMath("qty", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (rateInputRef.current) {
+                            rateInputRef.current.focus();
+                            if (rateInputRef.current.select) rateInputRef.current.select();
+                          } else {
+                            discPctInputRef.current?.focus();
+                          }
+                        }
+                      }}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-black text-center text-gray-900 focus:border-teal-500"
+                    />
+                  </div>
+
+                  {/* Rate */}
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Rate</label>
+                    <input
+                      ref={rateInputRef}
+                      type="number"
+                      value={saleCart.rate}
+                      onChange={(e) => handleUpdateCartMath("rate", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          discPctInputRef.current?.focus();
+                        }
+                      }}
+                      placeholder="Rate"
+                      className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900 focus:border-teal-500"
+                    />
+                  </div>
+
+                  {/* Gross */}
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Gross</label>
+                    <input
+                      type="text"
+                      value={saleCart.gross}
+                      readOnly
+                      className="w-full bg-gray-100 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-700"
+                    />
+                  </div>
+
+                  {/* Disc % */}
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc %</label>
+                    <input
+                      ref={discPctInputRef}
+                      type="number"
+                      value={saleCart.disc_pct}
+                      onChange={(e) => handleUpdateCartMath("disc_pct", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddSaleItem(e);
+                        }
+                      }}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900"
+                    />
+                  </div>
+
+                  {/* Disc 0 */}
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc 0</label>
+                    <input
+                      ref={discFlatInputRef}
+                      type="number"
+                      value={saleCart.disc_flat}
+                      onChange={(e) => handleUpdateCartMath("disc_flat", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddSaleItem(e);
+                        }
+                      }}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900"
+                    />
+                  </div>
+
+                  {/* Net Amount */}
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-bold text-emerald-800 mb-1 text-center">Net Amt</label>
+                    <input
+                      type="text"
+                      value={saleCart.net_amount}
+                      readOnly
+                      className="w-full bg-emerald-100/80 border border-emerald-300 rounded-xl px-2 py-2 text-xs font-black text-center text-emerald-950"
+                    />
+                  </div>
+
+                  {/* Add Button */}
+                  <div className="md:col-span-1">
+                    <button
+                      type="button"
+                      onClick={handleAddSaleItem}
+                      className="w-full bg-teal-700 hover:bg-teal-800 text-white font-black py-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow-md transition-all active:scale-95 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-base">add</span>
+                      Add
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* Delivery / Freight Charges */}
-              <div className="bg-blue-50/70 border border-blue-200 px-3 py-1 rounded-xl text-right">
-                <label className="block text-[9.5px] font-bold text-blue-800 uppercase">Bilty / Del (Rs.)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={saleForm.freight_charges}
-                  onChange={(e) => setSaleForm({ ...saleForm, freight_charges: e.target.value })}
-                  placeholder="0"
-                  className="w-20 bg-white border border-blue-300 rounded-lg px-2 py-0.5 text-xs font-black text-blue-950 text-right"
-                />
+              {/* Section 3: Added Items Table */}
+              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <div ref={tableContainerRef} className="max-h-[320px] overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-emerald-900 text-white font-black uppercase tracking-wider text-[10px] sticky top-0 z-10">
+                      <tr>
+                        <th className="px-4 py-3">Item Name</th>
+                        <th className="px-3 py-3 text-center">Qty</th>
+                        <th className="px-3 py-3 text-center">Rate</th>
+                        <th className="px-3 py-3 text-center">Gross</th>
+                        <th className="px-3 py-3 text-center">Disc(%)</th>
+                        <th className="px-3 py-3 text-center">Disc(0)</th>
+                        <th className="px-4 py-3 text-right">Net</th>
+                        <th className="px-3 py-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 font-medium">
+                      {saleItems.length === 0 ? (
+                        <tr>
+                          <td colSpan="8" className="text-center py-8 text-gray-400 font-bold bg-gray-50/50">
+                            <span className="material-symbols-outlined text-3xl text-gray-300 block mb-1">point_of_sale</span>
+                            No medicine items in this Sale Invoice yet. Select a product or type Product Code to add.
+                          </td>
+                        </tr>
+                      ) : (
+                        <>
+                          {saleItems.map((item, idx) => (
+                            <tr key={item.id || idx} className="hover:bg-emerald-50/40 transition-colors">
+                              <td className="px-4 py-3 font-bold text-gray-900">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{item.medicine_name}</span>
+                                  {item.product_code && (
+                                    <span className="text-[10px] text-gray-400 font-mono">[{item.product_code}]</span>
+                                  )}
+                                  {item.packing && (
+                                    <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">
+                                      {item.packing}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 text-center font-black text-emerald-800">{item.qty}</td>
+                              <td className="px-3 py-3 text-center text-gray-700">Rs. {Number(item.rate).toLocaleString()}</td>
+                              <td className="px-3 py-3 text-center text-gray-700">Rs. {Number(item.gross).toLocaleString()}</td>
+                              <td className="px-3 py-3 text-center text-gray-600">{item.disc_pct}</td>
+                              <td className="px-3 py-3 text-center text-gray-600">Rs. {item.disc_flat}</td>
+                              <td className="px-4 py-3 text-right font-black text-gray-900">Rs. {Number(item.net).toLocaleString()}</td>
+                              <td className="px-3 py-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSaleItem(idx)}
+                                  className="text-rose-600 hover:text-rose-800 p-1 rounded-lg hover:bg-rose-50 transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-base">delete</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                          <tr ref={saleItemsEndRef}>
+                            <td colSpan="8" className="p-0 border-0" />
+                          </tr>
+                        </>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              {/* Net Grand Total */}
-              <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 font-black px-5 py-2 rounded-2xl text-base min-w-[130px] text-right shadow-inner">
-                <div className="text-[9.5px] font-bold text-emerald-800 uppercase">Net Total (کل رقم)</div>
-                Rs. {totalBillCalculated.toLocaleString()}
+              {/* Section 4: Footer Controls */}
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-4 pt-3 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowListModal(true)}
+                  className="w-full lg:w-auto bg-slate-900 hover:bg-slate-800 text-white font-black px-5 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">list_alt</span>
+                  Invoices Logbook (بل ریکارڈ)
+                </button>
+
+                {/* Financial Summary Controls */}
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+                  {/* Items Subtotal */}
+                  <div className="bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-xl text-right min-w-[110px]">
+                    <div className="text-[9.5px] font-bold text-gray-500 uppercase">Subtotal</div>
+                    <div className="text-sm font-black text-gray-900">
+                      Rs. {saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0).toLocaleString()}
+                    </div>
+                  </div>
+
+                  {/* Previous Udhaar / Balance Box */}
+                  <div className={`px-3.5 py-1.5 rounded-xl text-right min-w-[120px] border ${
+                    Number(matchedParty?.current_balance || matchedParty?.opening_balance || 0) > 0
+                      ? "bg-rose-50 border-rose-300 text-rose-950"
+                      : "bg-gray-50 border-gray-200 text-gray-700"
+                  }`}>
+                    <div className="text-[9.5px] font-bold uppercase tracking-wider">Purana Udhaar (ادھار)</div>
+                    <div className="text-sm font-black font-mono">
+                      Rs. {Number(matchedParty?.current_balance || matchedParty?.opening_balance || 0).toLocaleString()}
+                    </div>
+                  </div>
+
+                  {/* Net Grand Total */}
+                  <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 font-black px-5 py-2 rounded-2xl text-base min-w-[130px] text-right shadow-inner">
+                    <div className="text-[9.5px] font-bold text-emerald-800 uppercase">Net Total (کل رقم)</div>
+                    Rs. {totalBillCalculated.toLocaleString()}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveSaleBill}
+                    className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-6 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-200 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">print</span>
+                    Save &amp; Print Invoice (بل محفوظ کریں اور پرنٹ)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column (4 cols): REAL-TIME LIVE 80mm THERMAL RECEIPT PREVIEW */}
+            <div className="xl:col-span-4 space-y-3 sticky top-4">
+              <div className="bg-slate-900 text-white p-3.5 rounded-2xl flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-emerald-400 text-xl">receipt_long</span>
+                  <div>
+                    <div className="text-xs font-black tracking-tight flex items-center gap-1.5">
+                      LIVE THERMAL RECEIPT PREVIEW
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-medium">80mm ESC/POS Live Stream View</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveSaleBill}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1 shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">print</span>
+                  Print
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={handleSaveSaleBill}
-                className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-6 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-200"
-              >
-                <span className="material-symbols-outlined text-base">print</span>
-                Save &amp; Print Invoice (بل محفوظ کریں اور پرنٹ)
-              </button>
+              {/* Thermal Paper Slip Frame */}
+              <div className="bg-white rounded-2xl border-2 border-slate-300 p-4 shadow-xl font-mono text-[11px] text-slate-900 space-y-2 max-h-[82vh] overflow-y-auto relative">
+                {/* Exact High-Fidelity Vector/Text Header (Georgia / Times New Roman) */}
+                <div className="border-b border-slate-950 pb-1 font-serif text-slate-950">
+                  <div className="flex items-center justify-between gap-1">
+                    {/* Left: Logo Box (53px x 60px) */}
+                    <div className="w-[53px] min-w-[53px] h-[60px] flex items-center justify-center overflow-hidden shrink-0">
+                      <img
+                        src={CLINIC_LOGO_BASE64}
+                        alt="Logo"
+                        className="w-[62px] h-[62px] object-contain block"
+                      />
+                    </div>
+
+                    {/* Center: Clinic Name (15px) & Subtitle (9px) */}
+                    <div className="flex-1 min-w-0 px-0.5 text-left">
+                      <div className="text-[15px] leading-[16px] font-bold text-slate-950 whitespace-nowrap tracking-tight">
+                        M.Ashraf Khan
+                      </div>
+                      <div className="text-[9px] leading-[11px] font-bold text-slate-900 whitespace-nowrap mt-0.5">
+                        Homeopathic Clinic
+                      </div>
+                    </div>
+
+                    {/* Right: Address & Contact (9.5px) */}
+                    <div className="text-right text-[9.5px] leading-[11.5px] font-semibold text-slate-900 whitespace-nowrap shrink-0">
+                      <div>Lajpat Road, Hyderabad</div>
+                      <div>Sindh, Pakistan</div>
+                      <div className="font-bold">
+                        <div>0311 4234777</div>
+                        <div>0343 9376363</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Meta Information */}
+                <div className="border-b border-dashed border-slate-400 pb-2 text-[10px] space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Date: {saleForm.date}</span>
+                    <span className="font-bold text-slate-950">Inv: #{saleForm.voucher_no}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Cashier:</span>
+                    <span className="font-bold text-slate-900">{saleForm.reference || activeUser}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                    <span className="font-black text-slate-950 text-[10.5px]">
+                      Customer: {saleForm.account_name || (billingType === "patient" ? "Walk-In Patient" : "Wholesale Party")}
+                    </span>
+                    {billingType === "patient" && saleForm.token_no && (
+                      <span className="bg-emerald-800 text-white px-1.5 py-0.5 rounded font-black text-[10px]">
+                        Token #: {saleForm.token_no}
+                      </span>
+                    )}
+                  </div>
+                  {billingType === "wholesale_party" && (
+                    <div className="text-slate-700 font-bold">
+                      Party / Route: {saleForm.party_type || "HYD"} {partyCodeSearch ? `(#${partyCodeSearch})` : ""}
+                    </div>
+                  )}
+                </div>
+
+                {/* Items Table — Category-wise compact table */}
+                <div className="border-b border-dashed border-slate-400 pb-2">
+                  {saleItems.length === 0 ? (
+                    <div className="text-center py-6 text-slate-400 italic text-[10px]">
+                      -- No medicines in cart --
+                    </div>
+                  ) : (
+                    <table className="w-full text-[9.5px] border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-900">
+                          <th className="text-left font-black uppercase py-0.5 pr-1">Item</th>
+                          <th className="text-center font-black uppercase py-0.5 px-0.5 w-6">Qty</th>
+                          <th className="text-center font-black uppercase py-0.5 px-0.5 w-10">Rate</th>
+                          <th className="text-center font-black uppercase py-0.5 px-0.5 w-8">Dis%</th>
+                          <th className="text-right font-black uppercase py-0.5 pl-1 w-12">Net</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {saleItems.map((item, i) => (
+                          <tr key={i} className="border-b border-dotted border-slate-200">
+                            <td className="font-bold text-slate-950 py-0.5 pr-1 leading-tight">
+                              <div>{item.medicine_name}</div>
+                              {item.product_code && (
+                                <div className="text-[8.5px] text-slate-400 font-mono">[{item.product_code}]</div>
+                              )}
+                            </td>
+                            <td className="text-center py-0.5 px-0.5 text-slate-700">{item.qty}</td>
+                            <td className="text-center py-0.5 px-0.5 text-slate-700">{Number(item.rate).toLocaleString()}</td>
+                            <td className="text-center py-0.5 px-0.5 text-slate-600">
+                              {item.disc_pct && item.disc_pct !== "0%" ? item.disc_pct : "-"}
+                            </td>
+                            <td className="text-right font-mono font-black text-slate-950 py-0.5 pl-1">
+                              {Number(item.net).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Totals Summary */}
+                <div className="space-y-1 text-[11px] pt-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Subtotal:</span>
+                    <span className="font-bold">
+                      Rs. {saleItems.reduce((s, i) => s + Number(i.net || 0), 0).toLocaleString()}
+                    </span>
+                  </div>
+                  {billingType === "patient" && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>POS Service Fee:</span>
+                      <span>Rs. 1</span>
+                    </div>
+                  )}
+                  {billingType === "wholesale_party" && Number(matchedParty?.current_balance || 0) > 0 && (
+                    <div className="flex justify-between text-rose-700 font-bold">
+                      <span>Purana Udhaar:</span>
+                      <span>Rs. {Number(matchedParty?.current_balance || 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-black border-t-2 border-slate-950 pt-1.5 text-slate-950">
+                    <span>GRAND TOTAL:</span>
+                    <span className="text-emerald-800">Rs. {totalBillCalculated.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Urdu Footer Disclaimer */}
+                <div className="border-t border-dashed border-slate-400 pt-2 text-center text-[10px] font-bold text-slate-800 leading-snug">
+                  <div>خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔</div>
+                </div>
+
+                {/* Doctor Signature Line */}
+                <div className="pt-3 pb-1 flex justify-end">
+                  <div className="border-t border-slate-900 w-[45%] text-center text-[8.5px] font-black uppercase text-slate-900 pt-0.5">
+                    Dr. Signature
+                  </div>
+                </div>
+
+                {/* Powered By Watermark */}
+                <div className="text-center text-[8px] text-slate-400 font-mono border-t border-dotted border-slate-300 pt-1">
+                  *** Powered by CliniCore Software ***
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1316,6 +1687,16 @@ export default function SaleInvoiceModal({ isOpen, onClose }) {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (isPage) {
+    return modalBody;
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      {modalBody}
     </div>,
     document.body
   );

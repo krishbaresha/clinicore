@@ -4,6 +4,7 @@ import { dbPatients, dbVisits, dbUsers, dbClinic, dbClinicServices, dbPatientLed
 import { printOPDTokenReceipt } from "../utils/thermalPrinter.js";
 import { formatPatientAge } from "../utils/formatters.js";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
+import { RECEIPT_HEADER_IMAGE_BASE64 } from "../utils/receiptHeaderBase64.js";
 import { patientInputSchema, validateSchema } from "../schemas/index.js";
 
 const RELATION_TYPES = ["father", "husband", "wife", "mother", "brother", "sister", "son", "daughter"];
@@ -367,91 +368,91 @@ function toTitleCase(str) {
           {/* Receipt card — screen view */}
           <div
             id="thermal-receipt"
-            className="bg-white rounded-3xl shadow-2xl border border-teal-100 overflow-hidden"
+            className="bg-white rounded-3xl shadow-2xl border border-slate-300 p-5 font-sans text-slate-900 overflow-hidden"
           >
-            {/* ── Header ── */}
-            <div className="rx-header bg-gradient-to-br from-teal-700 to-teal-800 text-white p-5 text-center">
-              {/* Clinic Logo */}
-              <div className="flex justify-center mb-2">
-                <img
-                  src={clinic?.logo_url || CLINIC_LOGO_BASE64}
-                  alt="Clinic Logo"
-                  className="h-16 w-auto max-w-[200px] object-contain rounded-lg bg-white/10 p-1 backdrop-blur-xs"
-                />
-              </div>
-              {/* Dynamic Clinic name */}
-              <div className="rx-clinic-name text-base font-bold tracking-wide mb-0.5">
-                {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
-              </div>
-              <div className="text-[10px] opacity-70 mb-0.5">{clinic?.address || "Lajpat Road, Hyderabad"}</div>
-              {clinic?.phone && <div className="text-[10px] opacity-70 mb-1">Tel: {clinic.phone}</div>}
-              <div className="text-[10px] opacity-60 mb-3">
-                {receipt.registeredAt.toLocaleString("en-US", {
-                  day: "2-digit", month: "short", year: "numeric",
-                  hour: "2-digit", minute: "2-digit",
-                })}
-              </div>
-
-              {/* Big Token Number */}
-              <div className="bg-white/15 rounded-2xl py-3 px-6 inline-block">
-                <div className="text-[10px] font-semibold uppercase tracking-widest opacity-75 mb-0.5">
-                  Token No.
+            {/* ── Exact Vector Header (Georgia / Times New Roman) ── */}
+            <div className="border-b border-slate-950 pb-1 font-serif text-slate-950">
+              <div className="flex items-center justify-between gap-1">
+                {/* Left: Logo Box (53px x 60px) */}
+                <div className="w-[53px] min-w-[53px] h-[60px] flex items-center justify-center overflow-hidden shrink-0">
+                  <img
+                    src={CLINIC_LOGO_BASE64}
+                    alt="Logo"
+                    className="w-[62px] h-[62px] object-contain block"
+                  />
                 </div>
-                <div className="rx-token-num text-6xl font-black leading-none">
-                  {String(receipt.token).padStart(2, "0")}
-                </div>
-              </div>
-            </div>
 
-            {/* ── Doctor & Fee Row ── */}
-            <div className="mx-4 mt-3 p-3 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Doctor</div>
-                <div className="font-black text-gray-900 text-sm">{receipt.doctor?.name || "Doctor"}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Fee Paid</div>
-                <div className="font-black text-teal-800 text-sm">Rs. {receipt.fee.toLocaleString()}</div>
-              </div>
-            </div>
-
-            {/* ── Patient Details ── */}
-            <div className="p-4 space-y-2.5 text-sm">
-              {/* Name */}
-              <div>
-                <div className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Patient Name</div>
-                <div className="font-bold text-gray-900 text-base leading-tight">{receipt.patient.full_name}</div>
-                {receipt.patient.relation_name && (
-                  <div className="text-gray-500 text-xs mt-0.5">
-                    {relLabel} {receipt.patient.relation_name}
+                {/* Center: Clinic Name (15px) & Subtitle (9px) */}
+                <div className="flex-1 min-w-0 px-0.5 text-left">
+                  <div className="text-[15px] leading-[16px] font-bold text-slate-950 whitespace-nowrap tracking-tight">
+                    M.Ashraf Khan
                   </div>
-                )}
-              </div>
+                  <div className="text-[9px] leading-[11px] font-bold text-slate-900 whitespace-nowrap mt-0.5">
+                    Homeopathic Clinic
+                  </div>
+                </div>
 
-              {/* Phone + Age row */}
-              <div className="flex justify-between border-t border-dashed border-gray-200 pt-2 text-xs">
-                <div>
-                  <span className="text-gray-400">Phone: </span>
-                  <span className="font-bold text-gray-800">{receipt.patient.phone || "—"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Age: </span>
-                  <span className="font-bold text-gray-800">{formatPatientAge(receipt.patient)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Gender: </span>
-                  <span className="font-bold text-gray-800 capitalize">{receipt.patient.gender || "Male"}</span>
+                {/* Right: Address & Contact (9.5px) */}
+                <div className="text-right text-[9.5px] leading-[11.5px] font-semibold text-slate-900 whitespace-nowrap shrink-0">
+                  <div>Lajpat Road, Hyderabad</div>
+                  <div>Sindh, Pakistan</div>
+                  <div className="font-bold">
+                    <div>0311 4234777</div>
+                    <div>0343 9376363</div>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Footer */}
-              <div className="border-t border-dashed border-gray-200 pt-2 text-center">
-                <div className="text-[11px] text-gray-600 font-medium">
-                  Please wait — your token will be called
+            {/* ── Print Date & Time Row ── */}
+            <div className="flex justify-between items-center text-[11px] font-bold text-slate-900 border-b border-slate-900 py-1.5 mt-1">
+              <span>Print Date &amp; Time</span>
+              <span className="font-mono">
+                {receipt.registeredAt.toLocaleDateString("en-US")} {String(receipt.registeredAt.getHours()).padStart(2, "0")}:{String(receipt.registeredAt.getMinutes()).padStart(2, "0")}
+              </span>
+            </div>
+
+            {/* ── Doctor & Appointment No Center Block ── */}
+            <div className="text-center py-2.5 border-b border-slate-900">
+              <div className="font-black text-base text-slate-950">
+                {receipt.doctor?.name || "H/Dr Muhammad Asif Khan"}
+              </div>
+              <div className="font-bold text-sm text-slate-800 mt-0.5">
+                Appointment No
+              </div>
+              <div className="font-mono font-black text-3xl text-slate-950 mt-1 leading-none">
+                {String(receipt.token).padStart(2, "0")}
+              </div>
+            </div>
+
+            {/* ── Patient Demographics ── */}
+            <div className="py-2.5 border-b border-slate-900 space-y-1 text-xs font-bold text-slate-900">
+              <div className="flex">
+                <span className="w-28 text-slate-700">Patient Name &nbsp;:</span>
+                <span className="font-black text-slate-950 text-sm">{receipt.patient.full_name}</span>
+              </div>
+              <div className="flex">
+                <div className="w-1/2 flex">
+                  <span className="w-12 text-slate-700">Age &nbsp;:</span>
+                  <span>{formatPatientAge(receipt.patient) || "18"}</span>
                 </div>
-                <div className="text-[10px] text-gray-400 mt-0.5">
-                  شکریہ — جزاک اللہ خیرا
+                <div className="w-1/2 flex">
+                  <span className="w-16 text-slate-700">Gender &nbsp;:</span>
+                  <span>{(receipt.patient.gender || "M").toUpperCase().charAt(0)}</span>
                 </div>
+              </div>
+            </div>
+
+            {/* ── Paid Fees Row ── */}
+            <div className="flex justify-between items-center py-2 text-sm font-black text-slate-950 border-b-2 border-slate-900">
+              <span>Paid Fees</span>
+              <span className="font-mono text-base">PKR {Number(receipt.fee).toFixed(2)}</span>
+            </div>
+
+            {/* ── THANK YOU Bottom Banner ── */}
+            <div className="border-b-2 border-slate-900 py-1.5 text-center mt-1">
+              <div className="font-serif font-black text-lg tracking-widest text-slate-950">
+                THANK YOU
               </div>
             </div>
           </div>
