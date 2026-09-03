@@ -3353,13 +3353,13 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-69. **Milestone 142: Auto-Aggregated Real-Time Roznamcha (CashBook Ledger) & Thermal Print Vouchers**
-    - **Real-Time Auto-Aggregation**: `CashBook Ledger (Roznamcha)` now automatically aggregates **ALL financial inflows & outflows** across the software:
-      - 🟢 **Cash Inflow (Jama)**: POS Pharmacy Cash Sales (`dbSales`), Party Udhaar Recoveries (`dbPartyLedger`), OPD Doctor Fees (`dbVisits`), and Manual Receipts (`dbCashBook`).
-      - 🔴 **Cash Outflow (Kharach)**: Daily Clinic Expenses (`dbExpenses`), Supplier Cash Payments (`dbPurchases`), and Manual Payments (`dbCashBook`).
-    - **Real-Time Cash Drawer Till Reconciliation**: Displays live **Total Inflows (Jama)**, **Total Outflows (Kharach)**, and **Net Safe Cash Balance (Till Cash)** so the doctor/cashier knows exact physical cash expected at day closing.
-    - **Thermal Voucher Print & Re-print Sync**: Every entry (Udhaar receipt, Expense, Manual voucher) has a 1-click **`🖨️ Print Slip`** button supporting 80mm ESC/POS thermal printing.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.46s.
+70. **Milestone 143: Streamlined Sales Log & Single-Source Financial Reconciliation Architecture**
+    - **Removed Duplicate Shift Cash Reconciliation**: Consolidated all Z-Report, Physical Denomination counters, and Till Cash Variance calculations into **`Fees & Day Closing`** (`/fees-reports`).
+    - **Merged Sales & Returns Log (`MedicalStoreSalesLog.jsx`)**: Streamlined into 2 focused, dedicated tabs:
+      - 🧾 **`Sales Receipts & Invoices Log`**: Search, Cashier Filter, View Items, Reprint 80mm Receipt Slip, Void Bill with Admin PIN.
+      - 🔄 **`Medicine Returns & Restocking Log`**: Track returned medications, patient refund amounts (`Cash` vs `Khata Credit`), and stock restoration history.
+    - **Header Quick Actions**: Added **`+ Record Expense`** modal trigger and **`📊 Day Closing & Z-Report`** shortcut button.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.50s.
 
 
 

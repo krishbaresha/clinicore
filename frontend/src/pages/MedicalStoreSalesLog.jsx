@@ -214,11 +214,27 @@ export default function MedicalStoreSalesLog() {
         <div>
           <h1 className="font-headline-lg text-headline-lg font-bold text-gray-900 flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-600">receipt_long</span>
-            Medical Store Audit, Returns &amp; Expenses
+            Medical Store Audit, Sales &amp; Returns Log
           </h1>
-          <p className="font-body-sm text-body-sm text-outline">Track Invoices, Medicine Returns/Exchanges, Daily Expenses &amp; Shift Cash Reconciliation</p>
+          <p className="font-body-sm text-body-sm text-outline">Manage Sales Invoices, Restocking Returns, Refunds &amp; Daily Expenses</p>
         </div>
 
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowExpenseForm(!showExpenseForm)}
+            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl font-bold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
+          >
+            <span className="material-symbols-outlined text-base">add</span>
+            + Record Expense
+          </button>
+          <button
+            onClick={() => navigate("/fees-reports")}
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
+          >
+            <span className="material-symbols-outlined text-base text-teal-400">point_of_sale</span>
+            Day Closing &amp; Z-Report
+          </button>
+        </div>
       </div>
 
       {/* Summary KPI Cards */}
@@ -264,34 +280,87 @@ export default function MedicalStoreSalesLog() {
         </div>
       </div>
 
+      {/* Record Expense Modal Form Popup */}
+      {showExpenseForm && (
+        <form onSubmit={handleAddExpenseSubmit} className="bg-white p-5 rounded-2xl border border-amber-300 shadow-xl space-y-4 animate-scaleUp">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h3 className="font-black text-gray-900 text-sm flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-600">payments</span>
+              Add Pharmacy Operating Expense
+            </h3>
+            <button type="button" onClick={() => setShowExpenseForm(false)} className="text-gray-400 hover:text-gray-700">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Expense Category *</label>
+              <select
+                value={expenseForm.category}
+                onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900"
+                required
+              >
+                <option value="Tea & Refreshment">Tea &amp; Refreshments</option>
+                <option value="Electricity & Utilities">Electricity &amp; Utility Bills</option>
+                <option value="Delivery & Freight">Delivery &amp; Courier Freight</option>
+                <option value="Generator Fuel">Generator / Fuel</option>
+                <option value="Stationery & Printing">Stationery &amp; Thermal Paper</option>
+                <option value="Maintenance & Repair">Shop Repair &amp; Maintenance</option>
+                <option value="Staff Allowance / Bonus">Staff Lunch / Allowance</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Amount (Rs) *</label>
+              <input
+                type="number"
+                min="1"
+                placeholder="e.g. 180"
+                value={expenseForm.amount}
+                onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Description / Note</label>
+              <input
+                type="text"
+                placeholder="e.g. Tea for pharmacy staff"
+                value={expenseForm.description}
+                onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm font-medium text-slate-900"
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-xs text-rose-600 font-bold">{error}</p>}
+          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+            <button type="button" onClick={() => setShowExpenseForm(false)} className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl">Cancel</button>
+            <button type="submit" className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md">Save Expense</button>
+          </div>
+        </form>
+      )}
+
       {/* Navigation Tabs */}
       <div className="flex border-b border-gray-200 gap-2">
         <button
           onClick={() => setActiveTab("sales")}
-          className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 flex items-center gap-2 ${
-            activeTab === "sales" ? "border-teal-600 text-teal-700" : "border-transparent text-gray-500 hover:text-gray-700"
+          className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+            activeTab === "sales" ? "border-teal-600 text-teal-700 font-black" : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
           <span className="material-symbols-outlined text-lg">receipt_long</span>
-          Sales Receipts &amp; Returns Log ({sales.length})
+          Sales Receipts &amp; Invoices Log ({sales.length})
         </button>
         <button
-          onClick={() => setActiveTab("expenses")}
-          className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 flex items-center gap-2 ${
-            activeTab === "expenses" ? "border-teal-600 text-teal-700" : "border-transparent text-gray-500 hover:text-gray-700"
+          onClick={() => setActiveTab("returns")}
+          className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+            activeTab === "returns" ? "border-teal-600 text-teal-700 font-black" : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          <span className="material-symbols-outlined text-lg">account_balance</span>
-          Daily Expenses Tracker ({expenses.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("reconciliation")}
-          className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 flex items-center gap-2 ${
-            activeTab === "reconciliation" ? "border-teal-600 text-teal-700" : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <span className="material-symbols-outlined text-lg">point_of_sale</span>
-          Shift Cash Reconciliation
+          <span className="material-symbols-outlined text-lg text-rose-600">assignment_return</span>
+          Medicine Returns &amp; Restocking Log ({returns.length})
         </button>
       </div>
 
@@ -483,176 +552,64 @@ export default function MedicalStoreSalesLog() {
         </div>
       )}
 
-      {/* TAB 2: Daily Expenses Tracker */}
-      {activeTab === "expenses" && (
+      {/* TAB 2: Medicine Returns & Refunds Log */}
+      {activeTab === "returns" && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-bold text-gray-900 text-base">Pharmacy Operating Expenses (Dukan Kharchay)</h2>
-              <p className="text-xs text-gray-500">Record daily staff tea, utility bills, delivery charges &amp; maintenance</p>
+              <h2 className="font-bold text-gray-900 text-base">Medicine Returns &amp; Restocking Audit Log</h2>
+              <p className="text-xs text-gray-500">Track returned medications, patient refund amounts &amp; stock restoration</p>
             </div>
-            <button
-              onClick={() => setShowExpenseForm(!showExpenseForm)}
-              className="btn-pill"
-            >
-              <span className="material-symbols-outlined text-sm">add</span> Record Expense
-            </button>
+            <div className="text-xs font-bold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200">
+              Total Refunds: Rs. {totalRefundsValue.toLocaleString()}
+            </div>
           </div>
 
-          {/* Add Expense Form */}
-          {showExpenseForm && (
-            <form onSubmit={handleAddExpenseSubmit} className="bg-white p-5 rounded-2xl border border-teal-200 shadow-lg space-y-4">
-              <h3 className="font-bold text-gray-900 text-sm">Add New Pharmacy Expense Entry</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Expense Category *</label>
-                  <select
-                    value={expenseForm.category}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm"
-                    required
-                  >
-                    <option value="Tea & Refreshment">Tea &amp; Refreshments</option>
-                    <option value="Electricity & Utilities">Electricity &amp; Utility Bills</option>
-                    <option value="Delivery & Freight">Delivery &amp; Courier Freight</option>
-                    <option value="Generator Fuel">Generator / Fuel</option>
-                    <option value="Stationery & Printing">Stationery &amp; Thermal Paper</option>
-                    <option value="Maintenance & Repair">Shop Repair &amp; Maintenance</option>
-                    <option value="Staff Allowance / Bonus">Staff Lunch / Allowance</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Amount (Rs) *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 180"
-                    value={expenseForm.amount}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Description / Note</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Tea for pharmacy staff"
-                    value={expenseForm.description}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              {error && <p className="text-xs text-rose-600 font-bold">{error}</p>}
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowExpenseForm(false)} className="btn-secondary">Cancel</button>
-                <button type="submit" className="btn-primary">Save Expense</button>
-              </div>
-            </form>
-          )}
-
-          {/* Expenses List */}
-          <div className="space-y-2">
-            {expenses.length === 0 ? (
-              <div className="bg-white p-12 text-center rounded-2xl border border-gray-200 text-gray-400">
-                No pharmacy expenses logged yet.
-              </div>
-            ) : (
-              expenses.map((exp) => (
-                <div key={exp.id} className="bg-white p-4 rounded-2xl border border-gray-200 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100">
-                      payments
-                    </span>
-                    <div>
-                      <div className="font-bold text-gray-900 text-sm">{exp.category}</div>
-                      <div className="text-xs text-gray-500">
-                        {exp.description || "No description"} · <span className="font-medium">{new Date(exp.date).toLocaleDateString("en-US")}</span>
-                      </div>
+          {returns.length === 0 ? (
+            <div className="bg-white p-12 text-center rounded-2xl border border-gray-200 text-gray-400">
+              No medicine returns or exchanges recorded yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {returns.map((ret) => (
+                <div key={ret.id} className="bg-white p-4 rounded-2xl border border-rose-100 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-rose-600 bg-rose-50 p-1.5 rounded-lg text-lg">assignment_return</span>
+                      <span className="font-bold text-slate-900 text-xs">Receipt #{ret.sale_id || ret.receipt_no}</span>
+                      <span className="text-xs text-slate-500 font-mono">({formatDate(ret.return_date || ret.created_at)})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        ret.refund_type === "cash" ? "bg-rose-100 text-rose-800" : "bg-blue-100 text-blue-800"
+                      }`}>
+                        {ret.refund_type === "cash" ? "Cash Refund" : "Khata Credit"}
+                      </span>
+                      <span className="font-mono font-black text-rose-700 text-sm">
+                        - Rs. {Number(ret.refund_amount || 0).toLocaleString()}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="font-black text-rose-700 text-lg">Rs. {Number(exp.amount).toLocaleString()}</span>
-                    <button onClick={() => handleDeleteExpense(exp.id)} className="text-gray-300 hover:text-rose-600 p-1">
-                      <span className="material-symbols-outlined text-lg">delete</span>
-                    </button>
+
+                  <div className="text-xs text-slate-700 font-medium">
+                    <span className="font-bold text-slate-900">Reason:</span> {ret.reason || "Doctor changed prescription"}
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* TAB 3: Shift Cash Reconciliation */}
-      {activeTab === "reconciliation" && (
-        <div className="bg-white p-6 rounded-3xl border border-teal-100 shadow-sm space-y-6">
-          <div>
-            <h2 className="font-bold text-gray-900 text-lg">Shift Cash Till Reconciliation</h2>
-            <p className="text-xs text-gray-500">Verify end-of-shift cash in drawer against sales, refunds &amp; expenses</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3 bg-gray-50 p-5 rounded-2xl border border-gray-200">
-              <h3 className="font-bold text-xs text-gray-700 uppercase tracking-wider">System Expected Cash Calculation</h3>
-              
-              <div className="space-y-2 text-sm border-t border-gray-200 pt-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Cash Received (Sales):</span>
-                  <span className="font-bold text-emerald-700">+ Rs. {cashSalesTotal.toLocaleString()}</span>
+                  {ret.returned_items?.length > 0 && (
+                    <div className="bg-slate-50 p-2.5 rounded-xl text-xs space-y-1">
+                      <span className="font-bold text-slate-800 text-[11px] block">Returned Items Restocked:</span>
+                      {ret.returned_items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-slate-600 font-mono text-[11px]">
+                          <span>• {item.medicine_name}</span>
+                          <span className="font-bold text-slate-900">Qty: {item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Udhaar / Credit Given:</span>
-                  <span className="font-bold text-rose-600">Rs. {creditSalesTotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Cash Refunds Processed:</span>
-                  <span className="font-bold text-rose-700">- Rs. {cashRefundsTotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Daily Expenses Paid:</span>
-                  <span className="font-bold text-amber-700">- Rs. {totalExpensesValue.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-300 pt-2 font-bold text-base text-gray-900">
-                  <span>Expected Cash in Till:</span>
-                  <span className="text-teal-700">Rs. {expectedCashInDrawer.toLocaleString()}</span>
-                </div>
-              </div>
+              ))}
             </div>
-
-            <div className="space-y-4 bg-teal-50/50 p-5 rounded-2xl border border-teal-100">
-              <h3 className="font-bold text-xs text-teal-900 uppercase tracking-wider">Physical Cash Verification</h3>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Actual Physical Cash Counted in Drawer (Rs):</label>
-                <input
-                  type="number"
-                  placeholder={expectedCashInDrawer.toString()}
-                  value={countedCashInput}
-                  onChange={(e) => setCountedCashInput(e.target.value)}
-                  className="w-full border border-teal-300 rounded-xl px-4 py-2.5 text-lg font-black bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-
-              {countedCashInput !== "" && (
-                <div className={`p-4 rounded-xl border text-center font-bold ${
-                  cashVariance === 0
-                    ? "bg-emerald-100 border-emerald-300 text-emerald-900"
-                    : cashVariance > 0
-                    ? "bg-sky-100 border-sky-300 text-sky-900"
-                    : "bg-rose-100 border-rose-300 text-rose-900"
-                }`}>
-                  <div className="text-xs uppercase font-bold mb-1">
-                    {cashVariance === 0 ? "✅ Till Reconciled (Perfect Match!)" : cashVariance > 0 ? "🔵 Excess Cash in Drawer" : "⚠️ Cash Shortage in Drawer"}
-                  </div>
-                  <div className="text-2xl font-black">
-                    {cashVariance === 0 ? "Rs. 0 Variance" : `${cashVariance > 0 ? "+" : "-"} Rs. ${Math.abs(cashVariance).toLocaleString()}`}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       )}
 
