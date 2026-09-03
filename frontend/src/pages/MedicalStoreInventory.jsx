@@ -139,8 +139,15 @@ export default function MedicalStoreInventory() {
   });
 
   const [error, setError] = useState("");
-  const [toastMsg, setToastMsg] = useState("");
   const quickNameRef = useRef(null);
+  const categoryScrollRef = useRef(null);
+
+  const scrollCategories = (dir) => {
+    if (categoryScrollRef.current) {
+      const amt = dir === "left" ? -240 : 240;
+      categoryScrollRef.current.scrollBy({ left: amt, behavior: "smooth" });
+    }
+  };
 
 
 
@@ -1617,9 +1624,21 @@ export default function MedicalStoreInventory() {
           </div>
         </div>
 
-        {/* Category Pill Tabs */}
-        <div className="relative flex items-center w-full">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 w-full scroll-smooth">
+        {/* Category Pill Tabs with Hidden Scrollbar & Touch Scroll Controls */}
+        <div className="relative flex items-center w-full group pt-1">
+          <button
+            type="button"
+            onClick={() => scrollCategories("left")}
+            className="hidden sm:flex shrink-0 w-7 h-7 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-teal-900 items-center justify-center -mr-1 z-10 cursor-pointer transition-all hover:scale-110 active:scale-95"
+            title="Scroll Categories Left"
+          >
+            <span className="material-symbols-outlined text-base">chevron_left</span>
+          </button>
+
+          <div
+            ref={categoryScrollRef}
+            className="flex items-center gap-2 overflow-x-auto scroll-smooth w-full py-1 px-0.5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]"
+          >
             {["all", ...allCategories].map((cat) => (
               <button
                 key={cat}
@@ -1627,16 +1646,25 @@ export default function MedicalStoreInventory() {
                   setCategoryFilter(cat);
                   setCurrentPage(1);
                 }}
-                className={`min-h-[38px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`min-h-[36px] px-4 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 cursor-pointer border ${
                   categoryFilter === cat
-                    ? "bg-teal-700 text-white shadow-md shadow-teal-900/20"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    ? "bg-teal-800 text-white border-teal-900 shadow-sm shadow-teal-950/20"
+                    : "bg-slate-100/90 text-slate-700 hover:bg-slate-200/90 border-slate-200/80"
                 }`}
               >
                 {cat === "all" ? "All Categories" : cat}
               </button>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={() => scrollCategories("right")}
+            className="hidden sm:flex shrink-0 w-7 h-7 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-teal-900 items-center justify-center -ml-1 z-10 cursor-pointer transition-all hover:scale-110 active:scale-95"
+            title="Scroll Categories Right"
+          >
+            <span className="material-symbols-outlined text-base">chevron_right</span>
+          </button>
         </div>
       </div>
 
