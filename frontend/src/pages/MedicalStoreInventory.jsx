@@ -174,7 +174,7 @@ export default function MedicalStoreInventory() {
   const isAdminOrOwner = Boolean(
     user?.is_owner ||
     user?.role === "admin" ||
-    user?.role === "doctor"
+    user?.is_principal_doctor
   );
 
   const openEditFormForItem = (item) => {
@@ -311,6 +311,35 @@ export default function MedicalStoreInventory() {
     };
 
     dbInventory.update(editingItem.id, updated);
+
+    // Tamper-Evident SHA-256 Audit Log Event with Previous Device Active User Tracking
+    const prevDeviceUser = (typeof localStorage !== "undefined" && localStorage.getItem("cf_last_logged_out_user")) || "None";
+    dbAuditLogs.logEvent({
+      actor_id: user?.id || user?.userId,
+      actor_name: user?.name,
+      role: user?.role,
+      action: "STOCK_EDIT",
+      entity: "inventory",
+      entity_id: editingItem.id,
+      before: {
+        medicine_name: editingItem.medicine_name,
+        company_name: editingItem.company_name,
+        stock_qty: editingItem.stock_qty,
+        store_stock: editingItem.store_stock,
+        warehouse_stock: editingItem.warehouse_stock,
+        sale_price: editingItem.sale_price,
+      },
+      after: {
+        medicine_name: updated.medicine_name,
+        company_name: updated.company_name,
+        stock_qty: updated.stock_qty,
+        store_stock: updated.store_stock,
+        warehouse_stock: updated.warehouse_stock,
+        sale_price: updated.sale_price,
+      },
+      reason: `Stock/Catalogue updated for "${updated.medicine_name}". [Device Last Active User: ${prevDeviceUser}]`,
+    });
+
     setEditingItem(null);
     load();
     triggerToast(`✅ "${updated.medicine_name}" updated successfully!`);

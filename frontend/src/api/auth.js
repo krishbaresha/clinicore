@@ -426,11 +426,12 @@ export async function login(identifier, password) {
     storageDriver.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {}
 
+  const prevDeviceUser = storageDriver.getItem("cf_last_logged_out_user") || "None (Fresh Device Boot)";
   dbAuditLogs.logEvent({
     actor_id: user.id, actor_name: user.name, role: user.role,
     action: "LOGIN_SUCCESS", entity: "auth", entity_id: user.id,
     session_token: session.sessionToken,
-    reason: "Local PIN authentication",
+    reason: `Local PIN auth. [Device Previous Active User: ${prevDeviceUser}]`,
   });
 
   return { success: true, user: session, error: null };
@@ -485,6 +486,17 @@ export function getSession() {
 /** Log out the current user. */
 export function logout() {
   try {
+    const currentSession = getSession();
+    if (currentSession) {
+      const stamp = `${currentSession.name} (${currentSession.role}) [ID: ${currentSession.userId}] at ${new Date().toLocaleTimeString()}`;
+      storageDriver.setItem("cf_last_logged_out_user", stamp);
+      dbAuditLogs.logEvent({
+        actor_id: currentSession.userId, actor_name: currentSession.name, role: currentSession.role,
+        action: "LOGOUT", entity: "auth", entity_id: currentSession.userId,
+        session_token: currentSession.sessionToken,
+        reason: `User logged out cleanly from device.`,
+      });
+    }
     if (typeof sessionStorage !== "undefined") sessionStorage.removeItem(SESSION_KEY);
     if (typeof localStorage !== "undefined") storageDriver.removeItem(SESSION_KEY);
   } catch {}
