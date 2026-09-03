@@ -3297,6 +3297,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Zero-Lag Instant Tab Switching**: Wrapped `filteredInventory`, `filteredParties`, `uniqueCities`, `totalGodownValuation`, `totalWholesaleB2BVolume`, and `totalPartyReceivables` in `useMemo` hooks to eliminate 1-2s lag during tab switching.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean Vite production bundle compilation in 1.61s.
 
+58. **Milestone 131: Multi-Candidate Super Admin PIN Unlock Validation Engine**
+    - **Super Admin Lockout Resolution**: Refactored `handleLogin` in `DeveloperAdminPanel.jsx` to test input PINs against `7860`, `1234`, `currentAdminPasscode`, `verifyPassword`, as well as any active Admin or Owner user's credentials in `dbUsers`.
+    - **Result**: Entering `7860`, `1234`, or Admin credentials now unlocks the Super Admin Command Center (`/admin`) 100% reliably without access denied errors.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.75s.
+
 
 
 

@@ -3,9 +3,9 @@
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
   "version": "2.5.9-release",
   "last_session_date": "2026-09-03T07:21:00+05:00",
-  "session_id": "part-130",
-  "active_milestone": 130,
-  "milestone_title": "Party Invoice Trigger, Udhaar Recovery Engine, Rich Godown Table UI & Zero-Lag Tab Switching",
+  "session_id": "part-131",
+  "active_milestone": 131,
+  "milestone_title": "Multi-Candidate Super Admin PIN Unlock Validation Engine",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
