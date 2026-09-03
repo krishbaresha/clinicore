@@ -76,6 +76,7 @@ export default function MedicalStoreInventory() {
   );
 
   const [inventory, setInventory] = useState([]);
+  const [activeSubTab, setActiveSubTab] = useState("inventory"); // "inventory" | "register"
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -929,21 +930,43 @@ export default function MedicalStoreInventory() {
               </div>
             )}
 
-            <button
-              id="add-medicine-btn"
-              onClick={() => {
-                setShowForm(!showForm);
-                if (!showForm) {
-                  setTimeout(() => {
-                    if (quickNameRef.current) quickNameRef.current.focus();
-                  }, 100);
-                }
-              }}
-              className="min-h-[42px] px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-base font-black">{showForm ? "close" : "add"}</span>
-              <span>{showForm ? "Close Form" : "+ Register Medicine"}</span>
-            </button>
+            {/* Sub-Tab Navigation Buttons */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 rounded-2xl border border-slate-700">
+              <button
+                id="tab-inventory-catalog"
+                onClick={() => setActiveSubTab("inventory")}
+                className={`min-h-[38px] px-4 py-2 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  activeSubTab === "inventory"
+                    ? "bg-teal-500 text-slate-950 shadow-md shadow-teal-500/25"
+                    : "text-slate-300 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">inventory_2</span>
+                <span>📦 Store Stock Directory</span>
+              </button>
+
+              <button
+                id="add-medicine-btn"
+                onClick={() => {
+                  setActiveSubTab(activeSubTab === "register" ? "inventory" : "register");
+                  if (activeSubTab !== "register") {
+                    setTimeout(() => {
+                      if (quickNameRef.current) quickNameRef.current.focus();
+                    }, 100);
+                  }
+                }}
+                className={`min-h-[38px] px-4 py-2 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  activeSubTab === "register"
+                    ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/25"
+                    : "text-emerald-400 hover:bg-slate-800"
+                }`}
+              >
+                <span className="material-symbols-outlined text-base font-black">
+                  {activeSubTab === "register" ? "arrow_back" : "add"}
+                </span>
+                <span>{activeSubTab === "register" ? "Back to Stock" : "+ Register Medicine"}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1025,171 +1048,39 @@ export default function MedicalStoreInventory() {
         </div>
       </div>
 
-      {/* Location Scoped Incharge Notice */}
-      {isLocationLocked && userAssignedWh && (
-        <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-teal-900 text-white rounded-3xl p-4 sm:p-5 border border-teal-500/40 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-bold">
-              <span className="material-symbols-outlined text-2xl">warehouse</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-500 text-slate-950">
-                  {userAssignedWh.code || "GDW"}
-                </span>
-                <h3 className="font-extrabold text-sm sm:text-base text-white">
-                  Location Scoped: {userAssignedWh.nickname || userAssignedWh.name}
-                </h3>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Logged in as <strong>{user?.name}</strong> • Only stock &amp; movements for this specific location are accessible.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-teal-950/80 px-4 py-2 rounded-2xl border border-teal-500/30 text-xs font-semibold text-teal-200">
-            <span className="material-symbols-outlined text-sm text-teal-400">lock</span>
-            <span>Isolated Godown Security Active</span>
-          </div>
-        </div>
-      )}
-
-      {/* KPI & Valuation Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Total Catalog Medicines */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Catalog SKUs</span>
-            <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
-              <span className="material-symbols-outlined text-xl">medication</span>
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900">{metrics.totalItems.toLocaleString()}</div>
-            <div className="text-xs text-slate-500 font-medium mt-0.5">
-              {uniqueCompanyNames.length - 1} Manufacturing Brands
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-emerald-500 opacity-60" />
-        </div>
-
-        {/* Total Stock Volume */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {isLocationLocked ? "Location Stock" : effectiveLocationId === "all" ? "Total Stock Units" : "Location Stock"}
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-cyan-800 flex items-center justify-center font-bold">
-              <span className="material-symbols-outlined text-xl">inventory</span>
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900">{metrics.totalStockUnits.toLocaleString()}</div>
-            <div className="text-xs text-slate-500 font-medium mt-0.5">
-              {isLocationLocked
-                ? `Assigned: ${userAssignedWh?.nickname || "This Godown"}`
-                : effectiveLocationId === "all"
-                ? "Combined Store & Godown Units"
-                : `Filtered: ${currentWarehouseInfo?.nickname || "Selected Location"}`}
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-500 opacity-60" />
-        </div>
-
-        {/* Stock Valuation */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Stock Valuation</span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-              <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
-            </div>
-          </div>
-          <div className="mt-3">
-            {canViewFinancials ? (
-              <>
-                <div className="text-2xl sm:text-3xl font-black text-emerald-800">
-                  Rs. {Math.round(metrics.totalValuationRetail).toLocaleString()}
-                </div>
-                <div className="text-xs text-slate-500 font-medium mt-0.5">
-                  Cost Asset: Rs. {Math.round(metrics.totalValuationCost).toLocaleString()}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-base font-black text-slate-400 flex items-center gap-1.5 mt-1">
-                  <span className="material-symbols-outlined text-base">lock</span>
-                  <span>Confidential</span>
-                </div>
-                <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-                  Doctor &amp; Owner Access Only
-                </div>
-              </>
-            )}
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-60" />
-        </div>
-
-        {/* Low / Out of Stock Health */}
-        <div
-          onClick={() => setStockStatusFilter(stockStatusFilter === "low" ? "all" : "low")}
-          className={`bg-white rounded-3xl p-5 border shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden ${
-            metrics.lowStockCount > 0 ? "border-amber-300 bg-amber-50/20" : "border-slate-200/80"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Reorder Alerts</span>
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
-              metrics.lowStockCount > 0 ? "bg-amber-100 text-amber-800 animate-pulse" : "bg-slate-100 text-slate-500"
-            }`}>
-              <span className="material-symbols-outlined text-xl">warning</span>
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-black text-amber-700">
-              {metrics.lowStockCount} <span className="text-xs font-bold text-slate-500">Low Stock</span>
-            </div>
-            <div className="text-xs text-rose-600 font-bold mt-0.5">
-              {metrics.outOfStockCount} Out of Stock
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-rose-500 opacity-60" />
-        </div>
-      </div>
-
-      {/* Dual-Mode Add / Inventory Registration Form */}
-      {showForm && (
+      {/* SUB-TAB 2: DEDICATED MEDICINE REGISTRATION WORKSTATION */}
+      {activeSubTab === "register" ? (
         <div className="bg-white border-2 border-emerald-600/50 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
           {/* Header Banner */}
-          <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-emerald-950 p-5 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-emerald-950 p-5 sm:p-6 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300">
                 <span className="material-symbols-outlined text-2xl">app_registration</span>
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-black tracking-wide uppercase text-white flex items-center gap-2">
-                  Inventory Registration Form
-                  <span className="bg-emerald-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                  New Medicine Registration Workstation
+                  <span className="bg-emerald-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
                     Rapid Entry
                   </span>
                 </h2>
-                <p className="text-xs text-emerald-200/80 font-medium">
-                  Compatible with DrCreate V2.0 &amp; AshrafKhan.accdb legacy schemas
+                <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
+                  Register new pharmaceuticals &amp; homeopathic remedies into DrCreate catalog
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
-                title="Close Form"
-              >
-                <span className="material-symbols-outlined text-xl">close</span>
-              </button>
-            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveSubTab("inventory")}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 border border-slate-700 transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">arrow_back</span>
+              <span>Back to Inventory Catalogue</span>
+            </button>
           </div>
 
-          {/* DrCreate Rapid Entry Form */}
+          {/* Rapid Entry Form Content */}
           <div className="p-6 md:p-8 space-y-6 bg-slate-50/50">
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs text-emerald-950 flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-2.5">
@@ -1197,11 +1088,11 @@ export default function MedicalStoreInventory() {
                   ↵
                 </div>
                 <div>
-                  <strong>Continuous Rapid Loop:</strong> Type details and press{" "}
+                  <strong>Continuous Rapid Loop:</strong> Fill details and press{" "}
                   <kbd className="bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono font-black text-emerald-800">
                     Enter
                   </kbd>{" "}
-                  to instantly save and jump straight to the next medicine.
+                  to save and immediately register the next product.
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-800">
@@ -1213,7 +1104,7 @@ export default function MedicalStoreInventory() {
             </div>
 
             {/* Executive Form Grid */}
-            <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
               {/* Row 1: Product Name & Description */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-6">
@@ -1454,57 +1345,174 @@ export default function MedicalStoreInventory() {
               </div>
             )}
 
-            {/* Quick Form Action Bar */}
+            {/* Registration Action Deck */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab("inventory")}
+                className="px-5 py-2.5 rounded-2xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                Cancel &amp; Return to Inventory
+              </button>
+
+              <div className="flex items-center gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={() => {
-                    setModalCategoryFilter(quickForm.item_code || "All");
-                    setModalSearchQuery("");
-                    setShowInventoryListModal(true);
+                    handleQuickAdd(false);
+                    setActiveSubTab("inventory");
                   }}
-                  className="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-2.5 rounded-2xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
-                  Show Catalog List
+                  <span className="material-symbols-outlined text-sm">inventory_2</span>
+                  Save &amp; View Stock List
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModalCategoryFilter(quickForm.item_code || "All");
-                    setModalSearchQuery("");
-                    setShowPricingListModal(true);
-                  }}
-                  className="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm">price_change</span>
-                  Price Sheet
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-5 py-2.5 rounded-2xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
                 <button
                   type="button"
                   onClick={() => handleQuickAdd(false)}
                   className="px-7 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg shadow-emerald-700/20 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-base">check</span>
-                  Save Medicine [Enter]
+                  <span className="material-symbols-outlined text-base">add_circle</span>
+                  Save &amp; Register Next (Enter)
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+      ) : (
+        /* SUB-TAB 1: STORE INVENTORY CATALOG & STOCK DIRECTORY */
+        <>
+          {/* Location Scoped Incharge Notice */}
+          {isLocationLocked && userAssignedWh && (
+            <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-teal-900 text-white rounded-3xl p-4 sm:p-5 border border-teal-500/40 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-bold">
+                  <span className="material-symbols-outlined text-2xl">warehouse</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-500 text-slate-950">
+                      {userAssignedWh.code || "GDW"}
+                    </span>
+                    <h3 className="font-extrabold text-sm sm:text-base text-white">
+                      Location Scoped: {userAssignedWh.nickname || userAssignedWh.name}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Logged in as <strong>{user?.name}</strong> • Only stock &amp; movements for this specific location are accessible.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-teal-950/80 px-4 py-2 rounded-2xl border border-teal-500/30 text-xs font-semibold text-teal-200">
+                <span className="material-symbols-outlined text-sm text-teal-400">lock</span>
+                <span>Isolated Godown Security Active</span>
+              </div>
+            </div>
+          )}
+
+          {/* KPI & Valuation Stat Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Total Catalog Medicines */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Catalog SKUs</span>
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-xl">medication</span>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl sm:text-3xl font-black text-slate-900">{metrics.totalItems.toLocaleString()}</div>
+                <div className="text-xs text-slate-500 font-medium mt-0.5">
+                  {uniqueCompanyNames.length - 1} Manufacturing Brands
+                </div>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-emerald-500 opacity-60" />
+            </div>
+
+            {/* Total Stock Volume */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  {isLocationLocked ? "Location Stock" : effectiveLocationId === "all" ? "Total Stock Units" : "Location Stock"}
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-cyan-800 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-xl">inventory</span>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl sm:text-3xl font-black text-slate-900">{metrics.totalStockUnits.toLocaleString()}</div>
+                <div className="text-xs text-slate-500 font-medium mt-0.5">
+                  {isLocationLocked
+                    ? `Assigned: ${userAssignedWh?.nickname || "This Godown"}`
+                    : effectiveLocationId === "all"
+                    ? "Combined Store & Godown Units"
+                    : `Filtered: ${currentWarehouseInfo?.nickname || "Selected Location"}`}
+                </div>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-teal-500 opacity-60" />
+            </div>
+
+            {/* Stock Valuation */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Stock Valuation</span>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
+                </div>
+              </div>
+              <div className="mt-3">
+                {canViewFinancials ? (
+                  <>
+                    <div className="text-2xl sm:text-3xl font-black text-emerald-800">
+                      Rs. {Math.round(metrics.totalValuationRetail).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium mt-0.5">
+                      Cost Asset: Rs. {Math.round(metrics.totalValuationCost).toLocaleString()}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-base font-black text-slate-400 flex items-center gap-1.5 mt-1">
+                      <span className="material-symbols-outlined text-base">lock</span>
+                      <span>Confidential</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-medium mt-0.5">
+                      Doctor &amp; Owner Access Only
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-60" />
+            </div>
+
+            {/* Low / Out of Stock Health */}
+            <div
+              onClick={() => setStockStatusFilter(stockStatusFilter === "low" ? "all" : "low")}
+              className={`bg-white rounded-3xl p-5 border shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden ${
+                metrics.lowStockCount > 0 ? "border-amber-300 bg-amber-50/20" : "border-slate-200/80"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Reorder Alerts</span>
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
+                  metrics.lowStockCount > 0 ? "bg-amber-100 text-amber-800 animate-pulse" : "bg-slate-100 text-slate-500"
+                }`}>
+                  <span className="material-symbols-outlined text-xl">warning</span>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl sm:text-3xl font-black text-amber-700">
+                  {metrics.lowStockCount} <span className="text-xs font-bold text-slate-500">Low Stock</span>
+                </div>
+                <div className="text-xs text-rose-600 font-bold mt-0.5">
+                    {metrics.outOfStockCount} Out of Stock
+                </div>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-rose-500 opacity-60" />
+            </div>
+          </div>
 
       {/* Search, Filter & View Control Bar */}
       <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
@@ -2020,6 +2028,8 @@ export default function MedicalStoreInventory() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL 1: DrCreate / Access "INVENTORY _LIST" Popup Modal                 */}
