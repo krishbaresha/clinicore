@@ -139,6 +139,7 @@ export default function MedicalStoreInventory() {
   });
 
   const [error, setError] = useState("");
+  const [toastMsg, setToastMsg] = useState("");
   const quickNameRef = useRef(null);
   const categoryScrollRef = useRef(null);
 
