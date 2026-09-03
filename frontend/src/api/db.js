@@ -562,16 +562,34 @@ export function initDB() {
     console.error("Schema migration runtime notice:", migErr);
   }
 
-  // Mandatory One-Time Clean Purge of Dummy Parties and Godowns
+  // Mandatory One-Time Clean Purge of All Old Data & Accounts (Zero-Record Master Setup)
   try {
-    if (!storageDriver.getItem("cf_purged_parties_wh_v1")) {
+    if (!storageDriver.getItem("cf_purged_zero_v17")) {
+      storageDriver.setItem(KEYS.PATIENTS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.VISITS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.INVENTORY, JSON.stringify([]));
       storageDriver.setItem(KEYS.PARTIES, JSON.stringify([]));
-      storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.SALESMEN, JSON.stringify([]));
+      storageDriver.setItem(KEYS.PURCHASES, JSON.stringify([]));
+      storageDriver.setItem(KEYS.B2B_SALES, JSON.stringify([]));
+      storageDriver.setItem(KEYS.SALES, JSON.stringify([]));
+      storageDriver.setItem(KEYS.PATIENT_LEDGER, JSON.stringify([]));
+      storageDriver.setItem(KEYS.EXPENSES, JSON.stringify([]));
+      storageDriver.setItem(KEYS.RETURNS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.SHIFT_CLOSINGS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.DOCUMENTS, JSON.stringify([]));
       storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify([]));
-      _COLLECTION_CACHE.delete(KEYS.PARTIES);
-      _COLLECTION_CACHE.delete(KEYS.ACCOUNTS);
-      _COLLECTION_CACHE.delete(KEYS.WAREHOUSES);
-      storageDriver.setItem("cf_purged_parties_wh_v1", "1");
+      storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.SUPPLIER_LEDGER, JSON.stringify([]));
+      storageDriver.setItem(KEYS.CASHBOOK, JSON.stringify([]));
+      storageDriver.setItem(KEYS.STOCK_MOVEMENTS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.AUDIT_LOGS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.USERS, JSON.stringify(SEED_DATA.users));
+      _COLLECTION_CACHE.clear();
+      _ID_MAP_CACHE.clear();
+      storageDriver.setItem("cf_purged_zero_v17", "1");
     }
   } catch (e) {}
 
