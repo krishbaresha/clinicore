@@ -4690,9 +4690,20 @@ export const dbGrnMetadata = {
   },
   getTransports: () => {
     const custom = getCollection("clinicflow_grn_transports") || [];
-    const defaults = ["By Hand", "Al-Razi Transport", "Karachi Goods", "Niazi Express", "TCS Courier", "Self Transport"];
+    const dirtyJunk = ["BabU Gadha", "by Hand Fraz Bhai", "by hand Usama", "Asad Bhai", "Azeem", "Al-razi Transport"];
+    
+    // Purge old dirty/sample entries and convert all saved entries to clean Title Case
+    const cleanedCustom = (custom || [])
+      .map((raw) => toTitleCase(raw))
+      .filter((t) => t && !dirtyJunk.includes(t));
+    
+    // Save back cleaned custom array to permanently wipe legacy junk from localStorage
+    if (JSON.stringify(cleanedCustom) !== JSON.stringify(custom)) {
+      setCollection("clinicflow_grn_transports", Array.from(new Set(cleanedCustom)));
+    }
+
     const map = new Map();
-    [...defaults, ...custom].forEach((raw) => {
+    ["By Hand", ...cleanedCustom].forEach((raw) => {
       const title = toTitleCase(raw);
       if (title && !map.has(title.toLowerCase())) {
         map.set(title.toLowerCase(), title);

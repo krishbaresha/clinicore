@@ -205,6 +205,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   const [showSalesmanPinModal, setShowSalesmanPinModal] = useState(false);
   const [salesmanPinInput, setSalesmanPinInput] = useState("");
   const [salesmanPinError, setSalesmanPinError] = useState("");
+  const [showTransportDropdown, setShowTransportDropdown] = useState(false);
 
   const [saleForm, setSaleForm] = useState({
     date: new Date().toLocaleDateString("en-US"),
@@ -1400,17 +1401,68 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                           className="w-full bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-800"
                         />
                       </div>
-                      <div className="col-span-2 sm:col-span-2 md:col-span-3">
-                        <ExpandableCombobox
-                          label="Transport"
-                          value={saleForm.transport}
-                          onChange={(val) => setSaleForm({ ...saleForm, transport: toTitleCase(val) })}
-                          options={transportOptions}
-                          placeholder="Select Transport..."
-                          searchPlaceholder="Search Transport..."
-                          onAddNew={() => setShowNewTransportInput(true)}
-                          addNewLabel="New"
-                        />
+                      {/* Direct Dynamic Editable Transport Autocomplete Field */}
+                      <div className="col-span-2 sm:col-span-2 md:col-span-3 relative">
+                        <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5 flex items-center justify-between">
+                          <span>Transport</span>
+                          {saleForm.transport && (
+                            <button
+                              type="button"
+                              onClick={() => setSaleForm({ ...saleForm, transport: "" })}
+                              className="text-[8.5px] text-rose-600 font-bold hover:underline"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={saleForm.transport}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSaleForm({ ...saleForm, transport: val });
+                              setShowTransportDropdown(true);
+                            }}
+                            onFocus={() => setShowTransportDropdown(true)}
+                            onBlur={() => {
+                              if (saleForm.transport) {
+                                const formatted = toTitleCase(saleForm.transport);
+                                setSaleForm((prev) => ({ ...prev, transport: formatted }));
+                              }
+                              setTimeout(() => setShowTransportDropdown(false), 200);
+                            }}
+                            placeholder="Type transport (e.g. By Hand)..."
+                            className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                          />
+                          {/* Dropdown Suggestions */}
+                          {showTransportDropdown && transportOptions.length > 0 && (
+                            <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-white border border-teal-400 rounded-xl shadow-xl max-h-44 overflow-y-auto divide-y divide-gray-100">
+                              {transportOptions
+                                .filter((opt) => !saleForm.transport || opt.label.toLowerCase().includes(saleForm.transport.toLowerCase()))
+                                .map((opt) => (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setSaleForm({ ...saleForm, transport: opt.label });
+                                      setShowTransportDropdown(false);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 text-left text-xs font-bold text-gray-800 hover:bg-teal-50 flex items-center justify-between transition-colors cursor-pointer"
+                                  >
+                                    <span className="flex items-center gap-1">
+                                      <span className="text-[9px] text-teal-700 font-bold bg-teal-100 px-1 rounded">🚚 Carrier</span>
+                                      <span>{opt.label}</span>
+                                    </span>
+                                    {saleForm.transport === opt.label && (
+                                      <span className="material-symbols-outlined text-xs text-teal-600">check</span>
+                                    )}
+                                  </button>
+                                ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Bilty#</label>

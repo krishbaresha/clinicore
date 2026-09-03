@@ -3322,6 +3322,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Result**: Typing or selecting Transport (e.g. `by hand` -> `Transport: By Hand`) or Bilty # (e.g. `8912` -> `Bilty #: 8912`) immediately reflects live in the receipt preview pane on the screen, and disappears instantly if the fields are cleared.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.65s.
 
+63. **Milestone 136: Direct Dynamic Editable Transport Autocomplete & LocalStorage Legacy Purge**
+    - **Direct Text Editing**: Replaced button combobox with a direct dynamic editable `<input>` for Transport in `SaleInvoiceModal.jsx`. Users can type directly (e.g. `by hand`, `BY HAND`, `faisal movers`) with instant live suggestions.
+    - **Storage Purge**: Added automatic storage purging in `dbTransports.getTransports()` to strip legacy dirty entries (`"Al-razi Transport"`, `"BabU Gadha"`, `"by hand Usama"`) from `localStorage`, ensuring clean Title Case normalization (`By Hand`, `Al-Razi Transport`).
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.44s.
+
 
 
 
