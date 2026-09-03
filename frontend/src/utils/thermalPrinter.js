@@ -99,51 +99,41 @@ export function getLogoHeaderHtml(docTypeLabel = "", blockFlags = {}) {
   const rawLogo = showLogo && cfg.logo_base64 ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
   const logoSrc = sanitizeLogoSrc(rawLogo);
 
-  const logoWidth = Number(cfg.logo_width || 53);
-  const logoHeight = Number(cfg.logo_height || 60);
-  const logoSize = Number(cfg.logo_size || 62);
-  const nameSize = Number(cfg.name_size || 15);
-  const subtitleSize = Number(cfg.subtitle_size || 9);
-  const contactSize = Number(cfg.contact_size || 9.5);
-
   const rawPhones = cfg.phone || "0311 4234777\n0343 9376363";
   const phoneLines = rawPhones.split(/[\n,]+/).map(p => p.trim()).filter(Boolean);
 
   let headerHtml = `
-    <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 2px 0 4px 0; font-family: Georgia, 'Times New Roman', serif; color: #000; box-sizing: border-box;">
-      <!-- Left Logo Box -->
-      ${showLogo && logoSrc ? `
-        <div style="width: ${logoWidth}px; min-width: ${logoWidth}px; height: ${logoHeight}px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
-          <img src="${logoSrc}" alt="Logo" style="width: ${logoSize}px; height: ${logoSize}px; object-fit: contain; display: block;" />
-        </div>
-      ` : ''}
-
-      <!-- Center Clinic Name & Subtitle -->
-      <div style="flex: 1; min-width: 0; padding: 0 2px;">
-        ${showClinicName ? `
-          <div style="font-size: ${nameSize}px; line-height: ${nameSize + 1}px; font-weight: 700; white-space: nowrap; color: #000; letter-spacing: -0.2px;">
-            ${escapeHtml(cfg.clinic_name || "M.Ashraf Khan")}
-          </div>
-        ` : ''}
-        ${showTagline ? `
-          <div style="font-size: ${subtitleSize}px; line-height: ${subtitleSize + 2}px; font-weight: 700; white-space: nowrap; color: #111; margin-top: 1px;">
-            ${escapeHtml(cfg.tagline || "Homeopathic Clinic")}
-          </div>
-        ` : ''}
-      </div>
-
-      <!-- Right Address & Contacts -->
-      <div style="text-align: right; font-size: ${contactSize}px; line-height: ${contactSize + 2}px; font-weight: 600; white-space: nowrap; flex-shrink: 0;">
-        ${showContact ? `
-          <div>${escapeHtml(cfg.address ? cfg.address.split(",")[0] : "Lajpat Road, Hyderabad")}</div>
-          <div>${escapeHtml(cfg.address && cfg.address.includes(",") ? cfg.address.split(",").slice(1).join(",").trim() : "Sindh, Pakistan")}</div>
-          <div style="font-weight: 700;">
-            ${phoneLines.map(ph => `<div>${escapeHtml(ph)}</div>`).join("")}
-          </div>
-        ` : ''}
-      </div>
+    <div style="width: 100%; padding-bottom: 2px; border-bottom: 1.5px solid #0f172a; margin-bottom: 4px; box-sizing: border-box;">
+      <table style="width: 100%; border-collapse: collapse; border: 0 !important; margin: 0;">
+        <tr style="border: 0 !important; vertical-align: top;">
+          ${showLogo && logoSrc ? `
+            <td style="width: 46px; min-width: 46px; vertical-align: top; border: 0 !important; padding: 0 4px 0 0;">
+              <img src="${logoSrc}" alt="Logo" style="width: 44px; height: 48px; object-fit: contain; display: block;" />
+            </td>
+          ` : ''}
+          <td style="vertical-align: top; text-align: left; padding: 0 2px 0 0; border: 0 !important;">
+            ${showClinicName ? `
+              <div style="font-size: 15px; line-height: 16px; font-weight: 700; white-space: nowrap; color: #0f172a; letter-spacing: -0.3px; font-family: Georgia, 'Times New Roman', serif;">
+                ${escapeHtml(cfg.clinic_name || "M.Ashraf Khan")}
+              </div>
+            ` : ''}
+            ${showTagline ? `
+              <div style="font-size: 9.5px; line-height: 11px; font-weight: 700; white-space: nowrap; color: #334155; margin-top: 1px; font-family: Georgia, 'Times New Roman', serif;">
+                ${escapeHtml(cfg.tagline || "Homeopathic Clinic")}
+              </div>
+            ` : ''}
+            ${showContact ? `
+              <div style="font-size: 8.5px; line-height: 11px; color: #475569; white-space: nowrap; margin-top: 2px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                ${escapeHtml(cfg.address ? (cfg.address.includes("Hyderabad") ? "Lajpat Road, Hyderabad, Sindh, PK" : cfg.address) : "Lajpat Road, Hyderabad, Sindh, PK")}
+              </div>
+            ` : ''}
+          </td>
+          <td style="vertical-align: bottom; text-align: right; font-size: 9px; line-height: 11.5px; font-weight: 700; white-space: nowrap; border: 0 !important; padding: 0; width: 78px; min-width: 78px; font-family: monospace, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            ${showContact ? phoneLines.map(ph => `<div>${escapeHtml(ph)}</div>`).join("") : ''}
+          </td>
+        </tr>
+      </table>
     </div>
-    <div style="width: 100%; border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
   `;
 
   if (docTypeLabel) {
@@ -158,8 +148,8 @@ export function getLogoHeaderHtml(docTypeLabel = "", blockFlags = {}) {
  */
 export function getDoctorSignatureHtml() {
   return `
-    <div style="margin-top: 12px; padding-top: 4px; display: flex; justify-content: flex-end; align-items: flex-end;">
-      <div style="border-top: 1px solid #000; width: 45%; text-align: center; font-size: 8.5px; font-weight: 800; color: #000; padding-top: 2px; text-transform: uppercase;">
+    <div style="margin-top: 28px; padding-top: 4px; display: flex; justify-content: flex-end; align-items: flex-end;">
+      <div style="border-top: 1.5px solid #0f172a; width: 45%; text-align: center; font-size: 8.5px; font-weight: 800; color: #0f172a; padding-top: 2px; text-transform: uppercase;">
         Dr. Signature
       </div>
     </div>
@@ -170,12 +160,10 @@ export function getDoctorSignatureHtml() {
  * Shared software branding watermark for all thermal receipts
  */
 export function getWatermarkFooterHtml() {
-  const versionBadge = typeof getShortVersionBadge === "function" ? getShortVersionBadge() : "v2.5.0";
   return `
-    <div style="text-align: center; margin-top: 5px; padding-top: 3px; border-top: 1px dashed #cbd5e1; font-size: 8.5px; font-family: monospace; color: #475569; line-height: 1.35;">
-      <div style="font-weight: 800; color: #0f766e; letter-spacing: 0.3px;">*** Powered by CliniCore Software ***</div>
-      <div style="color: #334155; font-weight: 700;">www.krishbaresa.tech &nbsp;|&nbsp; 0314-2291356</div>
-      <div style="color: #94a3b8; font-size: 7.5px; margin-top: 1px;">Build: ${versionBadge}</div>
+    <div style="text-align: center; margin-top: 6px; padding-top: 3px; border-top: 1px dotted #cbd5e1; font-size: 8px; font-family: monospace; color: #94a3b8; line-height: 1.35;">
+      <div style="font-weight: 600; color: #64748b;">*** Powered by CliniCore Software ***</div>
+      <div style="color: #94a3b8; font-size: 7.5px;">K.B Developer 03142291356</div>
     </div>
   `;
 }
@@ -190,6 +178,143 @@ export function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+const THERMAL_ITEMS_TABLE_CSS = `
+  .items-box {
+    margin: 4px 0;
+    overflow: hidden;
+  }
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 8.5px;
+    line-height: 1.15;
+    border: 1px solid #0f172a;
+  }
+  .items-table th,
+  .items-table td {
+    border: 1px solid #0f172a !important;
+    padding: 2.5px 2px;
+    vertical-align: middle;
+    word-break: break-word;
+  }
+  .items-table th {
+    font-weight: 900;
+    text-transform: uppercase;
+    font-size: 7.5px;
+    background: #f1f5f9;
+    text-align: center;
+    color: #0f172a;
+  }
+  .items-table .col-sr { width: 9%; text-align: center; font-weight: 800; }
+  .items-table .col-qty { width: 10%; text-align: center; font-weight: 800; }
+  .items-table .col-item { width: 37%; text-align: left; font-weight: 700; }
+  .items-table .col-rate { width: 14%; text-align: center; font-family: monospace; font-weight: 600; }
+  .items-table .col-disc { width: 12%; text-align: center; font-family: monospace; }
+  .items-table .col-net { width: 18%; text-align: right; font-weight: 900; font-family: monospace; }
+  .items-table .cat-row td {
+    background: #e2e8f0;
+    font-weight: 900;
+    font-size: 7.5px;
+    text-align: left;
+    padding: 2.5px 4px;
+    letter-spacing: 0.02em;
+    border: 1px solid #0f172a !important;
+    color: #0f172a;
+  }
+  .items-table .item-sub {
+    display: block;
+    font-size: 6.5px;
+    font-weight: 600;
+    color: #4b5563;
+    margin-top: 1px;
+  }
+`;
+
+function parseDiscPct(raw) {
+  if (raw === null || raw === undefined || raw === "" || raw === "-") return 0;
+  if (typeof raw === "string") return parseFloat(raw.replace("%", "").trim()) || 0;
+  return Number(raw) || 0;
+}
+
+function normalizeReceiptLineItem(item) {
+  const qty = Number(item.qty || item.quantity || 1);
+  const rate = Number(item.rate || item.unit_price || item.sale_price || 0);
+  const discPct = parseDiscPct(item.disc_pct_num ?? item.disc_pct ?? item.discount_pct ?? item.disc_percent ?? 0);
+  const discFlat = Number(item.disc_flat || item.discount_flat || 0);
+  const gross = qty * rate;
+  const net = Number(item.net || item.line_total || item.net_amount || Math.max(0, gross - gross * (discPct / 100) - discFlat)) || 0;
+  const name = item.medicine_name || item.item_name || "Item";
+  const companyName = item.company_name || item.manufacturer || item.brand || "";
+  const category = String(item.category || item.medicine_category || item.product_category || "General").trim() || "General";
+  const productCode = item.product_code || item.item_code || item.batch_no || "";
+  const unitLabel = item.unit_label || item.packing || "";
+  return { qty, rate, discPct, discFlat, net, name, companyName, category, productCode, unitLabel };
+}
+
+function groupItemsByCategory(items) {
+  const order = [];
+  const map = new Map();
+  items.forEach((item) => {
+    if (!map.has(item.category)) {
+      map.set(item.category, []);
+      order.push(item.category);
+    }
+    map.get(item.category).push(item);
+  });
+  return order.map((category) => ({ category, items: map.get(category) }));
+}
+
+/**
+ * Build bordered S/r | Qty | Particulars | Rate | Dis | Net table for 80mm customer receipts.
+ * Renders clear row-by-row lines with full horizontal + vertical cell borders.
+ */
+export function buildBorderedReceiptItemsTableHtml(items = []) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return `<div class="items-box" style="padding:6px;text-align:center;font-size:8px;font-weight:700;color:#6b7280;">— No items in cart —</div>`;
+  }
+
+  const normalized = items.map(normalizeReceiptLineItem);
+
+  const itemRows = normalized.map((it, idx) => {
+    const discLabel = it.discPct > 0 ? `${it.discPct}%` : (it.discFlat > 0 ? `Rs.${it.discFlat}` : "-");
+    const subLine = [it.companyName ? `[${it.companyName}]` : "", it.unitLabel].filter(Boolean).join(" · ");
+    return `
+    <tr>
+      <td class="col-sr">${idx + 1}</td>
+      <td class="col-qty">${it.qty}</td>
+      <td class="col-item">
+        ${escapeHtml(it.name)}
+        ${subLine ? `<span class="item-sub">${escapeHtml(subLine)}</span>` : ""}
+      </td>
+      <td class="col-rate">${it.rate.toLocaleString("en-US", { maximumFractionDigits: 2 })}</td>
+      <td class="col-disc">${discLabel}</td>
+      <td class="col-net">${it.net.toLocaleString("en-US", { maximumFractionDigits: 2 })}</td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="items-box">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th class="col-sr">S/r</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-item">Particulars</th>
+            <th class="col-rate">Rate</th>
+            <th class="col-disc">Dis</th>
+            <th class="col-net">Net</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+    </div>`;
+}
+
+export function getThermalItemsTableCss() {
+  return THERMAL_ITEMS_TABLE_CSS;
 }
 
 /**
@@ -208,7 +333,7 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
     // Clean up any lingering print iframes
     const oldIframe = document.getElementById("thermal-print-iframe");
     if (oldIframe && oldIframe.parentNode) {
-      oldIframe.parentNode.removeChild(oldIframe);
+      try { oldIframe.parentNode.removeChild(oldIframe); } catch {}
     }
 
     const iframe = document.createElement("iframe");
@@ -216,19 +341,22 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
 
     iframe.id = "thermal-print-iframe";
     iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
+    iframe.style.left = "-9999px";
+    iframe.style.top = "0";
+    iframe.style.width = "80mm";
+    iframe.style.height = "200px";
     iframe.style.border = "0";
-    iframe.style.visibility = "hidden";
+    iframe.style.opacity = "0.01";
+    iframe.style.pointerEvents = "none";
     iframe.setAttribute("aria-hidden", "true");
     iframe.title = title || "Print Thermal Receipt";
     document.body.appendChild(iframe);
 
     const win = iframe.contentWindow;
     if (!win || !win.document) {
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      if (iframe.parentNode) {
+        try { iframe.parentNode.removeChild(iframe); } catch {}
+      }
       return sanitizedHtml;
     }
 
@@ -247,7 +375,7 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
             iframe.parentNode.removeChild(iframe);
           }
         } catch {}
-      }, 500);
+      }, 800);
     };
 
     try { win.onafterprint = cleanup; } catch {}
@@ -259,8 +387,25 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
         win.print();
       } catch (err) {
         console.warn("[Thermal Printer] Direct print dispatch notice:", err);
+        try {
+          const printWindow = window.open("", "_blank", "width=400,height=600");
+          if (printWindow) {
+            printWindow.document.open();
+            printWindow.document.write(sanitizedHtml);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+              try {
+                printWindow.print();
+                printWindow.close();
+              } catch {}
+            }, 300);
+          }
+        } catch (popupErr) {
+          console.error("Popup fallback failed:", popupErr);
+        }
       } finally {
-        setTimeout(cleanup, 1000);
+        setTimeout(cleanup, 2000);
       }
     };
 
@@ -276,6 +421,7 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
     setTimeout(cleanup, 45000);
     return sanitizedHtml;
   } catch (outerErr) {
+    console.error("executeThermalPrint error:", outerErr);
     return receiptHtml;
   }
 }
@@ -321,19 +467,7 @@ export function printThermalReceipt(sale, clinicData = null) {
   const tokenNo = escapeHtml(sale.token_no || sale.token_number || sale.token || "");
   const partyCode = escapeHtml(sale.party_code || sale.party_type || "");
 
-  const itemsHtml = (sale.items || []).map((item) => {
-    const discPct = Number(item.disc_pct || item.discount_pct || 0);
-    const discBadge = discPct > 0 ? ` <span style="font-weight: 700; color: #b91c1c; font-size: 10px;">(-${discPct}%)</span>` : "";
-    return `
-    <div style="margin-bottom: 5px;">
-      <div style="font-weight: 700; font-size: 12px; color: #111827;">${escapeHtml(item.medicine_name)}${discBadge}</div>
-      <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 500; color: #4b5563; margin-top: 1px;">
-        <span>${item.qty || item.quantity || 1} ${escapeHtml(item.unit_label || "Unit")} × Rs. ${Number(item.unit_price || item.rate || 0).toFixed(2)}</span>
-        <span style="font-weight: 800; color: #111827;">Rs. ${Number(item.line_total || item.net || item.net_amount || 0).toFixed(2)}</span>
-      </div>
-    </div>
-  `;
-  }).join("");
+  const itemsHtml = buildBorderedReceiptItemsTableHtml(sale.items || []);
 
   const receiptHtml = `
     <!DOCTYPE html>
@@ -377,6 +511,7 @@ export function printThermalReceipt(sale, clinicData = null) {
             color: #1f2937;
             line-height: 1.3;
           }
+          ${getThermalItemsTableCss()}
           @media print {
             body { width: 76mm; padding: 2px; }
             .no-print { display: none !important; }
@@ -410,7 +545,7 @@ export function printThermalReceipt(sale, clinicData = null) {
         ${showDiv1 ? `<div class="dotted-line"></div>` : ""}
 
         <!-- Items Table (items_table block) -->
-        ${showItems ? `<div style="margin: 4px 0;">${itemsHtml}</div>` : ""}
+        ${showItems ? itemsHtml : ""}
 
         ${showDiv2 ? `<div class="dotted-line"></div>` : ""}
 
@@ -1640,43 +1775,32 @@ export function printSaleInvoiceReceipt(sale, clinic) {
   const showLogo   = isBlockEnabled(_blocks, "header_logo");
   const showTagline= isBlockEnabled(_blocks, "tagline");
   const showContact= isBlockEnabled(_blocks, "contact_info");
-  const cfg        = getCustomReceiptConfig();
 
   const voucherNo = escapeHtml(sale.voucher_no || sale.receipt_no || sale.invoice_no || "Inv-6218");
   const dateStr = escapeHtml((sale.sale_date || sale.created_at || new Date().toISOString()).split("T")[0]);
-  const customerName = escapeHtml(sale.account_name || sale.customer_name || "Walk-In Customer");
+  const customerName = escapeHtml(sale.account_name || sale.customer_name || "Walk-In Patient");
+  const tokenNo = escapeHtml(sale.token_no || sale.patient_token || "");
   const city = escapeHtml(sale.party_type || sale.city || "");
-  const reference = escapeHtml(sale.reference || "Direct");
+  const partyCode = escapeHtml(sale.party_code || "");
+  const reference = escapeHtml(sale.reference || (clinic?.user_name || "Clinic Administrator"));
   const transport = escapeHtml(sale.transport || "By Hand");
   const biltyNo = escapeHtml(sale.bilty_no || "-");
   const paymentMode = escapeHtml(sale.payment_mode || "Cash");
 
-  const subtotal = Number(sale.subtotal || sale.total_amount - 1) || Number(sale.total_amount) || 0;
-  const posCharge = 1; // Re 1.00 POS Fee
-  const totalBill = Number(sale.total_amount) || (subtotal + posCharge);
-  const paidAmount = Number(sale.paid_amount) || 0;
-  const balanceDue = Number(sale.balance_due) || 0;
+  const isUdhaar = String(paymentMode).toLowerCase().includes("credit") || String(paymentMode).toLowerCase().includes("udhaar");
+  const puranaUdhaar = Number(sale.previous_balance || sale.purana_udhaar || sale.party_balance || 0);
+  const currentBill = Number(sale.total_amount) || totalBill;
+  const grandPayable = puranaUdhaar > 0 ? (currentBill + puranaUdhaar) : currentBill;
+  const cashPaid = sale.cash_received !== undefined && sale.cash_received !== "" && !isNaN(Number(sale.cash_received))
+    ? Number(sale.cash_received)
+    : (isUdhaar ? 0 : currentBill);
+  const changeReturn = Math.max(0, cashPaid - grandPayable);
+  const remainingBalance = Math.max(0, grandPayable - cashPaid);
+
+  const posFee = Number(sale.pos_service_fee || sale.pos_fee || 0);
 
   const items = sale.items || [];
-  const rowsHtml = items.map((it) => {
-    const name = escapeHtml(it.medicine_name || it.item_name || "Medicine Item");
-    const qty = Number(it.qty || it.quantity) || 1;
-    const rate = Number(it.rate || it.unit_price || it.sale_price) || 0;
-    const gross = qty * rate;
-    const disc = it.disc_pct ? `${it.disc_pct}` : (it.disc_percent ? `${it.disc_percent}%` : "-");
-    const net = Number(it.net || it.line_total || (gross - (gross * (parseFloat(disc) || 0) / 100))) || 0;
-
-    return `
-      <tr>
-        <td style="font-weight: bold;">${name}</td>
-        <td style="text-align: center;">${qty}</td>
-        <td style="text-align: center;">${rate}</td>
-        <td style="text-align: center;">${gross.toLocaleString()}</td>
-        <td style="text-align: center;">${disc}</td>
-        <td style="text-align: right; font-weight: bold;">${net.toLocaleString()}</td>
-      </tr>
-    `;
-  }).join("");
+  const itemsTableHtml = buildBorderedReceiptItemsTableHtml(items);
 
   const receiptHtml = `
     <!DOCTYPE html>
@@ -1686,93 +1810,140 @@ export function printSaleInvoiceReceipt(sale, clinic) {
         <title>Sale_Invoice_${voucherNo}</title>
         <style>
           @page { size: 80mm auto; margin: 0; }
+          * { box-sizing: border-box; }
           body {
-            font-family: 'Courier New', Courier, monospace, system-ui;
-            font-size: 9.5px;
-            line-height: 1.2;
-            width: 72mm;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 10px;
+            line-height: 1.25;
+            width: 76mm;
             margin: 0 auto;
-            padding: 4px;
-            color: #000;
+            padding: 4px 6px;
+            color: #0f172a;
             background: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
-          .divider-dashed { border-top: 1px dashed #000; margin: 4px 0; }
-          .divider-single { border-top: 1px solid #000; margin: 4px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 3px; }
-          th { border-bottom: 1px solid #000; padding: 2px 0; text-align: left; font-size: 8.5px; text-transform: uppercase; font-weight: 900; }
-          td { padding: 2px 0; border-bottom: 0.5px dotted #ddd; vertical-align: top; }
+          table { width: 100%; border-collapse: collapse; }
+          ${getThermalItemsTableCss()}
         </style>
       </head>
       <body>
-        <!-- Header Banner -->
-        ${getLogoHeaderHtml("", { showLogo, showTagline, showContact })}
+        <!-- Clean Flat Header Layout -->
+        <div style="border-bottom: 2px solid #0f172a; padding-bottom: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 4px;">
+            <!-- Left: Logo -->
+            <div style="width: 48px; min-width: 48px; height: 54px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <img
+                src="${CLINIC_LOGO_BASE64}"
+                alt="Logo"
+                style="width: 48px; height: 52px; object-fit: contain; display: block;"
+              />
+            </div>
 
-        <!-- Meta & Customer Header Info -->
-        <div style="font-size: 9px; margin-top: 2px;">
-          <div><strong>Invoice #:</strong> ${voucherNo} &nbsp;|&nbsp; <strong>Date:</strong> ${dateStr}</div>
-          <div><strong>Customer / Patient:</strong> ${customerName}</div>
-          ${sale.token_no || sale.patient_token ? `<div><strong>Token #:</strong> ${escapeHtml(sale.token_no || sale.patient_token)}</div>` : ""}
-          ${city || reference !== "Direct" || transport !== "By Hand" ? `
-            <div><strong>City / Route:</strong> ${city || "Sindh"} &nbsp;|&nbsp; <strong>Salesman:</strong> ${reference}</div>
-            <div><strong>Transport:</strong> ${transport} &nbsp;|&nbsp; <strong>Bilty #:</strong> ${biltyNo}</div>
-          ` : ""}
-          <div><strong>Payment Mode:</strong> ${paymentMode}</div>
+            <!-- Middle: Clinic Name + Subtitle + Address -->
+            <div style="flex: 1; min-width: 0; text-align: left; font-family: Georgia, Cambria, serif;">
+              <div style="font-size: 15px; line-height: 16px; font-weight: bold; color: #0f172a; white-space: nowrap; letter-spacing: -0.2px;">
+                M.Ashraf Khan
+              </div>
+              <div style="font-size: 9.5px; line-height: 11px; font-weight: bold; color: #334155; white-space: nowrap; margin-top: 1px;">
+                Homeopathic Clinic
+              </div>
+              <div style="font-size: 8.5px; line-height: 11px; font-family: system-ui, -apple-system, sans-serif; font-weight: 500; color: #475569; white-space: nowrap; margin-top: 2px;">
+                Lajpat Road, Hyderabad, Sindh, PK
+              </div>
+            </div>
+
+            <!-- Right: Phone Numbers stacked -->
+            <div style="text-align: right; font-size: 9px; line-height: 11.5px; font-family: monospace; font-weight: bold; color: #0f172a; white-space: nowrap; flex-shrink: 0; align-self: flex-end;">
+              <div>0311 4234777</div>
+              <div>0343 9376363</div>
+            </div>
+          </div>
         </div>
 
-        <div class="divider-dashed"></div>
+        <!-- Meta Information -->
+        <div style="border-bottom: 1px dashed #94a3b8; padding-bottom: 4px; margin-bottom: 4px; font-size: 9.5px; line-height: 1.3;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #64748b;">Date: ${dateStr}</span>
+            <span style="font-weight: 900; color: #0f172a;">Inv: #${voucherNo}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #64748b;">Cashier: ${reference}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 2px; border-top: 1px solid #e2e8f0; margin-top: 2px;">
+            <span style="font-weight: 900; color: #0f172a; font-size: 10.5px;">Customer: ${customerName}</span>
+            ${tokenNo ? `<span style="background: #065f46; color: #fff; padding: 1px 5px; border-radius: 3px; font-weight: 900; font-size: 9px;">Token #: ${tokenNo}</span>` : ""}
+          </div>
+          ${city || partyCode ? `
+            <div style="color: #334155; font-weight: 700; margin-top: 1px;">Party / Route: ${city || "HYD"} ${partyCode ? `(#${partyCode})` : ""}</div>
+          ` : ""}
+        </div>
 
         <!-- Items Table -->
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 38%;">Item Name</th>
-              <th style="width: 10%; text-align: center;">Qty</th>
-              <th style="width: 12%; text-align: center;">Rate</th>
-              <th style="width: 14%; text-align: center;">Gross</th>
-              <th style="width: 12%; text-align: center;">Disc</th>
-              <th style="width: 14%; text-align: right;">Net</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
+        ${itemsTableHtml}
 
-        <!-- Totals & Calculations -->
-        <div class="divider-single"></div>
-        <div style="font-size: 9px; display: flex; justify-content: space-between; margin-top: 1px;">
-          <span>Items Subtotal:</span>
-          <span>Rs. ${subtotal.toLocaleString()}</span>
+        <!-- Totals Summary -->
+        <div style="font-size: 10.5px; padding-top: 3px; line-height: 1.35; color: #1e293b;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #475569;">Current Bill:</span>
+            <span style="font-weight: 700; color: #0f172a;">Rs. ${currentBill.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+          </div>
+          ${posFee > 0 ? `
+            <div style="display: flex; justify-content: space-between; color: #475569; font-size: 9.5px; margin-top: 1px;">
+              <span>POS Service Fee:</span>
+              <span style="font-weight: 700; color: #0f172a;">Rs. ${posFee.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            </div>
+          ` : ""}
+          ${puranaUdhaar > 0 ? `
+            <div style="display: flex; justify-content: space-between; color: #1e293b; font-weight: 600; margin-top: 1px;">
+              <span>Previous Balance:</span>
+              <span style="font-weight: 700; color: #0f172a;">Rs. ${puranaUdhaar.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 800; border-top: 1px dashed #0f172a; padding-top: 2px; margin-top: 2px; color: #0f172a;">
+              <span>Total Payable:</span>
+              <span style="font-weight: 900; color: #0f172a;">Rs. ${grandPayable.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            </div>
+          ` : `
+            <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 800; border-top: 1px solid #0f172a; padding-top: 3px; margin-top: 2px; color: #0f172a;">
+              <span>Total Amount:</span>
+              <span style="font-weight: 900; color: #0f172a;">Rs. ${currentBill.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            </div>
+          `}
+          <div style="display: flex; justify-content: space-between; color: #334155; font-weight: 600; margin-top: 1px;">
+            <span>Cash Paid:</span>
+            <span style="font-weight: 700; color: #0f172a;">Rs. ${cashPaid.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+          </div>
+          ${changeReturn > 0 ? `
+            <div style="display: flex; justify-content: space-between; color: #065f46; font-weight: 700; margin-top: 1px;">
+              <span>Change Return:</span>
+              <span style="font-weight: 800; color: #065f46;">Rs. ${changeReturn.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            </div>
+          ` : ""}
+          ${remainingBalance > 0 ? `
+            <div style="display: flex; justify-content: space-between; color: #991b1b; font-weight: 800; border-top: 1px dotted #991b1b; padding-top: 2px; margin-top: 2px;">
+              <span>Remaining Balance:</span>
+              <span style="font-weight: 900; color: #991b1b;">Rs. ${remainingBalance.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            </div>
+          ` : ""}
         </div>
-        <div style="font-size: 9px; display: flex; justify-content: space-between; margin-top: 1px;">
-          <span>POS Charge:</span>
-          <span>Rs. 1</span>
-        </div>
-        <div style="font-size: 10.5px; font-weight: 900; display: flex; justify-content: space-between; margin-top: 2px; border-top: 1px dashed #000; padding-top: 2px;">
-          <span>TOTAL BILL:</span>
-          <span>Rs. ${totalBill.toLocaleString()}</span>
-        </div>
-        <div style="font-size: 9px; font-weight: bold; display: flex; justify-content: space-between; margin-top: 1px;">
-          <span>Paid Amount:</span>
-          <span>Rs. ${paidAmount.toLocaleString()}</span>
-        </div>
-        ${balanceDue > 0 ? `
-          <div style="font-size: 9.5px; font-weight: 900; color: #000; display: flex; justify-content: space-between; margin-top: 1px;">
-            <span>Remaining Udhaar Balance:</span>
-            <span>Rs. ${balanceDue.toLocaleString()}</span>
-          </div>` : ""}
 
-        <div class="divider-dashed"></div>
-
-        <!-- Mandatory Urdu Footer Line -->
-        <div style="font-family: 'Noto Nastaleeq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', 'Courier New', monospace; font-size: 11px; font-weight: bold; text-align: center; margin-top: 4px; padding-top: 2px; direction: rtl; color: #000;">
-          خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔
+        <!-- Urdu Footer Disclaimer -->
+        <div style="border-top: 1px dashed #94a3b8; padding-top: 4px; text-align: center; font-size: 10px; font-weight: bold; color: #1e293b; direction: rtl; margin-top: 4px; font-family: 'Noto Nastaleeq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', system-ui;">
+          <div>خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔</div>
         </div>
 
-        <!-- Doctor Signature Line -->
-        ${getDoctorSignatureHtml()}
+        <!-- Doctor Signature Line with Proper Gap for Physical Sign -->
+        <div style="padding-top: 28px; padding-bottom: 2px; display: flex; justify-content: flex-end;">
+          <div style="border-top: 1.5px solid #0f172a; width: 45%; text-align: center; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #0f172a; padding-top: 2px;">
+            Dr. Signature
+          </div>
+        </div>
 
-        ${getWatermarkFooterHtml()}
+        <!-- Powered By Watermark -->
+        <div style="text-align: center; font-size: 8px; color: #94a3b8; font-family: monospace; border-top: 1px dotted #cbd5e1; padding-top: 4px; margin-top: 6px; line-height: 1.35;">
+          <div style="font-weight: 600; color: #64748b;">*** Powered by CliniCore Software ***</div>
+          <div style="color: #94a3b8; font-size: 7.5px;">K.B Developer 03142291356</div>
+        </div>
       </body>
     </html>
   `;

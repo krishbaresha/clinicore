@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbUsers } from "../api/db.js";
+import { dbUsers, verifyPassword } from "../api/db.js";
 import { UserCheck, ShieldCheck, KeyRound, Search, X, ChevronDown, CheckCircle2 } from "lucide-react";
 
 export default function StaffSwitcherWidget() {
@@ -47,10 +47,10 @@ export default function StaffSwitcherWidget() {
 
     const entered = pinInput.trim(); // ← was accidentally removed in passcode purge
 
-    // Only VPS-synced staff PIN is accepted — no hardcoded backdoor defaults
-    const expectedPin = String(selectedStaff.pin || selectedStaff.cashier_pin || "").trim();
+    // Verify PIN against registered user credentials (supports bcrypt, salted sha256, and plain PINs)
+    const expectedPin = String(selectedStaff.pin || selectedStaff.password || selectedStaff.password_hash || selectedStaff.cashier_pin || "").trim();
     if (!expectedPin) {
-      // Staff has no PIN configured yet — allow direct switch until PIN is set via Admin Panel
+      // Staff has no PIN configured yet — allow direct switch
       switchCashier(selectedStaff);
       setIsOpen(false);
       setSelectedStaff(null);
@@ -58,8 +58,8 @@ export default function StaffSwitcherWidget() {
       setErrorMsg("");
       return;
     }
-    if (entered && entered !== expectedPin) {
-      setErrorMsg("Incorrect PIN. Please enter your VPS-configured staff PIN.");
+    if (entered && !verifyPassword(entered, expectedPin) && entered !== expectedPin) {
+      setErrorMsg("Incorrect PIN. Please enter your registered staff PIN.");
       return;
     }
 

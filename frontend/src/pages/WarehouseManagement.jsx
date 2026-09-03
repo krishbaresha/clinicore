@@ -1775,72 +1775,80 @@ export default function WarehouseManagement() {
 
       {/* Godown Add/Edit Modal (React Portal) */}
       {showGodownModal && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <form
-            className="bg-white max-w-md w-full rounded-3xl p-6 border border-gray-200 shadow-2xl space-y-4 animate-scaleUp"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!godownForm.name.trim()) { alert("Godown name is required."); return; }
-              if (editingGodown) {
-                dbWarehouses.update(editingGodown.id, godownForm);
-              } else {
-                dbWarehouses.add(godownForm);
-              }
-              setShowGodownModal(false);
-              refreshData();
-            }}
+        <div 
+          className="fixed inset-0 z-[999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setShowGodownModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white max-w-md w-full rounded-3xl p-6 border-2 border-teal-600 shadow-2xl space-y-4 animate-scaleUp text-left"
           >
             <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
-              <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
                 <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>warehouse</span>
                 {editingGodown ? `Edit: ${editingGodown.name}` : "Add New Godown"}
               </h3>
-              <button type="button" onClick={() => setShowGodownModal(false)} className="text-gray-400 hover:text-gray-700">
+              <button type="button" onClick={() => setShowGodownModal(false)} className="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
-              <div className="col-span-2">
-                <label className="block text-gray-600 mb-1">Godown Name *</label>
-                <input type="text" required value={godownForm.name} onChange={(e) => setGodownForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Main Godown (Lajpat Road)" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold" />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!godownForm.name.trim()) { alert("Godown name is required."); return; }
+                if (editingGodown) {
+                  dbWarehouses.update(editingGodown.id, godownForm);
+                } else {
+                  dbWarehouses.add(godownForm);
+                }
+                setShowGodownModal(false);
+                refreshData();
+              }}
+              className="space-y-3"
+            >
+              <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+                <div className="col-span-2">
+                  <label className="block text-slate-800 font-bold mb-1">Godown Name *</label>
+                  <input type="text" required autoFocus value={godownForm.name} onChange={(e) => setGodownForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Main Godown (Lajpat Road)" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
+                </div>
+                <div>
+                  <label className="block text-slate-800 font-bold mb-1">Short Code</label>
+                  <input type="text" value={godownForm.code} onChange={(e) => setGodownForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. GDW-03" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
+                </div>
+                <div>
+                  <label className="block text-slate-800 font-bold mb-1">Status</label>
+                  <select value={godownForm.status} onChange={(e) => setGodownForm((f) => ({ ...f, status: e.target.value }))} className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:outline-none cursor-pointer">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-slate-800 font-bold mb-1">Location / Address</label>
+                  <input type="text" value={godownForm.location} onChange={(e) => setGodownForm((f) => ({ ...f, location: e.target.value }))} placeholder="e.g. Site Area, Near Bus Stop, Hyderabad" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
+                </div>
+                <div>
+                  <label className="block text-slate-800 font-bold mb-1">Incharge Name</label>
+                  <input type="text" value={godownForm.incharge_name} onChange={(e) => setGodownForm((f) => ({ ...f, incharge_name: e.target.value }))} placeholder="e.g. Raza Ahmed" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
+                </div>
+                <div>
+                  <label className="block text-slate-800 font-bold mb-1">Phone</label>
+                  <input type="text" value={godownForm.phone} onChange={(e) => setGodownForm((f) => ({ ...f, phone: e.target.value }))} placeholder="03001234567" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-slate-800 font-bold mb-1">Notes</label>
+                  <input type="text" value={godownForm.notes} onChange={(e) => setGodownForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional notes about this godown" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
+                </div>
               </div>
-              <div>
-                <label className="block text-gray-600 mb-1">Short Code</label>
-                <input type="text" value={godownForm.code} onChange={(e) => setGodownForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. GDW-03" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-mono" />
-              </div>
-              <div>
-                <label className="block text-gray-600 mb-1">Status</label>
-                <select value={godownForm.status} onChange={(e) => setGodownForm((f) => ({ ...f, status: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold">
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-gray-600 mb-1">Location / Address</label>
-                <input type="text" value={godownForm.location} onChange={(e) => setGodownForm((f) => ({ ...f, location: e.target.value }))} placeholder="e.g. Site Area, Near Bus Stop, Hyderabad" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs" />
-              </div>
-              <div>
-                <label className="block text-gray-600 mb-1">Incharge Name</label>
-                <input type="text" value={godownForm.incharge_name} onChange={(e) => setGodownForm((f) => ({ ...f, incharge_name: e.target.value }))} placeholder="e.g. Raza Ahmed" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs" />
-              </div>
-              <div>
-                <label className="block text-gray-600 mb-1">Phone</label>
-                <input type="text" value={godownForm.phone} onChange={(e) => setGodownForm((f) => ({ ...f, phone: e.target.value }))} placeholder="03001234567" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs" />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-gray-600 mb-1">Notes</label>
-                <input type="text" value={godownForm.notes} onChange={(e) => setGodownForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional notes about this godown" className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs" />
-              </div>
-            </div>
 
-            <div className="flex gap-2 pt-1">
-              <button type="button" onClick={() => setShowGodownModal(false)} className="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
-              <button type="submit" className="flex-1 bg-teal-600 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-teal-700 transition-colors">
-                {editingGodown ? "Save Changes" : "Add Godown"}
-              </button>
-            </div>
-          </form>
+              <div className="flex gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onClick={() => setShowGodownModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer">Cancel</button>
+                <button type="submit" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 rounded-xl text-xs transition-colors shadow-md cursor-pointer">
+                  {editingGodown ? "Save Changes" : "Add Godown"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>,
         document.body
       )}
@@ -2058,14 +2066,20 @@ export default function WarehouseManagement() {
 
       {/* Add New Wholesale Party Modal (Global React Portal) */}
       {showAddPartyModal && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <form
-            onSubmit={handleSaveParty}
-            className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scaleUp border border-gray-100"
+        <div 
+          className="fixed inset-0 z-[999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => {
+            setShowAddPartyModal(false);
+            setEditingPartyId(null);
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scaleUp border-2 border-teal-600 text-left"
           >
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2 text-teal-800 font-bold text-base">
-                <span className="material-symbols-outlined text-teal-600">
+              <div className="flex items-center gap-2 text-teal-950 font-black text-base">
+                <span className="material-symbols-outlined text-teal-600 text-2xl">
                   {editingPartyId ? "edit_note" : "add_business"}
                 </span>
                 {editingPartyId ? "Edit Party Profile & Territory" : "Register New Wholesale Party / Account"}
@@ -2082,10 +2096,10 @@ export default function WarehouseManagement() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-2">
+            <form onSubmit={handleSaveParty} className="space-y-3">
+              <div className="grid grid-cols-3 gap-2.5">
                 <div className="col-span-1">
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
                     Party Code:
                   </label>
                   <input
@@ -2093,29 +2107,30 @@ export default function WarehouseManagement() {
                     placeholder="e.g. 1044"
                     value={newPartyForm.party_code}
                     onChange={(e) => setNewPartyForm({ ...newPartyForm, party_code: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono font-bold uppercase focus:outline-none focus:border-teal-600"
+                    className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-mono font-black text-slate-950 uppercase focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 cursor-text shadow-xs"
                   />
-                  <span className="text-[9px] text-gray-400">Empty = Auto</span>
+                  <span className="text-[9.5px] text-slate-400">Empty = Auto</span>
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
                     Party / Store Name: *
                   </label>
                   <input
                     type="text"
+                    required
+                    autoFocus
                     placeholder="e.g. Al-Shifa Homeo Store"
                     value={newPartyForm.name}
                     onChange={(e) => setNewPartyForm({ ...newPartyForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-bold focus:outline-none focus:border-teal-600"
-                    required
+                    className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-bold text-slate-950 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 cursor-text shadow-xs"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
                     City / Territory:
                   </label>
                   <input
@@ -2123,12 +2138,12 @@ export default function WarehouseManagement() {
                     placeholder="e.g. Hyderabad"
                     value={newPartyForm.city}
                     onChange={(e) => setNewPartyForm({ ...newPartyForm, city: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-semibold focus:outline-none focus:border-teal-600"
+                    className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-bold text-slate-950 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 cursor-text shadow-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
                     Phone / Contact:
                   </label>
                   <input
@@ -2136,13 +2151,13 @@ export default function WarehouseManagement() {
                     placeholder="0300-1234567"
                     value={newPartyForm.phone}
                     onChange={(e) => setNewPartyForm({ ...newPartyForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono focus:outline-none focus:border-teal-600"
+                    className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-mono font-bold text-slate-950 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 cursor-text shadow-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
                   Address / Goods Transport:
                 </label>
                 <input
@@ -2150,12 +2165,12 @@ export default function WarehouseManagement() {
                   placeholder="e.g. Medical Market / Al-Madina Goods Bilty"
                   value={newPartyForm.address}
                   onChange={(e) => setNewPartyForm({ ...newPartyForm, address: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs focus:outline-none focus:border-teal-600"
+                  className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-bold text-slate-950 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 cursor-text shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
                   Opening Udhaar Balance (Rs):
                 </label>
                 <input
@@ -2164,31 +2179,31 @@ export default function WarehouseManagement() {
                   placeholder="0"
                   value={newPartyForm.balance_due}
                   onChange={(e) => setNewPartyForm({ ...newPartyForm, balance_due: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-xs font-mono font-bold text-amber-700 focus:outline-none focus:border-teal-600"
+                  className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-mono font-black text-rose-700 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 cursor-text shadow-xs"
                 />
               </div>
-            </div>
 
-            <div className="flex gap-2 pt-3 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddPartyModal(false);
-                  setEditingPartyId(null);
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-base">check_circle</span>
-                {editingPartyId ? "Update Party Profile" : "Save Party"}
-              </button>
-            </div>
-          </form>
+              <div className="flex gap-2 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddPartyModal(false);
+                    setEditingPartyId(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  {editingPartyId ? "Update Party Profile" : "Save Party"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>,
         document.body
       )}

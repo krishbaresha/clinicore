@@ -80,7 +80,7 @@ export default function DeveloperAdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcodeInput, setPasscodeInput] = useState("");
   const [authError, setAuthError] = useState("");
-  const [activeTab, setActiveTab] = useState("audits"); // "audits" | "staff" | "clinic" | "apis" | "tenants" | "backups"
+  const [activeTab, setActiveTab] = useState("audits"); // "audits" | "staff" | "apis" | "backups" | "god_audit" | "godowns"
   const [toastMsg, setToastMsg] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window !== "undefined" ? window.innerWidth >= 1200 : true));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -108,9 +108,7 @@ export default function DeveloperAdminPanel() {
       licensing: { locked: true, hidden: false },
       audits: { locked: false, hidden: false },
       godowns: { locked: false, hidden: false },
-      receipt_studio: { locked: false, hidden: false },
       staff: { locked: false, hidden: false },
-      clinic: { locked: false, hidden: false },
       apis: { locked: true, hidden: false },
       backups: { locked: true, hidden: false },
     };
@@ -321,7 +319,6 @@ export default function DeveloperAdminPanel() {
               licensing: { locked: true, hidden: false },
               audits: { locked: false, hidden: false },
               staff: { locked: false, hidden: false },
-              clinic: { locked: false, hidden: false },
               apis: { locked: true, hidden: false },
               backups: { locked: true, hidden: false },
             }
@@ -2682,8 +2679,6 @@ export default function DeveloperAdminPanel() {
                 </div>
               )}
 
-
-
               {/* ================================================================= */}
               {/* TAB 2: STAFF & DOCTOR MASTER ACCESS (Password Reset, Add, Delete) */}
               {/* ================================================================= */}
@@ -2854,8 +2849,6 @@ export default function DeveloperAdminPanel() {
                   </div>
                 </div>
               )}
-
-
 
               {/* ================================================================= */}
               {/* TAB 4: GOOGLE DRIVE CLOUD VAULT & BACKUP                          */}

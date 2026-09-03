@@ -18,5 +18,8 @@
     "start:phone": "npm --prefix PHASE_2_STEP_5/mobile_scaffold run start:phone",
     "ci": "npm run validate && npm --prefix frontend run build",
     "deploy": "python scripts/deploy_vps.py"
+  },
+  "dependencies": {
+    "omniroute": "^3.8.50"
   }
 }

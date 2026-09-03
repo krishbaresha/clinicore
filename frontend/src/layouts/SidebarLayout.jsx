@@ -936,15 +936,30 @@ export default function SidebarLayout({ children }) {
         </AnimatePresence>
 
         {/* ── Main Content Area (THE ONLY INDEPENDENT SCROLLABLE CONTAINER) ── */}
-        <main
-          id="main-content-viewport"
-          className="flex-1 h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full pb-24 md:pb-12 custom-scrollbar focus:outline-none"
-          tabIndex={-1}
-        >
-          <PullToRefresh>
-            {children}
-          </PullToRefresh>
-        </main>
+        {(() => {
+          const isPOSCockpit = location.pathname.startsWith("/store/pos") || location.pathname === "/pos";
+          return (
+            <main
+              id="main-content-viewport"
+              className={`flex-1 h-full min-h-0 min-w-0 ${
+                isPOSCockpit
+                  ? "overflow-hidden p-1 sm:p-1.5 max-w-none pb-0 md:pb-0 flex flex-col"
+                  : "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-7xl pb-24 md:pb-12"
+              } mx-auto w-full custom-scrollbar focus:outline-none`}
+              tabIndex={-1}
+            >
+              {isPOSCockpit ? (
+                <div className="w-full h-full flex-1 min-h-0 flex flex-col overflow-hidden">
+                  {children}
+                </div>
+              ) : (
+                <PullToRefresh>
+                  {children}
+                </PullToRefresh>
+              )}
+            </main>
+          );
+        })()}
       </div>
 
       {/* ── Mobile Bottom Navigation Bar (Fast 1-Thumb 44px Touch Targets) ── */}

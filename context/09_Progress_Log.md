@@ -31,9 +31,21 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
-- **Phase:** Milestone 118 — WebApp Cloud Sync Removal, DeveloperAdminPanel ReferenceError Resolution & v2.5.9 Release (Completed)
-- **Last worked on:** Cleaned up broken `syncEngine` and `setOutboxItems` runtime references in `DeveloperAdminPanel.jsx` and `ClinicSettings.jsx` to prevent WebApp ReferenceError crashes and noisy console fetch errors. Enforced pure local/offline-first stability, bumped version to `2.5.9`, passed full verification pipeline, and created GitHub release `v2.5.9`.
+- **Phase:** Milestone 119 — Sale Invoice Printing Fix & Standardized Professional Receipt Table Layout (Completed)
+- **Last worked on:** Resolved Sale Invoice print button triggering issue by adding automatic walk-in customer fallback and hardening iframe print execution; standardized receipt line items table with professional headers `| S/r | Qty | Particulars | Rate | Dis | Net |`, category-wise separation lines, full cell borders, and instant preview print feedback.
 - **Currently blocked on:** Ready for next user instructions.
+
+### Session: 2026-09-03 (Part 119) — Receipt Typography Standardization & English Totals Layout
+**Task worked on:**
+1. **Receipt Header Badge Cleanup**:
+   - Removed `TYPE: CASH` badge from invoice meta header to ensure clean header presentation across Live Preview and 80mm ESC/POS Thermal output.
+2. **Standardized English Financial Summary**:
+   - Removed Urdu and Roman Urdu text from bottom summary rows.
+   - Formatted `Current Bill:` in clean standard weight.
+   - Formatted `Previous Balance:` in slightly bold matching typography.
+   - Formatted `Total Payable:` / `Total Amount:` in English with neat top dashed border line.
+3. **Master Verification**:
+   - Passed full 643/643 automated test suite, AST symbol validator, secret leak scanner, and clean Vite bundle compilation.
 
 ### Session: 2026-09-02 (Part 118) — WebApp Cloud Sync Removal, DeveloperAdminPanel ReferenceError Resolution & v2.5.9 Release
 **Task worked on:**
@@ -3225,12 +3237,34 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - Executed mandatory Rule 17 pre-push validation pipeline: AST scan (0 errors on 68 files), Oxlint (0 errors on 72 files), Master test suite (**637/637 tests PASSED across 42 Suites (100%)**), and clean production Vite bundle compilation (4.09s).
     - Issued Final Production Readiness Report and Certified ClinicFlow for Enterprise Clinical & Pharmacy Wholesale Deployment.
 
-47. **Milestone 67: FINAL_AUDIT_STEP_B — Master System Diagram & Visual Showcase Builder:**
-    - Created `FINAL_AUDIT_STEP_B/src/system_showcase_visualizer.ts` compiling full high-resolution ASCII & Mermaid system architecture topology, navigation sitemaps (Tauri, Web SPA, Expo Mobile), 80mm ESC/POS thermal receipt specifications, and 6-root Double-Entry Chart of Accounts hierarchy.
-    - Generated `FINAL_AUDIT_STEP_B/system_showcase_report.md` via `node --experimental-strip-types` execution.
-    - Enforced zero VPS/production mutations and verified local build integrity.
+47. **Milestone 121: Zero-Scroll POS Cockpit Viewport Integration, Tender Calculation & Balance Tracking**
+    - **SidebarLayout Viewport Isolation**: Detected route `/store/pos` and bypassed default page padding (`p-3 sm:p-5 lg:p-8`, `pb-24`) and `overflow-y-auto`. Created dedicated flex-1 zero-scroll container (`overflow-hidden p-1 sm:p-1.5`) eliminating unwanted desktop scrollbars.
+    - **Cash Paid & Change Return Calculation**:
+      - Added interactive `Cash Paid` (tendered) input field in `SaleInvoiceModal.jsx` footer.
+      - Automatically calculated `Change Return` (`Math.max(0, cash_received - grandPayable)`) and `Remaining Udhaar` (`Math.max(0, grandPayable - cash_received)`).
+    - **Standardized Receipt Print & Live Preview**:
+      - Integrated `Cash Paid`, `Change Return`, and `Remaining Balance` lines across both Live Thermal Receipt and ESC/POS thermal engine in [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js).
+    - **Verification**: 643/643 unit tests passed, 0 AST errors, 0 secret leaks, production Vite bundle built in 1.55s.
 
----
+48. **Milestone 120: Zero-Scroll Viewport-Fit Responsive Cockpit Layout for Sale Invoice POS & Bill Form:**
+    - Refactored `SaleInvoiceModal.jsx` and `SaleInvoicePOSPage.jsx` into a unified, zero-scroll viewport-fit cockpit eliminating outer vertical body scrollbars across all screen resolutions (1366x768 laptops, 1080p desktop monitors, tablets, and phones).
+    - Compacted Customer & Party Details Section 1 into an ultra-dense, responsive 2-row grid with inline outstanding balance indicator.
+    - Compressed Fast Line Item Bar Section 2 into a single horizontal input strip with synchronized typeahead autocomplete.
+    - Converted Added Items Table Section 3 into a dynamic `flex-1 min-h-[120px] overflow-y-auto` container that absorbs all remaining vertical space on any screen.
+    - Anchored Section 4 Footer Bar to the bottom with real-time financial totals and one-click Save & Print (`F9`).
+    - Standardized 80mm ESC/POS live thermal receipt preview into an independent, scrollable right-side preview card.
+    - Passed all 643/643 unit tests (`npm test`), AST Hook/Import scanner (`scan_imports_and_hooks.mjs`), Secret scanner (`scan_secrets.mjs`), and clean Vite build (`npm run build`).
+
+51. **Milestone 124: Clean ExpandableCombobox UI, Dynamic Active POS Staff Session & Salesmen Options Cleanup**
+    - **Salesmen Options Purge**: Purged all legacy dummy salesmen names (`ADffsn`, `Afaan`, `Afam`, etc.) from `dbGrnMetadata`.
+    - **Dynamic Software Users & Active POS Session**:
+      - `Salesman / Booker` dropdown now populates strictly from registered software users (`dbUsers.getAll()`), tagging the active cashier as `⭐ Active POS`.
+      - Authenticated session switching via `StaffSwitcherWidget` allows any registered software staff member (Admin, Doctor, Receptionist, Accountant, Cashier) to log in with their PIN and operate POS dynamically under their name.
+    - **Combobox Popup & Label Clipping Fix**:
+      - Expanded `ExpandableCombobox` popup window to `min-w-[340px] sm:min-w-[380px]` with flex-wrap boundaries.
+      - Fixed Party Name (`Asus`, `Hyderabad`) text truncation so long party titles and phone numbers remain fully readable without being clipped into `A.. Hyderabad - Phon...`.
+    - **Verification**: Passed 643/643 unit tests (`npm test`), AST Hook/Import scanner, Secret scanner, and clean production Vite bundle build in 1.54s.
+
 
 
 

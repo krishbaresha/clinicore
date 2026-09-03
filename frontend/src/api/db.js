@@ -4636,11 +4636,10 @@ export const dbPurchases = {
 // ---------- GRN Dynamic References & Transport Carriers ----------
 export const dbGrnMetadata = {
   getReferences: () => {
-    const custom = getCollection("clinicflow_grn_references");
-    const defaults = [
-      "ADffsn", "Afaan", "Afam", "Afan", "Afan7", "Afcfan", "Aff\\an", "Aff4", "Direct Factory", "Order Booker", "Self / Counter"
-    ];
-    return Array.from(new Set([...defaults, ...(custom || [])]));
+    const custom = getCollection("clinicflow_grn_references") || [];
+    const registeredUsers = (dbUsers.getAll() || []).map((u) => u.name || u.full_name).filter(Boolean);
+    const defaults = registeredUsers.length > 0 ? registeredUsers : ["Clinic Administrator"];
+    return Array.from(new Set([...defaults, ...custom]));
   },
   addReference: (refName) => {
     if (!refName || !refName.trim()) return "";
