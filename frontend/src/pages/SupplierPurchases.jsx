@@ -289,6 +289,32 @@ export default function SupplierPurchases() {
   const [suppliers, setSuppliers] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [inventoryList, setInventoryList] = useState([]);
+
+  const allCompanyOptions = useMemo(() => {
+    const list = suppliers && suppliers.length > 0 ? suppliers : [];
+    const companies = list.map((s) => ({
+      name: s.name,
+      code: s.supplier_code || s.code || "",
+    }));
+    const defaults = [
+      { name: "MEKTUM Pvt Ltd", code: "MKT" },
+      { name: "BM Pvt LTD", code: "BM" },
+      { name: "Paul Brooks", code: "PB" },
+      { name: "Dr. Reckeweg & Co", code: "REC" },
+      { name: "Schwabe Germany", code: "SCH" },
+      { name: "BLOSSOM Homoeo", code: "BLS" },
+      { name: "HFP Pakistan", code: "HFP" },
+      { name: "KENT Pharma", code: "KNT" },
+      { name: "General Pharma", code: "GEN" }
+    ];
+    defaults.forEach((d) => {
+      if (!companies.some((c) => (c.name || "").toLowerCase() === d.name.toLowerCase())) {
+        companies.push(d);
+      }
+    });
+    return companies;
+  }, [suppliers]);
+
   const [accountsList, setAccountsList] = useState([]);
   const [activeTab, setActiveTab] = useState("suppliers"); // "suppliers" | "bills" | "new_purchase"
 
@@ -716,9 +742,11 @@ export default function SupplierPurchases() {
     if (!newProdForm.medicine_name.trim()) return;
     const created = dbInventory.add({
       medicine_name: newProdForm.medicine_name.trim(),
+      product_description: (newProdForm.product_description || "").trim(),
+      generic_name: (newProdForm.product_description || "").trim() || newProdForm.medicine_name.trim(),
       company_name: newProdForm.company_name.trim() || grnForm.account_name || "General Pharma",
       category: newProdForm.category || "Tablet",
-      unit_label: newProdForm.unit_label || "pack",
+      unit_label: (newProdForm.unit_label || "pack").trim(),
       cost_price: Number(newProdForm.cost_price) || 0,
       cost_price_per_box: Number(newProdForm.cost_price) || 0,
       unit_sale_price: Number(newProdForm.unit_sale_price) || 0,
@@ -728,7 +756,7 @@ export default function SupplierPurchases() {
     });
     alert(`✅ New Product "${created.medicine_name}" registered & added to inventory!`);
     setInventoryList(dbInventory.getAll());
-    setNewProdForm({ medicine_name: "", company_name: "", category: "Tablet", unit_label: "pack", cost_price: "", unit_sale_price: "" });
+    setNewProdForm({ medicine_name: "", product_description: "", company_name: "", category: "Tablet", unit_label: "pack", cost_price: "", unit_sale_price: "" });
     setShowQuickAddProductModal(false);
     handleSelectGRNMedicine(created.id);
   };
