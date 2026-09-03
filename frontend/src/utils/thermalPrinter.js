@@ -1789,7 +1789,7 @@ export function printSaleInvoiceReceipt(sale, clinic) {
 
   const isUdhaar = String(paymentMode).toLowerCase().includes("credit") || String(paymentMode).toLowerCase().includes("udhaar");
   const puranaUdhaar = Number(sale.previous_balance || sale.purana_udhaar || sale.party_balance || 0);
-  const currentBill = Number(sale.total_amount) || totalBill;
+  const currentBill = Number(sale.total_amount || sale.net_total || sale.net_amount || sale.subtotal_amount || 0);
   const grandPayable = puranaUdhaar > 0 ? (currentBill + puranaUdhaar) : currentBill;
   const cashPaid = sale.cash_received !== undefined && sale.cash_received !== "" && !isNaN(Number(sale.cash_received))
     ? Number(sale.cash_received)
@@ -2419,4 +2419,3 @@ export function printExecutiveAuditDocument(auditData, clinicData = null) {
 
   executeThermalPrint(docHtml, `Executive_Audit_Statement_${startDate}_to_${endDate}`);
 }
-
