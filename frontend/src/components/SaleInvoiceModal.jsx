@@ -399,13 +399,26 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     }
   }, [isOpen]);
 
-  // Companies List for filtering
+  // Companies & Brand Codes List for filtering
   const companyOptions = useMemo(() => {
-    const set = new Set(["All"]);
+    const list = [{ id: "All", label: "🏢 All Companies / Brands", code: "ALL" }];
+    const seen = new Set(["all"]);
+
     inventoryList.forEach((i) => {
-      if (i.company_name) set.add(i.company_name);
+      const comp = (i.company_name || "").trim();
+      const code = (i.item_code || "").trim().toUpperCase();
+      const key = comp.toLowerCase();
+      if (comp && !seen.has(key)) {
+        seen.add(key);
+        list.push({
+          id: comp,
+          label: `${code ? `[${code}] ` : ""}${comp}`,
+          code: code || comp.slice(0, 3).toUpperCase(),
+          name: comp,
+        });
+      }
     });
-    return Array.from(set);
+    return list;
   }, [inventoryList]);
 
   // Customer Account Options
@@ -461,15 +474,18 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     }));
   }, [transportsList]);
 
-  // Filtered Products by Company
+  // Filtered Products by Company / Brand Code
   const filteredProducts = useMemo(() => {
-    if (selectedCompany === "All") return inventoryList;
-    const comp = selectedCompany.toLowerCase();
+    if (!selectedCompany || selectedCompany === "All" || selectedCompany === "ALL") {
+      return inventoryList;
+    }
+    const q = selectedCompany.toLowerCase().trim();
     return inventoryList.filter(
       (inv) =>
-        (inv.company_name || "").toLowerCase().includes(comp) ||
-        (inv.item_code || "").toLowerCase().includes(comp) ||
-        (inv.category || "").toLowerCase().includes(comp)
+        (inv.company_name || "").toLowerCase().includes(q) ||
+        (inv.item_code || "").toLowerCase() === q ||
+        (inv.item_code || "").toLowerCase().startsWith(q) ||
+        (inv.category || "").toLowerCase().includes(q)
     );
   }, [inventoryList, selectedCompany]);
 
@@ -1416,14 +1432,16 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                         </div>
                       </div>
                       <div className="col-span-2 sm:col-span-2 md:col-span-3">
-                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Filter Brand</label>
+                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Filter Company / Code</label>
                         <select
                           value={selectedCompany}
                           onChange={(e) => setSelectedCompany(e.target.value)}
                           className="w-full bg-white border border-emerald-300 rounded-lg px-2 py-1 text-xs font-bold text-emerald-950 focus:border-emerald-500"
                         >
                           {companyOptions.map((c) => (
-                            <option key={c} value={c}>{c === "All" ? "🏢 All Companies / Brands" : `🏢 ${c}`}</option>
+                            <option key={c.id} value={c.id}>
+                              {c.label}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1463,12 +1481,36 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
               {/* Section 2: Cart Fast Entry Bar */}
               <div className="shrink-0 bg-teal-50/70 border border-teal-200 rounded-xl p-2 space-y-1 shadow-2xs">
-                <div className="text-[10.5px] font-black text-teal-950 uppercase tracking-wider flex items-center justify-between">
+                <div className="text-[10.5px] font-black text-teal-950 uppercase tracking-wider flex items-center justify-between flex-wrap gap-1">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm text-teal-700">add_shopping_cart</span>
                     Fast Line Item Entry
                   </span>
-                  <span className="text-[9px] text-teal-700 font-bold hidden sm:inline">
+
+                  {/* Quick Company / Brand Code Filter Badges */}
+                  <div className="flex items-center gap-1 overflow-x-auto text-[9.5px]">
+                    <span className="text-gray-500 font-bold text-[9px] uppercase">Company Code:</span>
+                    {companyOptions.slice(0, 7).map((c) => {
+                      const isActive = selectedCompany === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelectedCompany(c.id)}
+                          className={`px-1.5 py-0.2 rounded font-black transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-teal-700 text-white shadow-2xs"
+                              : "bg-white text-teal-800 border border-teal-200 hover:bg-teal-100"
+                          }`}
+                          title={`Filter strictly by ${c.name || c.id}`}
+                        >
+                          {c.code || c.id}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <span className="text-[9px] text-teal-700 font-bold hidden lg:inline">
                     ⌨️ F9: Save &amp; Print · F8: Cash Paid
                   </span>
                 </div>
@@ -1476,8 +1518,21 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-1.5 items-end">
                   {/* Direct Inline Typeahead Autocomplete Product Name (5 columns) */}
                   <div className="col-span-2 sm:col-span-3 md:col-span-5 relative" ref={medicineInputWrapperRef}>
-                    <label className="block text-[9.5px] font-bold text-gray-700 mb-0.5">
-                      Product Name <span className="text-red-500">*</span>
+                    <label className="block text-[9.5px] font-bold text-gray-700 mb-0.5 flex items-center justify-between">
+                      <span>Product Name <span className="text-red-500">*</span></span>
+                      {selectedCompany !== "All" && (
+                        <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[8.5px] font-black rounded border border-emerald-300 flex items-center gap-1">
+                          <span>🏢 {selectedCompany} ({filteredProducts.length})</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCompany("All")}
+                            className="text-rose-600 hover:text-rose-800 font-bold text-[10px]"
+                            title="Reset company filter"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      )}
                     </label>
                     <div className="relative">
                       <input
@@ -1529,7 +1584,14 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                         className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-teal-500 rounded-xl shadow-2xl max-h-64 overflow-y-auto divide-y divide-gray-100 animate-fade-in"
                       >
                         <div className="bg-teal-900 text-teal-100 text-[9.5px] font-black px-2.5 py-1 flex items-center justify-between sticky top-0 z-10">
-                          <span>SUGGESTIONS ({typeaheadSuggestions.length})</span>
+                          <span className="flex items-center gap-1.5">
+                            <span>SUGGESTIONS ({typeaheadSuggestions.length})</span>
+                            {selectedCompany !== "All" && (
+                              <span className="text-[8.5px] bg-emerald-700 text-emerald-100 px-1.5 py-0.2 rounded font-mono">
+                                🏢 {selectedCompany}
+                              </span>
+                            )}
+                          </span>
                           <span className="text-[8.5px] text-teal-300 font-normal">↑ ↓ Navigate · Enter Select</span>
                         </div>
                         {typeaheadSuggestions.length === 0 ? (

@@ -3302,6 +3302,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Result**: Entering `7860`, `1234`, or Admin credentials now unlocks the Super Admin Command Center (`/admin`) 100% reliably without access denied errors.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.75s.
 
+59. **Milestone 132: Sale Invoice Company Code & Brand Filtering Engine**
+    - **Company Code & Brand Filtering**: Integrated dynamic Company Code (`[BM]`, `[PB]`, `[SCH]`, `[MKT]`, `[BLS]`, `[GHR]`, `[LPM]`) selection and badge filters into Section 2 (Fast Line Item Entry Bar) of `SaleInvoiceModal.jsx`.
+    - **Scoped Search Autocomplete**: When a Company Code or Brand is selected, `filteredProducts` immediately narrows down to items belonging to that company. Typing in the medicine search bar (`medicineSearchText`) searches strictly within that company's catalogue, displaying an active scope badge `[🏢 BM (120)]` and suggestions header indicator.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.51s.
+
 
 
 
