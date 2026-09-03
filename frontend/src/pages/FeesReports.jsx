@@ -13,10 +13,11 @@ import {
   dbCashBook,
   dbAccounts,
   dbParties,
+  dbPartyLedger,
   dbDayClosing,
 } from "../api/db.js";
 import { formatCurrency } from "../utils/formatters.js";
-import { printDayEndClosingReceipt, printCashVoucherReceipt } from "../utils/thermalPrinter.js";
+import { printDayEndClosingReceipt, printCashVoucherReceipt, printPartyPaymentReceipt } from "../utils/thermalPrinter.js";
 import DayClosingReceiptModal from "../components/DayClosingReceiptModal.jsx";
 
 const RANGES = ["daily", "weekly", "monthly"];
@@ -321,26 +322,23 @@ export default function FeesReports() {
     0
   );
 
-  // CashBook Inflows
-  const dayCashRec = allCashBook.filter(
-    (c) => (c.date || "").split("T")[0] === targetDateStr && (c.term || c.type) === "Receive"
-  );
-  const dayCashRecTotal = dayCashRec.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  // CashBook Inflows & Outflows from Auto-Aggregated Roznamcha
+  const dayCashRecTotal = useMemo(() => {
+    return displayCashBookEntries
+      .filter((r) => (r.date || "").split("T")[0] === targetDateStr && r.term === "Receive")
+      .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  }, [displayCashBookEntries, targetDateStr]);
+
+  const dayCashPaidTotal = useMemo(() => {
+    return displayCashBookEntries
+      .filter((r) => (r.date || "").split("T")[0] === targetDateStr && r.term === "Paid")
+      .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  }, [displayCashBookEntries, targetDateStr]);
 
   const totalInflow = dayOpdFees + dayPharmacySales + dayWholesaleSales + dayCashRecTotal;
 
-  // 2. Outflows
-  const dayCashPaid = allCashBook.filter(
-    (c) => (c.date || "").split("T")[0] === targetDateStr && (c.term || c.type) === "Paid"
-  );
-  const dayCashPaidTotal = dayCashPaid.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-
   const dayExpenses = allExpenses.filter(
-    (e) =>
-      (e.expense_date || e.date || "").split("T")[0] === targetDateStr &&
-      !dayCashPaid.some(
-        (c) => c.voucher_no === e.id || (c.account_name === e.category && Math.abs(c.amount - Number(e.amount)) < 0.01)
-      )
+    (e) => (e.expense_date || e.date || "").split("T")[0] === targetDateStr
   );
   const totalDayExpenses = dayExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) + dayCashPaidTotal;
 
@@ -517,7 +515,11 @@ export default function FeesReports() {
 
   const handleCashBookReprint = (entry) => {
     try {
-      printCashVoucherReceipt(entry, dbClinic.get());
+      if (entry.source === "PARTY_RECOVERY") {
+        printPartyPaymentReceipt(entry.raw, dbClinic.get());
+      } else {
+        printCashVoucherReceipt(entry.raw || entry, dbClinic.get());
+      }
     } catch (err) {
       console.error("CashBook voucher reprint failed:", err);
     }
@@ -529,23 +531,86 @@ export default function FeesReports() {
       ? ["Bill Clear", "Cash Received", "Token Consultation Fee", "Advance Payment", "Udhaar Recovery", "Customer Ledger Settlement"]
       : ["Staff Tea & Refreshment", "Shop Daily Expenses", "Electricity / Utility Bill", "Courier & Transport Freight", "Medicine Purchase Bill", "Doctor Personal Drawing", "Staff Daily Allowance"];
 
-  // CashBook Filtered View
+  // Auto-Aggregated Real-Time Roznamcha (CashBook) Filtered View
   const displayCashBookEntries = useMemo(() => {
-    let list = allCashBook;
+    // 1. Manual CashBook Vouchers
+    const manualVouchers = (allCashBook || []).map((c) => ({
+      id: c.id || c.voucher_no,
+      voucher_no: c.voucher_no,
+      date: c.date || c.created_at,
+      account_name: c.account_name || "General Account",
+      naration: c.naration || "Roznamcha Voucher",
+      term: c.term || c.type || "Receive",
+      amount: Number(c.amount) || 0,
+      source: "MANUAL_VOUCHER",
+      raw: c,
+    }));
+
+    // 2. Udhaar Cash Recoveries (dbPartyLedger)
+    const partyRecoveries = (dbPartyLedger.getAll() || [])
+      .filter((tx) => tx.tx_type === "PAYMENT")
+      .map((tx) => ({
+        id: tx.id || tx.receipt_no,
+        voucher_no: tx.receipt_no || "REC-1001",
+        date: tx.created_at || tx.date,
+        account_name: tx.party_name || "Wholesale Party",
+        naration: `Udhaar Recovery (${tx.payment_mode || "Cash"}${tx.bank_name ? ` - ${tx.bank_name}` : ""}) ${tx.notes ? `— ${tx.notes}` : ""}`,
+        term: "Receive",
+        amount: Number(tx.amount) || 0,
+        source: "PARTY_RECOVERY",
+        raw: tx,
+      }));
+
+    // 3. POS Pharmacy Cash Sales (dbSales)
+    const posSales = (allSales || [])
+      .filter((s) => !s.is_voided && Number(s.paid_amount !== undefined ? s.paid_amount : s.total_amount) > 0)
+      .map((s) => ({
+        id: s.id || s.invoice_no,
+        voucher_no: s.invoice_no || s.voucher_no || "INV-1001",
+        date: s.sale_date || s.created_at,
+        account_name: s.buyer_name || s.patient_name || "POS Walk-In Customer",
+        naration: `Pharmacy Cash Sale (${s.payment_mode || "Cash"})`,
+        term: "Receive",
+        amount: Number(s.paid_amount !== undefined ? s.paid_amount : s.total_amount) || 0,
+        source: "POS_SALE",
+        raw: s,
+      }));
+
+    // 4. Daily Expenses (dbExpenses)
+    const expenses = (allExpenses || []).map((e) => ({
+      id: e.id,
+      voucher_no: typeof e.id === "string" ? `EXP-${e.id.slice(-4).toUpperCase()}` : `EXP-${e.id}`,
+      date: e.expense_date || e.date,
+      account_name: e.category || e.title || "Clinic Expense",
+      naration: e.description || e.notes || "Petty Cash Expense",
+      term: "Paid",
+      amount: Number(e.amount) || 0,
+      source: "EXPENSE",
+      raw: e,
+    }));
+
+    // Combine all financial streams into one master Roznamcha
+    let merged = [...manualVouchers, ...partyRecoveries, ...posSales, ...expenses];
+
+    // Filter by Date (Daily vs All History)
     if (cbViewMode === "daily") {
-      list = list.filter((r) => (r.date || "").split("T")[0] === closingDate);
+      merged = merged.filter((r) => (r.date || "").split("T")[0] === closingDate);
     }
+
+    // Filter by Search Query
     if (cbHistorySearch.trim()) {
       const q = cbHistorySearch.toLowerCase();
-      list = list.filter(
+      merged = merged.filter(
         (r) =>
           (r.voucher_no || "").toLowerCase().includes(q) ||
           (r.account_name || "").toLowerCase().includes(q) ||
           (r.naration || "").toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [allCashBook, cbViewMode, closingDate, cbHistorySearch]);
+
+    // Sort chronologically descending
+    return merged.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [allCashBook, allSales, allExpenses, cbViewMode, closingDate, cbHistorySearch]);
 
   const maxFee = summary?.chart_data?.length ? Math.max(...summary.chart_data.map((d) => d.fees), 1) : 1;
   const clinic = dbClinic.get();

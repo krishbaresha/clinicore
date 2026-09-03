@@ -3353,12 +3353,13 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-68. **Milestone 141: Dispatched Wholesale B2B Audit Log Sync & Party Udhaar Cash Recovery + Ledger Receipts**
-    - **Dispatched Invoices Sync Fix**: Updated `refreshData()` in `WarehouseManagement.jsx` to merge sales from `dbB2BSales` AND `dbSales` (where `billing_type === "wholesale_party"`). 100% of all B2B invoices now display immediately under **`DISPATCHED WHOLESALE B2B INVOICES`**.
-    - **Party Udhaar Cash Recovery Modal (`💳 Receive Udhaar`)**: Added prominent emerald green button on every Sindh Party row. Cashier can enter **Amount Received (Rs.)**, **Payment Mode** (`Cash`, `Easypaisa`, `JazzCash`, `Bank Transfer`, `Cheque`), **Bank Name**, **Cheque #**, **Staff Handler**, and **Remarks**.
-    - **Thermal Payment Receipt Printing**: Clicking **`Save & Print Receipt (F9)`** auto-deducts the Party's outstanding balance due, saves the transaction in `dbPartyLedger`, and prints an official 80mm ESC/POS **Udhaar Payment Receipt** (`REC-1049`).
-    - **Party Account Statement & Ledger History (`📋 Ledger`)**: Clicking **`📋 Ledger`** opens a full account statement showing all past B2B invoices and cash payment recoveries with 1-click re-print receipt options.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 2.07s.
+69. **Milestone 142: Auto-Aggregated Real-Time Roznamcha (CashBook Ledger) & Thermal Print Vouchers**
+    - **Real-Time Auto-Aggregation**: `CashBook Ledger (Roznamcha)` now automatically aggregates **ALL financial inflows & outflows** across the software:
+      - 🟢 **Cash Inflow (Jama)**: POS Pharmacy Cash Sales (`dbSales`), Party Udhaar Recoveries (`dbPartyLedger`), OPD Doctor Fees (`dbVisits`), and Manual Receipts (`dbCashBook`).
+      - 🔴 **Cash Outflow (Kharach)**: Daily Clinic Expenses (`dbExpenses`), Supplier Cash Payments (`dbPurchases`), and Manual Payments (`dbCashBook`).
+    - **Real-Time Cash Drawer Till Reconciliation**: Displays live **Total Inflows (Jama)**, **Total Outflows (Kharach)**, and **Net Safe Cash Balance (Till Cash)** so the doctor/cashier knows exact physical cash expected at day closing.
+    - **Thermal Voucher Print & Re-print Sync**: Every entry (Udhaar receipt, Expense, Manual voucher) has a 1-click **`🖨️ Print Slip`** button supporting 80mm ESC/POS thermal printing.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.46s.
 
 
 
