@@ -2123,40 +2123,65 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 </div>
 
                 {/* Meta Information */}
-                <div className="border-b border-dashed border-slate-400 pb-2 text-[10px] space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Date: {saleForm.date}</span>
-                    <span className="font-bold text-slate-950">Inv: #{saleForm.voucher_no}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Cashier: {saleForm.reference || activeUser}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                    <span className="font-black text-slate-950 text-[10.5px]">
-                      Customer: {toTitleCase(saleForm.account_name) || (billingType === "patient" ? "Walk-In Patient" : "Wholesale Party")}
-                    </span>
-                    {billingType === "patient" && saleForm.token_no && (
-                      <span className="bg-emerald-800 text-white px-1.5 py-0.5 rounded font-black text-[10px]">
-                        Token #: {saleForm.token_no}
+                {billingType === "wholesale_party" ? (
+                  <div className="border-b border-dashed border-slate-400 pb-2 text-[10px] space-y-1 font-mono">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-950">Invoice #: {saleForm.voucher_no}</span>
+                      <span className="text-slate-800 font-semibold">Issue Date: {saleForm.date}</span>
+                    </div>
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="font-black text-slate-950 text-[10.5px] leading-tight">
+                        Name: {toTitleCase(saleForm.account_name) || "WHOLESALE PARTY"}
                       </span>
+                      <span className="text-slate-900 font-bold whitespace-nowrap text-right shrink-0">
+                        Salesman: {toTitleCase(saleForm.reference || activeUser || "Clinic Staff")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-800 font-bold">
+                      <span>City : {(saleForm.party_type || "HAIDERABAD").toUpperCase()}</span>
+                    </div>
+                    {saleForm.transport && saleForm.transport.trim() && saleForm.transport.trim() !== "0" && (
+                      <div className="text-slate-800 font-bold">
+                        Transport: {toTitleCase(saleForm.transport)}
+                      </div>
+                    )}
+                    {saleForm.bilty_no && saleForm.bilty_no.trim() && saleForm.bilty_no.trim() !== "0" && (
+                      <div className="text-slate-800 font-bold">
+                        Bilty #: {saleForm.bilty_no.trim()}
+                      </div>
                     )}
                   </div>
-                  {billingType === "wholesale_party" && (
-                    <div className="text-slate-700 font-bold">
-                      Party / Route: {saleForm.party_type || "HYD"} {partyCodeSearch ? `(#${partyCodeSearch})` : ""}
+                ) : (
+                  <div className="border-b border-dashed border-slate-400 pb-2 text-[10px] space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Date: {saleForm.date}</span>
+                      <span className="font-bold text-slate-950">Inv: #{saleForm.voucher_no}</span>
                     </div>
-                  )}
-                  {saleForm.transport && saleForm.transport.trim() && saleForm.transport.trim() !== "0" && (
-                    <div className="text-slate-700 font-bold">
-                      Transport: {toTitleCase(saleForm.transport)}
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Cashier: {saleForm.reference || activeUser}</span>
                     </div>
-                  )}
-                  {saleForm.bilty_no && saleForm.bilty_no.trim() && saleForm.bilty_no.trim() !== "0" && (
-                    <div className="text-slate-700 font-bold">
-                      Bilty #: {saleForm.bilty_no.trim()}
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                      <span className="font-black text-slate-950 text-[10.5px]">
+                        Customer: {toTitleCase(saleForm.account_name) || "Walk-In Patient"}
+                      </span>
+                      {saleForm.token_no && (
+                        <span className="bg-emerald-800 text-white px-1.5 py-0.5 rounded font-black text-[10px]">
+                          Token #: {saleForm.token_no}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
+                    {saleForm.transport && saleForm.transport.trim() && saleForm.transport.trim() !== "0" && (
+                      <div className="text-slate-700 font-bold">
+                        Transport: {toTitleCase(saleForm.transport)}
+                      </div>
+                    )}
+                    {saleForm.bilty_no && saleForm.bilty_no.trim() && saleForm.bilty_no.trim() !== "0" && (
+                      <div className="text-slate-700 font-bold">
+                        Bilty #: {saleForm.bilty_no.trim()}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Items Table — Clean single-bordered table: | S/r | Qty | Particulars | Rate | Dis | Net | */}
                 <div className="my-1 overflow-hidden">

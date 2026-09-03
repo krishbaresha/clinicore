@@ -1880,28 +1880,47 @@ export function printSaleInvoiceReceipt(sale, clinic) {
         </div>
 
         <!-- Meta Information -->
-        <div style="border-bottom: 1px dashed #94a3b8; padding-bottom: 4px; margin-bottom: 4px; font-size: 9.5px; line-height: 1.3;">
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: #64748b;">Date: ${dateStr}</span>
-            <span style="font-weight: 900; color: #0f172a;">Inv: #${voucherNo}</span>
+        ${(sale.billing_type === "wholesale_party" || sale.party_type || partyCode) ? `
+          <div style="border-bottom: 1px dashed #94a3b8; padding-bottom: 4px; margin-bottom: 4px; font-size: 10px; line-height: 1.3; font-family: monospace;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 900; color: #0f172a;">Invoice #: ${voucherNo}</span>
+              <span style="font-weight: 700; color: #334155;">Issue Date: ${dateStr}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 1px; gap: 4px;">
+              <span style="font-weight: 900; color: #0f172a; font-size: 10.5px;">Name: ${customerName}</span>
+              <span style="font-weight: 700; color: #334155; text-align: right; white-space: nowrap; flex-shrink: 0;">Salesman: ${reference}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1px;">
+              <span style="font-weight: 700; color: #334155;">City : ${(city || "HAIDERABAD").toUpperCase()}</span>
+            </div>
+            ${(sale.transport && String(sale.transport).trim() && String(sale.transport).trim() !== "0") ? `
+              <div style="color: #334155; font-weight: 700; margin-top: 1px;">Transport: ${escapeHtml(toTitleCase(sale.transport))}</div>
+            ` : ""}
+            ${(sale.bilty_no && String(sale.bilty_no).trim() && String(sale.bilty_no).trim() !== "0") ? `
+              <div style="color: #334155; font-weight: 700; margin-top: 1px;">Bilty #: ${escapeHtml(sale.bilty_no)}</div>
+            ` : ""}
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #64748b;">Cashier: ${reference}</span>
+        ` : `
+          <div style="border-bottom: 1px dashed #94a3b8; padding-bottom: 4px; margin-bottom: 4px; font-size: 9.5px; line-height: 1.3;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #64748b;">Date: ${dateStr}</span>
+              <span style="font-weight: 900; color: #0f172a;">Inv: #${voucherNo}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #64748b;">Cashier: ${reference}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 2px; border-top: 1px solid #e2e8f0; margin-top: 2px;">
+              <span style="font-weight: 900; color: #0f172a; font-size: 10.5px;">Customer: ${customerName}</span>
+              ${tokenNo ? `<span style="background: #065f46; color: #fff; padding: 1px 5px; border-radius: 3px; font-weight: 900; font-size: 9px;">Token #: ${tokenNo}</span>` : ""}
+            </div>
+            ${(sale.transport && String(sale.transport).trim() && String(sale.transport).trim() !== "0") ? `
+              <div style="color: #334155; font-weight: 700; margin-top: 1px;">Transport: ${escapeHtml(toTitleCase(sale.transport))}</div>
+            ` : ""}
+            ${(sale.bilty_no && String(sale.bilty_no).trim() && String(sale.bilty_no).trim() !== "0") ? `
+              <div style="color: #334155; font-weight: 700; margin-top: 1px;">Bilty #: ${escapeHtml(sale.bilty_no)}</div>
+            ` : ""}
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 2px; border-top: 1px solid #e2e8f0; margin-top: 2px;">
-            <span style="font-weight: 900; color: #0f172a; font-size: 10.5px;">Customer: ${customerName}</span>
-            ${tokenNo ? `<span style="background: #065f46; color: #fff; padding: 1px 5px; border-radius: 3px; font-weight: 900; font-size: 9px;">Token #: ${tokenNo}</span>` : ""}
-          </div>
-          ${city || partyCode ? `
-            <div style="color: #334155; font-weight: 700; margin-top: 1px;">Party / Route: ${city || "HYD"} ${partyCode ? `(#${partyCode})` : ""}</div>
-          ` : ""}
-          ${(sale.transport && String(sale.transport).trim() && String(sale.transport).trim() !== "0") ? `
-            <div style="color: #334155; font-weight: 700; margin-top: 1px;">Transport: ${escapeHtml(toTitleCase(sale.transport))}</div>
-          ` : ""}
-          ${(sale.bilty_no && String(sale.bilty_no).trim() && String(sale.bilty_no).trim() !== "0") ? `
-            <div style="color: #334155; font-weight: 700; margin-top: 1px;">Bilty #: ${escapeHtml(sale.bilty_no)}</div>
-          ` : ""}
-        </div>
+        `}
 
         <!-- Items Table -->
         ${itemsTableHtml}

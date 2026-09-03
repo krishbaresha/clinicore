@@ -3338,6 +3338,13 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **F8 / F9 / Alt+N Shortcuts**: `F8` focuses Cash Paid, `F9` triggers Save & Print, `Alt+N` focuses Medicine Search bar, `Esc` exits modal.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.57s.
 
+66. **Milestone 139: Official Wholesale B2B 2-Column Thermal Receipt & Print Invoice Header Standard**
+    - **Header Pattern Integration**: Updated `SaleInvoiceModal.jsx` (Live Thermal Receipt preview) and `thermalPrinter.js` (ESC/POS thermal printouts) to adopt the exact 2-column header pattern from the clinic's physical invoice:
+      - Left Column: `Invoice #: [no]`, `Name: [Party Name]`, `City : [City]`, `Transport: [Carrier]` (if set), `Bilty #: [No]` (if set).
+      - Right Column: `Issue Date: [Date]`, `Salesman: [Booker/Salesman]`.
+    - **Result**: Wholesale Party sales now display the authentic 2-column layout both live on screen and on physical thermal receipts.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.39s.
+
 
 
 
