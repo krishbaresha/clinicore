@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { verifyAdminPasscode } from "../api/auth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
-import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, dbCategories, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
+import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, dbCategories, dbAuditLogs, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
 import { formatCurrency, downloadCSV } from "../utils/formatters.js";
 import { printInventoryListReceipt, printProductPricingListReceipt } from "../utils/thermalPrinter.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";

@@ -19,6 +19,7 @@ import {
 import { decorateRecordLineage, stripLineageMetadata, getActiveSessionUser } from "./lineage.js";
 import { telemetry } from "./telemetry.js";
 import { storageDriver, isTauri, waitForDiskCache, getDataPath } from "./storageDriver.js";
+import { downloadCSV } from "../utils/formatters.js";
 
 // Re-export arithmetic & conflict resolution helpers for consumer modules
 export {
@@ -6812,17 +6813,17 @@ export const dbDatabaseManagement = {
  */
 export function exportSuppliersTemplateCSV() {
   const csv = "Company Name,Supplier Code,Phone,City,Address,Current Balance\n\"BM Pvt LTD\",\"BM\",\"03001234567\",\"Hyderabad\",\"Lajpat Road\",0\n\"GHR Homoepathic\",\"GHR\",\"03007654321\",\"Karachi\",\"Market Road\",0\n";
-  downloadCSV(csv, "Suppliers_Companies_Template.csv");
+  downloadCSV("Suppliers_Companies_Template.csv", csv);
 }
 
 export function exportPartiesTemplateCSV() {
   const csv = "Party Name,Party Code,Phone,City,Address,Salesman,Current Balance\n\"Muslim Medical Store\",\"PTY-001\",\"03009988776\",\"Hyderabad\",\"Station Road\",\"Usama\",0\n\"Asus Pharmacy\",\"PTY-002\",\"03005544332\",\"Interior Sindh\",\"Main Bazaar\",\"Mustafa\",0\n";
-  downloadCSV(csv, "Wholesale_Parties_Template.csv");
+  downloadCSV("Wholesale_Parties_Template.csv", csv);
 }
 
 export function exportInventoryGodownsTemplateCSV() {
   const csv = "Medicine Name,Description,Packing,Company Name,Company Code,Cost Price,Retail Price,Medical Store Stock,Godown 1 Stock,Godown 2 Stock\n\"R1 Combination 22ML\",\"Drops 22ML\",\"22ML Drop\",\"Dr. Reckeweg\",\"REC\",450,650,20,50,30\n\"Contole Plus Ointment\",\"Skin Ointment 20g\",\"20g Tube\",\"BM Pvt LTD\",\"BM\",120,180,15,40,25\n";
-  downloadCSV(csv, "Medicine_Catalogue_Godowns_Template.csv");
+  downloadCSV("Medicine_Catalogue_Godowns_Template.csv", csv);
 }
 
 export function bulkImportSuppliers(csvText) {
@@ -7002,7 +7003,6 @@ export function bulkImportInventoryWithGodowns(csvText) {
   try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   return { count: added + updated, added, updated };
 }
-
 
 
 
