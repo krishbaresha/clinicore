@@ -41,7 +41,9 @@ export default function GodAdminPanel() {
   const [activeTab, setActiveTab] = useState("all"); // 'all' | 'registrations' | 'sales' | 'collections' | 'discounts' | 'writeoffs'
   const [searchQuery, setSearchQuery] = useState("");
   const [staffFilter, setStaffFilter] = useState("all");
-  const [dateRange, setDateRange] = useState("30_days"); // 'today' | '7_days' | '30_days' | 'all'
+  const [dateRange, setDateRange] = useState("30_days"); // 'today' | 'yesterday' | '7_days' | '30_days' | 'this_month' | 'custom' | 'all'
+  const [customStart, setCustomStart] = useState(() => new Date().toISOString().split("T")[0]);
+  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().split("T")[0]);
 
   const refreshData = () => {
     setAuditLogs(dbAuditLogs.getAll() || []);
@@ -63,18 +65,33 @@ export default function GodAdminPanel() {
   const dateBounds = useMemo(() => {
     const now = new Date();
     let start = new Date(0);
+    let end = new Date();
+
     if (dateRange === "today") {
       start = new Date();
       start.setHours(0, 0, 0, 0);
+    } else if (dateRange === "yesterday") {
+      start = new Date();
+      start.setDate(now.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end = new Date();
+      end.setDate(now.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
     } else if (dateRange === "7_days") {
       start = new Date();
       start.setDate(now.getDate() - 7);
     } else if (dateRange === "30_days") {
       start = new Date();
       start.setDate(now.getDate() - 30);
+    } else if (dateRange === "this_month") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (dateRange === "custom") {
+      start = new Date(customStart + "T00:00:00");
+      end = new Date(customEnd + "T23:59:59");
     }
-    return { startMs: start.getTime(), endMs: now.getTime() };
-  }, [dateRange]);
+
+    return { startMs: start.getTime(), endMs: end.getTime() };
+  }, [dateRange, customStart, customEnd]);
 
   // Staff Member Cash Drawer Collections Breakdown
   const staffCollections = useMemo(() => {
@@ -192,7 +209,7 @@ export default function GodAdminPanel() {
   const filteredLogs = useMemo(() => {
     return auditLogs.filter((log) => {
       const lTime = new Date(log.timestamp || 0).getTime();
-      if (lTime < dateBounds.startMs) return false;
+      if (lTime < dateBounds.startMs || lTime > dateBounds.endMs) return false;
 
       if (staffFilter !== "all") {
         const actorId = log.actor_id || "";
@@ -467,6 +484,39 @@ export default function GodAdminPanel() {
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
             </div>
+
+            {/* Date Range Selector */}
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none"
+            >
+              <option value="today">📅 Today (Aaj)</option>
+              <option value="yesterday">📅 Yesterday (Kal)</option>
+              <option value="7_days">📊 Last 7 Days</option>
+              <option value="30_days">📆 Last 30 Days</option>
+              <option value="this_month">📆 This Month</option>
+              <option value="custom">⚙️ Custom Date Range</option>
+              <option value="all">🌐 All Logs</option>
+            </select>
+
+            {dateRange === "custom" && (
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-300 text-xs">
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="bg-white border border-slate-200 text-slate-900 rounded-lg px-2 py-1 font-mono text-xs outline-none"
+                />
+                <span className="text-slate-500 font-bold">to</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="bg-white border border-slate-200 text-slate-900 rounded-lg px-2 py-1 font-mono text-xs outline-none"
+                />
+              </div>
+            )}
 
             {/* Staff Selector */}
             <select

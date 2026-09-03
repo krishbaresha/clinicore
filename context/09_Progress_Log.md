@@ -3353,14 +3353,10 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-80. **Milestone 153: Super Admin PIN Stock Edit Enforcement & Device Previous User Audit Trail**
-    - **Stock Edit Authorization (`MedicalStoreInventory.jsx`)**: Restricted direct stock edits and item deletions exclusively to **Primary Doctor / Owner** and **Admin** (`isAdminOrOwner`). Any staff role (cashier, pharmacist, warehouse incharge) MUST enter the Super Admin PIN/Passcode via modal before stock or pricing can be modified.
-    - **Anti-Hushyari Tamper-Evident Session Lineage (`auth.js` & `db.js`)**:
-      - System now records `Device Previous Active User` on every logout and login (`cf_last_logged_out_user`).
-      - If a cashier/staff member logs out and immediately logs in under the Admin account to edit stock, the audit log stamps the event with:
-        `LOGIN_SUCCESS / STOCK_EDIT: [Device Previous Active User: Mustafa (cashier) [Logged out at 3:15:10 PM]]`.
-      - Audit logs use a **SHA-256 Hash Chain (`dbAuditLogs`)** making audit entries immutable and impossible to delete or alter.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.40s.
+81. **Milestone 154: Real-Time Audit Log Stream Date Range & Timestamp Filter System**
+    - **Date-Wise & Exact Timestamp Audit Filtering (`GodAdminPanel.jsx`)**: Added interactive Date Range & Timestamp selector in Audit Logs Stream (`Today`, `Yesterday`, `Last 7 Days`, `Last 30 Days`, `This Month`, `Custom Range`, `All Logs`).
+    - **Microsecond Timestamp & Identity Display**: Every audit event displays the exact Karachi/PKT timestamp (`Sep 03, 03:31:05 PM`), SHA-256 event hash, actor identity, action badge (`STOCK_EDIT`, `LOGIN_SUCCESS`, `SUPER_ADMIN_OVERRIDE`), and device lineage.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.60s.
 
 
 
