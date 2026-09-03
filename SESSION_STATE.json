@@ -2,10 +2,10 @@
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
   "version": "2.5.9-release",
-  "last_session_date": "2026-09-03T15:18:00+05:00",
-  "session_id": "part-151",
-  "active_milestone": 151,
-  "milestone_title": "Automatic Full Financial Access for Admin & Primary Doctor Designation Flow",
+  "last_session_date": "2026-09-03T15:23:00+05:00",
+  "session_id": "part-152",
+  "active_milestone": 152,
+  "milestone_title": "Admin Financial Statement Date Range Preset Selector & Day Closing Architecture",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -16,7 +16,7 @@
     "python_compile_passed": true
   },
   "current_status": {
-    "phase": "Milestone 151 — Automatic Full Financial Access for Admin & Primary Doctor Designation Flow (100%)",
+    "phase": "Milestone 152 — Admin Financial Statement Date Range Preset Selector & Day Closing Architecture (100%)",
     "test_suite_status": "643/643 Tests Passing, 0 AST Errors, 0 Secret Leaks, Clean Vite Production Build",
     "build_status": "Clean Vite Production Bundle",
     "git_branch": "main",

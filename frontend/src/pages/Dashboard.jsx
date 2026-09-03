@@ -42,6 +42,11 @@ export default function Dashboard() {
   const isWarehouseUser = user?.role === "warehouse" || user?.role === "warehouse_incharge" || user?.role === "warehouse_manager";
   const [syncTick, setSyncTick] = useState(0);
 
+  // Statement Date Range Preset State (Admin / Owner & Authorized Financial Access Only)
+  const [datePreset, setDatePreset] = useState("today"); // "today" | "yesterday" | "last7" | "this_month" | "last_month" | "custom"
+  const [startDateInput, setStartDateInput] = useState(() => new Date().toISOString().split("T")[0]);
+  const [endDateInput, setEndDateInput] = useState(() => new Date().toISOString().split("T")[0]);
+
   useEffect(() => {
     const handleSync = () => setSyncTick((t) => t + 1);
     window.addEventListener("clinicflow_status_update", handleSync);
@@ -87,9 +92,43 @@ export default function Dashboard() {
     partiesWithUdhaarCount,
     whLowStockItems,
   } = useMemo(() => {
+    const now = new Date();
+    const todayYMD = now.toISOString().split("T")[0];
+
+    const isMatchDate = (rawDate) => {
+      if (!rawDate) return false;
+      const d = new Date(rawDate);
+      if (isNaN(d.getTime())) return false;
+      const dYMD = d.toISOString().split("T")[0];
+
+      if (datePreset === "today") {
+        return dYMD === todayYMD;
+      }
+      if (datePreset === "yesterday") {
+        const y = new Date(now);
+        y.setDate(y.getDate() - 1);
+        return dYMD === y.toISOString().split("T")[0];
+      }
+      if (datePreset === "last7") {
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        return d >= sevenDaysAgo && d <= now;
+      }
+      if (datePreset === "this_month") {
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }
+      if (datePreset === "last_month") {
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear();
+      }
+      if (datePreset === "custom") {
+        return dYMD >= startDateInput && dYMD <= endDateInput;
+      }
+      return dYMD === todayYMD;
+    };
+
     const allVisits = dbVisits.getAll() || [];
-    const todayStr = new Date().toDateString();
-    const tVisits = allVisits.filter((v) => new Date(v.visit_date).toDateString() === todayStr);
+    const tVisits = allVisits.filter((v) => isMatchDate(v.visit_date || v.created_at));
     const fToday = tVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
 
     const activeDocId = user?.userId || user?.id;
@@ -97,14 +136,14 @@ export default function Dashboard() {
     const myFToday = myTVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
 
     const allSales = dbSales.getAll() || [];
-    const tSales = allSales.filter((s) => new Date(s.sale_date).toDateString() === todayStr);
+    const tSales = allSales.filter((s) => isMatchDate(s.sale_date || s.date || s.created_at));
     const pRevToday = tSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
 
     const allExpenses = dbExpenses.getAll() || [];
     const activeWhId = user?.assigned_warehouse_id || "wh_001";
     const isWarehouseRole = user?.role === "warehouse" || user?.role === "warehouse_incharge" || user?.role === "warehouse_manager";
     const tExpenses = allExpenses.filter((e) => {
-      const matchDate = new Date(e.expense_date || e.date).toDateString() === todayStr;
+      const matchDate = isMatchDate(e.expense_date || e.date || e.created_at);
       if (!matchDate) return false;
       if (isWarehouseRole && !user?.is_owner && user?.role !== "admin") {
         return e.warehouse_id === activeWhId;
@@ -138,7 +177,7 @@ export default function Dashboard() {
 
     const totVisits = allVisits.length;
     const allPatients = dbPatients.getAll() || [];
-    const newPatientsToday = allPatients.filter((p) => new Date(p.created_at || p.registered_date).toDateString() === todayStr).length;
+    const newPatientsToday = allPatients.filter((p) => isMatchDate(p.created_at || p.registered_date)).length;
     const rRatio = tVisits.length > 0 ? Math.round(((tVisits.length - newPatientsToday) / tVisits.length) * 100) : 0;
     const nRatio = tVisits.length > 0 ? 100 - rRatio : 100;
 
@@ -158,38 +197,35 @@ export default function Dashboard() {
 
     const allPurchases = (dbPurchases && dbPurchases.getAll ? dbPurchases.getAll() : []) || [];
     const todayWhPurchases = allPurchases.filter((p) => {
-      const pDate = new Date(p.purchase_date || p.date || p.created_at).toDateString();
-      return pDate === todayStr && p.warehouse_id === activeWhId;
+      return isMatchDate(p.purchase_date || p.date || p.created_at) && p.warehouse_id === activeWhId;
     });
     const todayWhPurchasesVal = todayWhPurchases.reduce((sum, p) => sum + (p.total_amount || 0), 0);
 
     const allB2BSales = (dbB2BSales && dbB2BSales.getAll ? dbB2BSales.getAll() : []) || [];
     const todayWhSales = allB2BSales.filter((s) => {
-      const sDate = new Date(s.sale_date || s.date || s.created_at).toDateString();
-      return sDate === todayStr && s.warehouse_id === activeWhId;
+      return isMatchDate(s.sale_date || s.date || s.created_at) && s.warehouse_id === activeWhId;
     });
     const todayWhSalesVal = todayWhSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
 
     const todayWhExpenses = allExpenses.filter((e) => {
-      const eDate = new Date(e.expense_date || e.date || e.created_at).toDateString();
-      return eDate === todayStr && e.warehouse_id === activeWhId;
+      return isMatchDate(e.expense_date || e.date || e.created_at) && e.warehouse_id === activeWhId;
     });
     const todayWhExpensesVal = todayWhExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
     const allParties = (dbParties && dbParties.getAll ? dbParties.getAll() : []) || [];
     let totalPartyUdhaar = 0;
     let partiesWithUdhaarCount = 0;
-    allParties.forEach((p) => {
-      const bal = Number(p.current_balance || p.balance_due || p.balance) || 0;
+    allParties.forEach((pty) => {
+      const bal = Number(pty.current_balance || pty.balance || 0);
       if (bal > 0) {
         totalPartyUdhaar += bal;
-        partiesWithUdhaarCount++;
+        partiesWithUdhaarCount += 1;
       }
     });
 
     const whLowStockItems = allInventory.filter((item) => {
-      const qty = dbInventory.getLocationStock ? dbInventory.getLocationStock(item, activeWhId) : (item.stock_qty || 0);
-      return qty <= (item.reorder_level || 10);
+      const locQty = dbInventory.getLocationStock ? dbInventory.getLocationStock(item, activeWhId) : (item.stock_qty || 0);
+      return locQty <= (item.reorder_level || 10);
     });
 
     return {
@@ -225,7 +261,8 @@ export default function Dashboard() {
       partiesWithUdhaarCount,
       whLowStockItems,
     };
-  }, [syncTick, user]);
+  }, [syncTick, user, datePreset, startDateInput, endDateInput]);
+
 
   if (isWarehouseUser) {
     return (
@@ -513,6 +550,93 @@ export default function Dashboard() {
           )}
         </div>
       </header>
+
+      {/* Financial Statement & Historical Date Range Filter Bar (Admin / Owner & Financial Access Authorized Only) */}
+      {canViewFinancials && (
+        <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white rounded-2xl p-3.5 sm:p-4 border border-teal-800/80 shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
+              <span className="material-symbols-outlined text-xl">calendar_month</span>
+            </div>
+            <div>
+              <div className="text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                <span>Financial Statement Period Filter</span>
+                <span className="bg-teal-800 text-teal-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  🔒 Admin / Owner Secured
+                </span>
+              </div>
+              <p className="text-[11.5px] text-slate-300 mt-0.5">
+                Showing data for: <strong className="text-white font-mono font-bold">
+                  {datePreset === "today" && "📅 Today (Aaj)"}
+                  {datePreset === "yesterday" && "📅 Yesterday (Kal)"}
+                  {datePreset === "last7" && "📊 Last 7 Days (Pichlay 7 Din)"}
+                  {datePreset === "this_month" && "📆 This Month (Iss Mahine)"}
+                  {datePreset === "last_month" && "📆 Last Month (Pichla Mahina)"}
+                  {datePreset === "custom" && `⚙️ Custom: ${startDateInput} to ${endDateInput}`}
+                </strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
+            <div className="flex bg-slate-950/80 p-1 rounded-xl border border-teal-800/60 text-xs font-bold gap-1 flex-wrap w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setDatePreset("today")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "today" ? "bg-teal-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+              >
+                Today (Aaj)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDatePreset("yesterday")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "yesterday" ? "bg-teal-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+              >
+                Yesterday (Kal)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDatePreset("last7")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "last7" ? "bg-teal-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+              >
+                Last 7 Days
+              </button>
+              <button
+                type="button"
+                onClick={() => setDatePreset("this_month")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "this_month" ? "bg-teal-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+              >
+                This Month
+              </button>
+              <button
+                type="button"
+                onClick={() => setDatePreset("custom")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "custom" ? "bg-amber-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+              >
+                Custom Range
+              </button>
+            </div>
+
+            {datePreset === "custom" && (
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-teal-800/80 text-xs">
+                <input
+                  type="date"
+                  value={startDateInput}
+                  onChange={(e) => setStartDateInput(e.target.value)}
+                  className="bg-slate-900 border border-slate-700 text-white rounded-lg px-2 py-1 font-mono text-xs outline-none focus:border-teal-500"
+                />
+                <span className="text-slate-400 font-bold">to</span>
+                <input
+                  type="date"
+                  value={endDateInput}
+                  onChange={(e) => setEndDateInput(e.target.value)}
+                  className="bg-slate-900 border border-slate-700 text-white rounded-lg px-2 py-1 font-mono text-xs outline-none focus:border-teal-500"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stats Bento Grid (Desktop Grid / Mobile Swiper Slider) */}
       <div className="block md:hidden">
