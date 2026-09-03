@@ -597,10 +597,10 @@ export function initDB() {
     storageDriver.setItem(KEYS.USERS, JSON.stringify(SEED_DATA.users));
     storageDriver.setItem(KEYS.PATIENTS, JSON.stringify([]));
     storageDriver.setItem(KEYS.VISITS, JSON.stringify([]));
-    storageDriver.setItem(KEYS.INVENTORY, JSON.stringify(SEED_DATA.inventory));
-    storageDriver.setItem(KEYS.PARTIES, JSON.stringify(SEED_DATA.parties));
-    storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify(SEED_DATA.suppliers));
-    storageDriver.setItem(KEYS.SALESMEN, JSON.stringify(SEED_DATA.salesmen));
+    storageDriver.setItem(KEYS.INVENTORY, JSON.stringify([]));
+    storageDriver.setItem(KEYS.PARTIES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SALESMEN, JSON.stringify([]));
     storageDriver.setItem(KEYS.PURCHASES, JSON.stringify([]));
     storageDriver.setItem(KEYS.B2B_SALES, JSON.stringify([]));
     storageDriver.setItem(KEYS.SALES, JSON.stringify([]));
