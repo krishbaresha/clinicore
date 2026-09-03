@@ -207,6 +207,18 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   const [salesmanPinError, setSalesmanPinError] = useState("");
   const [showTransportDropdown, setShowTransportDropdown] = useState(false);
 
+  const registeredDoctors = useMemo(() => {
+    try {
+      const users = dbUsers.getAll ? dbUsers.getAll() : [];
+      const docs = users.filter((u) => u.role === "doctor" || u.is_doctor || u.role === "admin");
+      if (docs.length > 0) return docs;
+    } catch {}
+    const clinic = dbClinic.get();
+    return [
+      { id: "doc_001", name: clinic.doctor_name || "Dr. M. Ashraf Khan", fee: clinic.doctor_fee || 500 },
+    ];
+  }, []);
+
   const [saleForm, setSaleForm] = useState({
     date: new Date().toLocaleDateString("en-US"),
     voucher_no: "Inv-1000",
@@ -226,6 +238,10 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     destination_type: "warehouse",
     extra_bill_discount: "0",
     freight_charges: "0",
+    attending_doctor_id: "",
+    attending_doctor_name: "",
+    doctor_fee: "0",
+    doctor_fee_waived: false,
   });
 
   const [saleCart, setSaleCart] = useState({
@@ -982,8 +998,11 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const extraDisc = Number(saleForm.extra_bill_discount) || 0;
     const freight = Number(saleForm.freight_charges) || 0;
     const posFee = billingType === "patient" ? 1 : 0;
-    return Math.round(Math.max(0, subtotal - extraDisc + freight + posFee));
-  }, [saleItems, saleForm.extra_bill_discount, saleForm.freight_charges, billingType]);
+    const docFee = (billingType === "patient" && saleForm.attending_doctor_id && !saleForm.doctor_fee_waived)
+      ? (Number(saleForm.doctor_fee) || 0)
+      : 0;
+    return Math.round(Math.max(0, subtotal + docFee - extraDisc + freight + posFee));
+  }, [saleItems, saleForm.extra_bill_discount, saleForm.freight_charges, saleForm.attending_doctor_id, saleForm.doctor_fee, saleForm.doctor_fee_waived, billingType]);
 
   const puranaUdhaar = useMemo(() => {
     if (billingType === "wholesale_party") {
@@ -1396,6 +1415,80 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       </div>
                     </div>
 
+                    {/* Row 2: Attending Doctor, Consultation Fee & Fee Waived Checkbox */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-1.5 items-end pt-1 border-t border-emerald-100">
+                      <div className="col-span-2 sm:col-span-2 md:col-span-5">
+                        <label className="block text-[9.5px] font-bold text-teal-900 mb-0.5 flex items-center justify-between">
+                          <span>Attending Doctor (Consultant)</span>
+                          {saleForm.attending_doctor_name && (
+                            <span className="text-[9px] text-teal-700 font-bold">✓ Selected</span>
+                          )}
+                        </label>
+                        <select
+                          value={saleForm.attending_doctor_id || ""}
+                          onChange={(e) => {
+                            const docId = e.target.value;
+                            const selectedDoc = registeredDoctors.find((d) => d.id === docId || d.name === docId || d.full_name === docId);
+                            const fee = selectedDoc ? (selectedDoc.consultation_fee || selectedDoc.fee || 500) : 0;
+                            setSaleForm((prev) => ({
+                              ...prev,
+                              attending_doctor_id: docId,
+                              attending_doctor_name: selectedDoc ? (selectedDoc.name || selectedDoc.full_name) : (docId ? docId : ""),
+                              doctor_fee: String(fee),
+                            }));
+                          }}
+                          className="w-full bg-teal-50/70 border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 focus:border-teal-600 outline-none cursor-pointer"
+                        >
+                          <option value="">-- Select Registered Doctor --</option>
+                          {registeredDoctors.map((doc) => (
+                            <option key={doc.id || doc.name} value={doc.id || doc.name}>
+                              👨‍⚕️ {doc.name || doc.full_name} (Fee: Rs. {doc.consultation_fee || doc.fee || 500})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {saleForm.attending_doctor_id && (
+                        <>
+                          <div className="col-span-1 sm:col-span-1 md:col-span-3">
+                            <label className="block text-[9.5px] font-bold text-slate-700 mb-0.5">
+                              Dr Fee (Rs)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={saleForm.doctor_fee || "0"}
+                              onChange={(e) => setSaleForm({ ...saleForm, doctor_fee: e.target.value })}
+                              disabled={saleForm.doctor_fee_waived}
+                              className={`w-full border rounded-lg px-2 py-1 text-xs font-mono font-bold ${
+                                saleForm.doctor_fee_waived
+                                  ? "bg-slate-100 text-slate-400 line-through border-slate-200"
+                                  : "bg-white text-slate-900 border-teal-400"
+                              }`}
+                            />
+                          </div>
+
+                          <div className="col-span-1 sm:col-span-1 md:col-span-4 flex items-center pb-0.5">
+                            <label className={`inline-flex items-center gap-1.5 border px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+                              saleForm.doctor_fee_waived
+                                ? "bg-rose-100 border-rose-400 text-rose-950 font-black shadow-2xs"
+                                : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(saleForm.doctor_fee_waived)}
+                                onChange={(e) => setSaleForm({ ...saleForm, doctor_fee_waived: e.target.checked })}
+                                className="w-3.5 h-3.5 text-rose-600 rounded border-rose-300 focus:ring-rose-500 cursor-pointer"
+                              />
+                              <span className="text-[10px] uppercase tracking-tight font-bold">
+                                {saleForm.doctor_fee_waived ? "❌ Fee Waived (Free)" : "Fee Charged"}
+                              </span>
+                            </label>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
                     {/* Matched Patient Udhaar Banner */}
                     {matchedPatient && (
                       <div className="bg-teal-50 border border-teal-300 rounded-lg px-3 py-1 flex items-center justify-between text-xs text-teal-950 gap-2 shadow-2xs mt-1">
@@ -1483,7 +1576,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       </div>
                       <div className="col-span-2 sm:col-span-2 md:col-span-3">
                         <ExpandableCombobox
-                          label="Salesman / Booker"
+                          label="Salesman"
                           value={saleForm.reference || activeUser}
                           onChange={handleSelectSalesman}
                           options={referenceOptions}
@@ -2326,6 +2419,24 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
                 {/* Totals Summary */}
                 <div className="space-y-1 text-[11px] pt-1">
+                  {saleForm.attending_doctor_id && (
+                    <>
+                      <div className="flex justify-between text-slate-700 text-[10px]">
+                        <span>Dr. Fee ({saleForm.attending_doctor_name || "Doctor"}):</span>
+                        <span className="font-bold text-slate-900">
+                          Rs. {Number(saleForm.doctor_fee || 0).toLocaleString("en-US")}
+                        </span>
+                      </div>
+                      {saleForm.doctor_fee_waived && (
+                        <div className="flex justify-between text-rose-700 text-[10px] font-bold">
+                          <span>Dr. Fee Waived (Free):</span>
+                          <span className="font-black text-rose-800">
+                            -Rs. {Number(saleForm.doctor_fee || 0).toLocaleString("en-US")}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
                   {posServiceFee > 0 && (
                     <div className="flex justify-between text-slate-600 text-[10px]">
                       <span>POS Service Fee:</span>

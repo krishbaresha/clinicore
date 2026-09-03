@@ -486,6 +486,9 @@ export function printThermalReceipt(sale, clinicData = null) {
 
   const tokenNo = escapeHtml(sale.token_no || sale.token_number || sale.token || "");
   const partyCode = escapeHtml(sale.party_code || sale.party_type || "");
+  const docName = escapeHtml(sale.attending_doctor_name || "");
+  const docFee = Number(sale.doctor_fee || 0);
+  const docFeeWaived = Boolean(sale.doctor_fee_waived);
 
   const itemsHtml = buildBorderedReceiptItemsTableHtml(sale.items || []);
 
@@ -559,6 +562,7 @@ export function printThermalReceipt(sale, clinicData = null) {
             <span><span style="color: #6b7280; font-weight: 500;">Customer :</span> <strong>${customerName}</strong></span>
             ${tokenNo ? `<span style="background: #047857; color: #fff; font-size: 11px; font-weight: 900; padding: 1px 6px; border-radius: 4px; font-family: monospace;">Token #: ${tokenNo}</span>` : ""}
           </div>
+          ${docName ? `<div><span style="color: #6b7280; font-weight: 500;">Attending Doctor :</span> <strong>${docName}</strong></div>` : ""}
           ${partyCode ? `<div><span style="color: #6b7280; font-weight: 500;">Party / Route :</span> ${partyCode}</div>` : ""}
         </div>` : ""}
 
@@ -576,6 +580,17 @@ export function printThermalReceipt(sale, clinicData = null) {
             <span>Subtotal</span>
             <span>Rs. ${Number(subtotal).toFixed(2)}</span>
           </div>
+          ${docFee > 0 ? `
+          <div style="display: flex; justify-content: space-between; color: #374151; font-size: 10px;">
+            <span>Dr. Fee (${docName || "Consultant"}):</span>
+            <span>Rs. ${Number(docFee).toFixed(2)}</span>
+          </div>
+          ${docFeeWaived ? `
+          <div style="display: flex; justify-content: space-between; color: #be123c; font-size: 10px; font-weight: 800;">
+            <span>Dr. Fee Waived (Free):</span>
+            <span>- Rs. ${Number(docFee).toFixed(2)}</span>
+          </div>` : ""}
+          ` : ""}
           ${discount > 0 ? `
           <div style="display: flex; justify-content: space-between; color: #0f766e; font-weight: 700;">
             <span>Discount</span>

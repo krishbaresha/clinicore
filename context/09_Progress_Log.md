@@ -3353,11 +3353,13 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-72. **Milestone 145: Dynamic Multi-Godown Stock Columns & Brand/Company Filter Engine**
-    - **Dynamic Godown Stock Columns**: Replaced hardcoded single godown column with dynamic rendering across all registered godowns (`godowns.map()`). Each godown (e.g. `Main Godown (Hyderabad)`, `Godown 2 (Karachi)`) now appears as a dedicated column header with real-time stock levels.
-    - **Manufacturing Company Filter**: Added `🏢 All Companies` dropdown next to search bar in Master Stock tab. Staff can select any brand/company (`BM Pvt LTD`, `Kent Homoeopathic`, `W.S. Laboratories`, `NP Laboratories`, etc.) to filter and view stock across all warehouses instantly.
-    - **Dynamic Location Stock Calculation**: Computes live per-godown stock from `item.location_stocks` and aggregates total stock across all godowns + store counter automatically.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.29s.
+73. **Milestone 146: Registered Doctor Selection, Auto Consultation Fee & Fee Waived Thermal Engine**
+    - **Doctor Auto Fee Selector**: Added **`Attending Doctor (Consultant)`** dropdown in POS Sale Invoice (`SaleInvoiceModal.jsx`). Selecting any registered doctor (e.g. Dr. M. Ashraf Khan) automatically populates their consultation fee (e.g. Rs. 500).
+    - **Smart Doctor Fee Waived (Free Consultation) Engine**: Added **`❌ Fee Waived (Free)`** checkbox.
+      - **When Fee is Charged**: Gross Total includes Doctor Fee (e.g. `Dr. Consultation Fee: Rs. 500`).
+      - **When Fee is Waived**: Live receipt & printed thermal receipt explicitly render `Dr. Fee: Rs. 500` and `Dr. Fee Waived (Free): -Rs. 500` (Net Doctor Fee = Rs. 0).
+    - **Mathematical Precision**: Ensures zero financial calculation error while clearly documenting doctor fee waivers for audit trail.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.63s.
 
 
 
