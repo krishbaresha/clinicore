@@ -860,10 +860,10 @@ export default function WarehouseManagement() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold font-headline text-gray-900">
-                Central Warehouse &amp; Wholesale Distribution
+                Wholesale B2B &amp; Party Dues Center
               </h1>
               <p className="text-xs text-gray-500">
-                Interior Sindh Bulk Supply, Godown Stock, Bilty/Transport &amp; 2-Way Store Transfers
+                Interior Sindh Bulk Supply, B2B Sales Invoices, Bilty/Transport &amp; Party Dues Ledgers
               </p>
             </div>
           </div>
@@ -883,17 +883,6 @@ export default function WarehouseManagement() {
             <span className="material-symbols-outlined text-base">menu_book</span>
             <span>Stock Ledger</span>
           </button>
-
-          <button
-            onClick={() => {
-              setTransferDirection("to_store");
-              handleTabChange("transfer");
-            }}
-            className="min-h-[40px] px-3.5 py-2 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-600/20 transition-all whitespace-nowrap cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-base">sync_alt</span>
-            <span>Two-Way Stock Transfer</span>
-          </button>
         </div>
       </div>
 
@@ -903,14 +892,14 @@ export default function WarehouseManagement() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-3xl bg-white border border-teal-100 shadow-sm">
           <div className="flex items-center justify-between text-gray-500 text-xs font-semibold uppercase tracking-wider">
-            <span>Godown Inventory Value</span>
+            <span>Total Catalog Valuation</span>
             <span className="material-symbols-outlined text-teal-600 text-lg">account_balance_wallet</span>
           </div>
           <div className="text-2xl font-bold font-headline text-gray-900 mt-2">
-            {formatPKR(totalGodownValuation)}
+            {formatPKR(inventory.reduce((sum, i) => sum + ((i.store_stock ?? i.quantity ?? 0) * (i.box_sale_price || i.unit_sale_price || 0)), 0))}
           </div>
           <div className="text-xs text-teal-700 font-medium mt-1">
-            {inventory.reduce((sum, i) => sum + (i.warehouse_stock ?? 0), 0)} Total Packs in Godown
+            {inventory.reduce((sum, i) => sum + (i.store_stock ?? i.quantity ?? 0), 0)} Total Packs in Store
           </div>
         </div>
 
@@ -965,19 +954,7 @@ export default function WarehouseManagement() {
           }`}
         >
           <span className="material-symbols-outlined text-sm text-teal-600">inventory_2</span>
-          Godown Master Stock ({inventory.length})
-        </button>
-
-        <button
-          onClick={() => handleTabChange("transfer")}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-            activeTab === "transfer"
-              ? "bg-white text-teal-900 shadow-sm border border-teal-200"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          <span className="material-symbols-outlined text-sm text-teal-600">sync_alt</span>
-          Two-Way Stock Transfers
+          Medical Store Catalog ({filteredInventory.length})
         </button>
 
         <button
@@ -993,18 +970,6 @@ export default function WarehouseManagement() {
         </button>
 
         <button
-          onClick={() => handleTabChange("godowns")}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-            activeTab === "godowns"
-              ? "bg-white text-teal-900 shadow-sm border border-teal-200"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          <span className="material-symbols-outlined text-sm text-teal-600">warehouse</span>
-          Godown Master ({godowns.length})
-        </button>
-
-        <button
           onClick={() => handleTabChange("logs")}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
             activeTab === "logs"
@@ -1013,7 +978,7 @@ export default function WarehouseManagement() {
           }`}
         >
           <span className="material-symbols-outlined text-sm text-teal-600">receipt_long</span>
-          Audit Logs ({transfers.length + b2bSales.length})
+          B2B Sales &amp; Audit Logs ({b2bSales.length})
         </button>
       </div>
 
@@ -1067,45 +1032,16 @@ export default function WarehouseManagement() {
                     <th className="py-3 px-4">Company</th>
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Code</th>
-
-                    {/* DYNAMIC GODOWN STOCK COLUMNS */}
-                    {godowns.length > 0 ? (
-                      godowns.map((g, idx) => (
-                        <th key={g.id || idx} className="py-3 px-3 text-center text-cyan-300 font-bold whitespace-nowrap border-l border-slate-800">
-                          <span className="material-symbols-outlined text-xs align-middle mr-1 text-cyan-400">warehouse</span>
-                          {g.name || `Godown ${idx + 1}`}
-                        </th>
-                      ))
-                    ) : (
-                      <th className="py-3 px-4 text-center text-cyan-300 font-bold">Godown</th>
-                    )}
-
-                    <th className="py-3 px-4 text-center text-amber-300 font-bold border-l border-slate-800">Counter</th>
-                    <th className="py-3 px-4 text-center text-emerald-300 font-bold border-l border-slate-800">Total</th>
-                    <th className="py-3 px-4 text-right">Cost</th>
-                    <th className="py-3 px-4 text-right">Sale</th>
+                    <th className="py-3 px-4 text-center text-teal-300 font-bold border-l border-slate-800">Medical Store Stock (Packs)</th>
+                    <th className="py-3 px-4 text-right">Cost Price</th>
+                    <th className="py-3 px-4 text-right">Sale Price</th>
                     <th className="py-3 px-4 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {filteredInventory.map((item) => {
-                    const sStock = item.store_stock ?? (item.stock_qty ?? 0);
-
-                    // Compute dynamic total stock across all godowns + store counter
-                    let sumGodownStock = 0;
-                    const godownStockMap = godowns.map((g, idx) => {
-                      let stk = 0;
-                      if (item.location_stocks && item.location_stocks[g.id] !== undefined) {
-                        stk = Number(item.location_stocks[g.id]) || 0;
-                      } else if (idx === 0) {
-                        stk = item.warehouse_stock ?? 0;
-                      }
-                      sumGodownStock += stk;
-                      return { godownId: g.id, name: g.name, stock: stk };
-                    });
-
-                    const totStock = item.total_base_stock ?? (sumGodownStock + sStock);
-                    const isLow = totStock <= (item.low_stock_threshold || 6);
+                    const sStock = item.store_stock ?? (item.quantity ?? item.stock_qty ?? 0);
+                    const isLow = sStock <= (item.low_stock_threshold || 6);
 
                     return (
                       <tr
@@ -1130,32 +1066,13 @@ export default function WarehouseManagement() {
                             {item.item_code || "GEN"}
                           </span>
                         </td>
-
-                        {/* DYNAMIC GODOWN STOCK CELLS */}
-                        {godownStockMap.length > 0 ? (
-                          godownStockMap.map((g, idx) => (
-                            <td key={g.godownId || idx} className="py-3 px-3 text-center font-mono font-bold text-slate-800 border-l border-gray-100">
-                              <span className={g.stock > 0 ? "text-cyan-700 font-black" : "text-gray-400"}>
-                                {g.stock} <span className="text-[9.5px] text-slate-400 font-normal">{item.box_label || "Packs"}</span>
-                              </span>
-                            </td>
-                          ))
-                        ) : (
-                          <td className="py-3 px-4 text-center font-mono font-black text-cyan-700 text-xs">
-                            {item.warehouse_stock ?? 0} <span className="text-[9.5px] text-gray-400 font-normal">{item.box_label || "Packs"}</span>
-                          </td>
-                        )}
-
-                        <td className="py-3 px-4 text-center font-mono font-black text-amber-700 text-xs border-l border-gray-100">
-                          {sStock} <span className="text-[9.5px] text-gray-400 font-normal">{item.unit_label || "Units"}</span>
-                        </td>
                         <td className="py-3 px-4 text-center border-l border-gray-100">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-black ${
                             isLow
                               ? "bg-rose-100 text-rose-800 border border-rose-200"
                               : "bg-emerald-100 text-emerald-800 border border-emerald-200"
                           }`}>
-                            {totStock}
+                            {sStock} {item.box_label || "Packs"}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-slate-600">

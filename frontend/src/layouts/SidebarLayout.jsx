@@ -83,7 +83,7 @@ const CASHIER_NAV = [
   { label: "Today's Queue", icon: "event_note", path: "/reception/queue" },
   { label: "Sale Invoice", icon: "point_of_sale", path: "/store/pos" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
-  { label: "Godown & Wholesale", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
   { label: "Patients Directory", icon: "group", path: "/patients" },
@@ -95,7 +95,7 @@ const PHARMACIST_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Sale Invoice", icon: "point_of_sale", path: "/store/pos" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
-  { label: "Godown & Wholesale", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
 ];
@@ -103,7 +103,7 @@ const PHARMACIST_NAV = [
 // 4. Warehouse & Wholesale Distribution Portal
 const WAREHOUSE_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
-  { label: "Godown & Wholesale", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
   { label: "Company Purchases (GRN)", icon: "add_business", path: "/store/purchases" },
   { label: "Store Counter Inventory", icon: "inventory_2", path: "/store" },
 ];
@@ -134,7 +134,7 @@ const NAV_DEFAULT = [
   { label: "Sale Invoice", icon: "point_of_sale", path: "/store/pos" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
   { label: "Purchases (GRN)", icon: "local_shipping", path: "/store/purchases" },
-  { label: "Central Warehouse & B2B", icon: "warehouse", path: "/store/warehouse" },
+  { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Patients & EMR", icon: "group", path: "/patients" },
   { label: "Fees & CashBook", icon: "payments", path: "/fees" },
