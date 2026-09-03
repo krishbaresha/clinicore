@@ -940,10 +940,7 @@ export default function SidebarLayout({ children }) {
         {(() => {
           const isPOSCockpit =
             location.pathname.startsWith("/store/pos") ||
-            location.pathname === "/pos" ||
-            location.pathname.startsWith("/store/purchases") ||
-            location.pathname === "/store" ||
-            location.pathname.startsWith("/store/warehouse");
+            location.pathname === "/pos";
           return (
             <main
               id="main-content-viewport"
