@@ -3353,14 +3353,10 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-76. **Milestone 149: Staff Table Header & Cell Modernization (Assigned Godown / Scope Integration)**
-    - **Outdated `Room / Dept` Column Replaced**: Updated Staff Users Table in `DeveloperAdminPanel.jsx`. Replaced legacy `Room / Dept` table header with **`Assigned Godown / Scope`**.
-    - **Contextual Scope Display**:
-      - For **Doctors**: Renders `N/A (OPD Clinic)`.
-      - For **Medical Store Cashiers**: Renders `🏬 Medical Store Counter`.
-      - For **Warehouse Incharges**: Renders `🏢 [Godown Name]`.
-      - For **Global Staff / Admins**: Renders `🌐 All Warehouses (Global)`.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.51s.
+77. **Milestone 150: Multi-Godown & Wholesale Access Rights Granted to Cashier & Staff Roles**
+    - **Route Authorization Engine Update (`App.jsx`)**: Added `cashier`, `warehouse_incharge`, and `warehouse_manager` roles to `/store/warehouse` (Godown & Wholesale Management) and `/store/purchases` (Company Purchases GRN) `allowedRoles`.
+    - **Sidebar Navigation Sync (`SidebarLayout.jsx`)**: Included `Godown & Wholesale` (`/store/warehouse`) navigation link in `CASHIER_NAV` and `PHARMACIST_NAV`. Staff accounts assigned Godown access (e.g. `Mustafa`) can now seamlessly open and view central warehouses and wholesale distribution.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.66s.
 
 
 

@@ -2,10 +2,10 @@
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
   "version": "2.5.9-release",
-  "last_session_date": "2026-09-03T15:06:00+05:00",
-  "session_id": "part-149",
-  "active_milestone": 149,
-  "milestone_title": "Staff Table Header & Cell Modernization (Assigned Godown / Scope Integration)",
+  "last_session_date": "2026-09-03T15:12:00+05:00",
+  "session_id": "part-150",
+  "active_milestone": 150,
+  "milestone_title": "Multi-Godown & Wholesale Access Rights Granted to Cashier & Staff Roles",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -16,7 +16,7 @@
     "python_compile_passed": true
   },
   "current_status": {
-    "phase": "Milestone 149 — Staff Table Header & Cell Modernization (Assigned Godown / Scope Integration) (100%)",
+    "phase": "Milestone 150 — Multi-Godown & Wholesale Access Rights Granted to Cashier & Staff Roles (100%)",
     "test_suite_status": "643/643 Tests Passing, 0 AST Errors, 0 Secret Leaks, Clean Vite Production Build",
     "build_status": "Clean Vite Production Bundle",
     "git_branch": "main",

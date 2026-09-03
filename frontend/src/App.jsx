@@ -185,14 +185,14 @@ function AppRoutes() {
 
         {/* ─── Medical Store (Cashier / Pharmacist / Admin) ─────────────────────────── */}
         <Route path="/pos"             element={<Navigate to="/store/pos" replace />} />
-        <Route path="/store/pos"       element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'admin', 'owner', 'manager']}><SaleInvoicePOSPage /></RoleProtectedRoute></AuthenticatedLayout>} />
-        <Route path="/store/purchases" element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['pharmacist', 'warehouse', 'admin', 'owner', 'manager']}><SupplierPurchases /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/store/pos"       element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'warehouse', 'warehouse_incharge', 'admin', 'owner', 'manager']}><SaleInvoicePOSPage /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/store/purchases" element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'warehouse', 'warehouse_incharge', 'admin', 'owner', 'manager']}><SupplierPurchases /></RoleProtectedRoute></AuthenticatedLayout>} />
         <Route path="/purchases"       element={<Navigate to="/store/purchases" replace />} />
-        <Route path="/store/sales"     element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'admin', 'owner', 'manager']}><MedicalStoreSalesLog /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/store/sales"     element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'warehouse', 'warehouse_incharge', 'admin', 'owner', 'manager']}><MedicalStoreSalesLog /></RoleProtectedRoute></AuthenticatedLayout>} />
         <Route path="/store/sales-log" element={<Navigate to="/store/sales" replace />} />
-        <Route path="/store/warehouse" element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['warehouse', 'pharmacist', 'admin', 'owner', 'manager']}><WarehouseManagement /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/store/warehouse" element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'warehouse', 'warehouse_incharge', 'admin', 'owner', 'manager']}><WarehouseManagement /></RoleProtectedRoute></AuthenticatedLayout>} />
         <Route path="/warehouse"       element={<Navigate to="/store/warehouse" replace />} />
-        <Route path="/store"           element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['pharmacist', 'warehouse', 'admin', 'owner', 'manager']}><MedicalStoreInventory /></RoleProtectedRoute></AuthenticatedLayout>} />
+        <Route path="/store"           element={<AuthenticatedLayout><RoleProtectedRoute allowedRoles={['cashier', 'pharmacist', 'warehouse', 'warehouse_incharge', 'admin', 'owner', 'manager']}><MedicalStoreInventory /></RoleProtectedRoute></AuthenticatedLayout>} />
 
         {/* ─── Shared / General ──────────────────────────────────── */}
         <Route path="/dashboard"   element={<AuthenticatedLayout><Dashboard /></AuthenticatedLayout>} />
