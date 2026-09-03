@@ -615,14 +615,43 @@ export default function GodAdminPanel() {
                           {log.action}
                         </span>
                       </td>
-                      <td className="p-3 font-bold text-slate-900">
-                        {log.actor_name || "System"}
+                      <td className="p-3 font-bold text-slate-900 whitespace-nowrap">
+                        {(() => {
+                          let staffDisplayName = log.actor_name;
+                          if (!staffDisplayName || staffDisplayName === "System Staff" || staffDisplayName === "System Automated") {
+                            if (log.actor_id) {
+                              const uObj = users.find((u) => u.id === log.actor_id || u.userId === log.actor_id);
+                              if (uObj) staffDisplayName = uObj.name || uObj.full_name;
+                            }
+                          }
+                          if (!staffDisplayName) staffDisplayName = "System Handler";
+                          const resolvedRole = log.role || (users.find((u) => u.id === log.actor_id)?.role) || "staff";
+
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-black text-slate-950 text-xs flex items-center gap-1">
+                                <span className="material-symbols-outlined text-xs text-teal-700">person</span>
+                                {staffDisplayName}
+                              </span>
+                              <span className="w-fit px-1.5 py-0.5 rounded-md bg-teal-50 text-teal-900 font-bold text-[9.5px] uppercase border border-teal-200">
+                                {resolvedRole}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
-                      <td className="p-3 text-slate-600 font-mono text-[11px]">
-                        {log.entity} {log.entity_id ? `#${log.entity_id.slice(-6)}` : ""}
+                      <td className="p-3 text-slate-600 font-mono text-[11px] whitespace-nowrap">
+                        <span className="font-bold text-slate-800">{log.entity}</span>
+                        {log.entity_id ? <span className="text-slate-400 block text-[10px]">#{log.entity_id.slice(-8)}</span> : ""}
                       </td>
                       <td className="p-3 text-slate-800">
-                        {log.reason || "Operational audit trace"}
+                        <div className="font-medium text-xs leading-relaxed">{log.reason || "Operational audit trace"}</div>
+                        {(log.reason?.includes("Device Previous Active User") || log.reason?.includes("Device Last Active User")) && (
+                          <div className="mt-1 inline-flex items-center gap-1 bg-rose-50 text-rose-950 text-[10.5px] font-bold px-2 py-0.5 rounded-md border border-rose-300 shadow-2xs">
+                            <span className="material-symbols-outlined text-xs text-rose-700">history</span>
+                            <span>Device Previous User Lineage Tracked</span>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

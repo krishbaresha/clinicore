@@ -3353,10 +3353,10 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-81. **Milestone 154: Real-Time Audit Log Stream Date Range & Timestamp Filter System**
-    - **Date-Wise & Exact Timestamp Audit Filtering (`GodAdminPanel.jsx`)**: Added interactive Date Range & Timestamp selector in Audit Logs Stream (`Today`, `Yesterday`, `Last 7 Days`, `Last 30 Days`, `This Month`, `Custom Range`, `All Logs`).
-    - **Microsecond Timestamp & Identity Display**: Every audit event displays the exact Karachi/PKT timestamp (`Sep 03, 03:31:05 PM`), SHA-256 event hash, actor identity, action badge (`STOCK_EDIT`, `LOGIN_SUCCESS`, `SUPER_ADMIN_OVERRIDE`), and device lineage.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.60s.
+82. **Milestone 155: Exact Resolved Staff Identity & Historical Name Preservation in Audit Stream**
+    - **Staff Name & Role Lineage Resolution (`GodAdminPanel.jsx`)**: Updated Audit Stream table so the Staff Member column displays the **Exact Historical Staff Name** at the time of event creation, along with their assigned Role Badge.
+    - **Session Switching & Device Lineage Highlight**: If a staff member logged out and Admin logged in on the same machine, the event details cell highlights a distinct **`Device Previous User Lineage Tracked`** badge in red/rose tones for instant security visibility.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.52s.
 
 
 
