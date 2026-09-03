@@ -881,16 +881,25 @@ export const dbUsers = {
     let updatedUser = null;
     const existingUser = dbUsers.getById(id);
     const updated = users.map((u) => {
-      if (u.id === id) {
+      if (u.id === id || String(u.id) === String(id)) {
         let patch = { ...data };
         if (patch.password && !patch.password.startsWith("cf_s256$")) {
-          patch.password_hash = hashPassword(patch.password);
-          patch.pin = patch.password;
+          const plain = String(patch.password).trim();
+          patch.password_hash = hashPassword(plain);
           patch.password = patch.password_hash;
+          patch.pin = plain;
+          patch.plain_pin = plain;
+          patch.cashier_pin = plain;
         } else if (patch.password_hash) {
           patch.password = patch.password_hash;
-          if (patch.pin === undefined) {
-            patch.pin = "";
+        }
+        if (patch.pin) {
+          const plainPin = String(patch.pin).trim();
+          patch.plain_pin = plainPin;
+          patch.cashier_pin = plainPin;
+          if (!patch.password) {
+            patch.password_hash = hashPassword(plainPin);
+            patch.password = patch.password_hash;
           }
         }
         updatedUser = { ...u, ...patch };
@@ -929,6 +938,8 @@ export const dbUsers = {
       password: salted,
       password_hash: salted,
       pin: plain,
+      plain_pin: plain,
+      cashier_pin: plain,
     });
   },
   updateDoctorStatus: (doctorId, status, note, room) => {

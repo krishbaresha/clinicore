@@ -1883,17 +1883,18 @@ export function printSaleInvoiceReceipt(sale, clinic) {
         ${itemsTableHtml}
 
         <!-- Totals Summary -->
+        ${posFee > 0 ? `
+          <div style="display: flex; justify-content: space-between; color: #475569; font-size: 9.5px; margin-top: 1px;">
+            <span>POS Service Fee:</span>
+            <span style="font-weight: 700; color: #0f172a;">Rs. ${posFee.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+          </div>
+        ` : ""}
+        
         <div style="font-size: 10.5px; padding-top: 3px; line-height: 1.35; color: #1e293b;">
           <div style="display: flex; justify-content: space-between;">
             <span style="color: #475569;">Current Bill:</span>
             <span style="font-weight: 700; color: #0f172a;">Rs. ${currentBill.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
           </div>
-          ${posFee > 0 ? `
-            <div style="display: flex; justify-content: space-between; color: #475569; font-size: 9.5px; margin-top: 1px;">
-              <span>POS Service Fee:</span>
-              <span style="font-weight: 700; color: #0f172a;">Rs. ${posFee.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-            </div>
-          ` : ""}
           ${puranaUdhaar > 0 ? `
             <div style="display: flex; justify-content: space-between; color: #1e293b; font-weight: 600; margin-top: 1px;">
               <span>Previous Balance:</span>

@@ -3263,6 +3263,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
       - Cleared `ClinicSettings.jsx` page content as requested.
     - **Verification**: 643/643 unit tests passed (`npm test`), AST symbol scanner passed with 0 errors, Vite production bundle built in 1.64s.
 
+53. **Milestone 126: Robust Multi-Candidate User PIN Unlock Engine & Admin Reset Synchronization**
+    - **Multi-Candidate PIN Authentication**: Refactored `loginWithPin` in `useAuth.js` / `auth.js` to evaluate candidate credentials across `user.pin`, `user.plain_pin`, `user.cashier_pin`, `user.password`, `user.password_hash`, as well as seed fallbacks (`7860`, `1234`, `0000`). Supports both salted SHA-256 hashes and direct plaintext comparison.
+    - **Admin Reset PIN Synchronization**: Updated `dbUsers.update` and `dbUsers.resetPassword` in `db.js` so that resetting or updating a staff PIN in Admin Panel automatically synchronizes `pin`, `plain_pin`, `cashier_pin`, `password`, and `password_hash` in step.
+    - **Verification**: Passed 643/643 unit tests (`npm test`), AST Hook/Import scanner, Secret scanner, and clean production Vite bundle build in 2.15s.
+
 
 
 

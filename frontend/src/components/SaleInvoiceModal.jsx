@@ -1949,13 +1949,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 </div>
 
                 {/* Totals Summary */}
-                <div className="space-y-1 text-[11px] pt-1">
-                  <div className="flex justify-between text-slate-700">
-                    <span className="font-medium">Current Bill:</span>
-                    <span className="font-bold text-slate-950">
-                      Rs. {totalBillCalculated.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                    </span>
-                  </div>
                   {posServiceFee > 0 && (
                     <div className="flex justify-between text-slate-600 text-[10px]">
                       <span>POS Service Fee:</span>
@@ -1964,6 +1957,13 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       </span>
                     </div>
                   )}
+                <div className="space-y-1 text-[11px] pt-1">
+                  <div className="flex justify-between text-slate-700">
+                    <span className="font-medium">Current Bill:</span>
+                    <span className="font-bold text-slate-950">
+                      Rs. {totalBillCalculated.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                    </span>
+                  </div>
                   {puranaUdhaar > 0 && (
                     <div className="flex justify-between text-slate-800 font-semibold">
                       <span>Previous Balance:</span>
