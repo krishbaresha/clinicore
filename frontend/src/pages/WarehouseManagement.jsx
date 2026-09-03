@@ -863,21 +863,11 @@ export default function WarehouseManagement() {
               setLedgerInitialItem(null);
               setShowStockLedgerModal(true);
             }}
-            className="min-h-[40px] px-3.5 py-2 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-purple-900/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-            title="Open DrCreate 4-Level Stock Ledger (Category -> SKU -> Timeline -> Vouchers)"
+            className="min-h-[40px] px-4 py-2 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-teal-900/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer border border-teal-600"
+            title="Open Stock Ledger (Category -> SKU -> Timeline -> Vouchers)"
           >
             <span className="material-symbols-outlined text-base">menu_book</span>
             <span>Stock Ledger</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowSaleInvoiceModal(true)}
-            className="min-h-[40px] px-3.5 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-            title="Open DrCreate & MS Access Style Sale Invoice (Form & History List)"
-          >
-            <span className="material-symbols-outlined text-base">point_of_sale</span>
-            <span>Sale Invoice (DrCreate)</span>
           </button>
 
           <button
@@ -1569,21 +1559,24 @@ export default function WarehouseManagement() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider border-b border-gray-100">
-                    <th className="py-3.5 px-4">Party Name / Store / Doctor</th>
-                    <th className="py-3.5 px-4">Territory / City</th>
-                    <th className="py-3.5 px-4">Phone / Contact</th>
-                    <th className="py-3.5 px-4">Address / Narration</th>
-                    <th className="py-3.5 px-4 text-right">Balance Due (Udhaar)</th>
+                  <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[11px] border-b border-slate-800">
+                    <th className="py-3.5 px-4 font-mono text-teal-300">Party Code</th>
+                    <th className="py-3.5 px-4">Party Name</th>
+                    <th className="py-3.5 px-4">City</th>
+                    <th className="py-3.5 px-4">Address</th>
+                    <th className="py-3.5 px-4">Contact</th>
+                    <th className="py-3.5 px-4 text-right">Balance (Udhaar)</th>
                     <th className="py-3.5 px-4 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {filteredParties.map((p) => (
                     <tr key={p.id} className="hover:bg-teal-50/50">
-                      <td className="py-3.5 px-4 font-bold text-gray-900 flex items-center gap-2">
+                      <td className="py-3.5 px-4 font-mono font-bold text-teal-700">
+                        {p.party_code ? <span className="bg-teal-50 px-2 py-0.5 rounded text-[11px] border border-teal-200">#{p.party_code}</span> : <span className="text-slate-400">—</span>}
+                      </td>
+                      <td className="py-3.5 px-4 font-black text-slate-900 flex items-center gap-2">
                         <span className="material-symbols-outlined text-teal-600 text-base">store</span>
-                        {p.party_code ? <span className="font-mono text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded text-[10px]">#{p.party_code}</span> : null}
                         {p.name}
                       </td>
                       <td className="py-3.5 px-4">
@@ -1591,25 +1584,13 @@ export default function WarehouseManagement() {
                           {p.city}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-gray-600">{p.phone || "—"}</td>
-                      <td className="py-3.5 px-4 text-gray-500 max-w-[200px] truncate">{p.address}</td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-amber-600">
+                      <td className="py-3.5 px-4 text-slate-600 max-w-[200px] truncate">{p.address || "—"}</td>
+                      <td className="py-3.5 px-4 font-mono text-slate-700">{p.phone || "—"}</td>
+                      <td className={`py-3.5 px-4 text-right font-mono font-bold ${Number(p.balance_due || 0) > 0 ? "text-rose-700 font-black text-sm" : "text-slate-500"}`}>
                         {formatPKR(p.balance_due || 0)}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              setSaleInvoiceParty(p);
-                              setShowSaleInvoiceModal(true);
-                            }}
-                            className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                            title="Create Wholesale Sale Invoice for this party"
-                          >
-                            <span className="material-symbols-outlined text-sm">receipt_long</span>
-                            Invoice
-                          </button>
-
                           <button
                             onClick={() => {
                               setUdhaarParty(p);

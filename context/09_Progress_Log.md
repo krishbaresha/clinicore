@@ -3353,13 +3353,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-70. **Milestone 143: Streamlined Sales Log & Single-Source Financial Reconciliation Architecture**
-    - **Removed Duplicate Shift Cash Reconciliation**: Consolidated all Z-Report, Physical Denomination counters, and Till Cash Variance calculations into **`Fees & Day Closing`** (`/fees-reports`).
-    - **Merged Sales & Returns Log (`MedicalStoreSalesLog.jsx`)**: Streamlined into 2 focused, dedicated tabs:
-      - 🧾 **`Sales Receipts & Invoices Log`**: Search, Cashier Filter, View Items, Reprint 80mm Receipt Slip, Void Bill with Admin PIN.
-      - 🔄 **`Medicine Returns & Restocking Log`**: Track returned medications, patient refund amounts (`Cash` vs `Khata Credit`), and stock restoration history.
-    - **Header Quick Actions**: Added **`+ Record Expense`** modal trigger and **`📊 Day Closing & Z-Report`** shortcut button.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.50s.
+71. **Milestone 144: Party Table Clean Categorization & Stock Ledger Branding Harmony**
+    - **Clean Party Table Column Order**: Restructured Sindh Parties table headers & columns to exact order: `Party Code` | `Party Name` | `City` | `Address` | `Contact` | `Balance (Udhaar)`.
+    - **Removed Redundant Invoice Buttons**: Completely delinked and removed row-level `Invoice` button from Sindh Parties table and top header `Sale Invoice (DrCreate)` button.
+    - **Stock Ledger Modal Title & Theme Match**: Renamed modal header to **`Stock Ledger & Inventory Movement`** (`ClinicFlow POS`) and changed top button color from purple to matching teal/slate theme (`bg-teal-700 hover:bg-teal-800`).
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.52s.
 
 
 

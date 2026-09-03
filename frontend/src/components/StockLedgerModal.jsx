@@ -132,10 +132,10 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg sm:text-xl font-black tracking-tight flex items-center gap-2">
-                      Stock Ledger _List
+                      Stock Ledger &amp; Inventory Movement
                     </h2>
-                    <span className="bg-teal-400 text-teal-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full font-mono">
-                      DrCreate V2.0
+                    <span className="bg-emerald-400 text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full font-mono">
+                      ClinicFlow POS
                     </span>
                   </div>
                   <p className="text-xs text-teal-100/90 font-medium">
