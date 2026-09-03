@@ -217,7 +217,9 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     buyer_id: "",
     naration: "",
     party_type: "",
-    payment_mode: "Cash", // "Credit" | "Cash"
+    payment_mode: "Cash", // "Cash" | "Credit" | "Easypaisa" | "JazzCash" | "Bank Transfer" | "Cheque"
+    bank_name: "",
+    cheque_no: "",
     company_filter: "All",
     transport: "",
     bilty_no: "",
@@ -273,6 +275,8 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   const cityInputRef = useRef(null);
   const transportInputRef = useRef(null);
   const biltyInputRef = useRef(null);
+  const bankNameInputRef = useRef(null);
+  const chequeNoInputRef = useRef(null);
   const discPctInputRef = useRef(null);
   const discFlatInputRef = useRef(null);
   const saleItemsEndRef = useRef(null);
@@ -1357,6 +1361,39 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                           className="w-full bg-gray-50 border border-gray-300 rounded-lg px-2 py-1 text-xs font-medium text-gray-800"
                         />
                       </div>
+                      <div className="col-span-2 sm:col-span-4 md:col-span-3 flex items-end gap-1">
+                        <div className="flex-1 min-w-0">
+                          <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Payment Mode</label>
+                          <select
+                            value={saleForm.payment_mode || "Cash"}
+                            onChange={(e) => setSaleForm({ ...saleForm, payment_mode: e.target.value })}
+                            className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                          >
+                            <option value="Cash">💵 Cash</option>
+                            <option value="Credit">📜 Credit / Udhaar</option>
+                            <option value="Easypaisa">📱 Easypaisa</option>
+                            <option value="JazzCash">📱 JazzCash</option>
+                            <option value="Bank Transfer">🏦 Bank Transfer</option>
+                          </select>
+                        </div>
+                        {saleForm.payment_mode === "Bank Transfer" && (
+                          <div className="flex-1 min-w-0">
+                            <label className="block text-[9.5px] font-bold text-teal-800 mb-0.5">Bank Name</label>
+                            <input
+                              type="text"
+                              value={saleForm.bank_name || ""}
+                              onChange={(e) => setSaleForm({ ...saleForm, bank_name: e.target.value })}
+                              onBlur={() => {
+                                if (saleForm.bank_name) {
+                                  setSaleForm((prev) => ({ ...prev, bank_name: toTitleCase(prev.bank_name) }));
+                                }
+                              }}
+                              placeholder="e.g. Meezan, HBL..."
+                              className="w-full bg-teal-50 border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Matched Patient Udhaar Banner */}
@@ -1548,32 +1585,66 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                           className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-800"
                         />
                       </div>
-                      <div className="col-span-2 sm:col-span-2 md:col-span-2">
-                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Payment Mode</label>
-                        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1">
-                          <label className="flex items-center gap-1 text-[11px] font-bold cursor-pointer text-gray-800">
-                            <input
-                              type="radio"
-                              name="payment_mode"
-                              value="Credit"
-                              checked={saleForm.payment_mode === "Credit"}
-                              onChange={() => setSaleForm({ ...saleForm, payment_mode: "Credit" })}
-                              className="text-rose-600 focus:ring-rose-500 w-3 h-3"
-                            />
-                            Udhaar
-                          </label>
-                          <label className="flex items-center gap-1 text-[11px] font-bold cursor-pointer text-gray-800">
-                            <input
-                              type="radio"
-                              name="payment_mode"
-                              value="Cash"
-                              checked={saleForm.payment_mode === "Cash"}
-                              onChange={() => setSaleForm({ ...saleForm, payment_mode: "Cash" })}
-                              className="text-emerald-600 focus:ring-emerald-500 w-3 h-3"
-                            />
-                            Cash
-                          </label>
+                      {/* Payment Mode Selector & Dynamic Bank / Cheque Fields */}
+                      <div className="col-span-2 sm:col-span-4 md:col-span-4 flex items-end gap-1.5">
+                        <div className="flex-1 min-w-0">
+                          <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Payment Mode</label>
+                          <select
+                            value={saleForm.payment_mode || "Cash"}
+                            onChange={(e) => setSaleForm({ ...saleForm, payment_mode: e.target.value })}
+                            className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                          >
+                            <option value="Cash">💵 Cash</option>
+                            <option value="Credit">📜 Credit / Udhaar</option>
+                            <option value="Easypaisa">📱 Easypaisa</option>
+                            <option value="JazzCash">📱 JazzCash</option>
+                            <option value="Bank Transfer">🏦 Bank Transfer</option>
+                            <option value="Cheque">🧾 Cheque / Bank</option>
+                          </select>
                         </div>
+
+                        {/* Conditional Bank Name Input */}
+                        {(saleForm.payment_mode === "Bank Transfer" || saleForm.payment_mode === "Cheque") && (
+                          <div className="flex-1 min-w-0">
+                            <label className="block text-[9.5px] font-bold text-teal-800 mb-0.5">Bank Name</label>
+                            <input
+                              ref={bankNameInputRef}
+                              type="text"
+                              value={saleForm.bank_name || ""}
+                              onChange={(e) => setSaleForm({ ...saleForm, bank_name: e.target.value })}
+                              onBlur={() => {
+                                if (saleForm.bank_name) {
+                                  setSaleForm((prev) => ({ ...prev, bank_name: toTitleCase(prev.bank_name) }));
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (saleForm.payment_mode === "Cheque") {
+                                  handleGenericEnterNext(e, chequeNoInputRef);
+                                } else {
+                                  handleGenericEnterNext(e, medicineInputRef);
+                                }
+                              }}
+                              placeholder="e.g. Meezan, HBL..."
+                              className="w-full bg-teal-50 border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                        )}
+
+                        {/* Conditional Cheque Number Input */}
+                        {saleForm.payment_mode === "Cheque" && (
+                          <div className="w-24 shrink-0">
+                            <label className="block text-[9.5px] font-bold text-teal-800 mb-0.5">Cheque #</label>
+                            <input
+                              ref={chequeNoInputRef}
+                              type="text"
+                              value={saleForm.cheque_no || ""}
+                              onChange={(e) => setSaleForm({ ...saleForm, cheque_no: e.target.value })}
+                              onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
+                              placeholder="e.g. 4819"
+                              className="w-full bg-teal-50 border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 focus:border-teal-500 outline-none font-mono"
+                            />
+                          </div>
+                        )}
                       </div>
                       <div className="col-span-2 sm:col-span-2 md:col-span-3">
                         <label className="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Filter Company / Code</label>
@@ -2139,6 +2210,11 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                     </div>
                     <div className="flex justify-between items-center text-slate-800 font-bold">
                       <span>City : {(saleForm.party_type || "HAIDERABAD").toUpperCase()}</span>
+                      <span className="text-emerald-950 font-black">
+                        Mode: {saleForm.payment_mode || "Cash"}
+                        {saleForm.bank_name && ` (${toTitleCase(saleForm.bank_name)})`}
+                        {saleForm.cheque_no && ` [#${saleForm.cheque_no}]`}
+                      </span>
                     </div>
                     {saleForm.transport && saleForm.transport.trim() && saleForm.transport.trim() !== "0" && (
                       <div className="text-slate-800 font-bold">
@@ -2159,6 +2235,10 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500">Cashier: {saleForm.reference || activeUser}</span>
+                      <span className="font-bold text-slate-950">
+                        Mode: {saleForm.payment_mode || "Cash"}
+                        {saleForm.bank_name && ` (${toTitleCase(saleForm.bank_name)})`}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center pt-1 border-t border-slate-200">
                       <span className="font-black text-slate-950 text-[10.5px]">

@@ -175,13 +175,15 @@ export function toTitleCase(str) {
   if (!str || typeof str !== "string") return "";
   const cleaned = str.trim();
   if (!cleaned) return "";
+  const upperAcronyms = ["TCS", "B2B", "GRN", "VIP", "POS", "HBL", "MCB", "UBL", "ABL", "BOP", "NBP", "JS", "NRSP", "KMBL"];
   return cleaned
     .toLowerCase()
     .split(/\s+/)
     .map((word) => {
       if (!word) return "";
-      if (word.toUpperCase() === "TCS" || word.toUpperCase() === "B2B" || word.toUpperCase() === "GRN" || word.toUpperCase() === "VIP") {
-        return word.toUpperCase();
+      const upper = word.toUpperCase();
+      if (upperAcronyms.includes(upper)) {
+        return upper;
       }
       return word.charAt(0).toUpperCase() + word.slice(1);
     })

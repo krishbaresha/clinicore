@@ -3345,6 +3345,14 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Result**: Wholesale Party sales now display the authentic 2-column layout both live on screen and on physical thermal receipts.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.39s.
 
+67. **Milestone 140: Multi-Channel Payment Modes (Easypaisa, JazzCash, Bank Transfer, Cheque) & Title-Case Bank Formatting**
+    - **Wholesale B2B Payment Modes**: Added `Cash`, `Credit / Udhaar`, `Easypaisa`, `JazzCash`, `Bank Transfer`, and `Cheque / Bank`.
+    - **Patient / Customer Payment Modes**: Added `Cash`, `Credit / Udhaar`, `Easypaisa`, `JazzCash`, and `Bank Transfer`.
+    - **Dynamic Bank Name & Cheque # Input**: Selecting `Bank Transfer` or `Cheque` opens a dedicated **Bank Name** input (`bank_name`) and **Cheque #** input (`cheque_no`).
+    - **Title-Case Bank Auto-Formatting**: `toTitleCase` automatically capitalizes bank names (e.g. `meezan bank` -> `Meezan Bank`, `hbl` -> `HBL`, `mcb bank` -> `MCB Bank`).
+    - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
+
 
 
 
