@@ -2005,6 +2005,16 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       Party / Route: {saleForm.party_type || "HYD"} {partyCodeSearch ? `(#${partyCodeSearch})` : ""}
                     </div>
                   )}
+                  {saleForm.transport && saleForm.transport.trim() && saleForm.transport.trim() !== "0" && (
+                    <div className="text-slate-700 font-bold">
+                      Transport: {toTitleCase(saleForm.transport)}
+                    </div>
+                  )}
+                  {saleForm.bilty_no && saleForm.bilty_no.trim() && saleForm.bilty_no.trim() !== "0" && (
+                    <div className="text-slate-700 font-bold">
+                      Bilty #: {saleForm.bilty_no.trim()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Items Table — Clean single-bordered table: | S/r | Qty | Particulars | Rate | Dis | Net | */}

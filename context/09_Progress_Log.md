@@ -3317,6 +3317,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Invoice Conditional Formatting**: Enhanced thermal print (`thermalPrinter.js`) and printable invoice templates to strictly hide `Transport` and `Bilty #` lines whenever these fields are empty or unset, rendering them only when explicit values are provided.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean Vite production bundle compilation in 1.52s.
 
+62. **Milestone 135: Live Interactive 80mm Thermal Receipt Preview Transport & Bilty Integration**
+    - **Realtime Live Thermal Preview Fix**: Added live conditional `Transport: [Title Case]` and `Bilty #: [Number]` metadata rows directly inside the right-hand **REAL-TIME LIVE 80mm THERMAL RECEIPT PREVIEW** pane of `SaleInvoiceModal.jsx`.
+    - **Result**: Typing or selecting Transport (e.g. `by hand` -> `Transport: By Hand`) or Bilty # (e.g. `8912` -> `Bilty #: 8912`) immediately reflects live in the receipt preview pane on the screen, and disappears instantly if the fields are cleared.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.65s.
+
 
 
 
