@@ -938,7 +938,12 @@ export default function SidebarLayout({ children }) {
 
         {/* ── Main Content Area (THE ONLY INDEPENDENT SCROLLABLE CONTAINER) ── */}
         {(() => {
-          const isPOSCockpit = location.pathname.startsWith("/store/pos") || location.pathname === "/pos" || location.pathname.startsWith("/store/purchases");
+          const isPOSCockpit =
+            location.pathname.startsWith("/store/pos") ||
+            location.pathname === "/pos" ||
+            location.pathname.startsWith("/store/purchases") ||
+            location.pathname === "/store" ||
+            location.pathname.startsWith("/store/warehouse");
           return (
             <main
               id="main-content-viewport"

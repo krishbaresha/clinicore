@@ -858,7 +858,7 @@ export default function MedicalStoreInventory() {
   }, [quickForm.cost_price, quickForm.sale_price]);
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-6 animate-in fade-in duration-300 overflow-x-hidden">
+    <div className="w-full h-full max-w-full min-w-0 flex flex-col flex-1 min-h-0 space-y-3 animate-in fade-in duration-300 overflow-hidden">
       {/* Toast Alert */}
       {toastMsg && (
         <div className="fixed top-6 right-6 z-50 bg-emerald-900/95 text-white font-bold text-xs px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-500/40 backdrop-blur-md flex items-center gap-3 animate-in slide-in-from-top-4">
@@ -1691,7 +1691,7 @@ export default function MedicalStoreInventory() {
         </div>
       ) : viewMode === "table" ? (
         /* Clean Corporate Data Table View */
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           {/* Bulk Actions Bar */}
           {selectedItems.size > 0 && (
             <div className="bg-rose-50 border-b border-rose-200 px-5 py-2.5 flex items-center justify-between">
@@ -1714,7 +1714,7 @@ export default function MedicalStoreInventory() {
               </div>
             </div>
           )}
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[1050px]">
               <thead className="bg-slate-900 text-white z-10 text-[10px] font-black uppercase tracking-wider">
                 <tr>
@@ -1830,7 +1830,7 @@ export default function MedicalStoreInventory() {
         </div>
       ) : (
         /* Modern Cards Grid View */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pr-1">
           {paginatedInventory.map((item) => {
             const low = isLowStock(item);
             const out = isOutOfStock(item);
