@@ -3307,6 +3307,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Scoped Search Autocomplete**: When a Company Code or Brand is selected, `filteredProducts` immediately narrows down to items belonging to that company. Typing in the medicine search bar (`medicineSearchText`) searches strictly within that company's catalogue, displaying an active scope badge `[🏢 BM (120)]` and suggestions header indicator.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.51s.
 
+60. **Milestone 133: Scalable 50+ Company Brand Code Badges & Full Dropdown Selector**
+    - **UI/UX Scale Protection**: Upgraded Section 2 in `SaleInvoiceModal.jsx` to combine smooth horizontal badge scrolling (`overflow-x-auto`) for top/frequent brands with a compact full dropdown picker (`<select>`).
+    - **Result**: Whether a store has 5 or 50+ registered pharma companies, the UI remains 100% clean and responsive without wrapping or cluttering, while allowing instant 1-click filtering across all 50+ companies.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean Vite production compilation in 1.59s.
+
 
 
 

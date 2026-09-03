@@ -1487,27 +1487,43 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                     Fast Line Item Entry
                   </span>
 
-                  {/* Quick Company / Brand Code Filter Badges */}
-                  <div className="flex items-center gap-1 overflow-x-auto text-[9.5px]">
-                    <span className="text-gray-500 font-bold text-[9px] uppercase">Company Code:</span>
-                    {companyOptions.slice(0, 7).map((c) => {
-                      const isActive = selectedCompany === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelectedCompany(c.id)}
-                          className={`px-1.5 py-0.2 rounded font-black transition-all cursor-pointer ${
-                            isActive
-                              ? "bg-teal-700 text-white shadow-2xs"
-                              : "bg-white text-teal-800 border border-teal-200 hover:bg-teal-100"
-                          }`}
-                          title={`Filter strictly by ${c.name || c.id}`}
-                        >
-                          {c.code || c.id}
-                        </button>
-                      );
-                    })}
+                  {/* Quick Company / Brand Code Filter Badges & Dropdown */}
+                  <div className="flex items-center gap-1.5 text-[9.5px] max-w-full overflow-hidden">
+                    <span className="text-gray-600 font-bold text-[9px] uppercase whitespace-nowrap shrink-0">Brand Code:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto max-w-[240px] sm:max-w-[340px] no-scrollbar shrink">
+                      {companyOptions.slice(0, 8).map((c) => {
+                        const isActive = selectedCompany === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setSelectedCompany(c.id)}
+                            className={`px-1.5 py-0.2 rounded font-black text-[9.5px] transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                              isActive
+                                ? "bg-teal-700 text-white shadow-2xs"
+                                : "bg-white text-teal-800 border border-teal-200 hover:bg-teal-100"
+                            }`}
+                            title={`Filter strictly by ${c.name || c.id}`}
+                          >
+                            {c.code || c.id}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {companyOptions.length > 1 && (
+                      <select
+                        value={selectedCompany}
+                        onChange={(e) => setSelectedCompany(e.target.value)}
+                        className="bg-white border border-teal-300 rounded px-1.5 py-0.5 text-[9.5px] font-bold text-teal-950 max-w-[130px] truncate shrink-0 focus:border-teal-500 outline-none"
+                        title="Select from all registered companies"
+                      >
+                        {companyOptions.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
 
                   <span className="text-[9px] text-teal-700 font-bold hidden lg:inline">
