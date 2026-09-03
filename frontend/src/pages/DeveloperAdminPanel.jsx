@@ -2668,8 +2668,7 @@ export default function DeveloperAdminPanel() {
                         <tr>
                           <th className="px-5 py-3.5">Staff Name</th>
                           <th className="px-5 py-3.5">Role</th>
-                          <th className="px-5 py-3.5">Room / Dept</th>
-
+                          <th className="px-5 py-3.5">Assigned Godown / Scope</th>
                           <th className="px-5 py-3.5">Fee / Financials</th>
                           <th className="px-5 py-3.5 text-right whitespace-nowrap">Master Actions</th>
                         </tr>
@@ -2695,10 +2694,30 @@ export default function DeveloperAdminPanel() {
                                     ? "bg-indigo-100 text-indigo-900 border border-indigo-200"
                                     : "bg-emerald-100 text-emerald-900 border border-emerald-200"
                                 }`}>
-                                {u.role === "cashier" ? "POS Counter & Cashier" : u.role === "warehouse_incharge" ? "Warehouse Manager" : u.role}
+                                {u.role === "doctor"
+                                  ? "Doctor (OPD)"
+                                  : u.role === "cashier"
+                                    ? "POS Counter & Cashier"
+                                    : u.role === "warehouse_incharge"
+                                      ? "Warehouse Manager"
+                                      : u.role === "admin"
+                                        ? "Administrator"
+                                        : u.role}
                               </span>
                             </td>
-                            <td className="px-5 py-3.5 text-teal-950 font-bold">{u.room_number || "Counter"}</td>
+                            <td className="px-5 py-3.5 text-teal-950 font-bold">
+                              {u.role === "doctor" ? (
+                                <span className="text-slate-500 font-medium italic text-[11px]">N/A (OPD Clinic)</span>
+                              ) : u.assigned_warehouse_id === "wh_str" ? (
+                                <span className="text-teal-800 font-bold">🏬 Medical Store Counter</span>
+                              ) : u.assigned_warehouse_id ? (
+                                <span className="text-indigo-900 font-bold">
+                                  🏢 {warehousesList.find((w) => w.id === u.assigned_warehouse_id)?.name || u.assigned_warehouse_id}
+                                </span>
+                              ) : (
+                                <span className="text-emerald-800 font-bold">🌐 All Warehouses (Global)</span>
+                              )}
+                            </td>
 
                             <td className="px-5 py-3.5">
                               <div className="flex flex-col gap-1">
