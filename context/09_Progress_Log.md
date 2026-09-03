@@ -3353,13 +3353,10 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-73. **Milestone 146: Registered Doctor Selection, Auto Consultation Fee & Fee Waived Thermal Engine**
-    - **Doctor Auto Fee Selector**: Added **`Attending Doctor (Consultant)`** dropdown in POS Sale Invoice (`SaleInvoiceModal.jsx`). Selecting any registered doctor (e.g. Dr. M. Ashraf Khan) automatically populates their consultation fee (e.g. Rs. 500).
-    - **Smart Doctor Fee Waived (Free Consultation) Engine**: Added **`❌ Fee Waived (Free)`** checkbox.
-      - **When Fee is Charged**: Gross Total includes Doctor Fee (e.g. `Dr. Consultation Fee: Rs. 500`).
-      - **When Fee is Waived**: Live receipt & printed thermal receipt explicitly render `Dr. Fee: Rs. 500` and `Dr. Fee Waived (Free): -Rs. 500` (Net Doctor Fee = Rs. 0).
-    - **Mathematical Precision**: Ensures zero financial calculation error while clearly documenting doctor fee waivers for audit trail.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.63s.
+74. **Milestone 147: Automatic POS Cart Item Aggregation & Clean UI Header Branding**
+    - **Smart Cart Item Aggregation**: Updated `handleAddSaleItem` in `SaleInvoiceModal.jsx`. When scanning or adding an existing medicine item with identical properties (same product name, company, rate, and discount), the system now automatically increments the existing item's quantity (`qty + added_qty`) instead of creating redundant duplicate rows.
+    - **Clean Header Titles**: Cleaned up `Sale Invoice` modal header by removing `_Form` suffix (`SALE INVOICE`) and replacing legacy `DrCreate Cockpit` tag with `ClinicFlow Cockpit`.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.49s.
 
 
 

@@ -938,27 +938,60 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const dFlat = Number(saleCart.disc_flat) || 0;
     const net = Math.round(Math.max(0, gross - (gross * (dPct / 100)) - dFlat));
 
-    const newItem = {
-      id: "sale_item_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
-      inventory_id: saleCart.inventory_id || "",
-      product_code: saleCart.product_code || "",
-      medicine_name: saleCart.medicine_name.trim(),
-      company_name: saleCart.company_name || "",
-      category: saleCart.category || "General",
-      packing: saleCart.packing || "",
-      qty: q,
-      qty_base_units: q,
-      rate: r,
-      unit_price: r,
-      gross: gross,
-      disc_pct: dPct > 0 ? `${dPct}%` : "0%",
-      disc_pct_num: dPct,
-      disc_flat: dFlat,
-      net: net,
-      line_total: net,
-    };
+    const medName = saleCart.medicine_name.trim();
+    const compName = (saleCart.company_name || "").trim();
 
-    setSaleItems((prev) => [...prev, newItem]);
+    setSaleItems((prev) => {
+      // Check if item with same medicine_name, company_name, rate, disc_pct, disc_flat already exists
+      const matchIndex = prev.findIndex(
+        (item) =>
+          item.medicine_name.toLowerCase() === medName.toLowerCase() &&
+          (item.company_name || "").toLowerCase() === compName.toLowerCase() &&
+          Number(item.rate) === r &&
+          Number(item.disc_pct_num ?? item.disc_pct) === dPct &&
+          Number(item.disc_flat || 0) === dFlat
+      );
+
+      if (matchIndex >= 0) {
+        const updated = [...prev];
+        const existing = updated[matchIndex];
+        const newQty = Number(existing.qty) + q;
+        const newGross = Math.round(newQty * r);
+        const newNet = Math.round(Math.max(0, newGross - (newGross * (dPct / 100)) - (dFlat * newQty)));
+
+        updated[matchIndex] = {
+          ...existing,
+          qty: newQty,
+          qty_base_units: newQty,
+          gross: newGross,
+          net: newNet,
+          line_total: newNet,
+        };
+        return updated;
+      }
+
+      const newItem = {
+        id: "sale_item_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+        inventory_id: saleCart.inventory_id || "",
+        product_code: saleCart.product_code || "",
+        medicine_name: medName,
+        company_name: compName,
+        category: saleCart.category || "General",
+        packing: saleCart.packing || "",
+        qty: q,
+        qty_base_units: q,
+        rate: r,
+        unit_price: r,
+        gross: gross,
+        disc_pct: dPct > 0 ? `${dPct}%` : "0%",
+        disc_pct_num: dPct,
+        disc_flat: dFlat,
+        net: net,
+        line_total: net,
+      };
+
+      return [...prev, newItem];
+    });
     setSaleCart({
       product_code: "",
       medicine_name: "",
@@ -1232,10 +1265,10 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/25 text-emerald-100 border border-white/20">
                   Wholesale &amp; Retail POS
                 </span>
-                <span className="text-[9px] font-bold text-emerald-200">DrCreate Cockpit</span>
+                <span className="text-[9px] font-bold text-emerald-200">ClinicFlow Cockpit</span>
               </div>
               <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight">
-                SALE INVOICE <span className="text-xs font-bold opacity-80">_Form</span>
+                SALE INVOICE
               </h2>
             </div>
           </div>
