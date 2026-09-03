@@ -1378,17 +1378,13 @@ export default function MedicalStoreInventory() {
                 </div>
               </div>
 
-              {/* 5. Location-Wise Stock Allocation & Reg Date */}
+              {/* 5. Medical Store Stock Quantity (Packs) */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <label className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Location Stocks (Units)
+                  Opening Store Stock (Packs)
                 </label>
-                <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                  {/* Store Counter Stock (Always Available) */}
+                <div className="md:col-span-9">
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black text-teal-800 uppercase">🏪 Store Counter</span>
-                    </div>
                     <input
                       id="quick_store_stock"
                       name="store_stock"
@@ -1398,47 +1394,12 @@ export default function MedicalStoreInventory() {
                       value={quickForm.store_stock}
                       onChange={handleQuickChange}
                       onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-teal-300 rounded-xl px-3 py-1.5 text-xs font-black text-teal-900 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      className="w-full border border-teal-300 rounded-xl px-3 py-2 text-xs font-black text-teal-900 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     />
+                    <p className="text-[10.5px] font-bold text-slate-500">
+                      ⚡ Enter initial stock quantity in full Pack / Box units.
+                    </p>
                   </div>
-
-                  {/* Registered Warehouses / Godowns (Only shown if actually registered in DB) */}
-                  {allWarehouses.map((wh, idx) => {
-                    const colorClasses = idx % 2 === 0 
-                      ? { text: "text-blue-800", border: "border-blue-300", textVal: "text-blue-900", ring: "focus:ring-blue-500" }
-                      : { text: "text-purple-800", border: "border-purple-300", textVal: "text-purple-900", ring: "focus:ring-purple-500" };
-                    return (
-                      <div key={wh.id} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className={`text-[10px] font-black uppercase ${colorClasses.text}`}>
-                            🏢 {wh.name}
-                          </span>
-                        </div>
-                        <input
-                          id={`quick_wh_${wh.id}`}
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={quickForm.location_stocks?.[wh.id] || "0"}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setQuickForm((prev) => ({
-                              ...prev,
-                              location_stocks: {
-                                ...(prev.location_stocks || {}),
-                                [wh.id]: val,
-                              },
-                              // Maintain backward compatibility with warehouse_1 / warehouse_2 if wh_001 / wh_002
-                              ...(wh.id === "wh_001" ? { warehouse_1_stock: val } : {}),
-                              ...(wh.id === "wh_002" ? { warehouse_2_stock: val } : {}),
-                            }));
-                          }}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                          className={`w-full border rounded-xl px-3 py-1.5 text-xs font-black bg-white focus:ring-2 focus:outline-none ${colorClasses.border} ${colorClasses.textVal} ${colorClasses.ring}`}
-                        />
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
 
