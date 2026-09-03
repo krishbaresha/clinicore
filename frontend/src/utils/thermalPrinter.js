@@ -2465,3 +2465,106 @@ export function printExecutiveAuditDocument(auditData, clinicData = null) {
 
   executeThermalPrint(docHtml, `Executive_Audit_Statement_${startDate}_to_${endDate}`);
 }
+
+/**
+ * 80mm ESC/POS Thermal Udhaar Payment Recovery Receipt Printing
+ */
+export function printPartyPaymentReceipt(payment, clinic) {
+  if (!payment) return;
+
+  const receiptNo = escapeHtml(payment.receipt_no || "REC-1001");
+  const dateStr = escapeHtml(payment.date || new Date().toLocaleDateString("en-US"));
+  const partyName = escapeHtml(toTitleCase(payment.party_name || "Wholesale Party"));
+  const city = escapeHtml((payment.city || "HAIDERABAD").toUpperCase());
+  const amountPaid = Number(payment.amount) || 0;
+  const previousBal = Number(payment.previous_balance) || 0;
+  const remainingBal = Number(payment.remaining_balance) || 0;
+  const paymentMode = escapeHtml(payment.payment_mode || "Cash");
+  const bankName = payment.bank_name ? escapeHtml(toTitleCase(payment.bank_name)) : "";
+  const chequeNo = payment.cheque_no ? escapeHtml(payment.cheque_no) : "";
+  const collectedBy = escapeHtml(toTitleCase(payment.collected_by || "Staff Handler"));
+  const remarks = escapeHtml(payment.notes || "Udhaar cash recovery");
+
+  const modeStr = `${paymentMode}${bankName ? ` (${bankName})` : ""}${chequeNo ? ` [#${chequeNo}]` : ""}`;
+
+  const receiptHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8"/>
+        <title>Party_Udhaar_Receipt_${receiptNo}</title>
+        <style>
+          @page { size: 80mm auto; margin: 0; }
+          * { box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif;
+            font-size: 10px;
+            line-height: 1.3;
+            width: 76mm;
+            margin: 0 auto;
+            padding: 4px 6px;
+            color: #0f172a;
+            background: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .title-box { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-bottom: 4px; }
+          .clinic-name { font-size: 14px; font-weight: bold; font-family: serif; }
+          .sub-title { font-size: 10px; font-weight: bold; color: #334155; }
+          .receipt-tag { font-size: 10px; font-weight: 900; background: #0f172a; color: #fff; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px; }
+          .meta-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+          .ledger-box { border-top: 1px solid #0f172a; border-bottom: 1px solid #0f172a; padding: 4px 0; margin: 6px 0; font-size: 10.5px; }
+          .row { display: flex; justify-content: space-between; padding: 2px 0; }
+          .bold { font-weight: 900; }
+          .footer { text-align: center; border-top: 1px dashed #94a3b8; padding-top: 4px; font-size: 9px; color: #475569; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="title-box">
+          <div class="clinic-name">M.Ashraf Khan</div>
+          <div class="sub-title">Homeopathic Clinic &amp; Wholesale Store</div>
+          <div style="font-size: 8.5px; color: #64748b;">Lajpat Road, Hyderabad | 0311 4234777</div>
+          <div class="receipt-tag">UDHAAR PAYMENT RECEIPT</div>
+        </div>
+
+        <div style="border-bottom: 1px dashed #94a3b8; padding-bottom: 4px; margin-bottom: 4px; font-size: 10px;">
+          <div class="meta-row">
+            <span class="bold">Receipt #: ${receiptNo}</span>
+            <span>Date: ${dateStr}</span>
+          </div>
+          <div class="meta-row">
+            <span class="bold" style="font-size: 11px;">Party: ${partyName}</span>
+            <span class="bold">City: ${city}</span>
+          </div>
+          <div class="meta-row">
+            <span>Collected By: <b>${collectedBy}</b></span>
+          </div>
+        </div>
+
+        <div class="ledger-box">
+          <div class="row">
+            <span>Previous Udhaar Balance:</span>
+            <span class="bold" style="color: #991b1b;">Rs. ${previousBal.toLocaleString()}</span>
+          </div>
+          <div class="row" style="background: #f0fdf4; padding: 3px 2px; border-radius: 4px;">
+            <span class="bold" style="color: #166534;">Amount Received Today (${modeStr}):</span>
+            <span class="bold" style="color: #15803d; font-size: 12px;">Rs. ${amountPaid.toLocaleString()}</span>
+          </div>
+          <div class="row" style="margin-top: 2px;">
+            <span class="bold">Remaining Balance Due:</span>
+            <span class="bold" style="font-size: 11px; color: ${remainingBal > 0 ? '#991b1b' : '#15803d'};">Rs. ${remainingBal.toLocaleString()}</span>
+          </div>
+        </div>
+
+        ${remarks ? `<div style="font-size: 9px; font-style: italic; color: #475569; margin-bottom: 6px;">Note: ${remarks}</div>` : ""}
+
+        <div class="footer">
+          <div>Thank you for your business!</div>
+          <div style="margin-top: 2px;">خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔</div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  executeThermalPrint(receiptHtml, `Udhaar_Receipt_${receiptNo}`);
+}

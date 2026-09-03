@@ -3834,16 +3834,48 @@ export const dbParties = {
       dbOutbox.enqueue("parties", updatedRecord, "UPDATE", id);
     }
   },
-  recordPayment: (partyId, amount, paymentMode = "Cash", notes = "", actorName = "Staff") => {
+  recordPayment: (partyId, amount, paymentMode = "Cash", notes = "", actorName = "Staff", bankName = "", chequeNo = "") => {
     const amt = Number(amount) || 0;
     if (amt <= 0) return null;
     const party = dbParties.getById(partyId);
     if (!party) return null;
 
+    const previousBalance = Number(party.balance_due ?? party.current_balance ?? 0);
+    const remainingBalance = Math.max(0, previousBalance - amt);
+
     dbParties.updateBalance(partyId, -amt);
     const updatedParty = dbParties.getById(partyId);
 
-    // Auto-record CashBook / Ledger Inflow Entry
+    // Sync into matched dbAccounts if existing
+    const allAccs = dbAccounts.getAll();
+    const acc = allAccs.find((a) => (a.account_name || "").toLowerCase() === (party.name || "").toLowerCase());
+    if (acc) {
+      dbAccounts.update(acc.id, { opening_balance: remainingBalance });
+    }
+
+    const partyLedgers = getCollection(KEYS.PARTY_LEDGER) || [];
+    const receiptNo = generateSequentialInvoiceNo("REC");
+    const paymentRecord = {
+      id: generateId("rec"),
+      receipt_no: receiptNo,
+      party_id: partyId,
+      party_name: party.name || party.party_name || "Wholesale Party",
+      city: party.city || party.territory || "Hyderabad",
+      amount: amt,
+      payment_mode: paymentMode,
+      bank_name: bankName ? toTitleCase(bankName) : "",
+      cheque_no: chequeNo ? String(chequeNo).trim() : "",
+      previous_balance: previousBalance,
+      remaining_balance: remainingBalance,
+      notes: notes || `Udhaar cash recovery from ${party.name}`,
+      collected_by: actorName,
+      created_at: new Date().toISOString(),
+      date: new Date().toLocaleDateString("en-US"),
+    };
+
+    setCollection(KEYS.PARTY_LEDGER, [paymentRecord, ...partyLedgers]);
+
+    // Auto-record CashBook Inflow Entry
     if (typeof dbCashBook !== "undefined" && dbCashBook.add) {
       dbCashBook.add({
         type: "INCOME",
@@ -3862,7 +3894,7 @@ export const dbParties = {
     try {
       window.dispatchEvent(new Event("clinicflow_status_update"));
     } catch {}
-    return updatedParty;
+    return paymentRecord;
   },
   delete: (id) => {
     const list = getCollection(KEYS.PARTIES) || [];
@@ -3873,6 +3905,33 @@ export const dbParties = {
       dbOutbox.enqueue("parties", target, "DELETE", id);
     }
     return true;
+  },
+};
+
+// ---------- Wholesale Party Credit Ledger ----------
+export const dbPartyLedger = {
+  getAll: () => getCollection(KEYS.PARTY_LEDGER) || [],
+  getByParty: (partyId) => {
+    if (!partyId) return [];
+    const party = dbParties.getById(partyId);
+    const partyName = party ? (party.name || "").toLowerCase() : "";
+
+    const payments = (getCollection(KEYS.PARTY_LEDGER) || []).filter(
+      (l) => l.party_id === partyId || (partyName && (l.party_name || "").toLowerCase() === partyName)
+    );
+    const b2bSales = (getCollection(KEYS.B2B_SALES) || []).filter(
+      (s) => s.buyer_id === partyId || s.party_id === partyId || (partyName && (s.buyer_name || s.account_name || "").toLowerCase() === partyName)
+    );
+    const posSales = (getCollection(KEYS.SALES) || []).filter(
+      (s) => s.billing_type === "wholesale_party" && (s.buyer_id === partyId || (partyName && (s.account_name || "").toLowerCase() === partyName))
+    );
+
+    const combined = [
+      ...payments.map((p) => ({ ...p, tx_type: "PAYMENT", sort_date: p.created_at || p.date })),
+      ...b2bSales.map((s) => ({ ...s, tx_type: "INVOICE", receipt_no: s.invoice_no || s.voucher_no, amount: s.total_amount, sort_date: s.sale_date || s.created_at })),
+      ...posSales.map((s) => ({ ...s, tx_type: "INVOICE", receipt_no: s.voucher_no || s.invoice_no, amount: s.total_amount, sort_date: s.sale_date || s.created_at })),
+    ];
+    return combined.sort((a, b) => new Date(b.sort_date || 0) - new Date(a.sort_date || 0));
   },
 };
 

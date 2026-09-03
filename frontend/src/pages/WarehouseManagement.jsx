@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbInventory, dbStockTransfers, dbB2BSales, dbClinic, dbParties, dbSalesmen, dbWarehouses, dbAccounts, dbUsers } from "../api/db.js";
-import { printThermalReceipt, printChartOfAccountsReceipt } from "../utils/thermalPrinter.js";
+import { dbInventory, dbStockTransfers, dbB2BSales, dbSales, dbClinic, dbParties, dbSalesmen, dbWarehouses, dbAccounts, dbUsers, dbPartyLedger, toTitleCase } from "../api/db.js";
+import { printThermalReceipt, printChartOfAccountsReceipt, printPartyPaymentReceipt } from "../utils/thermalPrinter.js";
 import { formatPKR, formatDate } from "../utils/formatters.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
 import StockLedgerModal from "../components/StockLedgerModal.jsx";
@@ -103,7 +103,14 @@ export default function WarehouseManagement() {
   const [udhaarParty, setUdhaarParty] = useState(null);
   const [udhaarAmountInput, setUdhaarAmountInput] = useState("");
   const [udhaarPaymentMode, setUdhaarPaymentMode] = useState("Cash");
+  const [udhaarBankName, setUdhaarBankName] = useState("");
+  const [udhaarChequeNo, setUdhaarChequeNo] = useState("");
+  const [udhaarCollectedBy, setUdhaarCollectedBy] = useState(user?.name || "Staff Handler");
   const [udhaarNotes, setUdhaarNotes] = useState("");
+
+  // Party Complete Ledger History Modal State
+  const [showPartyLedgerModal, setShowPartyLedgerModal] = useState(false);
+  const [selectedPartyForLedger, setSelectedPartyForLedger] = useState(null);
 
   // Chart of Accounts Modal State
   const [showChartOfAccountsModal, setShowChartOfAccountsModal] = useState(false);
@@ -287,7 +294,31 @@ export default function WarehouseManagement() {
   const refreshData = () => {
     setInventory(dbInventory.getAll());
     setTransfers(dbStockTransfers.getAll());
-    setB2BSales(dbB2BSales.getAll());
+
+    // Combine b2bSales from dbB2BSales and POS Wholesale Sales from dbSales
+    const b2bList = dbB2BSales.getAll() || [];
+    const posWholesale = (dbSales.getAll() || []).filter(
+      (s) => s.billing_type === "wholesale_party" || s.party_type || s.buyer_id
+    );
+    const mergedMap = new Map();
+    [...b2bList, ...posWholesale].forEach((s) => {
+      const invNo = s.invoice_no || s.voucher_no || s.id;
+      if (!mergedMap.has(invNo)) {
+        mergedMap.set(invNo, {
+          ...s,
+          invoice_no: invNo,
+          buyer_name: s.buyer_name || s.account_name || "Wholesale Party",
+          sale_date: s.sale_date || s.date || s.created_at,
+          total_amount: Number(s.total_amount) || 0,
+          paid_amount: Number(s.paid_amount ?? s.cash_received ?? s.cash_tendered ?? 0),
+          balance_due: Number(s.balance_due) || 0,
+          city: s.city || s.party_type || "Hyderabad",
+          salesman: s.salesman || s.reference || "Wholesale Desk",
+        });
+      }
+    });
+    setB2BSales(Array.from(mergedMap.values()).sort((a, b) => new Date(b.sale_date || 0) - new Date(a.sale_date || 0)));
+
     setParties(dbParties.getAll());
     setSalesmen(dbSalesmen.getAll());
     setGodowns(dbWarehouses.getAll());
@@ -1579,21 +1610,34 @@ export default function WarehouseManagement() {
                             Invoice
                           </button>
 
-                          {Number(p.balance_due || 0) > 0 && (
-                            <button
-                              onClick={() => {
-                                setUdhaarParty(p);
-                                setUdhaarAmountInput(String(p.balance_due || 0));
-                                setUdhaarNotes("");
-                                setShowReceiveUdhaarModal(true);
-                              }}
-                              className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                              title="Receive Udhaar / Credit Cash Repayment"
-                            >
-                              <span className="material-symbols-outlined text-sm">payments</span>
-                              Receive Udhaar
-                            </button>
-                          )}
+                          <button
+                            onClick={() => {
+                              setUdhaarParty(p);
+                              setUdhaarAmountInput(String(p.balance_due || 0));
+                              setUdhaarPaymentMode("Cash");
+                              setUdhaarBankName("");
+                              setUdhaarChequeNo("");
+                              setUdhaarNotes("");
+                              setShowReceiveUdhaarModal(true);
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                            title="Receive Udhaar / Credit Cash Repayment"
+                          >
+                            <span className="material-symbols-outlined text-sm">payments</span>
+                            Receive Udhaar
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setSelectedPartyForLedger(p);
+                              setShowPartyLedgerModal(true);
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                            title="View Full Udhaar & Payment History Ledger"
+                          >
+                            <span className="material-symbols-outlined text-sm text-cyan-300">menu_book</span>
+                            Ledger
+                          </button>
 
                           <button
                             onClick={() => handleOpenEditParty(p)}
@@ -2257,10 +2301,10 @@ export default function WarehouseManagement() {
       {/* Receive Udhaar Repayment Modal (React Portal) */}
       {showReceiveUdhaarModal && udhaarParty && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white max-w-md w-full rounded-3xl p-6 border-2 border-amber-500 shadow-2xl space-y-4 animate-scaleUp text-left">
+          <div className="bg-white max-w-md w-full rounded-3xl p-6 border-2 border-emerald-500 shadow-2xl space-y-4 animate-scaleUp text-left">
             <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
               <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                <span className="material-symbols-outlined text-amber-600" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
+                <span className="material-symbols-outlined text-emerald-600" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
                 Receive Udhaar Payment
               </h3>
               <button type="button" onClick={() => setShowReceiveUdhaarModal(false)} className="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
@@ -2272,19 +2316,27 @@ export default function WarehouseManagement() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const amt = Number(udhaarAmountInput) || 0;
-                if (amt <= 0) { alert("Please enter a valid payment amount."); return; }
-                if (amt > Number(udhaarParty.balance_due || 0)) {
-                  if (!window.confirm(`Payment amount (Rs. ${amt}) is higher than outstanding balance (Rs. ${udhaarParty.balance_due}). Proceed?`)) return;
+                if (amt <= 0) { alert("Please enter a valid payment amount > 0"); return; }
+                const paymentRecord = dbParties.recordPayment(
+                  udhaarParty.id,
+                  amt,
+                  udhaarPaymentMode,
+                  udhaarNotes,
+                  udhaarCollectedBy,
+                  udhaarBankName,
+                  udhaarChequeNo
+                );
+                if (paymentRecord) {
+                  printPartyPaymentReceipt(paymentRecord, dbClinic.get());
                 }
-                dbParties.recordPayment(udhaarParty.id, amt, udhaarPaymentMode, udhaarNotes, activeGodownOperator?.name || user?.name || "Staff");
-                alert(`✅ Successfully received Rs. ${amt} from ${udhaarParty.name}! Remaining Balance: Rs. ${Math.max(0, (udhaarParty.balance_due || 0) - amt)}`);
+                alert(`✅ Payment of Rs. ${amt.toLocaleString()} recorded successfully for "${udhaarParty.name}"!`);
                 setShowReceiveUdhaarModal(false);
                 setUdhaarParty(null);
                 refreshData();
               }}
               className="space-y-3"
             >
-              <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200 text-xs text-amber-900 font-bold space-y-1">
+              <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-xs text-emerald-950 font-bold space-y-1">
                 <div className="flex justify-between"><span>Party Name:</span><span className="font-black text-slate-950">{udhaarParty.name}</span></div>
                 <div className="flex justify-between"><span>Territory / City:</span><span>{udhaarParty.city}</span></div>
                 <div className="flex justify-between"><span>Current Outstanding Udhaar:</span><span className="font-black text-rose-700 font-mono text-sm">Rs. {Math.round(udhaarParty.balance_due || 0).toLocaleString()}</span></div>
@@ -2301,22 +2353,64 @@ export default function WarehouseManagement() {
                   autoFocus
                   value={udhaarAmountInput}
                   onChange={(e) => setUdhaarAmountInput(e.target.value)}
-                  placeholder="Enter cash amount"
-                  className="w-full px-3 py-2.5 rounded-xl border-2 border-amber-300 bg-white text-sm font-mono font-black text-slate-950 focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 cursor-text shadow-xs"
+                  placeholder="Enter cash amount..."
+                  className="w-full px-3 py-2.5 rounded-xl border-2 border-emerald-400 bg-white text-sm font-mono font-black text-slate-950 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 cursor-text shadow-xs"
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">Payment Mode</label>
+                  <select
+                    value={udhaarPaymentMode}
+                    onChange={(e) => setUdhaarPaymentMode(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-600"
+                  >
+                    <option value="Cash">💵 Cash In Hand</option>
+                    <option value="Easypaisa">📱 Easypaisa</option>
+                    <option value="JazzCash">📱 JazzCash</option>
+                    <option value="Bank Transfer">🏦 Bank Transfer</option>
+                    <option value="Cheque">🧾 Cheque</option>
+                  </select>
+                </div>
+
+                {(udhaarPaymentMode === "Bank Transfer" || udhaarPaymentMode === "Cheque") && (
+                  <div>
+                    <label className="block text-xs font-bold text-teal-800 mb-1">Bank Name</label>
+                    <input
+                      type="text"
+                      value={udhaarBankName}
+                      onChange={(e) => setUdhaarBankName(e.target.value)}
+                      onBlur={() => { if (udhaarBankName) setUdhaarBankName(toTitleCase(udhaarBankName)); }}
+                      placeholder="e.g. Meezan, HBL..."
+                      className="w-full px-2.5 py-2 rounded-xl border border-teal-300 bg-teal-50 text-xs font-bold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {udhaarPaymentMode === "Cheque" && (
+                <div>
+                  <label className="block text-xs font-bold text-teal-800 mb-1">Cheque #</label>
+                  <input
+                    type="text"
+                    value={udhaarChequeNo}
+                    onChange={(e) => setUdhaarChequeNo(e.target.value)}
+                    placeholder="e.g. 4819"
+                    className="w-full px-2.5 py-2 rounded-xl border border-teal-300 bg-teal-50 text-xs font-bold text-slate-900 font-mono focus:outline-none"
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">Payment Mode</label>
-                <select
-                  value={udhaarPaymentMode}
-                  onChange={(e) => setUdhaarPaymentMode(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-600"
-                >
-                  <option value="Cash">Cash In Hand</option>
-                  <option value="Bank Transfer">Bank Transfer / Cheque</option>
-                  <option value="Easypaisa / JazzCash">Easypaisa / JazzCash</option>
-                </select>
+                <label className="block text-xs font-bold text-slate-800 mb-1">Staff / Received By</label>
+                <input
+                  type="text"
+                  value={udhaarCollectedBy}
+                  onChange={(e) => setUdhaarCollectedBy(e.target.value)}
+                  placeholder="Staff Handler name"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 focus:outline-none"
+                />
               </div>
 
               <div>
@@ -2325,19 +2419,127 @@ export default function WarehouseManagement() {
                   type="text"
                   value={udhaarNotes}
                   onChange={(e) => setUdhaarNotes(e.target.value)}
-                  placeholder="Optional notes e.g. Paid by salesman / direct cash"
-                  className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-600 cursor-text"
+                  placeholder="Optional notes e.g. Part payment for Inv-10505"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-900 focus:outline-none"
                 />
               </div>
 
               <div className="flex gap-2 pt-2 border-t border-gray-100">
-                <button type="button" onClick={() => setShowReceiveUdhaarModal(false)} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-                  <span className="material-symbols-outlined text-base">check_circle</span>
-                  Confirm Cash Received
+                <button type="button" onClick={() => setShowReceiveUdhaarModal(false)} className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer">Cancel</button>
+                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-black shadow-md shadow-emerald-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                  <span className="material-symbols-outlined text-base">print</span>
+                  Save &amp; Print Receipt (F9)
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Party Complete Ledger History Modal (React Portal) */}
+      {showPartyLedgerModal && selectedPartyForLedger && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white max-w-4xl w-full rounded-3xl p-6 border border-slate-200 shadow-2xl space-y-4 animate-scaleUp text-left max-h-[90vh] flex flex-col">
+            <div className="border-b border-gray-100 pb-3 flex items-center justify-between shrink-0">
+              <div>
+                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                  <span className="material-symbols-outlined text-teal-700">menu_book</span>
+                  Party Account Statement &amp; Ledger History
+                </h3>
+                <p className="text-xs text-slate-500 font-bold mt-0.5">
+                  {selectedPartyForLedger.name} {selectedPartyForLedger.party_code ? `(#${selectedPartyForLedger.party_code})` : ""} — {selectedPartyForLedger.city}
+                </p>
+              </div>
+              <button type="button" onClick={() => setShowPartyLedgerModal(false)} className="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Party Summary Banner */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+              <div className="bg-teal-50 border border-teal-200 p-3 rounded-2xl">
+                <span className="text-[10px] font-bold text-teal-800 uppercase block">Party Name</span>
+                <span className="font-black text-slate-950 text-sm">{selectedPartyForLedger.name}</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                <span className="text-[10px] font-bold text-slate-600 uppercase block">Contact / Territory</span>
+                <span className="font-bold text-slate-900 text-xs">{selectedPartyForLedger.city} ({selectedPartyForLedger.phone || "No Phone"})</span>
+              </div>
+              <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl text-right">
+                <span className="text-[10px] font-bold text-rose-800 uppercase block">Outstanding Udhaar</span>
+                <span className="font-mono font-black text-rose-950 text-base">Rs. {Math.round(selectedPartyForLedger.balance_due || 0).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Ledger Transactions Table */}
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white font-bold border-b border-slate-800 text-[10.5px]">
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Ref / Voucher #</th>
+                    <th className="py-2.5 px-3 text-center">Type</th>
+                    <th className="py-2.5 px-3">Description / Mode</th>
+                    <th className="py-2.5 px-3 text-right">Amount (Rs)</th>
+                    <th className="py-2.5 px-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium text-slate-800">
+                  {dbPartyLedger.getByParty(selectedPartyForLedger.id).map((tx) => (
+                    <tr key={tx.id} className="hover:bg-teal-50/50">
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">{formatDate(tx.created_at || tx.date)}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-teal-900">{tx.receipt_no || tx.invoice_no || tx.voucher_no || "—"}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={`px-2 py-0.5 rounded text-[9.5px] font-black uppercase ${
+                          tx.tx_type === "PAYMENT" ? "bg-emerald-100 text-emerald-900 border border-emerald-300" : "bg-blue-100 text-blue-900 border border-blue-300"
+                        }`}>
+                          {tx.tx_type === "PAYMENT" ? "💵 Payment In" : "📜 Invoice Billed"}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-xs">
+                        {tx.tx_type === "PAYMENT" ? (
+                          <span>
+                            Udhaar Recovery ({tx.payment_mode || "Cash"} {tx.bank_name ? `- ${tx.bank_name}` : ""}) {tx.notes ? `— ${tx.notes}` : ""}
+                          </span>
+                        ) : (
+                          <span>Wholesale Sale Invoice</span>
+                        )}
+                      </td>
+                      <td className={`py-2.5 px-3 text-right font-mono font-black ${tx.tx_type === "PAYMENT" ? "text-emerald-700" : "text-slate-900"}`}>
+                        Rs. {Math.round(tx.amount || 0).toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        {tx.tx_type === "PAYMENT" ? (
+                          <button
+                            onClick={() => printPartyPaymentReceipt(tx, dbClinic.get())}
+                            className="px-2 py-1 bg-teal-50 border border-teal-200 hover:bg-teal-600 hover:text-white text-teal-800 rounded-lg text-[10px] font-bold flex items-center gap-1 mx-auto transition-all"
+                          >
+                            <span className="material-symbols-outlined text-xs">print</span>
+                            Receipt
+                          </button>
+                        ) : (
+                          <span className="text-slate-400 text-[10px]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {dbPartyLedger.getByParty(selectedPartyForLedger.id).length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-400 italic">
+                        No transactions recorded for this party yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pt-2 flex justify-end shrink-0">
+              <button type="button" onClick={() => setShowPartyLedgerModal(false)} className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer">
+                Close Statement
+              </button>
+            </div>
           </div>
         </div>,
         document.body
