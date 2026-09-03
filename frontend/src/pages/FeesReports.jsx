@@ -601,6 +601,27 @@ export default function FeesReports() {
       return;
     }
 
+    // 🔴 ZERO-UDHAAR BALANCE CHECK: Block receiving Udhaar recovery when party has 0 pending credit
+    const selectedOpt = accountOptions.find(
+      (o) => o.label.toLowerCase() === cbAccountName.toLowerCase() || o.id === cbAccountName
+    );
+
+    if (cbTerm === "Receive" && selectedOpt && (selectedOpt.badge === "Party" || selectedOpt.badge === "Company")) {
+      const currentBalance = Number(selectedOpt.raw?.current_balance ?? selectedOpt.raw?.balance_due ?? 0);
+      if (currentBalance <= 0) {
+        alert(
+          `🚫 Action Blocked!\n\n"${selectedOpt.label}" currently has Rs. 0 outstanding Udhaar balance in the system.\n\nYou cannot record an Udhaar Cash Receive voucher when there is no pending credit due.`
+        );
+        return;
+      }
+      if (numAmount > currentBalance) {
+        alert(
+          `⚠️ Invalid Receive Amount!\n\nThe entered amount (Rs. ${numAmount.toLocaleString()}) exceeds "${selectedOpt.label}" outstanding Udhaar balance of Rs. ${currentBalance.toLocaleString()}.\n\nPlease enter an amount up to Rs. ${currentBalance.toLocaleString()}.`
+        );
+        return;
+      }
+    }
+
     const newEntry = dbCashBook.addEntry({
       date: closingDate,
       voucher_no: cbVoucherNo,
