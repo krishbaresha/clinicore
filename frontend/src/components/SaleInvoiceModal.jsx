@@ -20,6 +20,7 @@ function ExpandableCombobox({
   addNewLabel = "+ Add New",
   required = false,
   className = "",
+  align = "left",
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -98,9 +99,9 @@ function ExpandableCombobox({
         </span>
       </button>
 
-      {/* Expandable Tall Dropdown Popup (10-15 rows visible with scroll - min 340px width to avoid text clipping) */}
+      {/* Expandable Tall Dropdown Popup (10-15 rows visible with scroll - smart alignment to prevent screen clipping) */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 bg-white rounded-2xl border border-emerald-300 shadow-2xl z-50 overflow-hidden animate-fade-in flex flex-col max-h-72 min-w-[340px] sm:min-w-[380px]">
+        <div className={`absolute ${align === "right" ? "right-0 left-auto" : "left-0 right-auto"} top-full mt-1.5 bg-white rounded-2xl border border-emerald-300 shadow-2xl z-50 overflow-hidden animate-fade-in flex flex-col max-h-72 min-w-[280px] sm:min-w-[320px] max-w-[85vw]`}>
           {/* Search Header */}
           <div className="p-2 border-b border-gray-100 bg-gray-50 flex items-center gap-1.5 sticky top-0 z-10">
             <span className="material-symbols-outlined text-base text-emerald-700">search</span>
@@ -118,38 +119,38 @@ function ExpandableCombobox({
                 onClick={() => setSearch("")}
                 className="text-gray-400 hover:text-gray-600 p-0.5"
               >
-                <span className="material-symbols-outlined text-xs">close</span>
+                <span className="material-symbols-outlined text-sm">close</span>
               </button>
             )}
           </div>
 
           {/* Options List */}
-          <div className="overflow-y-auto flex-1 p-1 space-y-0.5 max-h-60 custom-scrollbar">
-            {filteredOptions.length === 0 ? (
-              <div className="text-center py-6 text-gray-400 text-xs font-semibold">
-                No matches found for "{search}"
-              </div>
-            ) : (
+          <div className="overflow-y-auto max-h-56 divide-y divide-gray-50 p-1">
+            {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => {
                 const isSelected = opt.id === value || opt.label === value;
                 return (
                   <button
-                    key={opt.id}
+                    key={opt.id || opt.label}
                     type="button"
                     onClick={() => {
-                      onChange(opt.id, opt);
+                      onChange(opt.id || opt.label, opt);
                       setIsOpen(false);
                       setSearch("");
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors ${isSelected
-                        ? "bg-emerald-600 text-white font-black"
+                    className={`w-full text-left p-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-emerald-600 text-white font-black shadow-xs"
                         : "hover:bg-emerald-50 text-gray-800 font-bold"
-                      }`}
+                    }`}
                   >
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-1">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       {opt.badge && (
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black shrink-0 ${isSelected ? "bg-emerald-800 text-white" : "bg-emerald-100 text-emerald-800"
-                          }`}>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-black shrink-0 ${
+                            isSelected ? "bg-emerald-700 text-emerald-100" : "bg-emerald-100 text-emerald-800"
+                          }`}
+                        >
                           {opt.badge}
                         </span>
                       )}
@@ -166,6 +167,10 @@ function ExpandableCombobox({
                   </button>
                 );
               })
+            ) : (
+              <div className="p-3 text-center text-xs font-bold text-gray-400">
+                No matching options found
+              </div>
             )}
           </div>
         </div>
@@ -1325,6 +1330,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                           placeholder="Select Salesman..."
                           searchPlaceholder="Search staff..."
                           required={true}
+                          align="right"
                         />
                       </div>
                     </div>

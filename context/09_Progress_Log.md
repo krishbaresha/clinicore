@@ -3283,6 +3283,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
       - Replaced legacy `{ minimumFractionDigits: 1, maximumFractionDigits: 1 }` decimal formatters in both receipt print HTML and live receipt preview card in `SaleInvoiceModal.jsx`.
     - **Verification**: Passed 643/643 unit tests (`npm test`), AST symbol scanner passed with 0 errors, Vite production bundle built in 1.51s.
 
+56. **Milestone 129: Smart Right-Aligned Combobox Dropdown & Screen Clipping Prevention**
+    - **Dropdown Alignment Fix**: Added `align` prop (`"left"` | `"right"`) to `ExpandableCombobox` in `SaleInvoiceModal.jsx`.
+    - **Rightmost Field Clipping Prevention**: Configured rightmost `Salesman / Booker` combobox to open with `align="right"` (`right-0 left-auto max-w-[85vw]`), preventing the dropdown window from overflowing past the right edge of the card container.
+    - **Verification**: 643/643 unit tests passed (`npm test`), Vite bundle compiled cleanly in 1.45s.
+
 
 
 
