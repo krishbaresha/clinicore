@@ -168,7 +168,25 @@ export function getWatermarkFooterHtml() {
   `;
 }
 
-
+/**
+ * Auto-Capitalizes text into clean Title Case (e.g., "by hand" -> "By Hand")
+ */
+export function toTitleCase(str) {
+  if (!str || typeof str !== "string") return "";
+  const cleaned = str.trim();
+  if (!cleaned) return "";
+  return cleaned
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => {
+      if (!word) return "";
+      if (word.toUpperCase() === "TCS" || word.toUpperCase() === "B2B" || word.toUpperCase() === "GRN" || word.toUpperCase() === "VIP") {
+        return word.toUpperCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+}
 
 export function escapeHtml(str) {
   if (!str) return "";
@@ -1876,6 +1894,12 @@ export function printSaleInvoiceReceipt(sale, clinic) {
           </div>
           ${city || partyCode ? `
             <div style="color: #334155; font-weight: 700; margin-top: 1px;">Party / Route: ${city || "HYD"} ${partyCode ? `(#${partyCode})` : ""}</div>
+          ` : ""}
+          ${(sale.transport && String(sale.transport).trim() && String(sale.transport).trim() !== "0") ? `
+            <div style="color: #334155; font-weight: 700; margin-top: 1px;">Transport: ${escapeHtml(toTitleCase(sale.transport))}</div>
+          ` : ""}
+          ${(sale.bilty_no && String(sale.bilty_no).trim() && String(sale.bilty_no).trim() !== "0") ? `
+            <div style="color: #334155; font-weight: 700; margin-top: 1px;">Bilty #: ${escapeHtml(sale.bilty_no)}</div>
           ` : ""}
         </div>
 

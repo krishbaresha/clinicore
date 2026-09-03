@@ -1657,7 +1657,11 @@ export default function WarehouseManagement() {
                     <td className="py-3.5 px-4 font-bold text-gray-900">{sale.buyer_name}</td>
                     <td className="py-3.5 px-4 text-gray-600">
                       <span className="font-semibold text-gray-800">{sale.city}</span>
-                      {sale.bilty_no && <div className="text-[10px] font-mono text-teal-700">Bilty: {sale.bilty_no} ({sale.transport})</div>}
+                      {(sale.bilty_no && sale.bilty_no !== "0") && (
+                        <div className="text-[10px] font-mono text-teal-700">
+                          Bilty #: {sale.bilty_no} {sale.transport ? `(${sale.transport})` : ""}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 font-semibold text-teal-800">{sale.salesman || "—"}</td>
                     <td className="py-3.5 px-4 text-right font-mono font-bold text-gray-900">

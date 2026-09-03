@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { dbSales, dbInventory, dbParties, dbAccounts, dbClinic, dbGrnMetadata, dbVisits, dbPatients, dbUsers } from "../api/db.js";
+import { dbSales, dbInventory, dbParties, dbAccounts, dbClinic, dbGrnMetadata, dbVisits, dbPatients, dbUsers, dbTransports, toTitleCase } from "../api/db.js";
 import { printSaleInvoiceReceipt } from "../utils/thermalPrinter.js";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
 import { RECEIPT_HEADER_IMAGE_BASE64 } from "../utils/receiptHeaderBase64.js";
@@ -467,11 +467,20 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   }, [referencesList, activeUser, activeCashier]);
 
   const transportOptions = useMemo(() => {
-    return transportsList.map((t) => ({
-      id: t,
-      label: t,
-      badge: "🚚 Carrier",
-    }));
+    const list = [];
+    const seen = new Set();
+    (transportsList || []).forEach((t) => {
+      const formatted = toTitleCase(t);
+      if (formatted && !seen.has(formatted.toLowerCase())) {
+        seen.add(formatted.toLowerCase());
+        list.push({
+          id: formatted,
+          label: formatted,
+          badge: "🚚 Carrier",
+        });
+      }
+    });
+    return list;
   }, [transportsList]);
 
   // Filtered Products by Company / Brand Code
@@ -1031,8 +1040,18 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const grandTotal = totalBillCalculated;
     const partyBalance = puranaUdhaar;
 
+    // Title-Case Transport & Clean Bilty #
+    const formattedTransport = saleForm.transport && saleForm.transport.trim() ? toTitleCase(saleForm.transport) : "";
+    const cleanBiltyNo = saleForm.bilty_no && saleForm.bilty_no.trim() && saleForm.bilty_no.trim() !== "0" ? saleForm.bilty_no.trim() : "";
+
+    if (formattedTransport) {
+      dbTransports.addTransport(formattedTransport);
+    }
+
     const createdSale = dbSales.addSaleInvoice({
       ...saleForm,
+      transport: formattedTransport,
+      bilty_no: cleanBiltyNo,
       billing_type: billingType,
       account_name: resolvedAccountName,
       items: saleItems,
@@ -1385,7 +1404,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                         <ExpandableCombobox
                           label="Transport"
                           value={saleForm.transport}
-                          onChange={(val) => setSaleForm({ ...saleForm, transport: val })}
+                          onChange={(val) => setSaleForm({ ...saleForm, transport: toTitleCase(val) })}
                           options={transportOptions}
                           placeholder="Select Transport..."
                           searchPlaceholder="Search Transport..."

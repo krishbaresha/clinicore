@@ -4689,22 +4689,31 @@ export const dbGrnMetadata = {
     return clean;
   },
   getTransports: () => {
-    const custom = getCollection("clinicflow_grn_transports");
-    const defaults = [
-      "By Hand", "Asad Bhai", "Azeem", "BabU Gadha", "by Hand Fraz Bhai", "by hand Usama", "Al-Razi Transport", "Karachi Goods", "Niazi Express", "Self Transport"
-    ];
-    return Array.from(new Set([...defaults, ...(custom || [])]));
+    const custom = getCollection("clinicflow_grn_transports") || [];
+    const defaults = ["By Hand", "Al-Razi Transport", "Karachi Goods", "Niazi Express", "TCS Courier", "Self Transport"];
+    const map = new Map();
+    [...defaults, ...custom].forEach((raw) => {
+      const title = toTitleCase(raw);
+      if (title && !map.has(title.toLowerCase())) {
+        map.set(title.toLowerCase(), title);
+      }
+    });
+    return Array.from(map.values());
   },
   addTransport: (transportName) => {
     if (!transportName || !transportName.trim()) return "";
-    const clean = transportName.trim();
+    const cleanTitle = toTitleCase(transportName);
+    if (!cleanTitle) return "";
     const existing = getCollection("clinicflow_grn_transports") || [];
-    if (!existing.includes(clean)) {
-      setCollection("clinicflow_grn_transports", [...existing, clean]);
+    const normalizedExisting = (existing || []).map((e) => toTitleCase(e)).filter(Boolean);
+    if (!normalizedExisting.some((e) => e.toLowerCase() === cleanTitle.toLowerCase())) {
+      setCollection("clinicflow_grn_transports", [...normalizedExisting, cleanTitle]);
     }
-    return clean;
+    return cleanTitle;
   },
 };
+
+export const dbTransports = dbGrnMetadata;
 
 
 // ---------- Wholesale B2B Sales (Interior Sindh Supply) ----------
@@ -6304,6 +6313,26 @@ export const dbAuditLogs = {
 // ============================================================================
 // 25. UNIFIED ENTERPRISE REPORTING & BUSINESS ANALYTICS ENGINE (dbReports)
 // ============================================================================
+/**
+ * Auto-Capitalizes text into clean Title Case (e.g., "by hand" -> "By Hand")
+ */
+export function toTitleCase(str) {
+  if (!str || typeof str !== "string") return "";
+  const cleaned = str.trim();
+  if (!cleaned) return "";
+  return cleaned
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => {
+      if (!word) return "";
+      if (word.toUpperCase() === "TCS" || word.toUpperCase() === "B2B" || word.toUpperCase() === "GRN" || word.toUpperCase() === "VIP") {
+        return word.toUpperCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+}
+
 export const dbReports = {
   /**
    * Helper: Filter records across multiple dimensions (Date Range, Warehouse, Doctor, Cashier, Payment Mode)

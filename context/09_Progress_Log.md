@@ -3312,6 +3312,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Result**: Whether a store has 5 or 50+ registered pharma companies, the UI remains 100% clean and responsive without wrapping or cluttering, while allowing instant 1-click filtering across all 50+ companies.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean Vite production compilation in 1.59s.
 
+61. **Milestone 134: Transport Auto-Capitalization (Title Case) Normalization & Strict Print Conditional Rendering**
+    - **Transport Clean-up & Deduplication**: Removed dummy entries (`"BabU Gadha"`, `"by hand Usama"`, etc.) from `dbTransports`. Built `toTitleCase(str)` engine to convert any typed input casing (e.g. `by hand`, `BY HAND`, `by Hand`) into canonical Title Case (`By Hand`), saving new carriers for future autocomplete.
+    - **Receipt & Invoice Conditional Formatting**: Enhanced thermal print (`thermalPrinter.js`) and printable invoice templates to strictly hide `Transport` and `Bilty #` lines whenever these fields are empty or unset, rendering them only when explicit values are provided.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean Vite production bundle compilation in 1.52s.
+
 
 
 
