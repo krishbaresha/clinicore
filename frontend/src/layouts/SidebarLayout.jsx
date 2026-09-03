@@ -136,8 +136,7 @@ const NAV_DEFAULT = [
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Patients & EMR", icon: "group", path: "/patients" },
   { label: "Fees & CashBook", icon: "payments", path: "/fees" },
-  { label: "Clinic Settings", icon: "settings", path: "/settings", spacer: true },
-  { label: "Super Admin Panel", icon: "admin_panel_settings", path: "/admin" },
+  { label: "Super Admin Panel", icon: "admin_panel_settings", path: "/admin", spacer: true },
 ];
 
 const NAV_SHORTCUTS_MAP = {

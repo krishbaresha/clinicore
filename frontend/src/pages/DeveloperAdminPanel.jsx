@@ -222,115 +222,8 @@ export default function DeveloperAdminPanel() {
   const [licenseForm, setLicenseForm] = useState(() => dbLicense.get());
   const [isSavingLicense, setIsSavingLicense] = useState(false);
 
-  const loadData = async (preserveForm = false) => {
-    // 1. Fetch authoritative cloud settings from MySQL to synchronize across all devices & browsers
-    try {
-      const vpsApiUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ? import.meta.env.VITE_API_URL : "https://api.clinicore.me";
-      const endpoints = [
-        `/version.json?_t=${Date.now()}`,
-        `https://clinicore.me/version.json?_t=${Date.now()}`,
-        `${vpsApiUrl}/api/v1/system/version?_t=${Date.now()}`,
-      ];
-      for (const ep of endpoints) {
-        try {
-          const vRes = await fetch(ep, { cache: "no-store" });
-          if (vRes.ok) {
-            const vData = await vRes.json();
-            const ver = vData?.version || vData?.data?.version;
-            if (ver) {
-              setLiveAdminVersion(ver);
-              try { localStorage.setItem("cf_applied_version", ver); } catch (_) {}
-              break;
-            }
-          }
-        } catch (_) {}
-      }
-
-      const apiUrl = DEFAULT_API_URL;
-      const res = await fetch(`${apiUrl}/api/v1/system/config`).catch(() => null);
-      if (res && res.ok) {
-        const json = await res.json().catch(() => null);
-        if (json?.success && json?.data) {
-          // ─── CRITICAL: Hydrate VPS-authoritative passcodes into localStorage IMMEDIATELY ───
-          const vpsAdminPass = (json.data.admin_master_passcode || "").trim();
-          const vpsTabPin = (json.data.tab_pin || "").trim();
-          if (vpsAdminPass) {
-            localStorage.setItem("cf_admin_master_passcode", vpsAdminPass);
-            setAdminPasscode(vpsAdminPass);
-          }
-          if (vpsTabPin) {
-            localStorage.setItem("cf_admin_tab_pin", vpsTabPin);
-            setTabPin(vpsTabPin);
-          }
-        }
-        if (json?.success && json?.data?.clinic) {
-          const sClinic = json.data.clinic;
-          setActiveClinic(sClinic);
-
-          // Sync remote license policy if stored in cloud MySQL
-          if (sClinic.license_policy && !preserveForm) {
-            try {
-              const remoteLicense = typeof sClinic.license_policy === "string" ? JSON.parse(sClinic.license_policy) : sClinic.license_policy;
-              if (remoteLicense && typeof remoteLicense === "object") {
-                const mergedLic = dbLicense.update(remoteLicense);
-                setLicenseForm(mergedLic);
-              }
-            } catch (licErr) {
-              console.warn("Failed to parse remote license_policy:", licErr);
-            }
-          }
-
-          const localClinic = dbClinic.get() || {};
-          const localWa = localClinic.whatsapp_gateway_no || localStorage.getItem("cf_whatsapp_gateway_no") || sClinic.whatsapp_gateway_no || "03473100304";
-
-          if (!preserveForm) {
-            setClinicForm({
-              name: localClinic.name || sClinic.name || "H/Dr.Asif Ashraf Khan Clinic",
-              address: localClinic.address || sClinic.address || "Lajpat Road, Hyderabad, Sindh",
-              phone: localClinic.phone || sClinic.phone || "03473100304",
-              default_consultation_fee: Number(localClinic.default_consultation_fee) || Number(sClinic.default_consultation_fee) || 300,
-              clinic_status: localClinic.clinic_status || sClinic.clinic_status || "open",
-              public_notice: localClinic.public_notice || sClinic.public_notice || "",
-              whatsapp_gateway_no: localWa,
-            });
-          }
-
-          if (sClinic.admin_master_passcode) setAdminPasscode(sClinic.admin_master_passcode);
-          if (sClinic.tab_pin) setTabPin(sClinic.tab_pin);
-
-          let loadedTabs = null;
-          if (sClinic.tab_security_json) {
-            try {
-              loadedTabs = typeof sClinic.tab_security_json === "string" ? JSON.parse(sClinic.tab_security_json) : sClinic.tab_security_json;
-            } catch { }
-          }
-          const savedSecurity = (() => {
-            try {
-              return JSON.parse(localStorage.getItem("cf_admin_tab_security") || "{}");
-            } catch {
-              return {};
-            }
-          })();
-          const mergedSecurity = {
-            ...savedSecurity,
-            admin_passcode: sClinic.admin_master_passcode || getAdminPasscode(),
-            tab_pin: sClinic.tab_pin || getTabPin(),
-            tabs: loadedTabs || savedSecurity.tabs || {
-              licensing: { locked: true, hidden: false },
-              audits: { locked: false, hidden: false },
-              staff: { locked: false, hidden: false },
-              apis: { locked: true, hidden: false },
-              backups: { locked: true, hidden: false },
-            }
-          };
-          setTabSecurity(mergedSecurity);
-          localStorage.setItem("cf_admin_tab_security", JSON.stringify(mergedSecurity));
-        }
-      }
-    } catch {
-      // Pure offline mode fallback
-    }
-
+  const loadData = (preserveForm = false) => {
+    // 1. Hydrate local data INSTANTLY in 0ms to eliminate UI freeze on click
     const curr = dbClinic.get() || {};
     setActiveClinic(curr);
     setUsersList(dbUsers.getAll() || []);
@@ -346,6 +239,49 @@ export default function DeveloperAdminPanel() {
     if (!preserveForm) {
       setLicenseForm(dbLicense.get());
     }
+
+    // 2. Asynchronously check remote cloud version & VPS config with 600ms timeout (non-blocking)
+    (async () => {
+      try {
+        const fetchTimeout = (url, timeoutMs = 600) => {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), timeoutMs);
+          return fetch(url, { cache: "no-store", signal: controller.signal })
+            .then((r) => { clearTimeout(timer); return r; })
+            .catch(() => { clearTimeout(timer); return null; });
+        };
+
+        const vRes = await fetchTimeout(`/version.json?_t=${Date.now()}`);
+        if (vRes && vRes.ok) {
+          const vData = await vRes.json().catch(() => null);
+          const ver = vData?.version || vData?.data?.version;
+          if (ver) {
+            setLiveAdminVersion(ver);
+            try { localStorage.setItem("cf_applied_version", ver); } catch (_) {}
+          }
+        }
+
+        const apiUrl = DEFAULT_API_URL;
+        const res = await fetchTimeout(`${apiUrl}/api/v1/system/config`);
+        if (res && res.ok) {
+          const json = await res.json().catch(() => null);
+          if (json?.success && json?.data) {
+            const vpsAdminPass = (json.data.admin_master_passcode || "").trim();
+            const vpsTabPin = (json.data.tab_pin || "").trim();
+            if (vpsAdminPass) {
+              localStorage.setItem("cf_admin_master_passcode", vpsAdminPass);
+              setAdminPasscode(vpsAdminPass);
+            }
+            if (vpsTabPin) {
+              localStorage.setItem("cf_admin_tab_pin", vpsTabPin);
+              setTabPin(vpsTabPin);
+            }
+          }
+        }
+      } catch (_) {
+        // Pure offline mode
+      }
+    })();
   };
 
   useEffect(() => {

@@ -200,7 +200,7 @@ function AppRoutes() {
         <Route path="/patients/new" element={<AuthenticatedLayout><AddNewPatient /></AuthenticatedLayout>} />
         <Route path="/patients/:id" element={<AuthenticatedLayout><PatientProfile /></AuthenticatedLayout>} />
         <Route path="/fees"        element={<AuthenticatedLayout><FeesReports /></AuthenticatedLayout>} />
-        <Route path="/settings"    element={<OwnerLayout><ClinicSettings /></OwnerLayout>} />
+        <Route path="/settings"    element={<Navigate to="/dashboard" replace />} />
 
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

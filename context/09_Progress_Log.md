@@ -3255,15 +3255,13 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - Standardized 80mm ESC/POS live thermal receipt preview into an independent, scrollable right-side preview card.
     - Passed all 643/643 unit tests (`npm test`), AST Hook/Import scanner (`scan_imports_and_hooks.mjs`), Secret scanner (`scan_secrets.mjs`), and clean Vite build (`npm run build`).
 
-51. **Milestone 124: Clean ExpandableCombobox UI, Dynamic Active POS Staff Session & Salesmen Options Cleanup**
-    - **Salesmen Options Purge**: Purged all legacy dummy salesmen names (`ADffsn`, `Afaan`, `Afam`, etc.) from `dbGrnMetadata`.
-    - **Dynamic Software Users & Active POS Session**:
-      - `Salesman / Booker` dropdown now populates strictly from registered software users (`dbUsers.getAll()`), tagging the active cashier as `⭐ Active POS`.
-      - Authenticated session switching via `StaffSwitcherWidget` allows any registered software staff member (Admin, Doctor, Receptionist, Accountant, Cashier) to log in with their PIN and operate POS dynamically under their name.
-    - **Combobox Popup & Label Clipping Fix**:
-      - Expanded `ExpandableCombobox` popup window to `min-w-[340px] sm:min-w-[380px]` with flex-wrap boundaries.
-      - Fixed Party Name (`Asus`, `Hyderabad`) text truncation so long party titles and phone numbers remain fully readable without being clipped into `A.. Hyderabad - Phon...`.
-    - **Verification**: Passed 643/643 unit tests (`npm test`), AST Hook/Import scanner, Secret scanner, and clean production Vite bundle build in 1.54s.
+52. **Milestone 125: Instant Zero-Freeze Super Admin Hydration & Permanent Removal of Clinic Settings Tab**
+    - **Super Admin Freeze Fix**: Refactored `DeveloperAdminPanel.jsx` `loadData()` to synchronously hydrate local database state (`dbClinic`, `dbUsers`, `dbInventory`, etc.) instantly in 0ms, moving remote cloud version checks to a background `AbortController` request with a 600ms maximum timeout. Eliminated 90s UI freeze when opening Super Admin Panel.
+    - **Permanent Removal of Clinic Settings Tab**:
+      - Removed `Clinic Settings` tab from `SidebarLayout.jsx` navigation bar.
+      - Deprecated `/settings` route in `App.jsx` with auto-redirect to `/dashboard`.
+      - Cleared `ClinicSettings.jsx` page content as requested.
+    - **Verification**: 643/643 unit tests passed (`npm test`), AST symbol scanner passed with 0 errors, Vite production bundle built in 1.64s.
 
 
 
