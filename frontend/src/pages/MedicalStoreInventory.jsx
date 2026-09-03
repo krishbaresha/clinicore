@@ -812,6 +812,8 @@ export default function MedicalStoreInventory() {
     });
   }, [inventory, modalCategoryFilter, modalSearchQuery]);
 
+  const [pageSize, setPageSize] = useState("all");
+
   const filteredInventory = useMemo(() => {
     const list = inventory.filter((item) => {
       if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
@@ -822,11 +824,11 @@ export default function MedicalStoreInventory() {
       if (stockStatusFilter === "in_stock" && (isLowStock(item) || isOutOfStock(item))) return false;
 
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         const mName = (item.medicine_name || "").toLowerCase().includes(q);
         const mCode = (item.item_code || "").toLowerCase().includes(q);
         const mCat = (item.category || "").toLowerCase().includes(q);
-        const mGen = (item.generic_name || "").toLowerCase().includes(q);
+        const mGen = (item.generic_name || item.product_description || item.naration || "").toLowerCase().includes(q);
         const mComp = (item.company_name || "").toLowerCase().includes(q);
         if (!mName && !mCode && !mCat && !mGen && !mComp) return false;
       }
@@ -841,11 +843,15 @@ export default function MedicalStoreInventory() {
     });
   }, [inventory, searchQuery, categoryFilter, companyFilter, stockStatusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredInventory.length / PAGE_SIZE));
+  const effectivePageSize = pageSize === "all" ? Math.max(1, filteredInventory.length) : Number(pageSize) || 30;
+  const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(filteredInventory.length / effectivePageSize));
+
   const paginatedInventory = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredInventory.slice(start, start + PAGE_SIZE);
-  }, [filteredInventory, currentPage]);
+    if (pageSize === "all") return filteredInventory;
+    const size = Number(pageSize) || 30;
+    const start = (currentPage - 1) * size;
+    return filteredInventory.slice(start, start + size);
+  }, [filteredInventory, currentPage, pageSize]);
 
   // Dynamic Margin Calculation for Quick Form
   const quickProfitMargin = useMemo(() => {
@@ -1951,36 +1957,53 @@ export default function MedicalStoreInventory() {
         </div>
       )}
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 bg-white rounded-3xl border border-slate-200 shadow-sm text-xs font-bold text-slate-600">
+      {/* Pagination & Display Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm text-xs font-bold text-slate-600 shrink-0">
+        <div className="flex flex-wrap items-center gap-3">
           <div>
             Showing <span className="text-slate-900 font-extrabold">{paginatedInventory.length}</span> of{" "}
-            <span className="text-slate-900 font-extrabold">{filteredInventory.length}</span> medicines (Page {currentPage} of {totalPages})
+            <span className="text-slate-900 font-extrabold">{filteredInventory.length}</span> medicines
           </div>
+          <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+            <span className="text-[11px] text-slate-500 font-medium">Display Limit:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-2.5 py-1 rounded-xl bg-teal-50 border border-teal-200 font-extrabold text-teal-900 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
+            >
+              <option value="all">All ({filteredInventory.length.toLocaleString()})</option>
+              <option value="100">100 items</option>
+              <option value="500">500 items</option>
+              <option value="30">30 items</option>
+            </select>
+          </div>
+        </div>
+
+        {pageSize !== "all" && totalPages > 1 && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-slate-800 font-bold transition-all"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-slate-800 font-bold transition-all cursor-pointer"
             >
               Previous
             </button>
-            <div className="flex items-center gap-1 px-2">
-              <span className="w-8 h-8 rounded-xl bg-teal-700 text-white flex items-center justify-center font-black">
-                {currentPage}
-              </span>
-            </div>
+            <span className="px-2.5 py-1 rounded-xl bg-teal-800 text-white font-black text-xs">
+              Page {currentPage} of {totalPages}
+            </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-slate-800 font-bold transition-all"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-slate-800 font-bold transition-all cursor-pointer"
             >
               Next
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ========================================================================= */}
       {/* MODAL 1: DrCreate / Access "INVENTORY _LIST" Popup Modal                 */}

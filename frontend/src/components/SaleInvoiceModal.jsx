@@ -2384,6 +2384,21 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                     </div>
                   </div>
 
+                  {/* Bill Discount Input Field */}
+                  <div className="bg-amber-50/80 border border-amber-300 px-2 py-0.5 rounded-lg text-right flex items-center gap-1.5">
+                    <span className="text-[8.5px] font-bold text-amber-900 uppercase whitespace-nowrap">
+                      Bill Discount (Rs.):
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={saleForm.extra_bill_discount ?? "0"}
+                      onChange={(e) => setSaleForm({ ...saleForm, extra_bill_discount: e.target.value })}
+                      className="w-16 bg-white border border-amber-300 rounded px-1 py-0.2 text-xs font-mono font-black text-amber-950 text-right focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+
                   {/* Previous Udhaar / Balance Box */}
                   {puranaUdhaar > 0 && (
                     <div className="bg-rose-50 border border-rose-300 px-2.5 py-0.5 rounded-lg text-right text-rose-950">
