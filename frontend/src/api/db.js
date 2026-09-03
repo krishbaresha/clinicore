@@ -2240,14 +2240,14 @@ export const dbInventory = {
 
 /** Generate Sample CSV Template for Bulk Inventory Upload */
 export function exportInventoryTemplateCSV() {
-  const headers = "Medicine Name,Company,Item Code,Purchase Price,Sale Price,Store Stock,Godown Stock,Category,Low Stock Alert";
+  const headers = "S/R No,Medicine Name,Description,Packing,Company Name,Item Code,Cost Price,Retail Price,Medical Store Stock,Stock Level Alert,Category";
   const rows = [
-    '"15 Ghr 20Ml","BM Pvt LTD","BM-15",420,595,25,35,"Homeopathic Drops",6',
-    '"Paul Brooks Drop No. 1","Paul Brooks Homoeo Lab","PB-01",450,650,20,30,"Homeopathic Drops",6',
-    '"Dr. Reckeweg R1 Drops","Schwabe / German","SCH-R01",1100,1450,15,20,"Specialized Drops",4',
-    '"Mektum No. 3 Drops","MEKTUM Pvt Ltd","MKT-03",340,480,20,25,"Homeopathic Drops",6',
-    '"Blossom No. 4 Drops","BLOSSOM Homoeo Pharma","BLS-04",360,520,20,24,"Homeopathic Drops",6',
-    '"Panadol 500mg Tablets","Local Pharma Market","LPM-PAN",460,550,400,800,"Allopathic OTC",50'
+    '1,"15 Ghr 20Ml","Homeopathic Drops 20ml","20ml Drop","BM Pvt LTD","BM-15",420,595,25,6,"Homeopathic Medicine"',
+    '2,"Paul Brooks Drop No. 1","Homeopathic Drops 30ml","30ml Drop","Paul Brooks Homoeo Lab","PB-01",450,650,20,6,"Homeopathic Medicine"',
+    '3,"Dr. Reckeweg R1 Drops","Specialized German Drops","22ml Drop","Schwabe / German","SCH-R01",1100,1450,15,4,"Specialized Drops"',
+    '4,"Mektum No. 3 Drops","Homeopathic Drops","20ml Drop","MEKTUM Pvt Ltd","MKT-03",340,480,20,6,"Homeopathic Drops"',
+    '5,"Blossom No. 4 Drops","Homeopathic Drops","20ml Drop","BLOSSOM Homoeo Pharma","BLS-04",360,520,20,6,"Homeopathic Drops"',
+    '6,"Panadol 500mg Tablets","Allopathic OTC Tablets","Pack 200s","Local Pharma Market","LPM-PAN",460,550,400,50,"Allopathic OTC"'
   ];
   return `${headers}\n${rows.join("\n")}`;
 }
@@ -6822,8 +6822,7 @@ export function exportPartiesTemplateCSV() {
 }
 
 export function exportInventoryGodownsTemplateCSV() {
-  const csv = "Medicine Name,Description,Packing,Company Name,Company Code,Cost Price,Retail Price,Medical Store Stock,Godown 1 Stock,Godown 2 Stock\n\"R1 Combination 22ML\",\"Drops 22ML\",\"22ML Drop\",\"Dr. Reckeweg\",\"REC\",450,650,20,50,30\n\"Contole Plus Ointment\",\"Skin Ointment 20g\",\"20g Tube\",\"BM Pvt LTD\",\"BM\",120,180,15,40,25\n";
-  downloadCSV("Medicine_Catalogue_Godowns_Template.csv", csv);
+  exportInventoryTemplateCSV();
 }
 
 export function bulkImportSuppliers(csvText) {
@@ -6939,24 +6938,48 @@ export function bulkImportInventoryWithGodowns(csvText) {
 
   for (let i = 1; i < lines.length; i++) {
     const row = lines[i].split(",").map((cell) => cell.replace(/^"(.*)"$/, "$1").trim());
-    if (!row[0]) continue;
-    const name = row[0];
-    const desc = row[1] || "";
-    const packing = row[2] || "pack";
-    const company = row[3] || "General";
-    const companyCode = row[4] || "";
-    const costPrice = Number(row[5]) || 0;
-    const retailPrice = Number(row[6]) || 0;
-    const storeStock = Number(row[7]) || 0;
-    const g1Stock = Number(row[8]) || 0;
-    const g2Stock = Number(row[9]) || 0;
+    if (!row[0] && !row[1]) continue;
 
-    const locationStocks = {
-      wh_str: storeStock,
-      wh_001: g1Stock,
-      wh_002: g2Stock,
-    };
-    const totalGodownStock = g1Stock + g2Stock;
+    let srNo = "";
+    let name = "";
+    let desc = "";
+    let packing = "";
+    let company = "";
+    let companyCode = "";
+    let costPrice = 0;
+    let retailPrice = 0;
+    let storeStock = 0;
+    let minAlert = 6;
+    let category = "";
+
+    if (row.length >= 11 && !isNaN(Number(row[0]))) {
+      // 11-column format: S/R No, Medicine Name, Description, Packing, Company Name, Item Code, Cost Price, Retail Price, Medical Store Stock, Stock Level Alert, Category
+      srNo = row[0];
+      name = row[1];
+      desc = row[2] || "";
+      packing = row[3] || "Pack";
+      company = row[4] || "BM Pvt LTD";
+      companyCode = row[5] || "";
+      costPrice = Number(row[6]) || 0;
+      retailPrice = Number(row[7]) || 0;
+      storeStock = Number(row[8]) || 0;
+      minAlert = Number(row[9]) || 6;
+      category = row[10] || "General";
+    } else {
+      // Legacy fallback mapping
+      name = row[0];
+      desc = row[1] || "";
+      packing = row[2] || "Pack";
+      company = row[3] || "BM Pvt LTD";
+      companyCode = row[4] || "";
+      costPrice = Number(row[5]) || 0;
+      retailPrice = Number(row[6]) || 0;
+      storeStock = Number(row[7]) || 0;
+      minAlert = Number(row[8]) || 6;
+      category = row[9] || "General";
+    }
+
+    if (!name) continue;
 
     const existing = currentItems.find(
       (item) => item.medicine_name.toLowerCase().trim() === name.toLowerCase().trim() &&
@@ -6971,12 +6994,14 @@ export function bulkImportInventoryWithGodowns(csvText) {
         company_name: company,
         item_code: companyCode || existing.item_code,
         cost_price: costPrice || existing.cost_price,
+        cost_price_per_box: costPrice || existing.cost_price_per_box,
         unit_sale_price: retailPrice || existing.unit_sale_price,
         box_sale_price: retailPrice || existing.box_sale_price,
         store_stock: storeStock,
-        warehouse_stock: totalGodownStock,
-        quantity: storeStock + totalGodownStock,
-        location_stocks: { ...(existing.location_stocks || {}), ...locationStocks },
+        quantity: storeStock,
+        total_base_stock: storeStock,
+        low_stock_threshold: minAlert,
+        category: category || existing.category,
       });
       updated++;
     } else {
@@ -6991,9 +7016,10 @@ export function bulkImportInventoryWithGodowns(csvText) {
         unit_sale_price: retailPrice,
         box_sale_price: retailPrice,
         store_stock: storeStock,
-        warehouse_stock: totalGodownStock,
-        quantity: storeStock + totalGodownStock,
-        location_stocks: locationStocks,
+        quantity: storeStock,
+        total_base_stock: storeStock,
+        low_stock_threshold: minAlert,
+        category: category || "General",
         status: "active",
       });
       added++;
@@ -7002,6 +7028,10 @@ export function bulkImportInventoryWithGodowns(csvText) {
 
   try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   return { count: added + updated, added, updated };
+}
+
+export function bulkImportInventory(csvText) {
+  return bulkImportInventoryWithGodowns(csvText);
 }
 
 

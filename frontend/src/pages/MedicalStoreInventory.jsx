@@ -139,8 +139,15 @@ export default function MedicalStoreInventory() {
   });
 
   const [error, setError] = useState("");
-  const [toastMsg, setToastMsg] = useState("");
   const quickNameRef = useRef(null);
+  const categoryScrollRef = useRef(null);
+
+  const scrollCategories = (dir) => {
+    if (categoryScrollRef.current) {
+      const amt = dir === "left" ? -240 : 240;
+      categoryScrollRef.current.scrollBy({ left: amt, behavior: "smooth" });
+    }
+  };
 
 
 
@@ -812,6 +819,8 @@ export default function MedicalStoreInventory() {
     });
   }, [inventory, modalCategoryFilter, modalSearchQuery]);
 
+  const [pageSize, setPageSize] = useState("all");
+
   const filteredInventory = useMemo(() => {
     const list = inventory.filter((item) => {
       if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
@@ -822,11 +831,11 @@ export default function MedicalStoreInventory() {
       if (stockStatusFilter === "in_stock" && (isLowStock(item) || isOutOfStock(item))) return false;
 
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         const mName = (item.medicine_name || "").toLowerCase().includes(q);
         const mCode = (item.item_code || "").toLowerCase().includes(q);
         const mCat = (item.category || "").toLowerCase().includes(q);
-        const mGen = (item.generic_name || "").toLowerCase().includes(q);
+        const mGen = (item.generic_name || item.product_description || item.naration || "").toLowerCase().includes(q);
         const mComp = (item.company_name || "").toLowerCase().includes(q);
         if (!mName && !mCode && !mCat && !mGen && !mComp) return false;
       }
@@ -841,11 +850,15 @@ export default function MedicalStoreInventory() {
     });
   }, [inventory, searchQuery, categoryFilter, companyFilter, stockStatusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredInventory.length / PAGE_SIZE));
+  const effectivePageSize = pageSize === "all" ? Math.max(1, filteredInventory.length) : Number(pageSize) || 30;
+  const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(filteredInventory.length / effectivePageSize));
+
   const paginatedInventory = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredInventory.slice(start, start + PAGE_SIZE);
-  }, [filteredInventory, currentPage]);
+    if (pageSize === "all") return filteredInventory;
+    const size = Number(pageSize) || 30;
+    const start = (currentPage - 1) * size;
+    return filteredInventory.slice(start, start + size);
+  }, [filteredInventory, currentPage, pageSize]);
 
   // Dynamic Margin Calculation for Quick Form
   const quickProfitMargin = useMemo(() => {
@@ -858,7 +871,7 @@ export default function MedicalStoreInventory() {
   }, [quickForm.cost_price, quickForm.sale_price]);
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-6 animate-in fade-in duration-300 overflow-x-hidden">
+    <div className="w-full h-full max-w-full min-w-0 flex flex-col flex-1 min-h-0 space-y-3 animate-in fade-in duration-300 overflow-hidden">
       {/* Toast Alert */}
       {toastMsg && (
         <div className="fixed top-6 right-6 z-50 bg-emerald-900/95 text-white font-bold text-xs px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-500/40 backdrop-blur-md flex items-center gap-3 animate-in slide-in-from-top-4">
@@ -1611,9 +1624,21 @@ export default function MedicalStoreInventory() {
           </div>
         </div>
 
-        {/* Category Pill Tabs */}
-        <div className="relative flex items-center w-full">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 w-full scroll-smooth">
+        {/* Category Pill Tabs with Hidden Scrollbar & Touch Scroll Controls */}
+        <div className="relative flex items-center w-full group pt-1">
+          <button
+            type="button"
+            onClick={() => scrollCategories("left")}
+            className="hidden sm:flex shrink-0 w-7 h-7 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-teal-900 items-center justify-center -mr-1 z-10 cursor-pointer transition-all hover:scale-110 active:scale-95"
+            title="Scroll Categories Left"
+          >
+            <span className="material-symbols-outlined text-base">chevron_left</span>
+          </button>
+
+          <div
+            ref={categoryScrollRef}
+            className="flex items-center gap-2 overflow-x-auto scroll-smooth w-full py-1 px-0.5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]"
+          >
             {["all", ...allCategories].map((cat) => (
               <button
                 key={cat}
@@ -1621,16 +1646,25 @@ export default function MedicalStoreInventory() {
                   setCategoryFilter(cat);
                   setCurrentPage(1);
                 }}
-                className={`min-h-[38px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`min-h-[36px] px-4 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 cursor-pointer border ${
                   categoryFilter === cat
-                    ? "bg-teal-700 text-white shadow-md shadow-teal-900/20"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    ? "bg-teal-800 text-white border-teal-900 shadow-sm shadow-teal-950/20"
+                    : "bg-slate-100/90 text-slate-700 hover:bg-slate-200/90 border-slate-200/80"
                 }`}
               >
                 {cat === "all" ? "All Categories" : cat}
               </button>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={() => scrollCategories("right")}
+            className="hidden sm:flex shrink-0 w-7 h-7 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-teal-900 items-center justify-center -ml-1 z-10 cursor-pointer transition-all hover:scale-110 active:scale-95"
+            title="Scroll Categories Right"
+          >
+            <span className="material-symbols-outlined text-base">chevron_right</span>
+          </button>
         </div>
       </div>
 
@@ -1691,7 +1725,7 @@ export default function MedicalStoreInventory() {
         </div>
       ) : viewMode === "table" ? (
         /* Clean Corporate Data Table View */
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           {/* Bulk Actions Bar */}
           {selectedItems.size > 0 && (
             <div className="bg-rose-50 border-b border-rose-200 px-5 py-2.5 flex items-center justify-between">
@@ -1714,7 +1748,7 @@ export default function MedicalStoreInventory() {
               </div>
             </div>
           )}
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[1050px]">
               <thead className="bg-slate-900 text-white z-10 text-[10px] font-black uppercase tracking-wider">
                 <tr>
@@ -1732,11 +1766,9 @@ export default function MedicalStoreInventory() {
                   <th className="py-3 px-3 border-b border-slate-800">Company</th>
                   <th className="py-3 px-3 text-center border-b border-slate-800">Category</th>
                   <th className="py-3 px-3 text-center border-b border-slate-800">Code</th>
-                  <th className="py-3 px-3 text-center border-b border-slate-800 text-teal-300">Godown</th>
-                  <th className="py-3 px-3 text-center border-b border-slate-800 text-amber-300">Counter</th>
-                  <th className="py-3 px-3 text-center border-b border-slate-800 text-emerald-300">Total</th>
-                  <th className="py-3 px-3 text-right border-b border-slate-800">Cost</th>
-                  <th className="py-3 px-3 text-right border-b border-slate-800 text-emerald-300">Sale</th>
+                  <th className="py-3 px-3 text-center border-b border-slate-800 text-teal-300">Store Stock (Packs)</th>
+                  <th className="py-3 px-3 text-right border-b border-slate-800">Net Price</th>
+                  <th className="py-3 px-3 text-right border-b border-slate-800 text-emerald-300">Rate (Retail)</th>
                   <th className="py-3 px-4 text-right border-b border-slate-800">Actions</th>
                 </tr>
               </thead>
@@ -1747,9 +1779,7 @@ export default function MedicalStoreInventory() {
                   const out = isOutOfStock(item);
                   const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || item.sale_price || 0);
                   const cost = Number(item.cost_price_per_box || item.purchase_price || item.cost_price || (sale * 0.7));
-                  const godownStock = item.warehouse_stock ?? 0;
-                  const counterStock = item.store_stock ?? (item.stock_qty ?? 0);
-                  const totalStock = item.total_base_stock ?? (godownStock + counterStock);
+                  const totalStock = item.store_stock ?? (item.quantity ?? item.stock_qty ?? 0);
                   const isSelected = selectedItems.has(item.id);
 
                   return (
@@ -1802,19 +1832,9 @@ export default function MedicalStoreInventory() {
                         {item.item_code || "—"}
                       </td>
 
-                      {/* Godown */}
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-800 text-[11px]">
-                        {godownStock}
-                      </td>
-
-                      {/* Counter */}
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-800 text-[11px]">
-                        {counterStock}
-                      </td>
-
-                      {/* Total */}
+                      {/* Store Stock */}
                       <td className={`py-2.5 px-3 text-center font-black text-[12px] ${out ? "text-rose-600" : low ? "text-amber-700" : "text-slate-900"}`}>
-                        {totalStock}
+                        {totalStock} {item.box_label || "Packs"}
                       </td>
 
                       {/* Cost */}
@@ -1844,7 +1864,7 @@ export default function MedicalStoreInventory() {
         </div>
       ) : (
         /* Modern Cards Grid View */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pr-1">
           {paginatedInventory.map((item) => {
             const low = isLowStock(item);
             const out = isOutOfStock(item);
@@ -1965,36 +1985,53 @@ export default function MedicalStoreInventory() {
         </div>
       )}
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 bg-white rounded-3xl border border-slate-200 shadow-sm text-xs font-bold text-slate-600">
+      {/* Pagination & Display Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm text-xs font-bold text-slate-600 shrink-0">
+        <div className="flex flex-wrap items-center gap-3">
           <div>
             Showing <span className="text-slate-900 font-extrabold">{paginatedInventory.length}</span> of{" "}
-            <span className="text-slate-900 font-extrabold">{filteredInventory.length}</span> medicines (Page {currentPage} of {totalPages})
+            <span className="text-slate-900 font-extrabold">{filteredInventory.length}</span> medicines
           </div>
+          <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+            <span className="text-[11px] text-slate-500 font-medium">Display Limit:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-2.5 py-1 rounded-xl bg-teal-50 border border-teal-200 font-extrabold text-teal-900 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
+            >
+              <option value="all">All ({filteredInventory.length.toLocaleString()})</option>
+              <option value="100">100 items</option>
+              <option value="500">500 items</option>
+              <option value="30">30 items</option>
+            </select>
+          </div>
+        </div>
+
+        {pageSize !== "all" && totalPages > 1 && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-slate-800 font-bold transition-all"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-slate-800 font-bold transition-all cursor-pointer"
             >
               Previous
             </button>
-            <div className="flex items-center gap-1 px-2">
-              <span className="w-8 h-8 rounded-xl bg-teal-700 text-white flex items-center justify-center font-black">
-                {currentPage}
-              </span>
-            </div>
+            <span className="px-2.5 py-1 rounded-xl bg-teal-800 text-white font-black text-xs">
+              Page {currentPage} of {totalPages}
+            </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-slate-800 font-bold transition-all"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 text-slate-800 font-bold transition-all cursor-pointer"
             >
               Next
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ========================================================================= */}
       {/* MODAL 1: DrCreate / Access "INVENTORY _LIST" Popup Modal                 */}
