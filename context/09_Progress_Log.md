@@ -3353,10 +3353,14 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-84. **Milestone 157: Supplier Purchase Entry Screen Outer Scrollbar Removal & High-Contrast Labels**
-    - **Full Window Fit Layout (`SupplierPurchases.jsx`)**: Removed outer page scrollbar by compacting vertical margins (`space-y-3.5`) and card padding (`p-3.5 md:p-4`). The Purchase Invoice GRN entry form now fits 100% full screen cleanly.
-    - **High-Contrast Bold Field Labels**: Upgraded all field headers (Invoice Date, System Entry #, Company Bill #, Salesman/Booker, Supplier Code, Account Name, Payment Mode, Transport Carrier, Bilty #, Stock Destination, Product Code, Batch #, Exp Date, Qty, Rate, Gross, Disc%, Net Amt) to high-contrast dark bold text (`text-slate-900 font-black`) with clear Urdu and English labels.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 2.63s.
+85. **Milestone 158: Pharma Company Neat Row Table List View & Consolidated Purchase Audit Log**
+    - **Pharma Companies Directory View Mode Switcher (`SupplierPurchases.jsx`)**:
+      - Added instant search bar & view mode toggle (`format_list_bulleted` vs `grid_view`).
+      - Added **Neat Table Row List View (`supplierViewMode === "table"`)**: Displays all 44+ companies in a clean, high-contrast, compact table with columns: `Code`, `Company / Distributor Name`, `Sales Rep`, `Phone`, `Address / Location`, `Bills Count`, `Balance Due (Udhaar)`, and `Actions (GRN, Edit, Invoices, Ledger, Pay)`.
+      - Kept **Cards Boxes View (`supplierViewMode === "grid"`)** available via 1-click toggle.
+    - **Header Navigation Clean-up**: Streamlined tabs header to 3 authoritative tabs (`Company Purchase Invoice Entry`, `Pharma Companies & Suppliers Directory`, `All Purchase Bills Log`).
+    - **All Purchase Bills Log Polish**: Enhanced `All Purchase Bills Log` with financial summary cards (Total Purchase Inwarded, Upfront Cash/Bank Paid, Total Udhaar Due), payment mode badges (`💵 Cash Paid` vs `📜 Credit Udhaar`), search filtering, and action controls (`View`, `Print`, `Delete`).
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.66s.
 
 
 

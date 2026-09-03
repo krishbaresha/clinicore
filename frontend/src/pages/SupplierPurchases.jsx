@@ -289,9 +289,11 @@ export default function SupplierPurchases() {
   const grnTableContainerRef = useRef(null);
 
 
-  // Selected Supplier Drawer / Modal
+  // Selected Supplier Drawer / Modal & View Mode
   const [selectedSupplierDrawer, setSelectedSupplierDrawer] = useState(null);
   const [supplierDrawerSearch, setSupplierDrawerSearch] = useState("");
+  const [supplierViewMode, setSupplierViewMode] = useState("table"); // "table" (default neat row list) | "grid" (cards view)
+  const [supplierSearchText, setSupplierSearchText] = useState("");
 
   // New Purchase Form
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
@@ -954,6 +956,20 @@ export default function SupplierPurchases() {
     );
   });
 
+  // Filtered Suppliers List
+  const filteredSuppliersList = useMemo(() => {
+    if (!supplierSearchText.trim()) return suppliers;
+    const q = supplierSearchText.toLowerCase();
+    return suppliers.filter(
+      (s) =>
+        (s.name || "").toLowerCase().includes(q) ||
+        (s.supplier_code || "").toLowerCase().includes(q) ||
+        (s.phone || "").toLowerCase().includes(q) ||
+        (s.contact_person || "").toLowerCase().includes(q) ||
+        (s.address || "").toLowerCase().includes(q)
+    );
+  }, [suppliers, supplierSearchText]);
+
   return (
     <div className="w-full max-w-full min-w-0 space-y-3.5 overflow-x-hidden">
       {/* Header Banner */}
@@ -1012,7 +1028,7 @@ export default function SupplierPurchases() {
           }`}
         >
           <span className="material-symbols-outlined text-base">domain</span>
-          Pharma Companies &amp; Suppliers ({suppliers.length})
+          Pharma Companies &amp; Suppliers Directory ({suppliers.length})
         </button>
         <button
           onClick={() => setActiveTab("bills")}
@@ -1022,15 +1038,6 @@ export default function SupplierPurchases() {
         >
           <span className="material-symbols-outlined text-base">receipt_long</span>
           All Purchase Bills &amp; Invoices Log ({purchases.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("new_purchase")}
-          className={`pb-2.5 px-3.5 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === "new_purchase" ? "border-teal-600 text-teal-900 bg-teal-50/50 rounded-t-xl" : "border-transparent text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <span className="material-symbols-outlined text-base">add_shopping_cart</span>
-          Detailed Multi-Item Purchase Entry
         </button>
       </div>
 
@@ -1684,238 +1691,525 @@ export default function SupplierPurchases() {
         </div>
       )}
 
-      {/* TAB 1: Pharma Suppliers / Distributors Directory (Clean Company Cards) */}
+      {/* TAB 1: Pharma Suppliers / Distributors Directory */}
       {activeTab === "suppliers" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3.5">
+          {/* Top Control Bar: Search & View Mode Toggle (Row List vs Cards Grid) */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="relative w-full sm:w-80">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                search
+              </span>
+              <input
+                type="text"
+                placeholder="Search by Code, Company Name, Rep, Phone..."
+                value={supplierSearchText}
+                onChange={(e) => setSupplierSearchText(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-teal-600 focus:ring-1 focus:ring-teal-100"
+              />
+              {supplierSearchText && (
+                <button
+                  type="button"
+                  onClick={() => setSupplierSearchText("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <span className="material-symbols-outlined text-xs">close</span>
+                </button>
+              )}
+            </div>
 
-          {suppliers.length === 0 ? (
-            <div className="col-span-full text-center py-16 bg-white rounded-3xl border border-gray-200">
-              <span className="material-symbols-outlined text-5xl text-gray-300 block mb-2">domain_disabled</span>
-              <div className="text-gray-500 font-semibold text-sm">No pharma suppliers added yet.</div>
-              <button
-                onClick={() => setShowAddSupplier(true)}
-                className="mt-3 bg-teal-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-teal-700"
-              >
-                + Add First Distributor
-              </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider hidden md:inline">
+                View Mode:
+              </span>
+              <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setSupplierViewMode("table")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${
+                    supplierViewMode === "table"
+                      ? "bg-emerald-700 text-white shadow-xs"
+                      : "text-slate-700 hover:bg-slate-200"
+                  }`}
+                  title="Neat Row Table List View"
+                >
+                  <span className="material-symbols-outlined text-base">format_list_bulleted</span>
+                  <span>Neat Table Row List</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSupplierViewMode("grid")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${
+                    supplierViewMode === "grid"
+                      ? "bg-emerald-700 text-white shadow-xs"
+                      : "text-slate-700 hover:bg-slate-200"
+                  }`}
+                  title="Cards Boxes View"
+                >
+                  <span className="material-symbols-outlined text-base">grid_view</span>
+                  <span>Cards Boxes</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* VIEW MODE 1: Neat Table Row List View (Default) */}
+          {supplierViewMode === "table" ? (
+            <div className="bg-white rounded-2xl border border-slate-300 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-emerald-800 text-white font-black uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="px-3.5 py-3 text-center">Code</th>
+                      <th className="px-4 py-3">Company / Distributor Name</th>
+                      <th className="px-3.5 py-3">Sales Representative</th>
+                      <th className="px-3.5 py-3">Phone</th>
+                      <th className="px-4 py-3">Address / City</th>
+                      <th className="px-3.5 py-3 text-center">Bills</th>
+                      <th className="px-4 py-3 text-right">Balance Due (Udhaar)</th>
+                      <th className="px-4 py-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-bold text-slate-900">
+                    {filteredSuppliersList.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="text-center py-12 text-slate-400 font-semibold">
+                          <span className="material-symbols-outlined text-4xl block mb-1 text-slate-300">domain_disabled</span>
+                          No companies match your search "{supplierSearchText}".
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSuppliersList.map((sup, idx) => {
+                        const supBills = purchases.filter((p) => p.supplier_id === sup.id);
+                        const balance = sup.balance_due || 0;
+
+                        return (
+                          <tr key={sup.id} className={`hover:bg-emerald-50/50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}>
+                            <td className="px-3.5 py-3 text-center">
+                              <span className="font-mono bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-300 text-[10.5px] font-black tracking-wider">
+                                #{sup.supplier_code || sup.id}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-black text-slate-950 text-sm">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-900 font-black text-xs flex items-center justify-center shrink-0">
+                                  {sup.name.charAt(0)}
+                                </div>
+                                <span>{sup.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-3.5 py-3 text-slate-700 font-bold">
+                              {sup.contact_person || "—"}
+                            </td>
+                            <td className="px-3.5 py-3 text-slate-800 font-mono text-[11px]">
+                              {sup.phone || "—"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-700 font-medium truncate max-w-[200px]">
+                              {sup.address || "Main City"}
+                            </td>
+                            <td className="px-3.5 py-3 text-center">
+                              <span className="bg-teal-100 text-teal-900 px-2 py-0.5 rounded-md text-[10.5px] font-black">
+                                {supBills.length} Bills
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {balance > 0 ? (
+                                <span className="bg-rose-100 text-rose-950 border border-rose-300 px-2.5 py-1 rounded-lg text-xs font-black">
+                                  Rs. {balance.toLocaleString()}
+                                </span>
+                              ) : (
+                                <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-md text-[10.5px] font-black">
+                                  ✓ Clear (Paid)
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveTab("grn_form");
+                                    setGrnForm((prev) => ({
+                                      ...prev,
+                                      account_name: sup.name,
+                                      reference: sup.contact_person || prev.reference,
+                                    }));
+                                    setGrnSupplierCode(sup.supplier_code || sup.id);
+                                  }}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg font-black text-[10.5px] transition-colors flex items-center gap-0.5 shadow-2xs"
+                                  title="New GRN Bill"
+                                >
+                                  <span className="material-symbols-outlined text-xs">add</span>
+                                  GRN
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestEditSupplier(sup)}
+                                  className="bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200 px-1.5 py-1 rounded-lg font-black text-[10.5px] transition-colors flex items-center gap-0.5"
+                                  title="Edit Supplier"
+                                >
+                                  <span className="material-symbols-outlined text-xs">edit</span>
+                                  Edit
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSupplierDrawer(sup);
+                                    setSupplierDrawerSearch("");
+                                  }}
+                                  className="bg-teal-50 text-teal-900 border border-teal-300 hover:bg-teal-100 px-2 py-1 rounded-lg font-black text-[10.5px] transition-colors flex items-center gap-0.5"
+                                  title="View Invoices"
+                                >
+                                  <span className="material-symbols-outlined text-xs">receipt_long</span>
+                                  Invoices ({supBills.length})
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    try {
+                                      const txns = dbSupplierLedger ? dbSupplierLedger.getBySupplier(sup) : [];
+                                      setLedgerDrawerSupplier(sup);
+                                      setSupplierLedgerTxns(Array.isArray(txns) ? txns : []);
+                                    } catch (err) {
+                                      console.error("Ledger load error:", err);
+                                      setLedgerDrawerSupplier(sup);
+                                      setSupplierLedgerTxns([]);
+                                    }
+                                  }}
+                                  className="bg-purple-50 text-purple-900 border border-purple-300 hover:bg-purple-100 px-2 py-1 rounded-lg font-black text-[10.5px] transition-colors flex items-center gap-0.5 cursor-pointer"
+                                  title="View Account Ledger"
+                                >
+                                  <span className="material-symbols-outlined text-xs">account_balance</span>
+                                  Ledger
+                                </button>
+
+                                {balance > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPaySupplierModal(sup);
+                                      setPayAmountInput(String(balance));
+                                      setPaymentMode("cash");
+                                      setPaymentRef("");
+                                      setPaymentNote("");
+                                    }}
+                                    className="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded-lg font-black text-[10.5px] transition-colors shadow-2xs"
+                                  >
+                                    Pay
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
-            suppliers.map((sup) => {
-              const supBills = purchases.filter((p) => p.supplier_id === sup.id);
-              const balance = sup.balance_due || 0;
+            /* VIEW MODE 2: Cards Grid View */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {filteredSuppliersList.length === 0 ? (
+                <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-slate-300">
+                  <span className="material-symbols-outlined text-5xl text-slate-300 block mb-2">domain_disabled</span>
+                  <div className="text-slate-600 font-bold text-sm">No pharma suppliers match search.</div>
+                </div>
+              ) : (
+                filteredSuppliersList.map((sup) => {
+                  const supBills = purchases.filter((p) => p.supplier_id === sup.id);
+                  const balance = sup.balance_due || 0;
 
-              return (
-                <div
-                  key={sup.id}
-                  className="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all space-y-4 flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Top Row: Company Icon + Name + Balance */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200 text-teal-800 flex items-center justify-center font-black text-xl shrink-0">
-                          {sup.name.charAt(0)}
+                  return (
+                    <div
+                      key={sup.id}
+                      className="bg-white rounded-2xl border border-slate-300 p-4 shadow-2xs hover:shadow-xs transition-all space-y-3 flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Top Row: Company Icon + Name + Balance */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-10 h-10 rounded-xl bg-teal-100 border border-teal-300 text-teal-900 flex items-center justify-center font-black text-lg shrink-0">
+                              {sup.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h3 className="font-black text-slate-950 text-sm leading-tight">
+                                  {sup.name}
+                                </h3>
+                                <span className="font-mono text-emerald-950 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300 text-[10px] font-black">
+                                  #{sup.supplier_code || sup.id}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-600 font-bold mt-0.5">
+                                {sup.contact_person || "Sales Representative"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-black whitespace-nowrap ${
+                            balance > 0 ? "bg-rose-100 text-rose-950 border border-rose-300" : "bg-emerald-100 text-emerald-950 border border-emerald-300"
+                          }`}>
+                            {balance > 0 ? `Due: Rs. ${balance.toLocaleString()}` : "Paid"}
+                          </span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-gray-900 text-base leading-tight">
-                              {sup.name}
-                            </h3>
-                            <span className="font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[10.5px] font-black tracking-wider">
-                              #{sup.supplier_code || sup.id}
+
+                        {/* Info Metadata */}
+                        <div className="mt-3 space-y-1 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-medium">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 font-bold">Supplier Code:</span>
+                            <span className="font-mono font-black text-emerald-900 bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-[10.5px]">
+                              {sup.supplier_code || sup.id}
                             </span>
                           </div>
-                          <div className="text-xs text-gray-500 font-medium mt-0.5">
-                            {sup.contact_person || "Sales Representative"}
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 font-bold">Phone:</span>
+                            <span className="font-bold text-slate-900">{sup.phone || "—"}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 font-bold">Address:</span>
+                            <span className="font-semibold text-slate-800 truncate max-w-[150px]">{sup.address || "Main City"}</span>
+                          </div>
+                          <div className="flex items-center justify-between border-t border-slate-200 pt-1">
+                            <span className="text-slate-500 font-bold">Recorded Bills:</span>
+                            <span className="font-black text-teal-800">{supBills.length} Bills</span>
                           </div>
                         </div>
                       </div>
 
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-black whitespace-nowrap ${
-                        balance > 0 ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"
-                      }`}>
-                        {balance > 0 ? `Due: Rs. ${balance.toLocaleString()}` : "Paid"}
-                      </span>
+                      {/* Actions Bar */}
+                      <div className="pt-2 border-t border-slate-200 flex items-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => {
+                            setActiveTab("grn_form");
+                            setGrnForm((prev) => ({
+                              ...prev,
+                              account_name: sup.name,
+                              reference: sup.contact_person || prev.reference,
+                            }));
+                            setGrnSupplierCode(sup.supplier_code || sup.id);
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded-lg font-black text-[11px] transition-colors flex items-center justify-center gap-0.5"
+                          title="Create GRN with this Supplier"
+                        >
+                          <span className="material-symbols-outlined text-xs">receipt</span>
+                          New GRN
+                        </button>
+                        <button
+                          onClick={() => handleRequestEditSupplier(sup)}
+                          className="bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200 px-2 py-1.5 rounded-lg font-black text-[11px] transition-colors flex items-center justify-center gap-0.5"
+                          title="Edit Supplier"
+                        >
+                          <span className="material-symbols-outlined text-xs text-amber-800">edit</span>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedSupplierDrawer(sup);
+                            setSupplierDrawerSearch("");
+                          }}
+                          className="flex-1 bg-teal-50 text-teal-900 border border-teal-300 hover:bg-teal-100 py-1.5 rounded-lg font-black text-[11px] transition-colors flex items-center justify-center gap-0.5"
+                        >
+                          <span className="material-symbols-outlined text-xs">receipt_long</span>
+                          Invoices ({supBills.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            try {
+                              const txns = dbSupplierLedger ? dbSupplierLedger.getBySupplier(sup) : [];
+                              setLedgerDrawerSupplier(sup);
+                              setSupplierLedgerTxns(Array.isArray(txns) ? txns : []);
+                            } catch (err) {
+                              console.error("Ledger load error:", err);
+                              setLedgerDrawerSupplier(sup);
+                              setSupplierLedgerTxns([]);
+                            }
+                          }}
+                          className="flex-1 bg-purple-50 text-purple-900 border border-purple-300 hover:bg-purple-100 py-1.5 rounded-lg font-black text-[11px] transition-colors flex items-center justify-center gap-0.5 cursor-pointer active:scale-95"
+                        >
+                          <span className="material-symbols-outlined text-xs">account_balance</span>
+                          Ledger
+                        </button>
+                        {balance > 0 && (
+                          <button
+                            onClick={() => {
+                              setPaySupplierModal(sup);
+                              setPayAmountInput(String(balance));
+                              setPaymentMode("cash");
+                              setPaymentRef("");
+                              setPaymentNote("");
+                            }}
+                            className="bg-rose-600 text-white hover:bg-rose-700 px-2.5 py-1.5 rounded-lg font-black text-[11px] transition-colors"
+                          >
+                            Pay
+                          </button>
+                        )}
+                      </div>
                     </div>
-
-                    {/* Info Metadata */}
-                    <div className="mt-4 space-y-1.5 text-xs text-gray-600 bg-gray-50 p-3 rounded-2xl border border-gray-100 font-medium">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400">Supplier Code:</span>
-                        <span className="font-mono font-black text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
-                          {sup.supplier_code || sup.id}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400">Phone:</span>
-                        <span className="font-bold text-gray-800">{sup.phone || "—"}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400">Address:</span>
-                        <span className="font-semibold text-gray-700 truncate max-w-[160px]">{sup.address || "Main City"}</span>
-                      </div>
-                      <div className="flex items-center justify-between border-t border-gray-200 pt-1.5">
-                        <span className="text-gray-400">Recorded Bills:</span>
-                        <span className="font-black text-teal-700">{supBills.length} Bills</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions Bar */}
-                  <div className="pt-2 border-t border-gray-100 flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => {
-                        setActiveTab("grn_form");
-                        setGrnForm((prev) => ({
-                          ...prev,
-                          account_name: sup.name,
-                          reference: sup.contact_person || prev.reference,
-                        }));
-                        setGrnSupplierCode(sup.supplier_code || sup.id);
-                      }}
-                      className="bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 px-2.5 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
-                      title="Create GRN with this Supplier"
-                    >
-                      <span className="material-symbols-outlined text-sm">receipt</span>
-                      New GRN
-                    </button>
-                    <button
-                      onClick={() => handleRequestEditSupplier(sup)}
-                      className="bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 px-2.5 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
-                      title="Admin Security Passcode Required to Edit Company & Code"
-                    >
-                      <span className="material-symbols-outlined text-sm text-amber-700">edit_note</span>
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedSupplierDrawer(sup);
-                        setSupplierDrawerSearch("");
-                      }}
-                      className="flex-1 bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-base">receipt_long</span>
-                      Invoices ({supBills.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try {
-                          const txns = dbSupplierLedger ? dbSupplierLedger.getBySupplier(sup) : [];
-                          setLedgerDrawerSupplier(sup);
-                          setSupplierLedgerTxns(Array.isArray(txns) ? txns : []);
-                        } catch (err) {
-                          console.error("Ledger load error:", err);
-                          setLedgerDrawerSupplier(sup);
-                          setSupplierLedgerTxns([]);
-                        }
-                      }}
-                      className="flex-1 bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 py-2 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-base">account_balance</span>
-                      Ledger
-                    </button>
-                    {balance > 0 && (
-                      <button
-                        onClick={() => {
-                          setPaySupplierModal(sup);
-                          setPayAmountInput(String(balance));
-                          setPaymentMode("cash");
-                          setPaymentRef("");
-                          setPaymentNote("");
-                        }}
-                        className="bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-2 rounded-xl font-bold text-xs transition-colors"
-                      >
-                        Pay
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })
+                  );
+                })
+              )}
+            </div>
           )}
         </div>
       )}
 
       {/* TAB 2: All Purchase Bills Audit Log */}
       {activeTab === "bills" && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center gap-4 flex-wrap">
-            <input
-              type="text"
-              placeholder="Search by System Invoice #, Company Bill #, or Supplier..."
-              value={globalBillsSearch}
-              onChange={(e) => setGlobalBillsSearch(e.target.value)}
-              className="border border-gray-300 rounded-xl px-3.5 py-2 text-xs font-semibold w-full sm:w-80 shadow-sm"
-            />
+        <div className="space-y-3.5">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-300 shadow-2xs">
+              <div className="text-[10.5px] font-black text-slate-500 uppercase tracking-wider">Total Purchase Inwarded</div>
+              <div className="text-lg font-black text-slate-950 mt-0.5">
+                Rs. {globalFilteredPurchases.reduce((s, p) => s + (Number(p.total_amount) || 0), 0).toLocaleString()}
+              </div>
+              <div className="text-[10px] text-slate-500 font-bold mt-0.5">{globalFilteredPurchases.length} Recorded Bills</div>
+            </div>
+
+            <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-300 shadow-2xs">
+              <div className="text-[10.5px] font-black text-emerald-900 uppercase tracking-wider">Total Upfront Paid</div>
+              <div className="text-lg font-black text-emerald-950 mt-0.5">
+                Rs. {globalFilteredPurchases.reduce((s, p) => s + (Number(p.paid_amount) || 0), 0).toLocaleString()}
+              </div>
+              <div className="text-[10px] text-emerald-800 font-bold mt-0.5">Cash / Bank Paid</div>
+            </div>
+
+            <div className="bg-rose-50/70 p-3.5 rounded-2xl border border-rose-300 shadow-2xs">
+              <div className="text-[10.5px] font-black text-rose-900 uppercase tracking-wider">Total Credit (Udhaar) Due</div>
+              <div className="text-lg font-black text-rose-950 mt-0.5">
+                Rs. {globalFilteredPurchases.reduce((s, p) => s + (Number(p.balance_due) || 0), 0).toLocaleString()}
+              </div>
+              <div className="text-[10px] text-rose-800 font-bold mt-0.5">Payable to Suppliers</div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <table className="w-full text-left text-xs text-gray-600">
-              <thead className="bg-teal-50 text-teal-900 font-bold uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">System Voucher #</th>
-                  <th className="px-4 py-3">Company Bill #</th>
-                  <th className="px-4 py-3">Supplier Name</th>
-                  <th className="px-4 py-3 text-right">Bill Total</th>
-                  <th className="px-4 py-3 text-right">Paid</th>
-                  <th className="px-4 py-3 text-right">Balance Due</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 font-semibold">
-                {globalFilteredPurchases.length === 0 ? (
+          {/* Search Bar */}
+          <div className="flex justify-between items-center gap-3 bg-white p-3 rounded-2xl border border-slate-300 shadow-2xs">
+            <div className="relative w-full sm:w-96">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                search
+              </span>
+              <input
+                type="text"
+                placeholder="Search by System Invoice #, Company Bill #, or Supplier..."
+                value={globalBillsSearch}
+                onChange={(e) => setGlobalBillsSearch(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-100"
+              />
+              {globalBillsSearch && (
+                <button
+                  type="button"
+                  onClick={() => setGlobalBillsSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <span className="material-symbols-outlined text-xs">close</span>
+                </button>
+              )}
+            </div>
+            <span className="text-xs font-black text-slate-600">
+              Showing {globalFilteredPurchases.length} Purchase Invoices
+            </span>
+          </div>
+
+          {/* Invoices Table */}
+          <div className="bg-white rounded-2xl border border-slate-300 overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-emerald-800 text-white font-black uppercase tracking-wider text-[11px]">
                   <tr>
-                    <td colSpan="8" className="text-center py-8 text-gray-400">
-                      No purchase bills match your search criteria.
-                    </td>
+                    <th className="px-3.5 py-3">Date</th>
+                    <th className="px-3.5 py-3">System Voucher #</th>
+                    <th className="px-3.5 py-3">Company Bill #</th>
+                    <th className="px-4 py-3">Supplier / Company Name</th>
+                    <th className="px-3.5 py-3 text-center">Payment Mode</th>
+                    <th className="px-4 py-3 text-right">Bill Total</th>
+                    <th className="px-4 py-3 text-right">Paid</th>
+                    <th className="px-4 py-3 text-right">Balance Due</th>
+                    <th className="px-4 py-3 text-center">Action</th>
                   </tr>
-                ) : (
-                  globalFilteredPurchases.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 text-gray-500">
-                        {new Date(p.purchase_date).toLocaleDateString("en-US")}
-                      </td>
-                      <td className="px-4 py-3 font-bold text-teal-700">{p.invoice_no}</td>
-                      <td className="px-4 py-3 font-bold text-gray-800">{p.company_bill_no || "N/A"}</td>
-                      <td className="px-4 py-3 text-gray-900 font-bold">{p.supplier_name}</td>
-                      <td className="px-4 py-3 text-right font-black text-gray-900">
-                        Rs. {(p.total_amount || 0).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right text-teal-700 font-bold">
-                        Rs. {(p.paid_amount || 0).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right text-rose-700 font-bold">
-                        Rs. {(p.balance_due || 0).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center gap-1.5">
-                          <button
-                            onClick={() => setSelectedInvoiceModal(p)}
-                            className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-2.5 py-1 rounded-lg text-[11px] font-bold"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={() => printSupplierPurchaseReceipt(p, suppliers.find((s) => s.id === p.supplier_id), dbClinic.get())}
-                            className="bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200 px-2 py-1 rounded-lg text-[11px] font-bold"
-                          >
-                            Print
-                          </button>
-                          <button
-                            onClick={() => handleDeletePurchaseInvoice(p.id, p.invoice_no)}
-                            className="bg-rose-50 text-rose-700 hover:bg-rose-100 px-2 py-1 rounded-lg text-[11px] font-bold"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-bold text-slate-900">
+                  {globalFilteredPurchases.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" className="text-center py-12 text-slate-400 font-semibold">
+                        <span className="material-symbols-outlined text-4xl block mb-1 text-slate-300">receipt_long</span>
+                        No purchase bills match your search criteria.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    globalFilteredPurchases.map((p, idx) => (
+                      <tr key={p.id} className={`hover:bg-emerald-50/40 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}>
+                        <td className="px-3.5 py-3 text-slate-600 font-medium">
+                          {p.purchase_date ? new Date(p.purchase_date).toLocaleDateString("en-GB") : "—"}
+                        </td>
+                        <td className="px-3.5 py-3 font-mono font-black text-emerald-950">
+                          {p.invoice_no}
+                        </td>
+                        <td className="px-3.5 py-3 font-mono font-black text-slate-800">
+                          {p.grn_no || p.company_bill_no || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-slate-950 font-black text-sm">
+                          {p.supplier_name}
+                        </td>
+                        <td className="px-3.5 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            p.payment_mode === "Cash" || p.balance_due === 0
+                              ? "bg-emerald-100 text-emerald-950 border border-emerald-300"
+                              : "bg-rose-100 text-rose-950 border border-rose-300"
+                          }`}>
+                            {p.payment_mode === "Cash" || p.balance_due === 0 ? "💵 Cash Paid" : "📜 Credit Udhaar"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-slate-950 text-sm">
+                          Rs. {(p.total_amount || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right text-emerald-900 font-black">
+                          Rs. {(p.paid_amount || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {(p.balance_due || 0) > 0 ? (
+                            <span className="text-rose-700 font-black">Rs. {(p.balance_due || 0).toLocaleString()}</span>
+                          ) : (
+                            <span className="text-emerald-700 font-black">Rs. 0</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedInvoiceModal(p)}
+                              className="bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 px-2.5 py-1 rounded-lg text-[11px] font-black transition-colors"
+                            >
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => printSupplierPurchaseReceipt(p, suppliers.find((s) => s.id === p.supplier_id), dbClinic.get())}
+                              className="bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-300 px-2.5 py-1 rounded-lg text-[11px] font-black transition-colors"
+                            >
+                              Print
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePurchaseInvoice(p.id, p.invoice_no)}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 px-2 py-1 rounded-lg text-[11px] font-black transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
