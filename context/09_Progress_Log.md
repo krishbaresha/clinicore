@@ -3353,10 +3353,13 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-77. **Milestone 150: Multi-Godown & Wholesale Access Rights Granted to Cashier & Staff Roles**
-    - **Route Authorization Engine Update (`App.jsx`)**: Added `cashier`, `warehouse_incharge`, and `warehouse_manager` roles to `/store/warehouse` (Godown & Wholesale Management) and `/store/purchases` (Company Purchases GRN) `allowedRoles`.
-    - **Sidebar Navigation Sync (`SidebarLayout.jsx`)**: Included `Godown & Wholesale` (`/store/warehouse`) navigation link in `CASHIER_NAV` and `PHARMACIST_NAV`. Staff accounts assigned Godown access (e.g. `Mustafa`) can now seamlessly open and view central warehouses and wholesale distribution.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.66s.
+78. **Milestone 151: Automatic Full Financial Access for Admin & Primary Doctor Designation Flow**
+    - **Administrator Full Access Engine (`auth.js` & `DeveloperAdminPanel.jsx`)**: Updated session validation and staff creation. When creating or logging in as `Administrator` (`role: "admin"`), the system automatically grants full clinic financial access (`can_view_financials: true`), full navigation access across all modules, and global godown scope.
+    - **Primary Doctor Transfer System**:
+      - Clarified Primary Doctor designation logic. Currently `Dr. Asif Ashraf Khan` is set as the initial Primary Doctor (`⭐ Primary Doctor`).
+      - Every registered doctor account that is not currently primary doctor displays a clear, active **`⭐ Make Primary`** button in the Staff Management table (`DeveloperAdminPanel.jsx`). Clicking it immediately designates them as the Principal Doctor & Clinic Owner.
+    - **Assigned Godown Persistence**: Guaranteed `assigned_warehouse_id` is preserved and loaded during staff profile edits.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.56s.
 
 
 

@@ -511,7 +511,8 @@ export default function DeveloperAdminPanel() {
         specialization: staffForm.role === "doctor" ? staffForm.specialization : "",
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
-        can_view_financials: Boolean(staffForm.can_view_financials),
+        can_view_financials: staffForm.role === "admin" || staffForm.role === "owner" ? true : Boolean(staffForm.can_view_financials),
+        assigned_warehouse_id: staffForm.role === "doctor" ? "" : (staffForm.assigned_warehouse_id || ""),
         availability_status: staffForm.availability_status,
       };
       if (staffForm.password) {
@@ -532,8 +533,8 @@ export default function DeveloperAdminPanel() {
         specialization: staffForm.role === "doctor" ? staffForm.specialization : "",
         room_number: staffForm.room_number,
         consultation_fee: Number(staffForm.consultation_fee) || 0,
-        can_view_financials: Boolean(staffForm.can_view_financials),
-        assigned_warehouse_id: staffForm.assigned_warehouse_id || "",
+        can_view_financials: staffForm.role === "admin" || staffForm.role === "owner" ? true : Boolean(staffForm.can_view_financials),
+        assigned_warehouse_id: staffForm.role === "doctor" ? "" : (staffForm.assigned_warehouse_id || ""),
         is_owner: Boolean(staffForm.is_owner),
         availability_status: "available",
       });
@@ -2759,17 +2760,18 @@ export default function DeveloperAdminPanel() {
                                       if (window.confirm(`Designate "${u.name}" as the Principal / Primary Doctor (Owner)?`)) {
                                         dbUsers.setPrincipalDoctor(u.id);
                                         setUsersList(dbUsers.getAll());
+                                        showToast(`"${u.name}" is now the Primary Doctor / Clinic Owner!`);
                                       }
                                     }}
-                                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-colors shadow-xs cursor-pointer"
-                                    title="Make this Doctor the Primary Clinic Owner"
+                                    className="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-colors shadow-xs cursor-pointer active:scale-95"
+                                    title="Click to set this doctor as the Principal Doctor & Owner"
                                   >
-                                    <span className="material-symbols-outlined text-sm text-emerald-700">stars</span>
+                                    <span className="material-symbols-outlined text-sm text-amber-700">stars</span>
                                     Make Primary
                                   </button>
                                 )}
                                 {u.is_owner && (
-                                  <span className="bg-amber-100 text-amber-950 font-black px-2.5 py-1 rounded-xl text-[10.5px] border border-amber-300 flex items-center gap-1">
+                                  <span className="bg-amber-100 text-amber-950 font-black px-2.5 py-1 rounded-xl text-[10.5px] border border-amber-300 flex items-center gap-1 shadow-2xs">
                                     ⭐ Primary Doctor
                                   </span>
                                 )}
@@ -2798,6 +2800,7 @@ export default function DeveloperAdminPanel() {
                                       consultation_fee: u.consultation_fee || 300,
                                       can_view_financials: Boolean(u.can_view_financials),
                                       is_owner: Boolean(u.is_owner),
+                                      assigned_warehouse_id: u.assigned_warehouse_id || "",
                                       availability_status: u.availability_status || "available",
                                     });
                                     setShowAddStaffModal(true);
