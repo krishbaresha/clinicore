@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { verifyAdminPasscode } from "../api/auth.js";
@@ -140,6 +140,7 @@ export default function MedicalStoreInventory() {
 
   const [error, setError] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+
   const quickNameRef = useRef(null);
   const categoryScrollRef = useRef(null);
 
@@ -1211,14 +1212,14 @@ export default function MedicalStoreInventory() {
               </div>
             </div>
 
-            {/* Form Grid */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              {/* 1. Product Name */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                <label htmlFor="quick_medicine_name" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Product Name <span className="text-rose-500">*</span>
-                </label>
-                <div className="md:col-span-9">
+            {/* Executive Form Grid */}
+            <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+              {/* Row 1: Product Name & Description */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div className="md:col-span-6">
+                  <label htmlFor="quick_medicine_name" className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
+                    Product Name <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     ref={quickNameRef}
                     id="quick_medicine_name"
@@ -1232,19 +1233,17 @@ export default function MedicalStoreInventory() {
                     required
                   />
                 </div>
-              </div>
 
-              {/* 2. Product Description */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                <label htmlFor="quick_product_description" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Product Description
-                </label>
-                <div className="md:col-span-9">
+                <div className="md:col-span-6">
+                  <label htmlFor="quick_product_description" className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>Product Description (Optional)</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Editable Anytime</span>
+                  </label>
                   <input
                     id="quick_product_description"
                     name="product_description"
                     type="text"
-                    placeholder="e.g. Drops 20ml, 500mg Sugar Free, Sugar Coated, Pediatric..."
+                    placeholder="e.g. Drops 20ml, 500mg Sugar Free, Pediatric..."
                     value={quickForm.product_description}
                     onChange={handleQuickChange}
                     onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
@@ -1253,24 +1252,28 @@ export default function MedicalStoreInventory() {
                 </div>
               </div>
 
-              {/* 3. Product Code & Brand */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                <label htmlFor="quick_item_code" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Product Code &amp; Brand
-                </label>
-                <div className="md:col-span-4">
+              {/* Row 2: Product Code, Brand & Category */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div className="md:col-span-3">
+                  <label htmlFor="quick_item_code" className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
+                    Company Code
+                  </label>
                   <input
                     id="quick_item_code"
                     name="item_code"
                     type="text"
-                    placeholder="e.g. BM, PB, SCH, SK, Al S"
+                    placeholder="e.g. BM, MKT, PB, SCH"
                     value={quickForm.item_code}
                     onChange={handleQuickChange}
                     onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                    className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-mono font-bold text-emerald-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
+                    className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-mono font-bold text-emerald-900 uppercase tracking-wider bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
                   />
                 </div>
-                <div className="md:col-span-5">
+
+                <div className="md:col-span-4">
+                  <label className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
+                    Company / Brand
+                  </label>
                   <select
                     name="company_name"
                     value={quickForm.company_name}
@@ -1279,19 +1282,16 @@ export default function MedicalStoreInventory() {
                   >
                     {allCompanyOptions.map((c) => (
                       <option key={`${c.name}_${c.code}`} value={c.name}>
-                        {c.name} ({c.code})
+                        {c.name} ({c.code || "GEN"})
                       </option>
                     ))}
                   </select>
                 </div>
-              </div>
 
-              {/* 4. Category Selector with On-the-Fly Custom Category Creation */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                <label htmlFor="quick_category" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Medicine Category
-                </label>
-                <div className="md:col-span-9">
+                <div className="md:col-span-5">
+                  <label htmlFor="quick_category" className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
+                    Medicine Category
+                  </label>
                   {!showAddCategoryInput ? (
                     <div className="flex items-center gap-2">
                       <select
@@ -1325,7 +1325,7 @@ export default function MedicalStoreInventory() {
                       <input
                         type="text"
                         autoFocus
-                        placeholder="Type new category name e.g. Herbal Syrup, Inhaler..."
+                        placeholder="Type category..."
                         value={customCategoryInput}
                         onChange={(e) => setCustomCategoryInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -1372,90 +1372,77 @@ export default function MedicalStoreInventory() {
                 </div>
               </div>
 
-              {/* 4. Minimum Alert Level */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                <label htmlFor="quick_minimum_level" className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Minimum Level (Alert)
-                </label>
-                <div className="md:col-span-9">
+              {/* Row 3: Net Price, Rate (Retail Price), Initial Stock & Alert Level */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
+                <div>
+                  <label htmlFor="quick_cost_price" className="block text-[11px] font-black text-slate-800 uppercase tracking-wider mb-1">
+                    Net Price (Paid) *
+                  </label>
+                  <input
+                    id="quick_cost_price"
+                    name="cost_price"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Rs. Net"
+                    value={quickForm.cost_price}
+                    onChange={handleQuickChange}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 bg-white focus:border-emerald-600 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="quick_sale_price" className="block text-[11px] font-black text-slate-800 uppercase tracking-wider mb-1">
+                    Rate (Retail Price) *
+                  </label>
+                  <input
+                    id="quick_sale_price"
+                    name="sale_price"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Rs. MRP"
+                    value={quickForm.sale_price}
+                    onChange={handleQuickChange}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-emerald-900 bg-white focus:border-emerald-600 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="quick_store_stock" className="block text-[11px] font-black text-slate-800 uppercase tracking-wider mb-1">
+                    Opening Stock (Packs)
+                  </label>
+                  <input
+                    id="quick_store_stock"
+                    name="store_stock"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={quickForm.store_stock}
+                    onChange={handleQuickChange}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
+                    className="w-full border border-teal-300 rounded-xl px-3 py-2 text-xs font-black text-teal-900 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="quick_minimum_level" className="block text-[11px] font-black text-slate-800 uppercase tracking-wider mb-1">
+                    Min Alert Level
+                  </label>
                   <input
                     id="quick_minimum_level"
                     name="minimum_level"
                     type="number"
                     min="0"
-                    placeholder="6"
                     value={quickForm.minimum_level}
                     onChange={handleQuickChange}
                     onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                    className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:outline-none transition-all"
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 bg-white focus:border-emerald-600 focus:outline-none"
                   />
-                </div>
-              </div>
-
-              {/* 5. Medical Store Stock Quantity (Packs) */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <label className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Opening Store Stock (Packs)
-                </label>
-                <div className="md:col-span-9">
-                  <div className="space-y-1">
-                    <input
-                      id="quick_store_stock"
-                      name="store_stock"
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={quickForm.store_stock}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-teal-300 rounded-xl px-3 py-2 text-xs font-black text-teal-900 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                    />
-                    <p className="text-[10.5px] font-bold text-slate-500">
-                      ⚡ Enter initial stock quantity in full Pack / Box units.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 6. Pricing Row: Purchase / Cost Rate & Retail Sale Price */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                <label className="md:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Pricing (Rs.) <span className="text-rose-500">*</span>
-                </label>
-                <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="quick_cost_price" className="block text-[10px] font-bold text-slate-500 mb-1">
-                      Purchase / Cost Rate (Rs)
-                    </label>
-                    <input
-                      id="quick_cost_price"
-                      name="cost_price"
-                      type="number"
-                      step="any"
-                      placeholder="e.g. 100"
-                      value={quickForm.cost_price}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="quick_sale_price" className="block text-[10px] font-bold text-slate-500 mb-1">
-                      Retail Sale Price (Rs) <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      id="quick_sale_price"
-                      name="sale_price"
-                      type="number"
-                      step="any"
-                      placeholder="e.g. 140"
-                      value={quickForm.sale_price}
-                      onChange={handleQuickChange}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(false); }}
-                      className="w-full border border-slate-300 rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none transition-all"
-                      required
-                    />
-                  </div>
                 </div>
               </div>
             </div>
