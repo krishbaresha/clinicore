@@ -3353,10 +3353,13 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-74. **Milestone 147: Automatic POS Cart Item Aggregation & Clean UI Header Branding**
-    - **Smart Cart Item Aggregation**: Updated `handleAddSaleItem` in `SaleInvoiceModal.jsx`. When scanning or adding an existing medicine item with identical properties (same product name, company, rate, and discount), the system now automatically increments the existing item's quantity (`qty + added_qty`) instead of creating redundant duplicate rows.
-    - **Clean Header Titles**: Cleaned up `Sale Invoice` modal header by removing `_Form` suffix (`SALE INVOICE`) and replacing legacy `DrCreate Cockpit` tag with `ClinicFlow Cockpit`.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.49s.
+75. **Milestone 148: Staff Management Modal Role-Based Layout & Godown Field Isolation**
+    - **Doctor Role Field Isolation**: Updated Staff User Add/Edit modal (`DeveloperAdminPanel.jsx`). When `System Role` is set to **Doctor (OPD Consultant)**, the `Assigned Godown / Warehouse` dropdown is automatically hidden (since doctors do not manage inventory warehouses).
+    - **Role-Based Dynamic Layout**:
+      - When **Doctor** is selected: Displays `System Role` alongside `Consultation Fee (Rs.)` in Row 2, followed by full-width `Specialization / Qualification` in Row 3.
+      - When **Cashier / Warehouse Manager / Staff** is selected: Displays `System Role` alongside `Assigned Godown / Warehouse`.
+    - **Symmetrical UI Styling**: Standardized input heights (`h-10`), smooth padding, matching font weights, and clear uppercase labels for clean visual alignment.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.62s.
 
 
 

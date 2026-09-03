@@ -3173,107 +3173,124 @@ export default function DeveloperAdminPanel() {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-4 text-xs">
+              {/* Full Name */}
               <div>
-                <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Full Name *</label>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10.5px] mb-1">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={staffForm.name}
                   onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
-                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold"
+                  placeholder="e.g. Dr. Asif Ashraf Khan"
+                  className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none transition-all"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* System Role & Conditional (Consultation Fee or Assigned Godown) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">System Role *</label>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10.5px] mb-1">
+                    System Role <span className="text-rose-500">*</span>
+                  </label>
                   <select
                     value={staffForm.role}
                     onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold"
+                    className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none cursor-pointer transition-all"
                   >
-                    <option value="doctor">Doctor</option>
-                    <option value="cashier">POS Counter & Cashier</option>
-                    <option value="warehouse_incharge">Warehouse Manager</option>
-                    <option value="admin">Administrator</option>
+                    <option value="doctor">👨‍⚕️ Doctor (OPD Consultant)</option>
+                    <option value="cashier">💵 POS Counter &amp; Cashier</option>
+                    <option value="warehouse_incharge">🏢 Warehouse Manager</option>
+                    <option value="admin">⚙️ Administrator</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Assigned Godown / Warehouse</label>
-                  <select
-                    value={staffForm.assigned_warehouse_id || ""}
-                    onChange={(e) => setStaffForm({ ...staffForm, assigned_warehouse_id: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold"
-                  >
-                    <option value="">All Warehouses (Global Access)</option>
-                    <option value="wh_str">Medical Store Counter (wh_str)</option>
-                    {warehousesList.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name || w.code} ({w.id})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-
-              {staffForm.role === "doctor" && (
-                <div className="grid grid-cols-2 gap-3">
+                {staffForm.role === "doctor" ? (
                   <div>
-                    <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Specialization</label>
-                    <input
-                      type="text"
-                      value={staffForm.specialization}
-                      onChange={(e) => setStaffForm({ ...staffForm, specialization: e.target.value })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">Consultation Fee (Rs.)</label>
+                    <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10.5px] mb-1">
+                      Consultation Fee (Rs.)
+                    </label>
                     <input
                       type="number"
+                      min="0"
                       value={staffForm.consultation_fee}
                       onChange={(e) => setStaffForm({ ...staffForm, consultation_fee: Number(e.target.value) || 0 })}
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-bold font-mono"
+                      placeholder="e.g. 500"
+                      className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-mono font-bold outline-none transition-all"
                     />
                   </div>
+                ) : (
+                  <div>
+                    <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10.5px] mb-1">
+                      Assigned Godown / Warehouse
+                    </label>
+                    <select
+                      value={staffForm.assigned_warehouse_id || ""}
+                      onChange={(e) => setStaffForm({ ...staffForm, assigned_warehouse_id: e.target.value })}
+                      className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none cursor-pointer transition-all"
+                    >
+                      <option value="">All Warehouses (Global Access)</option>
+                      <option value="wh_str">Medical Store Counter (wh_str)</option>
+                      {warehousesList.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name || w.code} ({w.id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Specialization (Doctor Role Only) */}
+              {staffForm.role === "doctor" && (
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10.5px] mb-1">
+                    Specialization / Qualification
+                  </label>
+                  <input
+                    type="text"
+                    value={staffForm.specialization}
+                    onChange={(e) => setStaffForm({ ...staffForm, specialization: e.target.value })}
+                    placeholder="e.g. Homoeopathic Physician, MBBS, D.H.M.S"
+                    className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none transition-all"
+                  />
                 </div>
               )}
 
-
-
+              {/* Login PIN */}
               <div>
-                <label className="block font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                  {editingUser ? "Change Login PIN (Leave blank to keep current)" : "Initial Login PIN"}
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10.5px] mb-1">
+                  {editingUser ? "Change Login PIN (Leave blank to keep current)" : "Initial Login PIN (4 Digits)"}
                 </label>
                 <input
                   type="text"
+                  maxLength={6}
                   value={staffForm.password}
                   onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
                   placeholder={editingUser ? "••••" : "e.g. 1234"}
-                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-teal-950 font-mono font-bold text-center tracking-widest text-lg"
+                  className="w-full h-11 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-950 font-mono font-black text-center tracking-[0.3em] text-base outline-none transition-all"
                 />
               </div>
 
               {/* Clinic Financials & Revenue Visibility Permission Card */}
-              <div className="bg-teal-50/70 border border-teal-200 rounded-2xl p-4 space-y-2">
-                <div className="flex items-start gap-3">
+              <div className="bg-teal-50/70 border border-teal-200 rounded-xl p-3.5 space-y-1">
+                <div className="flex items-start gap-2.5">
                   <input
                     type="checkbox"
                     id="staff_can_view_financials_toggle"
                     checked={Boolean(staffForm.can_view_financials)}
                     onChange={(e) => setStaffForm({ ...staffForm, can_view_financials: e.target.checked })}
-                    className="mt-1 w-4 h-4 rounded border-teal-300 text-teal-700 focus:ring-teal-500 cursor-pointer"
+                    className="mt-0.5 w-4 h-4 rounded border-teal-300 text-teal-700 focus:ring-teal-500 cursor-pointer"
                   />
                   <label htmlFor="staff_can_view_financials_toggle" className="cursor-pointer">
                     <div className="font-extrabold text-teal-950 text-xs flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-sm text-teal-700">account_balance_wallet</span>
                       <span>Grant Financials &amp; Revenue Breakdown Access</span>
                     </div>
-                    <p className="text-[11px] text-teal-800/80 mt-0.5 leading-relaxed">
-                      When enabled, this user (Doctor or Cashier/Staff) will be able to see Total Clinic OPD Fees, Pharmacy Sales, Daily Expenses, Net Revenue, and Doctor-by-Doctor earnings on their Dashboard. (Default: <strong>OFF</strong> - only Principal Owner sees full clinic financials).
+                    <p className="text-[10.5px] text-teal-800/80 mt-0.5 leading-relaxed">
+                      When enabled, this user will be able to see Total Clinic OPD Fees, Pharmacy Sales, Daily Expenses, Net Revenue, and Doctor earnings on their Dashboard. (Default: <strong>OFF</strong>).
                     </p>
                   </label>
                 </div>
