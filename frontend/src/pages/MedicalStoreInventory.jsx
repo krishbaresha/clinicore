@@ -1767,8 +1767,8 @@ export default function MedicalStoreInventory() {
                   <th className="py-3 px-3 text-center border-b border-slate-800">Category</th>
                   <th className="py-3 px-3 text-center border-b border-slate-800">Code</th>
                   <th className="py-3 px-3 text-center border-b border-slate-800 text-teal-300">Store Stock (Packs)</th>
-                  <th className="py-3 px-3 text-right border-b border-slate-800">Cost</th>
-                  <th className="py-3 px-3 text-right border-b border-slate-800 text-emerald-300">Sale</th>
+                  <th className="py-3 px-3 text-right border-b border-slate-800">Net Price</th>
+                  <th className="py-3 px-3 text-right border-b border-slate-800 text-emerald-300">Rate (Retail)</th>
                   <th className="py-3 px-4 text-right border-b border-slate-800">Actions</th>
                 </tr>
               </thead>

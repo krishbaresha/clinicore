@@ -1217,12 +1217,12 @@ export default function SupplierPurchases() {
 
           {/* Form Container */}
           <div className="bg-white rounded-2xl border border-emerald-300 p-3.5 md:p-4 shadow-2xs space-y-3.5">
-            {/* Section 1: Basic Info (Clean 4-Column Balanced Grid - NO Naration) */}
+            {/* Section 1: Basic Info (Clean Balanced Grid - NO Location Dropdown) */}
             <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-3 md:p-3.5 space-y-3">
               <div className="text-xs font-black text-emerald-950 uppercase tracking-wider flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-base text-emerald-700">receipt_long</span>
-                  Invoice Header &amp; Company Info (انوائس اور سپلائر کی تفصیل)
+                  Company / Party Info (کمپنی اور سپلائر کی تفصیل)
                 </span>
                 <span className="text-[10px] text-emerald-800 font-bold bg-white px-2 py-0.5 rounded-md border border-emerald-300">
                   ⚡ Auto-Focus &amp; Keyboard Navigation Active
@@ -1350,48 +1350,12 @@ export default function SupplierPurchases() {
                   </div>
                 </div>
 
-                {/* Account Name with Filter Tabs (Companies vs Parties) */}
+                {/* Account Name (Supplier / Company / Party) */}
                 <div className="sm:col-span-2">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] font-black text-slate-900">
-                      🏢 Account Name (Supplier / Company / Party) <span className="text-rose-500">*</span>
+                      🏢 Company / Party Name <span className="text-rose-500">*</span>
                     </span>
-                    {/* Account Type Filter Toggle */}
-                    <div className="inline-flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300 gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setAccountFilterType("companies")}
-                        className={`px-2 py-0.5 rounded text-[9.5px] font-black transition-all ${
-                          accountFilterType === "companies"
-                            ? "bg-emerald-700 text-white shadow-2xs"
-                            : "text-slate-700 hover:bg-slate-300"
-                        }`}
-                      >
-                        🏢 Companies ({suppliers.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAccountFilterType("parties")}
-                        className={`px-2 py-0.5 rounded text-[9.5px] font-black transition-all ${
-                          accountFilterType === "parties"
-                            ? "bg-emerald-700 text-white shadow-2xs"
-                            : "text-slate-700 hover:bg-slate-300"
-                        }`}
-                      >
-                        👤 Parties / Accounts
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAccountFilterType("all")}
-                        className={`px-2 py-0.5 rounded text-[9.5px] font-black transition-all ${
-                          accountFilterType === "all"
-                            ? "bg-emerald-700 text-white shadow-2xs"
-                            : "text-slate-700 hover:bg-slate-300"
-                        }`}
-                      >
-                        🌐 All
-                      </button>
-                    </div>
                   </div>
                   <ExpandableCombobox
                     value={grnForm.account_name}
@@ -1402,8 +1366,8 @@ export default function SupplierPurchases() {
                       }
                     }}
                     options={accountOptions}
-                    placeholder="Select or Search Supplier / Company / Party..."
-                    searchPlaceholder="Search 260+ Suppliers & Parties..."
+                    placeholder="Select or Search Company / Party..."
+                    searchPlaceholder="Search Companies & Distributors..."
                     required={true}
                   />
                 </div>
@@ -1446,7 +1410,7 @@ export default function SupplierPurchases() {
                       <span className="text-[11px] font-bold text-slate-700">
                         Current Udhaar Balance: <strong className="text-rose-800 font-black">Rs. {Number(matchedGrnSupplier.current_balance || matchedGrnSupplier.balance_due || 0).toLocaleString()}</strong>
                       </span>
-                      <span className="text-[9.5px] bg-emerald-700 text-white px-2 py-0.5 rounded-full font-black">
+                      <span className="text-[9.5px] bg-emerald-700 text-white px-2 py-0.5 rounded-full terminal-badge font-black">
                         ⚡ Auto-Filled
                       </span>
                     </div>
@@ -1486,11 +1450,11 @@ export default function SupplierPurchases() {
                     </div>
                   ) : (
                     <ExpandableCombobox
-                      label="🚚 Transport Carrier (ٹرانسپورٹ carrier)"
+                      label="🚚 Transport Carrier"
                       value={grnForm.transport}
                       onChange={(val) => setGrnForm({ ...grnForm, transport: val })}
                       options={transportOptions}
-                      placeholder="Select or Search Carrier..."
+                      placeholder="Carrier (e.g. By Hand)..."
                       searchPlaceholder="Search Transport Carrier..."
                       onAddNew={() => setShowNewTransportInput(true)}
                       addNewLabel="+ New Carrier"
@@ -1499,7 +1463,7 @@ export default function SupplierPurchases() {
                 </div>
 
                 {/* Bilty # */}
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-[11px] font-black text-slate-900 mb-1">📦 Bilty # (بلٹی نمبر)</label>
                   <input
                     type="text"
@@ -1509,58 +1473,15 @@ export default function SupplierPurchases() {
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 focus:border-emerald-600"
                   />
                 </div>
-
-                {/* Destination Location */}
-                <div>
-                  <label className="block text-[11px] font-black text-slate-900 mb-1">🏬 Stock Destination</label>
-                  <select
-                    value={grnForm.destination_type}
-                    onChange={(e) => setGrnForm({ ...grnForm, destination_type: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-teal-900 focus:border-teal-600"
-                  >
-                    {warehousesList && warehousesList.length > 0 ? (
-                      warehousesList.map((wh) => (
-                        <option key={wh.id} value={wh.id}>
-                          {wh.is_store_counter ? "🏬" : "🏢"} {wh.name} ({wh.code || wh.id})
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="wh_001">🏢 Central Godown (Warehouse)</option>
-                        <option value="wh_str">🏬 Pharmacy Counter (Store)</option>
-                      </>
-                    )}
-                  </select>
-                </div>
               </div>
             </div>
 
-            {/* Section 2: Cart Detail (Fast Line Item Entry with Brand Pills & Bonus Qty) */}
+            {/* Section 2: Cart Detail (Fast Line Item Entry) */}
             <div className="bg-teal-50/70 border border-teal-300 rounded-xl p-3 md:p-3.5 space-y-2.5">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-teal-200 pb-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1">
-                    <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
-                    Fast Line Item Entry
-                  </div>
-                  {/* Brand Code Quick Pills matching POS */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-[10px] text-teal-800 font-black uppercase">Brand Code:</span>
-                    {["ALL", "GHR", "BM", "MKT", "HFP", "BLS", "PB", "CLN", "ASH"].map((code) => (
-                      <button
-                        key={code}
-                        type="button"
-                        onClick={() => setSelectedBrandCodePill(code === selectedBrandCodePill ? "" : code)}
-                        className={`text-[9.5px] font-black px-1.5 py-0.5 rounded border transition-all ${
-                          selectedBrandCodePill === code || (code === "ALL" && !selectedBrandCodePill)
-                            ? "bg-teal-800 text-white border-teal-900 shadow-2xs"
-                            : "bg-white text-teal-900 border-teal-300 hover:bg-teal-100"
-                        }`}
-                      >
-                        {code}
-                      </button>
-                    ))}
-                  </div>
+              <div className="flex items-center justify-between gap-2 border-b border-teal-200 pb-2">
+                <div className="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1">
+                  <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
+                  Fast Line Item Entry
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -3638,49 +3559,75 @@ export default function SupplierPurchases() {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs font-semibold">
+            <div className="space-y-2.5 text-xs font-semibold">
+              {/* Product Name */}
               <div>
                 <label className="block text-slate-800 font-black mb-1">Product / Medicine Name *</label>
                 <input
                   type="text"
                   value={newProdForm.medicine_name}
                   onChange={(e) => setNewProdForm({ ...newProdForm, medicine_name: e.target.value })}
-                  placeholder="e.g. Panadol Extra 500mg, R-22 Drops..."
+                  placeholder="e.g. Uronal Drops, 15 Ghr 20ml..."
                   className="w-full border border-emerald-400 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                   required
                   autoFocus
                 />
               </div>
 
+              {/* Description / Formulation (Optional) */}
+              <div>
+                <label className="block text-slate-700 font-bold mb-1 flex items-center justify-between">
+                  <span>Description / Usage (Optional)</span>
+                  <span className="text-[9.5px] text-slate-400 font-normal">Editable Anytime</span>
+                </label>
+                <input
+                  type="text"
+                  value={newProdForm.product_description || ""}
+                  onChange={(e) => setNewProdForm({ ...newProdForm, product_description: e.target.value })}
+                  placeholder="e.g. Homeopathic Drops 20ml, For Fever &amp; Pain..."
+                  className="w-full border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-500"
+                />
+              </div>
+
+              {/* Company Code / Brand Dropdown & Category */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Company / Brand</label>
-                  <input
-                    type="text"
+                  <label className="block text-slate-700 font-bold mb-1">Company / Brand *</label>
+                  <select
                     value={newProdForm.company_name}
                     onChange={(e) => setNewProdForm({ ...newProdForm, company_name: e.target.value })}
-                    placeholder={grnForm.account_name || "Pharma Company"}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900"
-                  />
+                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:border-emerald-500"
+                  >
+                    {allCompanyOptions.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name} ({c.code || "GEN"})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Category</label>
                   <select
                     value={newProdForm.category}
                     onChange={(e) => setNewProdForm({ ...newProdForm, category: e.target.value })}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900"
+                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:border-emerald-500"
                   >
+                    <option value="Homeopathic Medicine">Homeopathic Medicine (ہومیو پیتھک)</option>
+                    <option value="Homeopathic Drops">Homeopathic Drops (قطرے)</option>
+                    <option value="Drops">Drops (قطرے)</option>
+                    <option value="Specialized Drops">Specialized German Drops</option>
                     <option value="Tablet">Tablet (ٹیکسٹ)</option>
                     <option value="Syrup">Syrup (شربت)</option>
                     <option value="Injection">Injection (انجیکشن)</option>
-                    <option value="Drops">Drops (قطرے)</option>
                     <option value="Cream">Cream / Ointment (کریم)</option>
                     <option value="Capsule">Capsule (کیپسول)</option>
                     <option value="Powder">Powder (پاؤڈر)</option>
+                    <option value="Allopathic OTC">Allopathic OTC</option>
                   </select>
                 </div>
               </div>
 
+              {/* Packing Unit, Net Price & Rate (Retail Price) */}
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Packing Unit</label>
@@ -3688,28 +3635,28 @@ export default function SupplierPurchases() {
                     type="text"
                     value={newProdForm.unit_label}
                     onChange={(e) => setNewProdForm({ ...newProdForm, unit_label: e.target.value })}
-                    placeholder="pack / box"
+                    placeholder="Pack / Box / 20ml Drop"
                     className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Cost Price (TP)</label>
+                  <label className="block text-slate-700 font-bold mb-1">Net Price (Paid)</label>
                   <input
                     type="number"
                     value={newProdForm.cost_price}
                     onChange={(e) => setNewProdForm({ ...newProdForm, cost_price: e.target.value })}
-                    placeholder="Rs. Cost"
-                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900"
+                    placeholder="Rs. Net"
+                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Sale Price (MRP)</label>
+                  <label className="block text-slate-700 font-bold mb-1">Rate (Retail Price)</label>
                   <input
                     type="number"
                     value={newProdForm.unit_sale_price}
                     onChange={(e) => setNewProdForm({ ...newProdForm, unit_sale_price: e.target.value })}
-                    placeholder="Rs. MRP"
-                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900"
+                    placeholder="Rs. Rate / MRP"
+                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 font-mono"
                   />
                 </div>
               </div>
