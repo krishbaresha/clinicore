@@ -3327,6 +3327,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Storage Purge**: Added automatic storage purging in `dbTransports.getTransports()` to strip legacy dirty entries (`"Al-razi Transport"`, `"BabU Gadha"`, `"by hand Usama"`) from `localStorage`, ensuring clean Title Case normalization (`By Hand`, `Al-Razi Transport`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.44s.
 
+64. **Milestone 137: Patient / Customer Name Title-Case Auto-Capitalization Integration**
+    - **Title-Case Normalization**: Wrapped `account_name` and `resolvedAccountName` in `toTitleCase` in `SaleInvoiceModal.jsx` and `thermalPrinter.js`.
+    - **Realtime Live Receipt & Print Sync**: Typing any name (e.g., `ali hassan` -> `Ali Hassan`, `dr. kashif` -> `Dr. Kashif`, `muhammad asif` -> `Muhammad Asif`) auto-capitalizes on blur, updates live in the **REAL-TIME LIVE 80mm THERMAL RECEIPT PREVIEW** (`Customer: Ali Hassan`), and formats cleanly on physical thermal printouts.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.58s.
+
 
 
 

@@ -2,10 +2,10 @@
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
   "version": "2.5.9-release",
-  "last_session_date": "2026-09-03T12:12:00+05:00",
-  "session_id": "part-136",
-  "active_milestone": 136,
-  "milestone_title": "Direct Dynamic Editable Transport Autocomplete & LocalStorage Legacy Purge",
+  "last_session_date": "2026-09-03T13:19:00+05:00",
+  "session_id": "part-137",
+  "active_milestone": 137,
+  "milestone_title": "Patient / Customer Name Title-Case Auto-Capitalization Integration",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -16,7 +16,7 @@
     "python_compile_passed": true
   },
   "current_status": {
-    "phase": "Milestone 136 — Direct Dynamic Editable Transport Autocomplete & LocalStorage Legacy Purge (100%)",
+    "phase": "Milestone 137 — Patient / Customer Name Title-Case Auto-Capitalization Integration (100%)",
     "test_suite_status": "643/643 Tests Passing, 0 AST Errors, 0 Secret Leaks, Clean Vite Production Build",
     "build_status": "Clean Vite Production Bundle",
     "git_branch": "main",

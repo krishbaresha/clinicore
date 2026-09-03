@@ -478,7 +478,7 @@ export function printThermalReceipt(sale, clinicData = null) {
 
   const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
   const cashierName = escapeHtml(sale.cashier_name || sale.active_cashier_name || (activeCashier?.name) || sale.user_name || "Store Staff");
-  const customerName = escapeHtml(sale.patient_name || (sale.visit_id ? "Linked OPD Patient" : "Walk-In-Customer"));
+  const customerName = escapeHtml(toTitleCase(sale.patient_name || sale.account_name || (sale.visit_id ? "Linked OPD Patient" : "Walk-In Customer")));
   const invoiceId = escapeHtml(sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
 
 
@@ -1796,7 +1796,7 @@ export function printSaleInvoiceReceipt(sale, clinic) {
 
   const voucherNo = escapeHtml(sale.voucher_no || sale.receipt_no || sale.invoice_no || "Inv-6218");
   const dateStr = escapeHtml((sale.sale_date || sale.created_at || new Date().toISOString()).split("T")[0]);
-  const customerName = escapeHtml(sale.account_name || sale.customer_name || "Walk-In Patient");
+  const customerName = escapeHtml(toTitleCase(sale.account_name || sale.customer_name || "Walk-In Patient"));
   const tokenNo = escapeHtml(sale.token_no || sale.patient_token || "");
   const city = escapeHtml(sale.party_type || sale.city || "");
   const partyCode = escapeHtml(sale.party_code || "");

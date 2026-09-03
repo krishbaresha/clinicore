@@ -1033,7 +1033,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     }
 
     // Auto-fallback customer name so walk-in sales never get blocked
-    const resolvedAccountName = saleForm.account_name.trim() || (billingType === "patient" ? "Walk-In Patient" : "Walk-In Customer");
+    const resolvedAccountName = toTitleCase(saleForm.account_name.trim()) || (billingType === "patient" ? "Walk-In Patient" : "Walk-In Customer");
 
     const itemsSubtotal = saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
     const extraDisc = Number(saleForm.extra_bill_discount) || 0;
@@ -1273,6 +1273,11 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                           required={true}
                           value={saleForm.account_name}
                           onChange={(e) => setSaleForm({ ...saleForm, account_name: e.target.value })}
+                          onBlur={() => {
+                            if (saleForm.account_name) {
+                              setSaleForm((prev) => ({ ...prev, account_name: toTitleCase(prev.account_name) }));
+                            }
+                          }}
                           placeholder="Enter Patient or Walk-In Name..."
                           className="w-full bg-white border border-emerald-400 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 focus:border-emerald-600"
                         />
@@ -2044,7 +2049,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-200">
                     <span className="font-black text-slate-950 text-[10.5px]">
-                      Customer: {saleForm.account_name || (billingType === "patient" ? "Walk-In Patient" : "Wholesale Party")}
+                      Customer: {toTitleCase(saleForm.account_name) || (billingType === "patient" ? "Walk-In Patient" : "Wholesale Party")}
                     </span>
                     {billingType === "patient" && saleForm.token_no && (
                       <span className="bg-emerald-800 text-white px-1.5 py-0.5 rounded font-black text-[10px]">
