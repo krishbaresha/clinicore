@@ -19,6 +19,7 @@ import {
 import { decorateRecordLineage, stripLineageMetadata, getActiveSessionUser } from "./lineage.js";
 import { telemetry } from "./telemetry.js";
 import { storageDriver, isTauri, waitForDiskCache, getDataPath } from "./storageDriver.js";
+import { downloadCSV } from "../utils/formatters.js";
 
 // Re-export arithmetic & conflict resolution helpers for consumer modules
 export {
@@ -6812,17 +6813,16 @@ export const dbDatabaseManagement = {
  */
 export function exportSuppliersTemplateCSV() {
   const csv = "Company Name,Supplier Code,Phone,City,Address,Current Balance\n\"BM Pvt LTD\",\"BM\",\"03001234567\",\"Hyderabad\",\"Lajpat Road\",0\n\"GHR Homoepathic\",\"GHR\",\"03007654321\",\"Karachi\",\"Market Road\",0\n";
-  downloadCSV(csv, "Suppliers_Companies_Template.csv");
+  downloadCSV("Suppliers_Companies_Template.csv", csv);
 }
 
 export function exportPartiesTemplateCSV() {
   const csv = "Party Name,Party Code,Phone,City,Address,Salesman,Current Balance\n\"Muslim Medical Store\",\"PTY-001\",\"03009988776\",\"Hyderabad\",\"Station Road\",\"Usama\",0\n\"Asus Pharmacy\",\"PTY-002\",\"03005544332\",\"Interior Sindh\",\"Main Bazaar\",\"Mustafa\",0\n";
-  downloadCSV(csv, "Wholesale_Parties_Template.csv");
+  downloadCSV("Wholesale_Parties_Template.csv", csv);
 }
 
 export function exportInventoryGodownsTemplateCSV() {
-  const csv = exportInventoryTemplateCSV();
-  downloadCSV(csv, "Medicine_Store_Stock_Template.csv");
+  exportInventoryTemplateCSV();
 }
 
 export function bulkImportSuppliers(csvText) {
@@ -7033,7 +7033,6 @@ export function bulkImportInventoryWithGodowns(csvText) {
 export function bulkImportInventory(csvText) {
   return bulkImportInventoryWithGodowns(csvText);
 }
-
 
 
 
