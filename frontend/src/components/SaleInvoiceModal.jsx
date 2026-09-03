@@ -268,14 +268,27 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   const qtyInputRef = useRef(null);
   const rateInputRef = useRef(null);
   const customerNameInputRef = useRef(null);
+  const narationInputRef = useRef(null);
   const partyCodeInputRef = useRef(null);
   const cityInputRef = useRef(null);
+  const transportInputRef = useRef(null);
   const biltyInputRef = useRef(null);
   const discPctInputRef = useRef(null);
   const discFlatInputRef = useRef(null);
   const saleItemsEndRef = useRef(null);
   const tableContainerRef = useRef(null);
   const cashPaidInputRef = useRef(null);
+
+  // Focus next input field helper for seamless Enter key navigation
+  const handleGenericEnterNext = (e, nextRef) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (nextRef && nextRef.current) {
+        nextRef.current.focus();
+        if (nextRef.current.select) nextRef.current.select();
+      }
+    }
+  };
 
   const refreshData = () => {
     setInventoryList(dbInventory.getAll());
@@ -583,6 +596,45 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // POS Master Global Keyboard Shortcuts Listener (F4: Switch Mode, F8: Cash, F9: Save & Print, Alt+N: Medicine, Esc: Close)
+  useEffect(() => {
+    const handleGlobalPOSKeyDown = (e) => {
+      // Don't intercept if child sub-modals are active
+      if (showListModal || showNewPartyModal || showSalesmanPinModal) return;
+
+      // F4: Switch Billing Mode (Patient <-> Wholesale B2B)
+      if (e.key === "F4") {
+        e.preventDefault();
+        setBillingType((prev) => (prev === "patient" ? "wholesale_party" : "patient"));
+      }
+      // F8: Focus Cash Paid Input
+      else if (e.key === "F8") {
+        e.preventDefault();
+        cashPaidInputRef.current?.focus();
+        if (cashPaidInputRef.current?.select) cashPaidInputRef.current.select();
+      }
+      // F9: Save & Print Invoice
+      else if (e.key === "F9") {
+        e.preventDefault();
+        handleSaveSaleBill();
+      }
+      // Alt + N: Focus Medicine Search Input Bar
+      else if ((e.altKey || e.metaKey) && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        medicineInputRef.current?.focus();
+        if (medicineInputRef.current?.select) medicineInputRef.current.select();
+      }
+      // Escape: Close Sale Invoice Modal
+      else if (e.key === "Escape") {
+        e.preventDefault();
+        if (onClose) onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalPOSKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalPOSKeyDown);
+  }, [billingType, showListModal, showNewPartyModal, showSalesmanPinModal, saleItems, saleForm, onClose]);
 
   // Account Name Selection Handlers
   const handleSelectAccount = (accName, opt) => {
@@ -1202,9 +1254,17 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
               {/* Section 1: Customer & Party Details Bar (Compact) */}
               <div className="shrink-0 bg-emerald-50/40 border border-emerald-200 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
                 <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-emerald-200 pb-1.5">
-                  <div className="text-[11px] font-black text-emerald-950 uppercase tracking-wider flex items-center gap-1">
+                  <div className="text-[11px] font-black text-emerald-950 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
                     <span className="material-symbols-outlined text-sm text-emerald-700">receipt_long</span>
-                    Customer &amp; Party Details
+                    <span>Customer &amp; Party Details</span>
+                    
+                    {/* Visual Shortcut Key Badges Bar */}
+                    <div className="hidden sm:flex items-center gap-1 ml-2">
+                      <span className="bg-emerald-900/10 text-emerald-950 font-bold px-1.5 py-0.2 rounded text-[9px] border border-emerald-300 font-mono">F4: Mode</span>
+                      <span className="bg-emerald-900/10 text-emerald-950 font-bold px-1.5 py-0.2 rounded text-[9px] border border-emerald-300 font-mono">F8: Cash</span>
+                      <span className="bg-emerald-900/10 text-emerald-950 font-bold px-1.5 py-0.2 rounded text-[9px] border border-emerald-300 font-mono">F9: Save &amp; Print</span>
+                      <span className="bg-emerald-900/10 text-emerald-950 font-bold px-1.5 py-0.2 rounded text-[9px] border border-emerald-300 font-mono">Alt+N: Medicine</span>
+                    </div>
                   </div>
 
                   {/* Billing Mode Switcher */}
@@ -1212,6 +1272,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                     <button
                       type="button"
                       onClick={() => setBillingType("patient")}
+                      title="Press F4 to toggle billing mode"
                       className={`px-2.5 py-0.5 rounded-md text-[10.5px] font-black transition-all cursor-pointer ${billingType === "patient"
                           ? "bg-emerald-800 text-white shadow-xs"
                           : "text-emerald-900 hover:text-emerald-950"
@@ -1222,6 +1283,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                     <button
                       type="button"
                       onClick={() => setBillingType("wholesale_party")}
+                      title="Press F4 to toggle billing mode"
                       className={`px-2.5 py-0.5 rounded-md text-[10.5px] font-black transition-all cursor-pointer ${billingType === "wholesale_party"
                           ? "bg-amber-800 text-white shadow-xs"
                           : "text-amber-900 hover:text-amber-950"
@@ -1278,6 +1340,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                               setSaleForm((prev) => ({ ...prev, account_name: toTitleCase(prev.account_name) }));
                             }
                           }}
+                          onKeyDown={(e) => handleGenericEnterNext(e, narationInputRef)}
                           placeholder="Enter Patient or Walk-In Name..."
                           className="w-full bg-white border border-emerald-400 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 focus:border-emerald-600"
                         />
@@ -1285,9 +1348,11 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       <div className="col-span-2 sm:col-span-2 md:col-span-2">
                         <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Relation / Info</label>
                         <input
+                          ref={narationInputRef}
                           type="text"
                           value={saleForm.naration}
                           onChange={(e) => setSaleForm({ ...saleForm, naration: e.target.value })}
+                          onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
                           placeholder="e.g. s/o, w/o..."
                           className="w-full bg-gray-50 border border-gray-300 rounded-lg px-2 py-1 text-xs font-medium text-gray-800"
                         />
@@ -1422,6 +1487,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                         </label>
                         <div className="relative">
                           <input
+                            ref={transportInputRef}
                             type="text"
                             value={saleForm.transport}
                             onChange={(e) => {
@@ -1437,6 +1503,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                               }
                               setTimeout(() => setShowTransportDropdown(false), 200);
                             }}
+                            onKeyDown={(e) => handleGenericEnterNext(e, biltyInputRef)}
                             placeholder="Type transport (e.g. By Hand)..."
                             className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
                           />
@@ -1476,6 +1543,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                           type="text"
                           value={saleForm.bilty_no}
                           onChange={(e) => setSaleForm({ ...saleForm, bilty_no: e.target.value })}
+                          onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
                           placeholder="0000"
                           className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-800"
                         />
@@ -1745,6 +1813,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       min="1"
                       value={saleCart.qty}
                       onChange={(e) => handleUpdateCartMath("qty", e.target.value)}
+                      onKeyDown={(e) => handleGenericEnterNext(e, rateInputRef)}
                       className="w-full bg-white border border-gray-300 rounded-lg px-1.5 py-1 text-xs font-black text-center text-gray-900"
                     />
                   </div>
@@ -1757,6 +1826,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       type="number"
                       value={saleCart.rate}
                       onChange={(e) => handleUpdateCartMath("rate", e.target.value)}
+                      onKeyDown={(e) => handleGenericEnterNext(e, discPctInputRef)}
                       className="w-full bg-white border border-gray-300 rounded-lg px-1.5 py-1 text-xs font-bold text-center text-gray-900"
                     />
                   </div>
@@ -1780,6 +1850,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       type="number"
                       value={saleCart.disc_pct}
                       onChange={(e) => handleUpdateCartMath("disc_pct", e.target.value)}
+                      onKeyDown={(e) => handleGenericEnterNext(e, discFlatInputRef)}
                       className="w-full bg-white border border-gray-300 rounded-lg px-1 py-1 text-xs font-bold text-center text-gray-900"
                     />
                   </div>
@@ -1792,6 +1863,13 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       type="number"
                       value={saleCart.disc_flat}
                       onChange={(e) => handleUpdateCartMath("disc_flat", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddSaleItem();
+                          setTimeout(() => medicineInputRef.current?.focus(), 40);
+                        }
+                      }}
                       className="w-full bg-white border border-gray-300 rounded-lg px-1 py-1 text-xs font-bold text-center text-gray-900"
                     />
                   </div>
@@ -1946,6 +2024,12 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       placeholder={isUdhaarMode ? "0" : String(grandPayable)}
                       value={saleForm.cash_received}
                       onChange={(e) => setSaleForm({ ...saleForm, cash_received: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSaveSaleBill();
+                        }
+                      }}
                       className="w-16 bg-white border border-slate-300 rounded px-1 py-0.2 text-xs font-mono font-bold text-slate-900 text-right focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>

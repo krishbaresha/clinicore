@@ -3332,6 +3332,12 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Realtime Live Receipt & Print Sync**: Typing any name (e.g., `ali hassan` -> `Ali Hassan`, `dr. kashif` -> `Dr. Kashif`, `muhammad asif` -> `Muhammad Asif`) auto-capitalizes on blur, updates live in the **REAL-TIME LIVE 80mm THERMAL RECEIPT PREVIEW** (`Customer: Ali Hassan`), and formats cleanly on physical thermal printouts.
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.58s.
 
+65. **Milestone 138: Seamless POS Enter Key Navigation & F4/F8/F9 Master Keyboard Shortcuts**
+    - **Keyboard Focus Jump Pipeline**: Pressing `Enter` on any field automatically advances focus to the next logical input (`Patient Name` -> `Relation` -> `Medicine Search` -> `Qty` -> `Rate` -> `Disc%` -> `Disc 0` [Adds item & refocused Medicine bar] -> `Cash Paid` [Triggers Save & Print]).
+    - **F4 Mode Toggle**: Added global `F4` hotkey to toggle instantly between `Patient / Walk-In` and `Wholesale B2B Party` billing modes.
+    - **F8 / F9 / Alt+N Shortcuts**: `F8` focuses Cash Paid, `F9` triggers Save & Print, `Alt+N` focuses Medicine Search bar, `Esc` exits modal.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.57s.
+
 
 
 
