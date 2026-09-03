@@ -3353,15 +3353,10 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-83. **Milestone 156: POS Company Code Quick Entry & Emergency Zero/Short Stock Shift & Procurement Modal**
-    - **POS Company Layout Clean-up (`SaleInvoiceModal.jsx`)**:
-      - Removed duplicate `FILTER COMPANY / CODE` dropdown from `CUSTOMER & PARTY DETAILS` card for clean layout.
-      - Added direct **`Code: [e.g. BM]`** quick entry input in `FAST LINE ITEM ENTRY` bar. Typing company code (e.g. `BM`, `MKT`, `PB`, `BLS`, `GHR`, `REC`) instantly selects the company and filters line item medicines without scrolling.
-    - **Emergency Zero/Short Stock Resolution Modal (`SaleInvoiceModal.jsx`)**:
-      - If requested medicine stock at store counter is 0 or insufficient, system pops up interactive **`⚡ Zero / Short Stock Alert Modal`** without stopping billing.
-      - **Option A (Warehouse Shift)**: If stock exists in Godown/Warehouse, 1-click **`🚚 Shift Units & Continue Billing`** instantly shifts stock from Godown -> Counter and adds item to bill.
-      - **Option B (Local Market Cash / Udhaar Purchase)**: If warehouse stock is 0, staff enters emergency inward qty, cost price, and payment mode (`Cash` or `Udhaar`), clicks **`✅ Inward Stock & Continue Billing`** to add inventory and resume billing seamlessly.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.57s.
+84. **Milestone 157: Supplier Purchase Entry Screen Outer Scrollbar Removal & High-Contrast Labels**
+    - **Full Window Fit Layout (`SupplierPurchases.jsx`)**: Removed outer page scrollbar by compacting vertical margins (`space-y-3.5`) and card padding (`p-3.5 md:p-4`). The Purchase Invoice GRN entry form now fits 100% full screen cleanly.
+    - **High-Contrast Bold Field Labels**: Upgraded all field headers (Invoice Date, System Entry #, Company Bill #, Salesman/Booker, Supplier Code, Account Name, Payment Mode, Transport Carrier, Bilty #, Stock Destination, Product Code, Batch #, Exp Date, Qty, Rate, Gross, Disc%, Net Amt) to high-contrast dark bold text (`text-slate-900 font-black`) with clear Urdu and English labels.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 2.63s.
 
 
 

@@ -955,35 +955,35 @@ export default function SupplierPurchases() {
   });
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-6 overflow-x-hidden">
+    <div className="w-full max-w-full min-w-0 space-y-3.5 overflow-x-hidden">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-teal-100 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 md:p-4 rounded-2xl border border-teal-200 shadow-xs">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-600 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <h1 className="text-lg sm:text-xl font-black text-slate-950 flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-700 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               domain
             </span>
             Pharma Companies &amp; Distributor Directory
           </h1>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-[11px] text-slate-600 font-bold mt-0.5">
             Manage Distributor Accounts, Stock Purchase Bills, Expiry Batches &amp; Payable Ledgers
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          <div className="bg-rose-50 border border-rose-200 px-3.5 py-1.5 rounded-2xl text-left sm:text-right shadow-xs shrink-0">
-            <div className="text-[10px] text-rose-700 font-bold uppercase tracking-wider">Company Credit Due</div>
-            <div className="text-lg font-black text-rose-800">Rs. {totalSupplierPayables.toLocaleString()}</div>
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          <div className="bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl text-left sm:text-right shadow-2xs shrink-0">
+            <div className="text-[9.5px] text-rose-800 font-black uppercase tracking-wider">Company Credit Due</div>
+            <div className="text-base font-black text-rose-900">Rs. {totalSupplierPayables.toLocaleString()}</div>
           </div>
           <button
             onClick={() => setActiveTab("grn_form")}
-            className="min-h-[42px] bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2 rounded-2xl font-black text-xs hover:from-emerald-700 hover:to-teal-800 transition-all shadow-md shadow-emerald-200 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
+            className="min-h-[38px] bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-3.5 py-1.5 rounded-xl font-black text-xs hover:from-emerald-700 hover:to-teal-800 transition-all shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-base">receipt_long</span>
-            <span>Purchase Bill (بل انٹری)</span>
+            <span>Company Purchase Bill (بل انٹری)</span>
           </button>
           <button
             onClick={() => setShowAddSupplier(true)}
-            className="min-h-[42px] bg-teal-600 text-white px-4 py-2 rounded-2xl font-bold text-xs hover:bg-teal-700 transition-colors shadow-md shadow-teal-200 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
+            className="min-h-[38px] bg-teal-600 text-white px-3.5 py-1.5 rounded-xl font-black text-xs hover:bg-teal-700 transition-colors shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-base">add_business</span>
             <span>+ Add Company</span>
@@ -992,23 +992,23 @@ export default function SupplierPurchases() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex border-b border-gray-200 gap-2 overflow-x-auto">
+      <div className="flex border-b border-slate-200 gap-1 overflow-x-auto">
         <button
           onClick={() => setActiveTab("grn_form")}
-          className={`pb-3 px-4 font-black text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === "grn_form" ? "border-emerald-600 text-emerald-800" : "border-transparent text-gray-500 hover:text-gray-700"
+          className={`pb-2.5 px-3.5 font-black text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === "grn_form" ? "border-emerald-600 text-emerald-900 bg-emerald-50/50 rounded-t-xl" : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
           <span className="material-symbols-outlined text-base text-emerald-600">receipt_long</span>
           Company Purchase Invoice Entry (کمپنی بل انٹری)
-          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-black">
+          <span className="bg-emerald-100 text-emerald-900 text-[10px] px-2 py-0.5 rounded-full font-black border border-emerald-300">
             {grnForm.voucher_no}
           </span>
         </button>
         <button
           onClick={() => setActiveTab("suppliers")}
-          className={`pb-3 px-4 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === "suppliers" ? "border-teal-600 text-teal-800" : "border-transparent text-gray-500 hover:text-gray-700"
+          className={`pb-2.5 px-3.5 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === "suppliers" ? "border-teal-600 text-teal-900 bg-teal-50/50 rounded-t-xl" : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
           <span className="material-symbols-outlined text-base">domain</span>
@@ -1016,8 +1016,8 @@ export default function SupplierPurchases() {
         </button>
         <button
           onClick={() => setActiveTab("bills")}
-          className={`pb-3 px-4 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === "bills" ? "border-teal-600 text-teal-800" : "border-transparent text-gray-500 hover:text-gray-700"
+          className={`pb-2.5 px-3.5 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === "bills" ? "border-teal-600 text-teal-900 bg-teal-50/50 rounded-t-xl" : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
           <span className="material-symbols-outlined text-base">receipt_long</span>
@@ -1025,8 +1025,8 @@ export default function SupplierPurchases() {
         </button>
         <button
           onClick={() => setActiveTab("new_purchase")}
-          className={`pb-3 px-4 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === "new_purchase" ? "border-teal-600 text-teal-800" : "border-transparent text-gray-500 hover:text-gray-700"
+          className={`pb-2.5 px-3.5 font-bold text-xs transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === "new_purchase" ? "border-teal-600 text-teal-900 bg-teal-50/50 rounded-t-xl" : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
           <span className="material-symbols-outlined text-base">add_shopping_cart</span>
@@ -1036,32 +1036,29 @@ export default function SupplierPurchases() {
 
       {/* TAB 0: DrCreate & MS Access Purchase GRN Form */}
       {activeTab === "grn_form" && (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-3.5 animate-fade-in">
           {/* Visual Header Banner matching DrCreate */}
-          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 border border-emerald-500/30">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 text-white shadow-inner">
-                <span className="material-symbols-outlined text-3xl">inventory_2</span>
+          <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 rounded-2xl p-3.5 text-white shadow-xs flex flex-col md:flex-row items-center justify-between gap-3 border border-emerald-600">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 text-white shadow-inner">
+                <span className="material-symbols-outlined text-2xl">inventory_2</span>
               </div>
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-[11px] font-black uppercase tracking-wider mb-1">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-white/25 rounded-full text-[10px] font-black uppercase tracking-wider mb-0.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
                   Pharmacy / Godown Company Stock Inward
                 </div>
-                <h2 className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
-                  Company Purchase Invoice Entry <span className="text-emerald-200 text-xl font-medium">(کمپنی خریداری بل)</span>
+                <h2 className="text-lg md:text-xl font-black tracking-tight flex items-center gap-2">
+                  Company Purchase Invoice Entry <span className="text-emerald-200 text-sm font-bold">(کمپنی خریداری بل)</span>
                 </h2>
-                <p className="text-xs text-emerald-100 mt-0.5 font-medium">
-                  Enter Company Sale Invoices, Bill #, Changing Salesmen, Bilty Tracking &amp; Auto Godown Stock
-                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowGRNListModal(true)}
-                className="bg-slate-900/80 hover:bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 border border-white/20"
+                className="bg-slate-900/80 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-xl font-black text-xs transition-all shadow-2xs flex items-center gap-1 border border-white/20"
               >
                 <span className="material-symbols-outlined text-base">list_alt</span>
                 Show Invoices List
@@ -1069,19 +1066,19 @@ export default function SupplierPurchases() {
               <button
                 type="button"
                 onClick={handleSaveGRNBill}
-                className="bg-white text-emerald-800 hover:bg-emerald-50 px-6 py-2.5 rounded-2xl font-black text-xs transition-all shadow-lg flex items-center gap-1.5"
+                className="bg-white text-emerald-900 hover:bg-emerald-50 px-4 py-1.5 rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-base">save</span>
+                <span className="material-symbols-outlined text-base text-emerald-700">save</span>
                 Save Bill
               </button>
             </div>
           </div>
 
           {/* Form Container */}
-          <div className="bg-white rounded-3xl border border-emerald-200/80 p-6 shadow-sm space-y-6">
+          <div className="bg-white rounded-2xl border border-emerald-300 p-3.5 md:p-4 shadow-2xs space-y-3.5">
             {/* Section 1: Basic Info */}
-            <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4 md:p-5">
-              <div className="text-xs font-black text-emerald-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-3 md:p-3.5">
+              <div className="text-xs font-black text-emerald-950 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-base text-emerald-700">receipt_long</span>
                 Invoice Header &amp; Company Info (انوائس اور سپلائر کی تفصیل)
               </div>
