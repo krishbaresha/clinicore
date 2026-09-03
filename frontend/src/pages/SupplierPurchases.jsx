@@ -22,7 +22,9 @@ function ExpandableCombobox({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [highlightedIdx, setHighlightedIdx] = useState(0);
   const dropdownRef = useRef(null);
+  const listContainerRef = useRef(null);
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -44,7 +46,56 @@ function ExpandableCombobox({
     );
   }, [options, search]);
 
+  useEffect(() => {
+    setHighlightedIdx(0);
+  }, [search, isOpen]);
+
   const selectedOpt = options.find((o) => o.id === value || o.label === value);
+
+  const handleKeyDown = (e) => {
+    if (!isOpen) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter") {
+        setIsOpen(true);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIdx((prev) => {
+        const next = prev < filteredOptions.length - 1 ? prev + 1 : prev;
+        scrollHighlightedIntoView(next);
+        return next;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIdx((prev) => {
+        const next = prev > 0 ? prev - 1 : 0;
+        scrollHighlightedIntoView(next);
+        return next;
+      });
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      if (filteredOptions.length > 0 && highlightedIdx >= 0 && highlightedIdx < filteredOptions.length) {
+        e.preventDefault();
+        const selected = filteredOptions[highlightedIdx];
+        onChange(selected.id, selected);
+        setIsOpen(false);
+        setSearch("");
+      }
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+      e.preventDefault();
+    }
+  };
+
+  const scrollHighlightedIntoView = (index) => {
+    if (!listContainerRef.current) return;
+    const items = listContainerRef.current.children;
+    if (items && items[index]) {
+      items[index].scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  };
 
   return (
     <div ref={dropdownRef} className={`relative ${className}`}>
@@ -73,6 +124,7 @@ function ExpandableCombobox({
           setIsOpen(!isOpen);
           setSearch("");
         }}
+        onKeyDown={handleKeyDown}
         className={`w-full bg-white border ${isOpen ? "border-emerald-500 ring-2 ring-emerald-100" : "border-gray-300 hover:border-gray-400"} rounded-xl px-3 py-2 text-xs font-bold text-left flex items-center justify-between shadow-sm transition-all`}
       >
         <span className={`truncate ${selectedOpt ? "text-gray-900 font-black" : "text-gray-400 font-medium"}`}>
@@ -107,6 +159,7 @@ function ExpandableCombobox({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder={searchPlaceholder}
               autoFocus
               className="w-full bg-transparent border-0 text-xs font-bold text-gray-800 placeholder-gray-400 focus:outline-none"
@@ -123,14 +176,15 @@ function ExpandableCombobox({
           </div>
 
           {/* Options List */}
-          <div className="overflow-y-auto flex-1 p-1 space-y-0.5 max-h-60">
+          <div ref={listContainerRef} className="overflow-y-auto flex-1 p-1 space-y-0.5 max-h-60">
             {filteredOptions.length === 0 ? (
               <div className="text-center py-6 text-gray-400 text-xs font-semibold">
                 No matches found for "{search}"
               </div>
             ) : (
-              filteredOptions.map((opt) => {
+              filteredOptions.map((opt, idx) => {
                 const isSelected = opt.id === value || opt.label === value;
+                const isHighlighted = idx === highlightedIdx;
                 return (
                   <button
                     key={opt.id}
@@ -140,8 +194,9 @@ function ExpandableCombobox({
                       setIsOpen(false);
                       setSearch("");
                     }}
+                    onMouseEnter={() => setHighlightedIdx(idx)}
                     className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors ${
-                      isSelected
+                      isHighlighted || isSelected
                         ? "bg-emerald-600 text-white font-black"
                         : "hover:bg-emerald-50 text-gray-800 font-bold"
                     }`}
@@ -149,14 +204,14 @@ function ExpandableCombobox({
                     <div className="flex items-center gap-2 truncate">
                       {opt.badge && (
                         <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black ${
-                          isSelected ? "bg-emerald-800 text-white" : "bg-emerald-100 text-emerald-800"
+                          isHighlighted || isSelected ? "bg-emerald-800 text-white" : "bg-emerald-100 text-emerald-800"
                         }`}>
                           {opt.badge}
                         </span>
                       )}
                       <span className="truncate">{opt.label}</span>
                       {opt.sublabel && (
-                        <span className={`text-[10px] font-medium truncate ${isSelected ? "text-emerald-200" : "text-gray-400"}`}>
+                        <span className={`text-[10px] font-medium truncate ${isHighlighted || isSelected ? "text-emerald-200" : "text-gray-400"}`}>
                           {opt.sublabel}
                         </span>
                       )}
@@ -274,6 +329,7 @@ export default function SupplierPurchases() {
     batch_no: "",
     expiry_date: "",
     qty: "1",
+    bonus_qty: "0",
     rate: "",
     gross: "",
     disc_pct: "40",
@@ -285,9 +341,31 @@ export default function SupplierPurchases() {
   const [showGRNListModal, setShowGRNListModal] = useState(false);
   const [grnListSearch, setGrnListSearch] = useState("");
   const grnProductInputRef = useRef(null);
+  const batchNoRef = useRef(null);
+  const expDateRef = useRef(null);
+  const qtyRef = useRef(null);
+  const bonusQtyRef = useRef(null);
+  const rateRef = useRef(null);
+  const discPctRef = useRef(null);
+  const discFlatRef = useRef(null);
+  const addBtnRef = useRef(null);
   const grnItemsEndRef = useRef(null);
   const grnTableContainerRef = useRef(null);
 
+  // Account Type Switcher ("companies" | "parties" | "all") & Brand Pills
+  const [accountFilterType, setAccountFilterType] = useState("companies");
+  const [selectedBrandCodePill, setSelectedBrandCodePill] = useState("");
+
+  // Quick Add New Product Modal State
+  const [showQuickAddProductModal, setShowQuickAddProductModal] = useState(false);
+  const [newProdForm, setNewProdForm] = useState({
+    medicine_name: "",
+    company_name: "",
+    category: "Tablet",
+    unit_label: "pack",
+    cost_price: "",
+    unit_sale_price: "",
+  });
 
   // Selected Supplier Drawer / Modal & View Mode
   const [selectedSupplierDrawer, setSelectedSupplierDrawer] = useState(null);
@@ -461,12 +539,22 @@ export default function SupplierPurchases() {
     }));
   }, [transportsList]);
 
-  // Dynamic Company-Filtered Inventory for Tab 1 (Purchase GRN _Form)
+  // Dynamic Company & Brand-Filtered Inventory for Tab 1 (Purchase GRN Form)
   const filteredGrnInventory = useMemo(() => {
-    if (grnShowAllCompanies || !grnForm.account_name) return inventoryList;
-    const matched = filterInventoryByCompanyOrSupplier(inventoryList, grnForm.account_name);
-    return matched.length > 0 ? matched : inventoryList;
-  }, [inventoryList, grnForm.account_name, grnShowAllCompanies]);
+    let list = inventoryList;
+    if (selectedBrandCodePill && selectedBrandCodePill !== "ALL") {
+      const q = selectedBrandCodePill.toLowerCase();
+      list = list.filter(
+        (i) =>
+          (i.item_code || "").toLowerCase().includes(q) ||
+          (i.company_name || "").toLowerCase().includes(q)
+      );
+    } else if (!grnShowAllCompanies && grnForm.account_name) {
+      const matched = filterInventoryByCompanyOrSupplier(list, grnForm.account_name);
+      if (matched.length > 0) list = matched;
+    }
+    return list;
+  }, [inventoryList, grnForm.account_name, grnShowAllCompanies, selectedBrandCodePill]);
 
   const productOptions = useMemo(() => {
     return filteredGrnInventory.map((inv) => ({
@@ -484,11 +572,26 @@ export default function SupplierPurchases() {
     return () => window.removeEventListener("clinicflow_status_update", refreshData);
   }, []);
 
-
   // DrCreate Purchase GRN Form Handlers
   const handleSelectGRNMedicine = (invId) => {
     if (!invId) {
-      setGrnCart((prev) => ({ ...prev, inventory_id: "", medicine_name: "", product_code: "", category: "", packing: "", batch_no: "", expiry_date: "", rate: "", gross: "", net_amount: "" }));
+      setGrnCart((prev) => ({
+        ...prev,
+        inventory_id: "",
+        medicine_name: "",
+        product_code: "",
+        category: "",
+        packing: "",
+        batch_no: "",
+        expiry_date: "",
+        qty: "1",
+        bonus_qty: "0",
+        rate: "",
+        gross: "",
+        disc_pct: "40",
+        disc_flat: "0",
+        net_amount: "",
+      }));
       return;
     }
     const inv = inventoryList.find((i) => i.id === invId);
@@ -509,12 +612,18 @@ export default function SupplierPurchases() {
       batch_no: inv.batch_no || "",
       expiry_date: inv.expiry_date || "",
       qty: String(qty),
+      bonus_qty: grnCart.bonus_qty || "0",
       rate: String(rate),
       gross: String(gross),
       disc_pct: grnCart.disc_pct === "" || grnCart.disc_pct === undefined ? "40" : String(grnCart.disc_pct),
       disc_flat: grnCart.disc_flat || "0",
       net_amount: String(net),
     });
+
+    // Auto-focus Batch # or Qty input
+    setTimeout(() => {
+      batchNoRef.current?.focus();
+    }, 40);
   };
 
   const handleUpdateGRNCart = (field, val) => {
@@ -545,6 +654,7 @@ export default function SupplierPurchases() {
     }
 
     const q = Number(grnCart.qty) || 1;
+    const bonusQ = Number(grnCart.bonus_qty) || 0;
     const r = Number(grnCart.rate) || 0;
     const gross = q * r;
     const dPct = Number(grnCart.disc_pct) || 0;
@@ -561,7 +671,8 @@ export default function SupplierPurchases() {
       batch_no: grnCart.batch_no.trim() || `BT-${Date.now().toString().slice(-4)}`,
       expiry_date: grnCart.expiry_date.trim() || "",
       qty: q,
-      qty_base_units: q,
+      bonus_qty: bonusQ,
+      qty_base_units: q + bonusQ, // Paid Qty + Bonus Qty added to Stock!
       rate: r,
       cost_price: r,
       gross: gross,
@@ -582,6 +693,7 @@ export default function SupplierPurchases() {
       batch_no: "",
       expiry_date: "",
       qty: "1",
+      bonus_qty: "0",
       rate: "",
       gross: "",
       disc_pct: "40",
@@ -597,6 +709,28 @@ export default function SupplierPurchases() {
       }
       grnProductInputRef.current?.focus();
     }, 40);
+  };
+
+  const handleCreateQuickProduct = (e) => {
+    e.preventDefault();
+    if (!newProdForm.medicine_name.trim()) return;
+    const created = dbInventory.add({
+      medicine_name: newProdForm.medicine_name.trim(),
+      company_name: newProdForm.company_name.trim() || grnForm.account_name || "General Pharma",
+      category: newProdForm.category || "Tablet",
+      unit_label: newProdForm.unit_label || "pack",
+      cost_price: Number(newProdForm.cost_price) || 0,
+      cost_price_per_box: Number(newProdForm.cost_price) || 0,
+      unit_sale_price: Number(newProdForm.unit_sale_price) || 0,
+      box_sale_price: Number(newProdForm.unit_sale_price) || 0,
+      warehouse_stock: 0,
+      store_stock: 0,
+    });
+    alert(`✅ New Product "${created.medicine_name}" registered & added to inventory!`);
+    setInventoryList(dbInventory.getAll());
+    setNewProdForm({ medicine_name: "", company_name: "", category: "Tablet", unit_label: "pack", cost_price: "", unit_sale_price: "" });
+    setShowQuickAddProductModal(false);
+    handleSelectGRNMedicine(created.id);
   };
 
 
@@ -1083,77 +1217,88 @@ export default function SupplierPurchases() {
 
           {/* Form Container */}
           <div className="bg-white rounded-2xl border border-emerald-300 p-3.5 md:p-4 shadow-2xs space-y-3.5">
-            {/* Section 1: Basic Info */}
-            <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-3 md:p-3.5">
-              <div className="text-xs font-black text-emerald-950 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-base text-emerald-700">receipt_long</span>
-                Invoice Header &amp; Company Info (انوائس اور سپلائر کی تفصیل)
+            {/* Section 1: Basic Info (Clean 4-Column Balanced Grid - NO Naration) */}
+            <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-3 md:p-3.5 space-y-3">
+              <div className="text-xs font-black text-emerald-950 uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-base text-emerald-700">receipt_long</span>
+                  Invoice Header &amp; Company Info (انوائس اور سپلائر کی تفصیل)
+                </span>
+                <span className="text-[10px] text-emerald-800 font-bold bg-white px-2 py-0.5 rounded-md border border-emerald-300">
+                  ⚡ Auto-Focus &amp; Keyboard Navigation Active
+                </span>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 {/* Date */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Invoice Date (تاریخ)</label>
+                  <label className="block text-[11px] font-black text-slate-900 mb-1">📅 Invoice Date (تاریخ)</label>
                   <input
                     type="text"
                     value={grnForm.date}
                     onChange={(e) => setGrnForm({ ...grnForm, date: e.target.value })}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-200"
                   />
                 </div>
 
                 {/* System Entry # */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">System Entry # (سسٹم نمبر)</label>
+                  <label className="block text-[11px] font-black text-slate-900 mb-1">🔢 System Entry # (سسٹم نمبر)</label>
                   <input
                     type="text"
                     value={grnForm.voucher_no}
                     readOnly
-                    className="w-full bg-emerald-100/70 border border-emerald-300 text-emerald-900 rounded-xl px-3 py-2 text-xs font-black tracking-wider"
+                    className="w-full bg-emerald-100/80 border border-emerald-300 text-emerald-950 rounded-xl px-3 py-1.5 text-xs font-mono font-black tracking-wider"
                   />
                 </div>
 
                 {/* Company Invoice / Bill # */}
                 <div>
-                  <label className="block text-[11px] font-bold text-emerald-950 mb-1 flex items-center gap-1">
-                    <span>Company Invoice / Bill # (انوائس نمبر)</span>
-                    <span className="text-rose-500 font-black">*</span>
+                  <label className="block text-[11px] font-black text-slate-900 mb-1 flex items-center justify-between">
+                    <span>🧾 Co Invoice / Bill # *</span>
+                    <span className="text-[9.5px] text-emerald-800 font-bold">Main Ref</span>
                   </label>
                   <input
                     type="text"
                     value={grnForm.grn_no}
                     onChange={(e) => setGrnForm({ ...grnForm, grn_no: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        grnProductInputRef.current?.focus();
+                      }
+                    }}
                     placeholder="e.g. 10505, 017729, INV/0503"
-                    className="w-full bg-white border border-emerald-400 rounded-xl px-3 py-2 text-xs font-black text-gray-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                    className="w-full bg-white border border-emerald-400 rounded-xl px-3 py-1.5 text-xs font-mono font-black text-slate-950 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                   />
                 </div>
 
-                {/* Salesman / Reference with + New */}
+                {/* Salesman / Reference */}
                 <div>
                   {showNewRefInput ? (
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 mb-1">New Salesman / Booker</label>
-                      <div className="flex gap-1.5">
+                      <label className="block text-[11px] font-black text-slate-900 mb-1">New Salesman / Booker</label>
+                      <div className="flex gap-1">
                         <input
                           type="text"
                           value={newRefText}
                           onChange={(e) => setNewRefText(e.target.value)}
                           placeholder="e.g. M Imran Qasim..."
-                          className="flex-1 bg-white border border-emerald-400 rounded-xl px-2.5 py-1.5 text-xs font-bold"
+                          className="flex-1 bg-white border border-emerald-400 rounded-xl px-2 py-1 text-xs font-bold"
                           autoFocus
                           onKeyDown={(e) => e.key === "Enter" && handleAddNewReference()}
                         />
                         <button
                           type="button"
                           onClick={handleAddNewReference}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-black text-xs"
+                          className="bg-emerald-700 text-white px-2 py-1 rounded-xl font-black text-xs"
                         >
                           Save
                         </button>
                         <button
                           type="button"
                           onClick={() => setShowNewRefInput(false)}
-                          className="bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl font-bold text-xs"
+                          className="bg-slate-200 text-slate-700 px-1.5 py-1 rounded-xl font-bold text-xs"
                         >
                           Cancel
                         </button>
@@ -1161,7 +1306,7 @@ export default function SupplierPurchases() {
                     </div>
                   ) : (
                     <ExpandableCombobox
-                      label="Salesman / Booker (سیلز مین / آرڈر بکر)"
+                      label="👤 Salesman / Booker (سیلز مین)"
                       value={grnForm.reference}
                       onChange={(val) => setGrnForm({ ...grnForm, reference: val })}
                       options={referenceOptions}
@@ -1175,13 +1320,13 @@ export default function SupplierPurchases() {
 
                 {/* Quick Supplier Code Auto-Fill */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-amber-900">
-                      <span className="material-symbols-outlined text-sm text-amber-600">bolt</span>
-                      Supplier Code
+                  <label className="block text-[11px] font-black text-slate-900 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-amber-950">
+                      <span className="material-symbols-outlined text-xs text-amber-600">bolt</span>
+                      ⚡ Supplier Code
                     </span>
                     {grnSupplierCode && (
-                      <span className="text-[10px] text-emerald-700 font-bold">✓ Linked</span>
+                      <span className="text-[10px] text-emerald-800 font-bold">✓ Linked</span>
                     )}
                   </label>
                   <div className="relative">
@@ -1189,14 +1334,14 @@ export default function SupplierPurchases() {
                       type="text"
                       value={grnSupplierCode}
                       onChange={(e) => handleSupplierCodeChange(e.target.value)}
-                      placeholder="e.g. SUP-001, BM"
-                      className="w-full bg-amber-50/70 border border-amber-300 rounded-xl px-3 py-2 text-xs font-mono font-black text-amber-950 uppercase tracking-wider focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                      placeholder="e.g. SUP-001, BM, GHR"
+                      className="w-full bg-amber-50/80 border border-amber-300 rounded-xl px-3 py-1.5 text-xs font-mono font-black text-amber-950 uppercase tracking-wider focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                     {grnSupplierCode && (
                       <button
                         type="button"
                         onClick={() => handleSupplierCodeChange("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
                         title="Clear Code"
                       >
                         <span className="material-symbols-outlined text-xs">close</span>
@@ -1205,10 +1350,50 @@ export default function SupplierPurchases() {
                   </div>
                 </div>
 
-                {/* Account Name */}
+                {/* Account Name with Filter Tabs (Companies vs Parties) */}
                 <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-black text-slate-900">
+                      🏢 Account Name (Supplier / Company / Party) <span className="text-rose-500">*</span>
+                    </span>
+                    {/* Account Type Filter Toggle */}
+                    <div className="inline-flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300 gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setAccountFilterType("companies")}
+                        className={`px-2 py-0.5 rounded text-[9.5px] font-black transition-all ${
+                          accountFilterType === "companies"
+                            ? "bg-emerald-700 text-white shadow-2xs"
+                            : "text-slate-700 hover:bg-slate-300"
+                        }`}
+                      >
+                        🏢 Companies ({suppliers.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAccountFilterType("parties")}
+                        className={`px-2 py-0.5 rounded text-[9.5px] font-black transition-all ${
+                          accountFilterType === "parties"
+                            ? "bg-emerald-700 text-white shadow-2xs"
+                            : "text-slate-700 hover:bg-slate-300"
+                        }`}
+                      >
+                        👤 Parties / Accounts
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAccountFilterType("all")}
+                        className={`px-2 py-0.5 rounded text-[9.5px] font-black transition-all ${
+                          accountFilterType === "all"
+                            ? "bg-emerald-700 text-white shadow-2xs"
+                            : "text-slate-700 hover:bg-slate-300"
+                        }`}
+                      >
+                        🌐 All
+                      </button>
+                    </div>
+                  </div>
                   <ExpandableCombobox
-                    label="Account Name (Supplier / Company)"
                     value={grnForm.account_name}
                     onChange={(val, opt) => {
                       setGrnForm({ ...grnForm, account_name: val });
@@ -1217,42 +1402,30 @@ export default function SupplierPurchases() {
                       }
                     }}
                     options={accountOptions}
-                    placeholder="Select or Search Supplier / Account..."
-                    searchPlaceholder="Search 260+ Suppliers & Accounts..."
+                    placeholder="Select or Search Supplier / Company / Party..."
+                    searchPlaceholder="Search 260+ Suppliers & Parties..."
                     required={true}
-                  />
-                </div>
-
-                {/* Naration */}
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Naration</label>
-                  <input
-                    type="text"
-                    value={grnForm.naration}
-                    onChange={(e) => setGrnForm({ ...grnForm, naration: e.target.value })}
-                    placeholder="Invoice remarks / note"
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-medium text-gray-800"
                   />
                 </div>
 
                 {/* Payment Mode */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Payment Mode</label>
-                  <div className="flex items-center gap-2 mt-1">
+                  <label className="block text-[11px] font-black text-slate-900 mb-1">💳 Payment Mode</label>
+                  <div className="flex items-center gap-1.5 mt-0.5">
                     <button
                       type="button"
                       onClick={() => setGrnForm({ ...grnForm, payment_mode: "Cash" })}
-                      className={`flex-1 py-1.5 px-3 rounded-xl font-bold text-xs transition-all ${
-                        grnForm.payment_mode === "Cash" ? "bg-emerald-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      className={`flex-1 py-1.5 px-2.5 rounded-xl font-black text-xs transition-all ${
+                        grnForm.payment_mode === "Cash" ? "bg-emerald-700 text-white shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300"
                       }`}
                     >
-                      Cash
+                      Cash Paid
                     </button>
                     <button
                       type="button"
                       onClick={() => setGrnForm({ ...grnForm, payment_mode: "Credit" })}
-                      className={`flex-1 py-1.5 px-3 rounded-xl font-bold text-xs transition-all ${
-                        grnForm.payment_mode === "Credit" ? "bg-rose-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      className={`flex-1 py-1.5 px-2.5 rounded-xl font-black text-xs transition-all ${
+                        grnForm.payment_mode === "Credit" ? "bg-rose-700 text-white shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300"
                       }`}
                     >
                       Credit (Udhaar)
@@ -1262,19 +1435,19 @@ export default function SupplierPurchases() {
 
                 {/* Linked Supplier Info Capsule */}
                 {matchedGrnSupplier && (
-                  <div className="col-span-1 sm:col-span-2 md:col-span-4 bg-emerald-100/80 border border-emerald-300 rounded-2xl p-3 flex flex-wrap items-center justify-between text-xs text-emerald-950 gap-2 shadow-xs animate-fadeIn">
+                  <div className="col-span-1 sm:col-span-2 md:col-span-4 bg-emerald-100/80 border border-emerald-300 rounded-xl p-2.5 flex flex-wrap items-center justify-between text-xs text-emerald-950 gap-2 shadow-2xs animate-fadeIn">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-lg text-emerald-700">verified_user</span>
+                      <span className="material-symbols-outlined text-base text-emerald-700">verified_user</span>
                       <span className="font-bold">
-                        Linked Supplier: <strong className="font-mono bg-white px-2 py-0.5 rounded-lg border border-emerald-300 text-emerald-900">#{matchedGrnSupplier.supplier_code || matchedGrnSupplier.id}</strong> — {matchedGrnSupplier.name} ({matchedGrnSupplier.phone || "No Phone"})
+                        Linked Supplier: <strong className="font-mono bg-white px-2 py-0.5 rounded border border-emerald-300 text-emerald-950">#{matchedGrnSupplier.supplier_code || matchedGrnSupplier.id}</strong> — {matchedGrnSupplier.name} ({matchedGrnSupplier.phone || "No Phone"})
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <span className="text-[11px] font-bold text-slate-700">
-                        Current Udhaar / Balance: <strong className="text-rose-700 font-black">Rs. {Number(matchedGrnSupplier.current_balance || matchedGrnSupplier.balance_due || 0).toLocaleString()}</strong>
+                        Current Udhaar Balance: <strong className="text-rose-800 font-black">Rs. {Number(matchedGrnSupplier.current_balance || matchedGrnSupplier.balance_due || 0).toLocaleString()}</strong>
                       </span>
-                      <span className="text-[10px] bg-emerald-700 text-white px-2.5 py-0.5 rounded-full font-black">
-                        ⚡ Details Auto-Filled
+                      <span className="text-[9.5px] bg-emerald-700 text-white px-2 py-0.5 rounded-full font-black">
+                        ⚡ Auto-Filled
                       </span>
                     </div>
                   </div>
@@ -1284,28 +1457,28 @@ export default function SupplierPurchases() {
                 <div className="sm:col-span-2">
                   {showNewTransportInput ? (
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 mb-1">New Transport Carrier</label>
+                      <label className="block text-[11px] font-black text-slate-900 mb-1">New Transport Carrier</label>
                       <div className="flex gap-1.5">
                         <input
                           type="text"
                           value={newTransportText}
                           onChange={(e) => setNewTransportText(e.target.value)}
                           placeholder="e.g. Al-Razi Transport, Larkana Goods..."
-                          className="flex-1 bg-white border border-emerald-400 rounded-xl px-2.5 py-1.5 text-xs font-bold"
+                          className="flex-1 bg-white border border-emerald-400 rounded-xl px-2.5 py-1 text-xs font-bold"
                           autoFocus
                           onKeyDown={(e) => e.key === "Enter" && handleAddNewTransport()}
                         />
                         <button
                           type="button"
                           onClick={handleAddNewTransport}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-black text-xs"
+                          className="bg-emerald-700 text-white px-2.5 py-1 rounded-xl font-black text-xs"
                         >
                           Save
                         </button>
                         <button
                           type="button"
                           onClick={() => setShowNewTransportInput(false)}
-                          className="bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl font-bold text-xs"
+                          className="bg-slate-200 text-slate-700 px-2 py-1 rounded-xl font-bold text-xs"
                         >
                           Cancel
                         </button>
@@ -1313,7 +1486,7 @@ export default function SupplierPurchases() {
                     </div>
                   ) : (
                     <ExpandableCombobox
-                      label="Transport Carrier"
+                      label="🚚 Transport Carrier (ٹرانسپورٹ carrier)"
                       value={grnForm.transport}
                       onChange={(val) => setGrnForm({ ...grnForm, transport: val })}
                       options={transportOptions}
@@ -1327,23 +1500,23 @@ export default function SupplierPurchases() {
 
                 {/* Bilty # */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Bilty #</label>
+                  <label className="block text-[11px] font-black text-slate-900 mb-1">📦 Bilty # (بلٹی نمبر)</label>
                   <input
                     type="text"
                     value={grnForm.bilty_no}
                     onChange={(e) => setGrnForm({ ...grnForm, bilty_no: e.target.value })}
                     placeholder="Tracking / Bilty No"
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 focus:border-emerald-600"
                   />
                 </div>
 
                 {/* Destination Location */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 mb-1">Stock Destination</label>
+                  <label className="block text-[11px] font-black text-slate-900 mb-1">🏬 Stock Destination</label>
                   <select
                     value={grnForm.destination_type}
                     onChange={(e) => setGrnForm({ ...grnForm, destination_type: e.target.value })}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-teal-800"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-teal-900 focus:border-teal-600"
                   >
                     {warehousesList && warehousesList.length > 0 ? (
                       warehousesList.map((wh) => (
@@ -1362,50 +1535,82 @@ export default function SupplierPurchases() {
               </div>
             </div>
 
-            {/* Section 2: Cart Detail (Fast Line Item Add Bar with Batch & Expiry) */}
-            <div className="bg-teal-50/60 border border-teal-200 rounded-2xl p-4 md:p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-black text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
-                  Cart Detail (Fast Keyboard Entry, Batch #, Expiry Date &amp; Auto Rate)
+            {/* Section 2: Cart Detail (Fast Line Item Entry with Brand Pills & Bonus Qty) */}
+            <div className="bg-teal-50/70 border border-teal-300 rounded-xl p-3 md:p-3.5 space-y-2.5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-teal-200 pb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1">
+                    <span className="material-symbols-outlined text-base text-teal-700">add_shopping_cart</span>
+                    Fast Line Item Entry
+                  </div>
+                  {/* Brand Code Quick Pills matching POS */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[10px] text-teal-800 font-black uppercase">Brand Code:</span>
+                    {["ALL", "GHR", "BM", "MKT", "HFP", "BLS", "PB", "CLN", "ASH"].map((code) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setSelectedBrandCodePill(code === selectedBrandCodePill ? "" : code)}
+                        className={`text-[9.5px] font-black px-1.5 py-0.5 rounded border transition-all ${
+                          selectedBrandCodePill === code || (code === "ALL" && !selectedBrandCodePill)
+                            ? "bg-teal-800 text-white border-teal-900 shadow-2xs"
+                            : "bg-white text-teal-900 border-teal-300 hover:bg-teal-100"
+                        }`}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <span className="text-[10px] text-teal-700 font-bold bg-white px-2.5 py-0.5 rounded-full border border-teal-200">
-                  ⌨️ Tab / Enter Navigation Supported
-                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickAddProductModal(true)}
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 shadow-2xs"
+                    title="Add Newly Launched Product to Inventory Catalogue"
+                  >
+                    <span className="material-symbols-outlined text-sm">add_box</span>
+                    <span>+ Add New Product</span>
+                  </button>
+                  <span className="text-[9.5px] text-teal-800 font-bold bg-white px-2 py-0.5 rounded-md border border-teal-300">
+                    ⌨️ Press Enter to Move Next
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2.5 items-end">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2 items-end">
                 {/* Product Code */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1">Code</label>
+                  <label className="block text-[10px] font-black text-slate-700 mb-1">Code</label>
                   <input
                     type="text"
                     value={grnCart.product_code}
                     readOnly
                     placeholder="Code"
-                    className="w-full bg-gray-100 border border-gray-300 rounded-xl px-2 py-2 text-xs font-mono font-bold text-gray-700 text-center"
+                    className="w-full bg-slate-100 border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-mono font-black text-slate-800 text-center"
                   />
                 </div>
 
                 {/* Product Name Search with ExpandableCombobox */}
                 <div className="col-span-2 sm:col-span-3 md:col-span-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-gray-700">
+                    <span className="text-[10px] font-black text-slate-900">
                       Product Name <span className="text-rose-500">*</span>
                     </span>
                     <button
                       type="button"
                       onClick={() => setGrnShowAllCompanies(!grnShowAllCompanies)}
-                      className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md transition-all ${
+                      className={`text-[9px] font-black px-1.5 py-0.5 rounded transition-all ${
                         grnShowAllCompanies
-                          ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                          : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                          ? "bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300"
+                          : "bg-emerald-100 text-emerald-950 hover:bg-emerald-200 border border-emerald-300"
                       }`}
                       title={grnShowAllCompanies ? "Switch to Company-Filtered mode" : "Show all products regardless of supplier"}
                     >
                       {grnShowAllCompanies
                         ? `🌐 All (${inventoryList.length})`
-                        : `🏢 Filtered (${filteredGrnInventory.length})`}
+                        : `🏢 ${grnForm.account_name || "Company"} (${filteredGrnInventory.length})`}
                     </button>
                   </div>
                   <ExpandableCombobox
@@ -1428,108 +1633,163 @@ export default function SupplierPurchases() {
 
                 {/* Batch # / Lot No */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1">Batch #</label>
+                  <label className="block text-[10px] font-black text-slate-700 mb-1">Batch #</label>
                   <input
+                    ref={batchNoRef}
                     type="text"
                     value={grnCart.batch_no}
                     onChange={(e) => handleUpdateGRNCart("batch_no", e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
-                    placeholder="e.g. 250525"
-                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-mono font-bold text-gray-800 focus:border-teal-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        expDateRef.current?.focus();
+                      }
+                    }}
+                    placeholder="250525"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-mono font-black text-slate-900 focus:border-teal-600"
                   />
                 </div>
 
                 {/* Expiry Date */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1">Exp Date</label>
+                  <label className="block text-[10px] font-black text-slate-700 mb-1">Exp Date</label>
                   <input
+                    ref={expDateRef}
                     type="text"
                     value={grnCart.expiry_date}
                     onChange={(e) => handleUpdateGRNCart("expiry_date", e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        qtyRef.current?.focus();
+                      }
+                    }}
                     placeholder="MM/YY"
-                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-gray-800 focus:border-teal-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-900 focus:border-teal-600"
                   />
                 </div>
 
-                {/* Qty */}
+                {/* Paid Qty */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Qty</label>
+                  <label className="block text-[10px] font-black text-slate-700 mb-1 text-center">Paid Qty</label>
                   <input
+                    ref={qtyRef}
                     type="number"
                     min="1"
                     value={grnCart.qty}
                     onChange={(e) => handleUpdateGRNCart("qty", e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-black text-center text-gray-900 focus:border-teal-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        bonusQtyRef.current?.focus();
+                      }
+                    }}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-black text-center text-slate-950 focus:border-teal-600"
+                  />
+                </div>
+
+                {/* Bonus Qty (Scheme Free Dawa) */}
+                <div className="col-span-1 md:col-span-1">
+                  <label className="block text-[10px] font-black text-amber-900 mb-1 text-center flex items-center justify-center gap-0.5">
+                    <span>🎁 Bonus</span>
+                  </label>
+                  <input
+                    ref={bonusQtyRef}
+                    type="number"
+                    min="0"
+                    value={grnCart.bonus_qty}
+                    onChange={(e) => handleUpdateGRNCart("bonus_qty", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        rateRef.current?.focus();
+                      }
+                    }}
+                    placeholder="0"
+                    title="Scheme Free Units (Adds to stock without cost)"
+                    className="w-full bg-amber-50 border border-amber-300 rounded-xl px-2 py-1.5 text-xs font-black text-center text-amber-950 focus:bg-white focus:border-amber-500"
                   />
                 </div>
 
                 {/* Rate */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Rate (TP)</label>
+                  <label className="block text-[10px] font-black text-slate-700 mb-1 text-center">Rate (TP)</label>
                   <input
+                    ref={rateRef}
                     type="number"
                     value={grnCart.rate}
                     onChange={(e) => handleUpdateGRNCart("rate", e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        discPctRef.current?.focus();
+                      }
+                    }}
                     placeholder="Rate"
-                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900 focus:border-teal-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-center text-slate-950 focus:border-teal-600"
                   />
                 </div>
 
                 {/* Gross */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Gross</label>
+                  <label className="block text-[10px] font-black text-slate-700 mb-1 text-center">Gross</label>
                   <input
                     type="text"
                     value={grnCart.gross}
                     readOnly
-                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-700"
+                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold text-center text-slate-800"
                   />
                 </div>
 
                 {/* Disc % */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc %</label>
+                  <label className="block text-[10px] font-black text-slate-700 mb-1 text-center">Disc %</label>
                   <input
+                    ref={discPctRef}
                     type="number"
                     value={grnCart.disc_pct}
                     onChange={(e) => handleUpdateGRNCart("disc_pct", e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        discFlatRef.current?.focus();
+                      }
+                    }}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-center text-slate-950"
                   />
                 </div>
 
                 {/* Disc 0 (Flat) */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-gray-600 mb-1 text-center">Disc 0</label>
+                  <label className="block text-[10px] font-black text-slate-700 mb-1 text-center">Disc 0</label>
                   <input
+                    ref={discFlatRef}
                     type="number"
                     value={grnCart.disc_flat}
                     onChange={(e) => handleUpdateGRNCart("disc_flat", e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-2 py-2 text-xs font-bold text-center text-gray-900"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-center text-slate-950"
                   />
                 </div>
 
                 {/* Net Amount */}
                 <div className="col-span-1 md:col-span-1">
-                  <label className="block text-[10px] font-bold text-emerald-800 mb-1 text-center">Net Amt</label>
+                  <label className="block text-[10px] font-black text-emerald-900 mb-1 text-center">Net Amt</label>
                   <input
                     type="text"
                     value={grnCart.net_amount}
                     readOnly
-                    className="w-full bg-emerald-100/80 border border-emerald-300 rounded-xl px-2 py-2 text-xs font-black text-center text-emerald-950"
+                    className="w-full bg-emerald-100/90 border border-emerald-300 rounded-xl px-2 py-1.5 text-xs font-black text-center text-emerald-950"
                   />
                 </div>
 
                 {/* Add Button */}
                 <div className="col-span-1 md:col-span-1">
                   <button
+                    ref={addBtnRef}
                     type="button"
                     onClick={handleAddGRNItem}
-                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-black py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 shadow-md shadow-emerald-200"
+                    className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-black py-1.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 shadow-2xs"
                   >
                     <span className="material-symbols-outlined text-sm">add</span>
                     Add
@@ -3353,6 +3613,126 @@ export default function SupplierPurchases() {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* MODAL: Quick Add New Product */}
+      {showQuickAddProductModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={handleCreateQuickProduct} className="bg-white max-w-md w-full rounded-3xl p-5 border border-emerald-300 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">
+                  <span className="material-symbols-outlined text-xl">add_box</span>
+                </div>
+                <div>
+                  <h3 className="font-black text-gray-900 text-sm">Add New Product to Inventory</h3>
+                  <p className="text-[10px] text-gray-500">Quickly register newly launched medicine or item</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuickAddProductModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs font-semibold">
+              <div>
+                <label className="block text-slate-800 font-black mb-1">Product / Medicine Name *</label>
+                <input
+                  type="text"
+                  value={newProdForm.medicine_name}
+                  onChange={(e) => setNewProdForm({ ...newProdForm, medicine_name: e.target.value })}
+                  placeholder="e.g. Panadol Extra 500mg, R-22 Drops..."
+                  className="w-full border border-emerald-400 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Company / Brand</label>
+                  <input
+                    type="text"
+                    value={newProdForm.company_name}
+                    onChange={(e) => setNewProdForm({ ...newProdForm, company_name: e.target.value })}
+                    placeholder={grnForm.account_name || "Pharma Company"}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Category</label>
+                  <select
+                    value={newProdForm.category}
+                    onChange={(e) => setNewProdForm({ ...newProdForm, category: e.target.value })}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900"
+                  >
+                    <option value="Tablet">Tablet (ٹیکسٹ)</option>
+                    <option value="Syrup">Syrup (شربت)</option>
+                    <option value="Injection">Injection (انجیکشن)</option>
+                    <option value="Drops">Drops (قطرے)</option>
+                    <option value="Cream">Cream / Ointment (کریم)</option>
+                    <option value="Capsule">Capsule (کیپسول)</option>
+                    <option value="Powder">Powder (پاؤڈر)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Packing Unit</label>
+                  <input
+                    type="text"
+                    value={newProdForm.unit_label}
+                    onChange={(e) => setNewProdForm({ ...newProdForm, unit_label: e.target.value })}
+                    placeholder="pack / box"
+                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Cost Price (TP)</label>
+                  <input
+                    type="number"
+                    value={newProdForm.cost_price}
+                    onChange={(e) => setNewProdForm({ ...newProdForm, cost_price: e.target.value })}
+                    placeholder="Rs. Cost"
+                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Sale Price (MRP)</label>
+                  <input
+                    type="number"
+                    value={newProdForm.unit_sale_price}
+                    onChange={(e) => setNewProdForm({ ...newProdForm, unit_sale_price: e.target.value })}
+                    placeholder="Rs. MRP"
+                    className="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowQuickAddProductModal(false)}
+                className="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-xl text-xs hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-black py-2 rounded-xl text-xs shadow-2xs flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">check_circle</span>
+                Save &amp; Select Product
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

@@ -13,6 +13,7 @@ import {
   dbCashBook,
   dbAccounts,
   dbParties,
+  dbSuppliers,
   dbPartyLedger,
   dbDayClosing,
 } from "../api/db.js";
@@ -244,22 +245,60 @@ export default function FeesReports() {
   const accountOptions = useMemo(() => {
     const accList = dbAccounts.getAll() || [];
     const parties = dbParties.getAll() || [];
-    return accList.map((acc) => {
-      const matchedParty = parties.find((p) => p.name.toLowerCase() === acc.account_name.toLowerCase());
-      const extraDue =
-        matchedParty && matchedParty.current_balance > 0
-          ? `Udhaar: Rs. ${Number(matchedParty.current_balance || 0).toLocaleString("en-US")}`
-          : null;
+    const suppliers = dbSuppliers.getAll() || [];
 
-      return {
-        id: acc.id || acc.account_name,
-        label: acc.account_name,
-        badge: acc.account_type || "General",
-        sublabel: acc.naration || "",
-        extra: extraDue,
-        raw: acc,
-      };
+    const options = [];
+    const addedNames = new Set();
+
+    // 1. Add Wholesale Parties
+    parties.forEach((p) => {
+      const bal = Number(p.current_balance || p.balance_due || 0);
+      const nameKey = p.name.toLowerCase().trim();
+      addedNames.add(nameKey);
+      options.push({
+        id: p.id || p.name,
+        label: p.name,
+        badge: "Party",
+        sublabel: `${p.city || "City"} • Code: ${p.party_code || p.id}`,
+        extra: bal > 0 ? `Udhaar Dues: Rs. ${bal.toLocaleString("en-US")}` : null,
+        raw: p,
+      });
     });
+
+    // 2. Add Pharma Suppliers / Companies
+    suppliers.forEach((s) => {
+      const bal = Number(s.current_balance || s.balance_due || 0);
+      const nameKey = s.name.toLowerCase().trim();
+      if (!addedNames.has(nameKey)) {
+        addedNames.add(nameKey);
+        options.push({
+          id: s.id || s.name,
+          label: s.name,
+          badge: "Company",
+          sublabel: `Code: ${s.supplier_code || s.code || s.id}`,
+          extra: bal > 0 ? `Payable Dues: Rs. ${bal.toLocaleString("en-US")}` : null,
+          raw: s,
+        });
+      }
+    });
+
+    // 3. Add General Accounts
+    accList.forEach((acc) => {
+      const nameKey = acc.account_name.toLowerCase().trim();
+      if (!addedNames.has(nameKey)) {
+        addedNames.add(nameKey);
+        options.push({
+          id: acc.id || acc.account_name,
+          label: acc.account_name,
+          badge: acc.account_type || "General",
+          sublabel: acc.naration || "",
+          extra: null,
+          raw: acc,
+        });
+      }
+    });
+
+    return options;
   }, [activeTab]);
 
   // ---------------------------------------------------------------------------
@@ -1200,6 +1239,19 @@ export default function FeesReports() {
                   options={accountOptions}
                   placeholder={cbTerm === "Receive" ? "Select Customer / Party..." : "Select Expense / Supplier..."}
                 />
+                {cbAccountName && (() => {
+                  const selectedOpt = accountOptions.find((o) => o.label.toLowerCase() === cbAccountName.toLowerCase() || o.id === cbAccountName);
+                  if (!selectedOpt || !selectedOpt.extra) return null;
+                  return (
+                    <div className="mt-1 px-2.5 py-0.5 bg-amber-100 border border-amber-300 rounded-lg text-amber-950 text-[11px] font-black flex items-center justify-between animate-fade-in shadow-2xs">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs text-amber-700">account_balance_wallet</span>
+                        <span>Account Balance:</span>
+                      </span>
+                      <span className="font-mono text-[11px] font-black text-rose-700">{selectedOpt.extra}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Amount */}

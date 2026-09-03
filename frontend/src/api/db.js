@@ -6807,6 +6807,202 @@ export const dbDatabaseManagement = {
   },
 };
 
+/**
+ * Bulk Import & Export Helper Suite with Automatic Deduplication
+ */
+export function exportSuppliersTemplateCSV() {
+  const csv = "Company Name,Supplier Code,Phone,City,Address,Current Balance\n\"BM Pvt LTD\",\"BM\",\"03001234567\",\"Hyderabad\",\"Lajpat Road\",0\n\"GHR Homoepathic\",\"GHR\",\"03007654321\",\"Karachi\",\"Market Road\",0\n";
+  downloadCSV(csv, "Suppliers_Companies_Template.csv");
+}
+
+export function exportPartiesTemplateCSV() {
+  const csv = "Party Name,Party Code,Phone,City,Address,Salesman,Current Balance\n\"Muslim Medical Store\",\"PTY-001\",\"03009988776\",\"Hyderabad\",\"Station Road\",\"Usama\",0\n\"Asus Pharmacy\",\"PTY-002\",\"03005544332\",\"Interior Sindh\",\"Main Bazaar\",\"Mustafa\",0\n";
+  downloadCSV(csv, "Wholesale_Parties_Template.csv");
+}
+
+export function exportInventoryGodownsTemplateCSV() {
+  const csv = "Medicine Name,Description,Packing,Company Name,Company Code,Cost Price,Retail Price,Medical Store Stock,Godown 1 Stock,Godown 2 Stock\n\"R1 Combination 22ML\",\"Drops 22ML\",\"22ML Drop\",\"Dr. Reckeweg\",\"REC\",450,650,20,50,30\n\"Contole Plus Ointment\",\"Skin Ointment 20g\",\"20g Tube\",\"BM Pvt LTD\",\"BM\",120,180,15,40,25\n";
+  downloadCSV(csv, "Medicine_Catalogue_Godowns_Template.csv");
+}
+
+export function bulkImportSuppliers(csvText) {
+  const lines = csvText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length <= 1) return { count: 0, updated: 0, added: 0 };
+
+  const currentSuppliers = dbSuppliers.getAll() || [];
+  let added = 0;
+  let updated = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i].split(",").map((cell) => cell.replace(/^"(.*)"$/, "$1").trim());
+    if (!row[0]) continue;
+    const name = row[0];
+    const code = row[1] || "";
+    const phone = row[2] || "";
+    const city = row[3] || "";
+    const address = row[4] || "";
+    const balance = Number(row[5]) || 0;
+
+    const existing = currentSuppliers.find(
+      (s) => s.name.toLowerCase().trim() === name.toLowerCase().trim() || (code && s.supplier_code && s.supplier_code.toLowerCase().trim() === code.toLowerCase().trim())
+    );
+
+    if (existing) {
+      dbSuppliers.update(existing.id, {
+        name,
+        supplier_code: code || existing.supplier_code,
+        phone: phone || existing.phone,
+        city: city || existing.city,
+        address: address || existing.address,
+        current_balance: balance || existing.current_balance,
+      });
+      updated++;
+    } else {
+      dbSuppliers.add({
+        name,
+        supplier_code: code || "SUP-" + Math.floor(100 + Math.random() * 900),
+        phone,
+        city,
+        address,
+        current_balance: balance,
+        status: "active",
+      });
+      added++;
+    }
+  }
+
+  try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+  return { count: added + updated, added, updated };
+}
+
+export function bulkImportParties(csvText) {
+  const lines = csvText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length <= 1) return { count: 0, updated: 0, added: 0 };
+
+  const currentParties = dbParties.getAll() || [];
+  let added = 0;
+  let updated = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i].split(",").map((cell) => cell.replace(/^"(.*)"$/, "$1").trim());
+    if (!row[0]) continue;
+    const name = row[0];
+    const code = row[1] || `PTY-${i}`;
+    const phone = row[2] || "";
+    const city = row[3] || "";
+    const address = row[4] || "";
+    const salesman = row[5] || "";
+    const balance = Number(row[6]) || 0;
+
+    const existing = currentParties.find(
+      (p) => p.name.toLowerCase().trim() === name.toLowerCase().trim() || (code && p.party_code && p.party_code.toLowerCase().trim() === code.toLowerCase().trim())
+    );
+
+    if (existing) {
+      dbParties.update(existing.id, {
+        name,
+        party_code: code,
+        phone: phone || existing.phone,
+        city: city || existing.city,
+        address: address || existing.address,
+        salesman_name: salesman || existing.salesman_name,
+        current_balance: balance || existing.current_balance,
+      });
+      updated++;
+    } else {
+      dbParties.add({
+        name,
+        party_code: code,
+        phone,
+        city,
+        address,
+        salesman_name: salesman,
+        current_balance: balance,
+        status: "active",
+      });
+      added++;
+    }
+  }
+
+  try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+  return { count: added + updated, added, updated };
+}
+
+export function bulkImportInventoryWithGodowns(csvText) {
+  const lines = csvText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length <= 1) return { count: 0, updated: 0, added: 0 };
+
+  const currentItems = dbInventory.getAll() || [];
+  let added = 0;
+  let updated = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i].split(",").map((cell) => cell.replace(/^"(.*)"$/, "$1").trim());
+    if (!row[0]) continue;
+    const name = row[0];
+    const desc = row[1] || "";
+    const packing = row[2] || "pack";
+    const company = row[3] || "General";
+    const companyCode = row[4] || "";
+    const costPrice = Number(row[5]) || 0;
+    const retailPrice = Number(row[6]) || 0;
+    const storeStock = Number(row[7]) || 0;
+    const g1Stock = Number(row[8]) || 0;
+    const g2Stock = Number(row[9]) || 0;
+
+    const locationStocks = {
+      wh_str: storeStock,
+      wh_001: g1Stock,
+      wh_002: g2Stock,
+    };
+    const totalGodownStock = g1Stock + g2Stock;
+
+    const existing = currentItems.find(
+      (item) => item.medicine_name.toLowerCase().trim() === name.toLowerCase().trim() &&
+        (item.company_name || "").toLowerCase().trim() === company.toLowerCase().trim()
+    );
+
+    if (existing) {
+      dbInventory.update(existing.id, {
+        medicine_name: name,
+        description: desc || existing.description,
+        unit_label: packing || existing.unit_label,
+        company_name: company,
+        item_code: companyCode || existing.item_code,
+        cost_price: costPrice || existing.cost_price,
+        unit_sale_price: retailPrice || existing.unit_sale_price,
+        box_sale_price: retailPrice || existing.box_sale_price,
+        store_stock: storeStock,
+        warehouse_stock: totalGodownStock,
+        quantity: storeStock + totalGodownStock,
+        location_stocks: { ...(existing.location_stocks || {}), ...locationStocks },
+      });
+      updated++;
+    } else {
+      dbInventory.add({
+        medicine_name: name,
+        description: desc,
+        unit_label: packing,
+        company_name: company,
+        item_code: companyCode,
+        cost_price: costPrice,
+        cost_price_per_box: costPrice,
+        unit_sale_price: retailPrice,
+        box_sale_price: retailPrice,
+        store_stock: storeStock,
+        warehouse_stock: totalGodownStock,
+        quantity: storeStock + totalGodownStock,
+        location_stocks: locationStocks,
+        status: "active",
+      });
+      added++;
+    }
+  }
+
+  try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+  return { count: added + updated, added, updated };
+}
+
 
 
 

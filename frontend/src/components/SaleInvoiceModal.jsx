@@ -14,8 +14,8 @@ function ExpandableCombobox({
   value,
   onChange,
   options = [],
-  placeholder = "Select...",
-  searchPlaceholder = "Search...",
+  placeholder = "Select or search...",
+  searchPlaceholder = "Type to search...",
   onAddNew,
   addNewLabel = "+ Add New",
   required = false,
@@ -24,7 +24,9 @@ function ExpandableCombobox({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [highlightedIdx, setHighlightedIdx] = useState(0);
   const dropdownRef = useRef(null);
+  const listContainerRef = useRef(null);
 
   const selectedOpt = useMemo(() => {
     return options.find((opt) => opt.id === value || opt.label === value);
@@ -42,6 +44,10 @@ function ExpandableCombobox({
   }, [options, search]);
 
   useEffect(() => {
+    setHighlightedIdx(0);
+  }, [search, isOpen]);
+
+  useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsOpen(false);
@@ -50,6 +56,51 @@ function ExpandableCombobox({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleKeyDown = (e) => {
+    if (!isOpen) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter") {
+        setIsOpen(true);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIdx((prev) => {
+        const next = prev < filteredOptions.length - 1 ? prev + 1 : prev;
+        scrollHighlightedIntoView(next);
+        return next;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIdx((prev) => {
+        const next = prev > 0 ? prev - 1 : 0;
+        scrollHighlightedIntoView(next);
+        return next;
+      });
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      if (filteredOptions.length > 0 && highlightedIdx >= 0 && highlightedIdx < filteredOptions.length) {
+        e.preventDefault();
+        const selected = filteredOptions[highlightedIdx];
+        onChange(selected.id || selected.label, selected);
+        setIsOpen(false);
+        setSearch("");
+      }
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+      e.preventDefault();
+    }
+  };
+
+  const scrollHighlightedIntoView = (index) => {
+    if (!listContainerRef.current) return;
+    const items = listContainerRef.current.children;
+    if (items && items[index]) {
+      items[index].scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  };
 
   return (
     <div ref={dropdownRef} className={`relative ${className}`}>
@@ -78,6 +129,7 @@ function ExpandableCombobox({
           setIsOpen(!isOpen);
           setSearch("");
         }}
+        onKeyDown={handleKeyDown}
         className={`w-full bg-white border ${isOpen ? "border-emerald-500 ring-1 ring-emerald-200" : "border-gray-300 hover:border-gray-400"} rounded-lg px-2.5 py-1 text-xs font-bold text-left flex items-center justify-between shadow-2xs transition-all`}
       >
         <span className={`truncate flex-1 min-w-0 ${selectedOpt ? "text-gray-900 font-black" : "text-gray-400 font-medium"}`}>
@@ -109,6 +161,7 @@ function ExpandableCombobox({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder={searchPlaceholder}
               autoFocus
               className="w-full bg-transparent border-0 text-xs font-bold text-gray-800 placeholder-gray-400 focus:outline-none"
@@ -125,10 +178,11 @@ function ExpandableCombobox({
           </div>
 
           {/* Options List */}
-          <div className="overflow-y-auto max-h-56 divide-y divide-gray-50 p-1">
+          <div ref={listContainerRef} className="overflow-y-auto max-h-56 divide-y divide-gray-50 p-1">
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((opt) => {
+              filteredOptions.map((opt, idx) => {
                 const isSelected = opt.id === value || opt.label === value;
+                const isHighlighted = idx === highlightedIdx;
                 return (
                   <button
                     key={opt.id || opt.label}
@@ -138,8 +192,9 @@ function ExpandableCombobox({
                       setIsOpen(false);
                       setSearch("");
                     }}
+                    onMouseEnter={() => setHighlightedIdx(idx)}
                     className={`w-full text-left p-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
-                      isSelected
+                      isHighlighted || isSelected
                         ? "bg-emerald-600 text-white font-black shadow-xs"
                         : "hover:bg-emerald-50 text-gray-800 font-bold"
                     }`}
@@ -148,7 +203,7 @@ function ExpandableCombobox({
                       {opt.badge && (
                         <span
                           className={`px-1.5 py-0.5 rounded text-[9px] font-black shrink-0 ${
-                            isSelected ? "bg-emerald-700 text-emerald-100" : "bg-emerald-100 text-emerald-800"
+                            isHighlighted || isSelected ? "bg-emerald-700 text-emerald-100" : "bg-emerald-100 text-emerald-800"
                           }`}
                         >
                           {opt.badge}
@@ -156,7 +211,7 @@ function ExpandableCombobox({
                       )}
                       <span className="truncate font-black text-xs shrink-0">{opt.label}</span>
                       {opt.sublabel && (
-                        <span className={`text-[10px] font-medium truncate ${isSelected ? "text-emerald-100" : "text-gray-500"}`}>
+                        <span className={`text-[10px] font-medium truncate ${isHighlighted || isSelected ? "text-emerald-100" : "text-gray-500"}`}>
                           · {opt.sublabel}
                         </span>
                       )}
