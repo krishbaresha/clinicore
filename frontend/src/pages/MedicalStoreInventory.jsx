@@ -1732,9 +1732,7 @@ export default function MedicalStoreInventory() {
                   <th className="py-3 px-3 border-b border-slate-800">Company</th>
                   <th className="py-3 px-3 text-center border-b border-slate-800">Category</th>
                   <th className="py-3 px-3 text-center border-b border-slate-800">Code</th>
-                  <th className="py-3 px-3 text-center border-b border-slate-800 text-teal-300">Godown</th>
-                  <th className="py-3 px-3 text-center border-b border-slate-800 text-amber-300">Counter</th>
-                  <th className="py-3 px-3 text-center border-b border-slate-800 text-emerald-300">Total</th>
+                  <th className="py-3 px-3 text-center border-b border-slate-800 text-teal-300">Store Stock (Packs)</th>
                   <th className="py-3 px-3 text-right border-b border-slate-800">Cost</th>
                   <th className="py-3 px-3 text-right border-b border-slate-800 text-emerald-300">Sale</th>
                   <th className="py-3 px-4 text-right border-b border-slate-800">Actions</th>
@@ -1747,9 +1745,7 @@ export default function MedicalStoreInventory() {
                   const out = isOutOfStock(item);
                   const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || item.sale_price || 0);
                   const cost = Number(item.cost_price_per_box || item.purchase_price || item.cost_price || (sale * 0.7));
-                  const godownStock = item.warehouse_stock ?? 0;
-                  const counterStock = item.store_stock ?? (item.stock_qty ?? 0);
-                  const totalStock = item.total_base_stock ?? (godownStock + counterStock);
+                  const totalStock = item.store_stock ?? (item.quantity ?? item.stock_qty ?? 0);
                   const isSelected = selectedItems.has(item.id);
 
                   return (
@@ -1802,19 +1798,9 @@ export default function MedicalStoreInventory() {
                         {item.item_code || "—"}
                       </td>
 
-                      {/* Godown */}
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-800 text-[11px]">
-                        {godownStock}
-                      </td>
-
-                      {/* Counter */}
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-800 text-[11px]">
-                        {counterStock}
-                      </td>
-
-                      {/* Total */}
+                      {/* Store Stock */}
                       <td className={`py-2.5 px-3 text-center font-black text-[12px] ${out ? "text-rose-600" : low ? "text-amber-700" : "text-slate-900"}`}>
-                        {totalStock}
+                        {totalStock} {item.box_label || "Packs"}
                       </td>
 
                       {/* Cost */}
