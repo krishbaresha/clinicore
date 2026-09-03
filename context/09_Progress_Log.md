@@ -3277,6 +3277,12 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
       - PIN authentication now checks exclusively against registered user PINs/passwords in `dbUsers`, allowing profiles to be edited, reset, or deleted dynamically via Admin Panel.
     - **Verification**: 643/643 unit tests passed (`npm test`), Vite bundle compiled in 1.60s.
 
+55. **Milestone 128: Thermal Receipt Print & Live Preview Clean Integer Rounding**
+    - **Clean Integer Receipt Formatting**:
+      - Updated `thermalPrinter.js` (`printSaleInvoiceReceipt`) to format all print financial totals (`posFee`, `currentBill`, `puranaUdhaar`, `grandPayable`, `cashPaid`, `changeReturn`, `remainingBalance`) as clean rounded integers via `Math.round(val).toLocaleString("en-US")`.
+      - Replaced legacy `{ minimumFractionDigits: 1, maximumFractionDigits: 1 }` decimal formatters in both receipt print HTML and live receipt preview card in `SaleInvoiceModal.jsx`.
+    - **Verification**: Passed 643/643 unit tests (`npm test`), AST symbol scanner passed with 0 errors, Vite production bundle built in 1.51s.
+
 
 
 

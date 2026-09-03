@@ -1949,46 +1949,46 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 </div>
 
                 {/* Totals Summary */}
+                <div className="space-y-1 text-[11px] pt-1">
                   {posServiceFee > 0 && (
                     <div className="flex justify-between text-slate-600 text-[10px]">
                       <span>POS Service Fee:</span>
                       <span className="font-bold text-slate-800">
-                        Rs. {posServiceFee.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        Rs. {Math.round(posServiceFee).toLocaleString("en-US")}
                       </span>
                     </div>
                   )}
-                <div className="space-y-1 text-[11px] pt-1">
                   <div className="flex justify-between text-slate-700">
                     <span className="font-medium">Current Bill:</span>
                     <span className="font-bold text-slate-950">
-                      Rs. {totalBillCalculated.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                      Rs. {Math.round(totalBillCalculated).toLocaleString("en-US")}
                     </span>
                   </div>
                   {puranaUdhaar > 0 && (
                     <div className="flex justify-between text-slate-800 font-semibold">
                       <span>Previous Balance:</span>
                       <span className="font-bold text-slate-950">
-                        Rs. {puranaUdhaar.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        Rs. {Math.round(puranaUdhaar).toLocaleString("en-US")}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between text-[11.5px] font-bold border-t border-slate-800 pt-1 text-slate-950">
                     <span>{puranaUdhaar > 0 ? "Total Payable:" : "Total Amount:"}</span>
                     <span className="font-black text-slate-950">
-                      Rs. {grandPayable.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                      Rs. {Math.round(grandPayable).toLocaleString("en-US")}
                     </span>
                   </div>
                   <div className="flex justify-between text-slate-800 font-semibold pt-0.5">
                     <span>Cash Paid:</span>
                     <span className="font-bold text-slate-950">
-                      Rs. {cashPaidNum.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                      Rs. {Math.round(cashPaidNum).toLocaleString("en-US")}
                     </span>
                   </div>
                   {changeReturnCalculated > 0 && (
                     <div className="flex justify-between text-emerald-900 font-semibold">
                       <span>Change Return:</span>
                       <span className="font-bold text-emerald-950">
-                        Rs. {changeReturnCalculated.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        Rs. {Math.round(changeReturnCalculated).toLocaleString("en-US")}
                       </span>
                     </div>
                   )}
@@ -1996,7 +1996,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                     <div className="flex justify-between text-rose-900 font-bold border-t border-dotted border-rose-400 pt-0.5 mt-0.5">
                       <span>Remaining Balance:</span>
                       <span className="font-black text-rose-950">
-                        Rs. {remainingCalculated.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        Rs. {Math.round(remainingCalculated).toLocaleString("en-US")}
                       </span>
                     </div>
                   )}

@@ -1886,44 +1886,44 @@ export function printSaleInvoiceReceipt(sale, clinic) {
         ${posFee > 0 ? `
           <div style="display: flex; justify-content: space-between; color: #475569; font-size: 9.5px; margin-top: 1px;">
             <span>POS Service Fee:</span>
-            <span style="font-weight: 700; color: #0f172a;">Rs. ${posFee.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            <span style="font-weight: 700; color: #0f172a;">Rs. ${Math.round(posFee).toLocaleString("en-US")}</span>
           </div>
         ` : ""}
         
         <div style="font-size: 10.5px; padding-top: 3px; line-height: 1.35; color: #1e293b;">
           <div style="display: flex; justify-content: space-between;">
             <span style="color: #475569;">Current Bill:</span>
-            <span style="font-weight: 700; color: #0f172a;">Rs. ${currentBill.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            <span style="font-weight: 700; color: #0f172a;">Rs. ${Math.round(currentBill).toLocaleString("en-US")}</span>
           </div>
           ${puranaUdhaar > 0 ? `
             <div style="display: flex; justify-content: space-between; color: #1e293b; font-weight: 600; margin-top: 1px;">
               <span>Previous Balance:</span>
-              <span style="font-weight: 700; color: #0f172a;">Rs. ${puranaUdhaar.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+              <span style="font-weight: 700; color: #0f172a;">Rs. ${Math.round(puranaUdhaar).toLocaleString("en-US")}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 800; border-top: 1px dashed #0f172a; padding-top: 2px; margin-top: 2px; color: #0f172a;">
               <span>Total Payable:</span>
-              <span style="font-weight: 900; color: #0f172a;">Rs. ${grandPayable.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+              <span style="font-weight: 900; color: #0f172a;">Rs. ${Math.round(grandPayable).toLocaleString("en-US")}</span>
             </div>
           ` : `
             <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 800; border-top: 1px solid #0f172a; padding-top: 3px; margin-top: 2px; color: #0f172a;">
               <span>Total Amount:</span>
-              <span style="font-weight: 900; color: #0f172a;">Rs. ${currentBill.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+              <span style="font-weight: 900; color: #0f172a;">Rs. ${Math.round(currentBill).toLocaleString("en-US")}</span>
             </div>
           `}
           <div style="display: flex; justify-content: space-between; color: #334155; font-weight: 600; margin-top: 1px;">
             <span>Cash Paid:</span>
-            <span style="font-weight: 700; color: #0f172a;">Rs. ${cashPaid.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            <span style="font-weight: 700; color: #0f172a;">Rs. ${Math.round(cashPaid).toLocaleString("en-US")}</span>
           </div>
           ${changeReturn > 0 ? `
             <div style="display: flex; justify-content: space-between; color: #065f46; font-weight: 700; margin-top: 1px;">
               <span>Change Return:</span>
-              <span style="font-weight: 800; color: #065f46;">Rs. ${changeReturn.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+              <span style="font-weight: 800; color: #065f46;">Rs. ${Math.round(changeReturn).toLocaleString("en-US")}</span>
             </div>
           ` : ""}
           ${remainingBalance > 0 ? `
             <div style="display: flex; justify-content: space-between; color: #991b1b; font-weight: 800; border-top: 1px dotted #991b1b; padding-top: 2px; margin-top: 2px;">
               <span>Remaining Balance:</span>
-              <span style="font-weight: 900; color: #991b1b;">Rs. ${remainingBalance.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+              <span style="font-weight: 900; color: #991b1b;">Rs. ${Math.round(remainingBalance).toLocaleString("en-US")}</span>
             </div>
           ` : ""}
         </div>
