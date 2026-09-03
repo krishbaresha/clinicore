@@ -3353,10 +3353,15 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-82. **Milestone 155: Exact Resolved Staff Identity & Historical Name Preservation in Audit Stream**
-    - **Staff Name & Role Lineage Resolution (`GodAdminPanel.jsx`)**: Updated Audit Stream table so the Staff Member column displays the **Exact Historical Staff Name** at the time of event creation, along with their assigned Role Badge.
-    - **Session Switching & Device Lineage Highlight**: If a staff member logged out and Admin logged in on the same machine, the event details cell highlights a distinct **`Device Previous User Lineage Tracked`** badge in red/rose tones for instant security visibility.
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.52s.
+83. **Milestone 156: POS Company Code Quick Entry & Emergency Zero/Short Stock Shift & Procurement Modal**
+    - **POS Company Layout Clean-up (`SaleInvoiceModal.jsx`)**:
+      - Removed duplicate `FILTER COMPANY / CODE` dropdown from `CUSTOMER & PARTY DETAILS` card for clean layout.
+      - Added direct **`Code: [e.g. BM]`** quick entry input in `FAST LINE ITEM ENTRY` bar. Typing company code (e.g. `BM`, `MKT`, `PB`, `BLS`, `GHR`, `REC`) instantly selects the company and filters line item medicines without scrolling.
+    - **Emergency Zero/Short Stock Resolution Modal (`SaleInvoiceModal.jsx`)**:
+      - If requested medicine stock at store counter is 0 or insufficient, system pops up interactive **`⚡ Zero / Short Stock Alert Modal`** without stopping billing.
+      - **Option A (Warehouse Shift)**: If stock exists in Godown/Warehouse, 1-click **`🚚 Shift Units & Continue Billing`** instantly shifts stock from Godown -> Counter and adds item to bill.
+      - **Option B (Local Market Cash / Udhaar Purchase)**: If warehouse stock is 0, staff enters emergency inward qty, cost price, and payment mode (`Cash` or `Udhaar`), clicks **`✅ Inward Stock & Continue Billing`** to add inventory and resume billing seamlessly.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.57s.
 
 
 

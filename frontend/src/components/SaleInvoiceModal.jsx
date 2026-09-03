@@ -193,6 +193,20 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   // Form State
   const [partyCodeSearch, setPartyCodeSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("All");
+  const [companyCodeInput, setCompanyCodeInput] = useState("");
+
+  // Emergency Zero Stock / Short Stock Shift & Local Procurement Modal State
+  const [zeroStockModal, setZeroStockModal] = useState({
+    isOpen: false,
+    targetInv: null,
+    requestedQty: 1,
+    cartItem: null,
+    shiftQty: 1,
+    localVendor: "Local Market Purchase",
+    localPaymentMode: "Cash",
+    localCostPrice: "",
+  });
+
   const [showNewRefInput, setShowNewRefInput] = useState(false);
   const [newRefText, setNewRefText] = useState("");
   const [showNewTransportInput, setShowNewTransportInput] = useState(false);
@@ -919,30 +933,18 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     });
   };
 
-  const handleAddSaleItem = (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!saleCart.medicine_name.trim()) {
-      alert("Please select or enter a Product Name.");
-      return;
-    }
-    if (Number(saleCart.qty) <= 0) {
-      alert("Please enter a valid Quantity.");
-      qtyInputRef.current?.focus();
-      return;
-    }
-
-    const q = Number(saleCart.qty) || 1;
-    const r = Number(saleCart.rate) || 0;
+  const commitItemToSaleCart = (itemData) => {
+    if (!itemData) return;
+    const q = Number(itemData.qty) || 1;
+    const r = Number(itemData.rate) || 0;
     const gross = Math.round(q * r);
-    const dPct = Number(saleCart.disc_pct) || 0;
-    const dFlat = Number(saleCart.disc_flat) || 0;
+    const dPct = Number(itemData.discPct ?? itemData.disc_pct) || 0;
+    const dFlat = Number(itemData.discFlat ?? itemData.disc_flat) || 0;
     const net = Math.round(Math.max(0, gross - (gross * (dPct / 100)) - dFlat));
-
-    const medName = saleCart.medicine_name.trim();
-    const compName = (saleCart.company_name || "").trim();
+    const medName = (itemData.medicine_name || "").trim();
+    const compName = (itemData.company_name || "").trim();
 
     setSaleItems((prev) => {
-      // Check if item with same medicine_name, company_name, rate, disc_pct, disc_flat already exists
       const matchIndex = prev.findIndex(
         (item) =>
           item.medicine_name.toLowerCase() === medName.toLowerCase() &&
@@ -972,12 +974,12 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
       const newItem = {
         id: "sale_item_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
-        inventory_id: saleCart.inventory_id || "",
-        product_code: saleCart.product_code || "",
+        inventory_id: itemData.inventory_id || "",
+        product_code: itemData.product_code || "",
         medicine_name: medName,
         company_name: compName,
-        category: saleCart.category || "General",
-        packing: saleCart.packing || "",
+        category: itemData.category || "General",
+        packing: itemData.packing || "",
         qty: q,
         qty_base_units: q,
         rate: r,
@@ -992,6 +994,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
       return [...prev, newItem];
     });
+
     setSaleCart({
       product_code: "",
       medicine_name: "",
@@ -1013,11 +1016,124 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       if (tableContainerRef.current) {
         tableContainerRef.current.scrollTop = tableContainerRef.current.scrollHeight;
       }
-      if (saleItemsEndRef.current) {
-        saleItemsEndRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
       medicineInputRef.current?.focus();
     }, 40);
+  };
+
+  const handleConfirmInternalTransfer = (shiftQtyVal) => {
+    if (!zeroStockModal.targetInv) return;
+    const invId = zeroStockModal.targetInv.id;
+    const qToShift = Number(shiftQtyVal) || zeroStockModal.requestedQty;
+    dbInventory.transferWarehouseToStore(invId, qToShift, "Emergency POS Counter Shift", activeUser);
+
+    refreshData();
+    commitItemToSaleCart(zeroStockModal.cartItem);
+
+    setSaveSuccessMsg(`✅ Shifted ${qToShift} units from Godown to Counter! Item added to bill.`);
+    setTimeout(() => setSaveSuccessMsg(""), 3500);
+    setZeroStockModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleConfirmLocalPurchase = () => {
+    if (!zeroStockModal.targetInv) return;
+    const invId = zeroStockModal.targetInv.id;
+    const inwardQty = Number(zeroStockModal.shiftQty) || zeroStockModal.requestedQty;
+
+    const targetInv = dbInventory.getById(invId);
+    if (targetInv) {
+      const currentStore = Number(targetInv.store_stock ?? targetInv.stock_qty ?? 0);
+      const newStore = currentStore + inwardQty;
+      const currentWh = Number(targetInv.warehouse_stock ?? 0);
+      dbInventory.update(invId, {
+        store_stock: newStore,
+        stock_qty: newStore,
+        total_base_stock: currentWh + newStore,
+      });
+    }
+
+    refreshData();
+    commitItemToSaleCart(zeroStockModal.cartItem);
+
+    setSaveSuccessMsg(`✅ Inwarded ${inwardQty} units emergency local stock! Item added to bill.`);
+    setTimeout(() => setSaveSuccessMsg(""), 3500);
+    setZeroStockModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleAddSaleItem = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!saleCart.medicine_name.trim()) {
+      alert("Please select or enter a Product Name.");
+      return;
+    }
+    if (Number(saleCart.qty) <= 0) {
+      alert("Please enter a valid Quantity.");
+      qtyInputRef.current?.focus();
+      return;
+    }
+
+    const q = Number(saleCart.qty) || 1;
+    const r = Number(saleCart.rate) || 0;
+    const gross = Math.round(q * r);
+    const dPct = Number(saleCart.disc_pct) || 0;
+    const dFlat = Number(saleCart.disc_flat) || 0;
+    const net = Math.round(Math.max(0, gross - (gross * (dPct / 100)) - dFlat));
+
+    const medName = saleCart.medicine_name.trim();
+    const compName = (saleCart.company_name || "").trim();
+
+    // Check Stock Availability for Active Store Counter
+    let targetInv = null;
+    if (saleCart.inventory_id) {
+      targetInv = dbInventory.getById(saleCart.inventory_id) || inventoryList.find((i) => i.id === saleCart.inventory_id);
+    }
+    if (!targetInv && medName) {
+      targetInv = inventoryList.find((i) => (i.medicine_name || "").toLowerCase() === medName.toLowerCase());
+    }
+
+    if (targetInv) {
+      const currentStoreStock = Number(targetInv.store_stock ?? targetInv.stock_qty ?? 0);
+      if (currentStoreStock < q) {
+        // Trigger Emergency Zero/Short Stock Resolution Modal!
+        const defaultCostPrice = targetInv.cost_price || (targetInv.unit_sale_price ? Math.round(targetInv.unit_sale_price * 0.7) : r);
+        setZeroStockModal({
+          isOpen: true,
+          targetInv,
+          requestedQty: q,
+          cartItem: {
+            inventory_id: targetInv.id,
+            product_code: saleCart.product_code || targetInv.item_code || "",
+            medicine_name: medName,
+            company_name: compName || targetInv.company_name || "",
+            category: saleCart.category || targetInv.category || "General",
+            packing: saleCart.packing || targetInv.packing || "",
+            qty: q,
+            rate: r,
+            gross,
+            discPct: dPct,
+            discFlat: dFlat,
+            net,
+          },
+          shiftQty: Math.max(q, Math.max(1, q - Math.max(0, currentStoreStock))),
+          localVendor: "Local Market Purchase",
+          localPaymentMode: "Cash",
+          localCostPrice: String(defaultCostPrice),
+        });
+        return;
+      }
+    }
+
+    commitItemToSaleCart({
+      inventory_id: saleCart.inventory_id,
+      product_code: saleCart.product_code,
+      medicine_name: medName,
+      company_name: compName,
+      category: saleCart.category,
+      packing: saleCart.packing,
+      qty: q,
+      rate: r,
+      discPct: dPct,
+      discFlat: dFlat,
+    });
   };
 
   const handleRemoveSaleItem = (idx) => {
@@ -1772,20 +1888,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                           </div>
                         )}
                       </div>
-                      <div className="col-span-2 sm:col-span-2 md:col-span-3">
-                        <label className="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Filter Company / Code</label>
-                        <select
-                          value={selectedCompany}
-                          onChange={(e) => setSelectedCompany(e.target.value)}
-                          className="w-full bg-white border border-emerald-300 rounded-lg px-2 py-1 text-xs font-bold text-emerald-950 focus:border-emerald-500"
-                        >
-                          {companyOptions.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                     </div>
 
                     {/* Matched Party Udhaar Inline Strip */}
@@ -1831,14 +1933,17 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                   {/* Quick Company / Brand Code Filter Badges & Dropdown */}
                   <div className="flex items-center gap-1.5 text-[9.5px] max-w-full overflow-hidden">
                     <span className="text-gray-600 font-bold text-[9px] uppercase whitespace-nowrap shrink-0">Brand Code:</span>
-                    <div className="flex items-center gap-1 overflow-x-auto max-w-[240px] sm:max-w-[340px] no-scrollbar shrink">
+                    <div className="flex items-center gap-1 overflow-x-auto max-w-[180px] sm:max-w-[280px] no-scrollbar shrink">
                       {companyOptions.slice(0, 8).map((c) => {
                         const isActive = selectedCompany === c.id;
                         return (
                           <button
                             key={c.id}
                             type="button"
-                            onClick={() => setSelectedCompany(c.id)}
+                            onClick={() => {
+                              setSelectedCompany(c.id);
+                              setCompanyCodeInput(c.code || c.id);
+                            }}
                             className={`px-1.5 py-0.2 rounded font-black text-[9.5px] transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                               isActive
                                 ? "bg-teal-700 text-white shadow-2xs"
@@ -1851,10 +1956,42 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                         );
                       })}
                     </div>
+
+                    {/* Direct Company Code Quick Entry Input */}
+                    <div className="flex items-center gap-1 bg-white border border-teal-300 rounded px-1.5 py-0.5 shrink-0" title="Type company code (e.g. BM, MKT, PB, BLS, GHR)">
+                      <span className="text-[9px] font-black text-teal-800 uppercase">Code:</span>
+                      <input
+                        type="text"
+                        value={companyCodeInput}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase();
+                          setCompanyCodeInput(val);
+                          if (!val.trim()) {
+                            setSelectedCompany("All");
+                            return;
+                          }
+                          const match = companyOptions.find(
+                            (c) =>
+                              (c.code || c.id || "").toUpperCase() === val.trim() ||
+                              (c.name || "").toUpperCase().startsWith(val.trim())
+                          );
+                          if (match) {
+                            setSelectedCompany(match.id);
+                          }
+                        }}
+                        placeholder="e.g. BM"
+                        className="w-14 bg-transparent text-[10px] font-mono font-black text-teal-950 uppercase outline-none placeholder:text-gray-400 placeholder:font-normal"
+                      />
+                    </div>
+
                     {companyOptions.length > 1 && (
                       <select
                         value={selectedCompany}
-                        onChange={(e) => setSelectedCompany(e.target.value)}
+                        onChange={(e) => {
+                          setSelectedCompany(e.target.value);
+                          const found = companyOptions.find((c) => c.id === e.target.value);
+                          setCompanyCodeInput(found?.code || found?.id || "");
+                        }}
                         className="bg-white border border-teal-300 rounded px-1.5 py-0.5 text-[9.5px] font-bold text-teal-950 max-w-[130px] truncate shrink-0 focus:border-teal-500 outline-none"
                         title="Select from all registered companies"
                       >
@@ -2811,6 +2948,155 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Emergency Zero Stock / Short Stock Shift & Local Procurement Modal */}
+      {zeroStockModal.isOpen && zeroStockModal.targetInv && createPortal(
+        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-rose-300 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-rose-700 via-rose-600 to-amber-700 px-5 py-3 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-xl">warning</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-black tracking-tight">
+                    ⚡ Zero / Short Stock Alert
+                  </h3>
+                  <p className="text-[10px] text-rose-100 font-medium">
+                    Billing continues uninterrupted. Resolve stock source below:
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setZeroStockModal((prev) => ({ ...prev, isOpen: false }))}
+                className="text-white/80 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+              {/* Item Summary Banner */}
+              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3 flex items-center justify-between text-xs">
+                <div>
+                  <div className="font-black text-rose-950 text-sm">
+                    {zeroStockModal.targetInv.medicine_name}
+                  </div>
+                  <div className="text-[10.5px] text-rose-800 font-bold">
+                    Company: {zeroStockModal.targetInv.company_name || "General"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase font-bold text-rose-700">Counter Stock</div>
+                  <div className="font-mono text-base font-black text-rose-900">
+                    {Number(zeroStockModal.targetInv.store_stock ?? zeroStockModal.targetInv.stock_qty ?? 0)} units
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-600">Requested: {zeroStockModal.requestedQty} units</div>
+                </div>
+              </div>
+
+              {/* Option A: Internal Warehouse Shift */}
+              <div className="bg-teal-50/80 border border-teal-300 rounded-2xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-teal-950 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-teal-700">local_shipping</span>
+                    Option A: Shift Stock From Warehouse (Godown)
+                  </h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
+                    Godown Stock: {Number(zeroStockModal.targetInv.warehouse_stock ?? 0)} units
+                  </span>
+                </div>
+
+                {Number(zeroStockModal.targetInv.warehouse_stock ?? 0) > 0 ? (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[11px] text-teal-900 font-medium">
+                      Warehouse has stock available! Transfer stock to store counter now:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        value={zeroStockModal.shiftQty}
+                        onChange={(e) => setZeroStockModal((prev) => ({ ...prev, shiftQty: Math.max(1, Number(e.target.value) || 1) }))}
+                        className="w-24 bg-white border border-teal-300 rounded-xl px-3 py-1.5 text-xs font-bold text-teal-950 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmInternalTransfer(zeroStockModal.shiftQty)}
+                        className="flex-1 bg-teal-700 hover:bg-teal-800 text-white font-black text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">swap_horiz</span>
+                        <span>Shift {zeroStockModal.shiftQty} Units &amp; Continue Billing</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-slate-500 font-bold italic bg-white/70 p-2 rounded-xl border border-teal-200">
+                    ⚠️ Zero stock in warehouse. Use Option B (Local Market Purchase) below.
+                  </div>
+                )}
+              </div>
+
+              {/* Option B: Local Market Emergency Purchase */}
+              <div className="bg-amber-50/80 border border-amber-300 rounded-2xl p-3.5 space-y-2.5">
+                <h4 className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-amber-700">storefront</span>
+                  Option B: Local Market Cash / Udhaar Purchase
+                </h4>
+                <p className="text-[11px] text-amber-900 font-medium">
+                  Purchase emergency stock from local market to fulfill billing:
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-amber-900 mb-0.5">Quantity Purchased</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={zeroStockModal.shiftQty}
+                      onChange={(e) => setZeroStockModal((prev) => ({ ...prev, shiftQty: Math.max(1, Number(e.target.value) || 1) }))}
+                      className="w-full bg-white border border-amber-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-amber-950 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-amber-900 mb-0.5">Payment Mode</label>
+                    <select
+                      value={zeroStockModal.localPaymentMode}
+                      onChange={(e) => setZeroStockModal((prev) => ({ ...prev, localPaymentMode: e.target.value }))}
+                      className="w-full bg-white border border-amber-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-amber-950 outline-none"
+                    >
+                      <option value="Cash">💵 Cash Paid</option>
+                      <option value="Credit">📜 Local Market Udhaar (Credit)</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold text-amber-900 mb-0.5">Unit Purchase Price (Cost)</label>
+                    <input
+                      type="number"
+                      value={zeroStockModal.localCostPrice}
+                      onChange={(e) => setZeroStockModal((prev) => ({ ...prev, localCostPrice: e.target.value }))}
+                      placeholder="Cost price..."
+                      className="w-full bg-white border border-amber-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-amber-950 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmLocalPurchase}
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
+                  <span>✅ Inward {zeroStockModal.shiftQty} Units &amp; Continue Billing</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>,
         document.body
