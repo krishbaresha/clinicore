@@ -634,15 +634,15 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     setTimeout(() => setSaveSuccessMsg(""), 4000);
   };
 
-  // Select Product from Typeahead Autocomplete
+  // Select Product from Typeahead Suggestions
   const handleSelectTypeaheadMedicine = (inv) => {
     if (!inv) return;
-    const rate = inv.unit_sale_price || inv.sale_price || inv.box_sale_price || 0;
+    const rate = Number(inv.unit_sale_price || inv.sale_price || inv.box_sale_price) || 0;
     const qty = Number(saleCart.qty) || 1;
-    const gross = qty * rate;
+    const gross = Math.round(qty * rate);
     const discPct = saleCart.disc_pct === "" || saleCart.disc_pct === undefined ? 40 : (Number(saleCart.disc_pct) || 0);
     const discFlat = Number(saleCart.disc_flat) || 0;
-    const net = Math.max(0, gross - (gross * (discPct / 100)) - discFlat);
+    const net = Math.round(Math.max(0, gross - (gross * (discPct / 100)) - discFlat));
 
     setMedicineSearchText(inv.medicine_name || "");
     setShowMedicineSuggestions(false);
@@ -744,12 +744,12 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     );
 
     if (match) {
-      const rate = match.unit_sale_price || match.sale_price || match.box_sale_price || 0;
+      const rate = Number(match.unit_sale_price || match.sale_price || match.box_sale_price) || 0;
       const qty = Number(saleCart.qty) || 1;
-      const gross = qty * rate;
+      const gross = Math.round(qty * rate);
       const discPct = saleCart.disc_pct === "" || saleCart.disc_pct === undefined ? 40 : (Number(saleCart.disc_pct) || 0);
       const discFlat = Number(saleCart.disc_flat) || 0;
-      const net = Math.max(0, gross - (gross * (discPct / 100)) - discFlat);
+      const net = Math.round(Math.max(0, gross - (gross * (discPct / 100)) - discFlat));
 
       setMedicineSearchText(match.medicine_name || "");
       setShowMedicineSuggestions(false);
@@ -789,10 +789,10 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       const updated = { ...prev, [field]: val };
       const q = Number(field === "qty" ? val : updated.qty) || 0;
       const r = Number(field === "rate" ? val : updated.rate) || 0;
-      const gross = q * r;
+      const gross = Math.round(q * r);
       const dPct = Number(field === "disc_pct" ? val : updated.disc_pct) || 0;
       const dFlat = Number(field === "disc_flat" ? val : updated.disc_flat) || 0;
-      const net = Math.max(0, gross - (gross * (dPct / 100)) - dFlat);
+      const net = Math.round(Math.max(0, gross - (gross * (dPct / 100)) - dFlat));
       updated.gross = String(gross);
       updated.net_amount = String(net);
       return updated;
@@ -813,10 +813,10 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
     const q = Number(saleCart.qty) || 1;
     const r = Number(saleCart.rate) || 0;
-    const gross = q * r;
+    const gross = Math.round(q * r);
     const dPct = Number(saleCart.disc_pct) || 0;
     const dFlat = Number(saleCart.disc_flat) || 0;
-    const net = Math.max(0, gross - (gross * (dPct / 100)) - dFlat);
+    const net = Math.round(Math.max(0, gross - (gross * (dPct / 100)) - dFlat));
 
     const newItem = {
       id: "sale_item_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
@@ -878,26 +878,26 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const extraDisc = Number(saleForm.extra_bill_discount) || 0;
     const freight = Number(saleForm.freight_charges) || 0;
     const posFee = billingType === "patient" ? 1 : 0;
-    return Math.max(0, subtotal - extraDisc + freight + posFee);
+    return Math.round(Math.max(0, subtotal - extraDisc + freight + posFee));
   }, [saleItems, saleForm.extra_bill_discount, saleForm.freight_charges, billingType]);
 
   const puranaUdhaar = useMemo(() => {
     if (billingType === "wholesale_party") {
-      return Number(matchedParty?.current_balance || matchedParty?.opening_balance || 0);
+      return Math.round(Number(matchedParty?.current_balance || matchedParty?.opening_balance || 0));
     }
     if (billingType === "patient") {
-      return Number(matchedPatient?.balance_due || matchedPatient?.current_balance || matchedPatient?.pending_balance || 0);
+      return Math.round(Number(matchedPatient?.balance_due || matchedPatient?.current_balance || matchedPatient?.pending_balance || 0));
     }
     return 0;
   }, [billingType, matchedParty, matchedPatient]);
 
-  const grandPayable = puranaUdhaar > 0 ? (totalBillCalculated + puranaUdhaar) : totalBillCalculated;
+  const grandPayable = Math.round(puranaUdhaar > 0 ? (totalBillCalculated + puranaUdhaar) : totalBillCalculated);
   const isUdhaarMode = saleForm.payment_mode === "Credit";
-  const cashPaidNum = saleForm.cash_received !== undefined && saleForm.cash_received !== "" && !isNaN(Number(saleForm.cash_received))
+  const cashPaidNum = Math.round(saleForm.cash_received !== undefined && saleForm.cash_received !== "" && !isNaN(Number(saleForm.cash_received))
     ? Number(saleForm.cash_received)
-    : (isUdhaarMode ? 0 : totalBillCalculated);
-  const changeReturnCalculated = Math.max(0, cashPaidNum - grandPayable);
-  const remainingCalculated = Math.max(0, grandPayable - cashPaidNum);
+    : (isUdhaarMode ? 0 : totalBillCalculated));
+  const changeReturnCalculated = Math.round(Math.max(0, cashPaidNum - grandPayable));
+  const remainingCalculated = Math.round(Math.max(0, grandPayable - cashPaidNum));
 
   const groupedSaleItems = useMemo(() => {
     const order = [];

@@ -599,9 +599,6 @@ export async function loginWithPin(userId, pin) {
     targetUser.cashier_pin,
     targetUser.password,
     targetUser.password_hash,
-    "7860",
-    "1234",
-    "0000",
   ].filter(Boolean);
 
   let isMatch = false;

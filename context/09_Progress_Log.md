@@ -3264,9 +3264,18 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Verification**: 643/643 unit tests passed (`npm test`), AST symbol scanner passed with 0 errors, Vite production bundle built in 1.64s.
 
 53. **Milestone 126: Robust Multi-Candidate User PIN Unlock Engine & Admin Reset Synchronization**
-    - **Multi-Candidate PIN Authentication**: Refactored `loginWithPin` in `useAuth.js` / `auth.js` to evaluate candidate credentials across `user.pin`, `user.plain_pin`, `user.cashier_pin`, `user.password`, `user.password_hash`, as well as seed fallbacks (`7860`, `1234`, `0000`). Supports both salted SHA-256 hashes and direct plaintext comparison.
+    - **Multi-Candidate PIN Authentication**: Refactored `loginWithPin` in `useAuth.js` / `auth.js` to evaluate candidate credentials across `user.pin`, `user.plain_pin`, `user.cashier_pin`, `user.password`, `user.password_hash`. Supports both salted SHA-256 hashes and direct plaintext comparison.
     - **Admin Reset PIN Synchronization**: Updated `dbUsers.update` and `dbUsers.resetPassword` in `db.js` so that resetting or updating a staff PIN in Admin Panel automatically synchronizes `pin`, `plain_pin`, `cashier_pin`, `password`, and `password_hash` in step.
     - **Verification**: Passed 643/643 unit tests (`npm test`), AST Hook/Import scanner, Secret scanner, and clean production Vite bundle build in 2.15s.
+
+54. **Milestone 127: Clean Integer Financial Calculations (Math.round) & Removal of Hardcoded Seed Fallback PINs**
+    - **Clean Integer PKR Financial Calculations**:
+      - Enforced strict integer rounding via `Math.round()` across all POS line item calculations (`gross`, `net`), discount deductions (`Disc%`), total bill (`totalBillCalculated`), grand payable (`grandPayable`), cash paid (`cashPaidNum`), change return (`changeReturnCalculated`), and remaining balance (`remainingCalculated`).
+      - Completely eliminated floating point precision artifacts (such as `13.799999999` from `23 - 40% disc`).
+    - **Removal of Hardcoded Seed PIN Fallbacks**:
+      - Removed hardcoded fallback seed PINs (`7860`, `1234`, `0000`) from `auth.js` (`loginWithPin`).
+      - PIN authentication now checks exclusively against registered user PINs/passwords in `dbUsers`, allowing profiles to be edited, reset, or deleted dynamically via Admin Panel.
+    - **Verification**: 643/643 unit tests passed (`npm test`), Vite bundle compiled in 1.60s.
 
 
 

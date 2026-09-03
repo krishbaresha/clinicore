@@ -3,9 +3,9 @@
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
   "version": "2.5.9-release",
   "last_session_date": "2026-09-03T05:28:00+05:00",
-  "session_id": "part-126",
-  "active_milestone": 126,
-  "milestone_title": "Robust Multi-Candidate User PIN Unlock Engine & Admin Reset Synchronization",
+  "session_id": "part-127",
+  "active_milestone": 127,
+  "milestone_title": "Clean Integer Financial Calculations (Math.round) & Removal of Hardcoded Seed Fallback PINs",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
