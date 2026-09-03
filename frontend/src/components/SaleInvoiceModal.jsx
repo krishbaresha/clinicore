@@ -179,7 +179,7 @@ function ExpandableCombobox({
   );
 }
 
-export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = false, onSave }) {
+export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = false, onSave, initialParty = null, initialBillingType = null }) {
   const { user, activeCashier } = useAuth() || {};
   const activeUser = activeCashier?.name || user?.name || user?.username || "Clinic Administrator";
 
@@ -298,6 +298,23 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       voucher_no: dbSales.getNextVoucherNo(billingType),
     }));
   }, [billingType]);
+
+  useEffect(() => {
+    if (initialBillingType) {
+      setBillingType(initialBillingType);
+    }
+    if (initialParty) {
+      setBillingType("wholesale_party");
+      const code = initialParty.party_code || initialParty.id || "";
+      setPartyCodeSearch(code);
+      setSaleForm((prev) => ({
+        ...prev,
+        account_name: initialParty.name || initialParty.account_name || "",
+        buyer_id: initialParty.id || "",
+        party_type: initialParty.city || "Hyderabad",
+      }));
+    }
+  }, [initialParty, initialBillingType]);
 
   const handleSelectTodayPatient = (visitId) => {
     if (!visitId) return;

@@ -96,6 +96,14 @@ export default function WarehouseManagement() {
 
   // DrCreate Sale Invoice Modal State
   const [showSaleInvoiceModal, setShowSaleInvoiceModal] = useState(false);
+  const [saleInvoiceParty, setSaleInvoiceParty] = useState(null);
+
+  // Udhaar Cash Recovery Modal State
+  const [showReceiveUdhaarModal, setShowReceiveUdhaarModal] = useState(false);
+  const [udhaarParty, setUdhaarParty] = useState(null);
+  const [udhaarAmountInput, setUdhaarAmountInput] = useState("");
+  const [udhaarPaymentMode, setUdhaarPaymentMode] = useState("Cash");
+  const [udhaarNotes, setUdhaarNotes] = useState("");
 
   // Chart of Accounts Modal State
   const [showChartOfAccountsModal, setShowChartOfAccountsModal] = useState(false);
@@ -734,50 +742,65 @@ export default function WarehouseManagement() {
     setActiveTab("logs");
   };
 
-  // Filtered inventory list
-  const filteredInventory = inventory
-    .filter((item) => {
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchName = (item.medicine_name || "").toLowerCase().includes(q);
-        const matchCode = (item.item_code || "").toLowerCase().includes(q);
-        const matchCat = (item.category || "").toLowerCase().includes(q);
-        if (!matchName && !matchCode && !matchCat) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      const nameA = (a.medicine_name || "").trim();
-      const nameB = (b.medicine_name || "").trim();
-      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-    });
+  // Filtered inventory list (Memoized for 0ms tab switching)
+  const filteredInventory = useMemo(() => {
+    return inventory
+      .filter((item) => {
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchName = (item.medicine_name || "").toLowerCase().includes(q);
+          const matchCode = (item.item_code || "").toLowerCase().includes(q);
+          const matchCat = (item.category || "").toLowerCase().includes(q);
+          const matchCompany = (item.company_name || "").toLowerCase().includes(q);
+          if (!matchName && !matchCode && !matchCat && !matchCompany) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const nameA = (a.medicine_name || "").trim();
+        const nameB = (b.medicine_name || "").trim();
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+  }, [inventory, searchQuery]);
 
-  // Filtered parties list
-  const filteredParties = parties
-    .filter((p) => {
-      if (selectedCityFilter !== "all" && (p.city || "").toLowerCase() !== selectedCityFilter.toLowerCase()) {
-        return false;
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return (p.name || "").toLowerCase().includes(q) || (p.city || "").toLowerCase().includes(q);
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      const nameA = (a.party_code || a.name || "").trim();
-      const nameB = (b.party_code || b.name || "").trim();
-      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-    });
+  // Filtered parties list (Memoized)
+  const filteredParties = useMemo(() => {
+    return parties
+      .filter((p) => {
+        if (selectedCityFilter !== "all" && (p.city || "").toLowerCase() !== selectedCityFilter.toLowerCase()) {
+          return false;
+        }
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          return (p.name || "").toLowerCase().includes(q) || (p.city || "").toLowerCase().includes(q) || (p.party_code || "").toLowerCase().includes(q);
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const nameA = (a.party_code || a.name || "").trim();
+        const nameB = (b.party_code || b.name || "").trim();
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+  }, [parties, selectedCityFilter, searchQuery]);
 
-  const uniqueCities = Array.from(new Set(parties.map((p) => p.city).filter(Boolean)));
+  const uniqueCities = useMemo(() => {
+    return Array.from(new Set(parties.map((p) => p.city).filter(Boolean)));
+  }, [parties]);
 
-  const totalGodownValuation = inventory.reduce(
-    (sum, i) => sum + (i.warehouse_stock ?? 0) * (i.cost_price_per_box || i.purchase_price || 0),
-    0
-  );
-  const totalWholesaleB2BVolume = b2bSales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
-  const totalPartyReceivables = parties.reduce((sum, p) => sum + (Number(p.balance_due) || 0), 0);
+  const totalGodownValuation = useMemo(() => {
+    return inventory.reduce(
+      (sum, i) => sum + (i.warehouse_stock ?? 0) * (i.cost_price_per_box || i.purchase_price || 0),
+      0
+    );
+  }, [inventory]);
+
+  const totalWholesaleB2BVolume = useMemo(() => {
+    return b2bSales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+  }, [b2bSales]);
+
+  const totalPartyReceivables = useMemo(() => {
+    return parties.reduce((sum, p) => sum + (Number(p.balance_due) || 0), 0);
+  }, [parties]);
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-6 animate-fadeIn pb-24 overflow-x-hidden">
@@ -986,15 +1009,17 @@ export default function WarehouseManagement() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider border-b border-gray-100">
-                    <th className="py-3.5 px-4">Medicine Item</th>
-                    <th className="py-3.5 px-4">Code / Category</th>
-                    <th className="py-3.5 px-4 text-center">Godown Stock</th>
-                    <th className="py-3.5 px-4 text-center">Store POS Stock</th>
-                    <th className="py-3.5 px-4 text-center">Total Stock</th>
-                    <th className="py-3.5 px-4 text-right">Purchase Price</th>
-                    <th className="py-3.5 px-4 text-right">Sale Price</th>
-                    <th className="py-3.5 px-4 text-center">Action</th>
+                  <tr className="bg-slate-900 text-white text-[11px] font-black uppercase tracking-wider border-b border-slate-800 shadow-md">
+                    <th className="py-3 px-4">Medicine Name &amp; Description</th>
+                    <th className="py-3 px-4">Company</th>
+                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">Code</th>
+                    <th className="py-3 px-4 text-center text-cyan-300 font-bold">Godown</th>
+                    <th className="py-3 px-4 text-center text-amber-300 font-bold">Counter</th>
+                    <th className="py-3 px-4 text-center text-emerald-300 font-bold">Total</th>
+                    <th className="py-3 px-4 text-right">Cost</th>
+                    <th className="py-3 px-4 text-right">Sale</th>
+                    <th className="py-3 px-4 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
@@ -1010,26 +1035,31 @@ export default function WarehouseManagement() {
                         onClick={() => handleOpenMovement(item)}
                         className="hover:bg-teal-50/50 cursor-pointer transition-colors group"
                       >
-                        <td className="py-3.5 px-4 font-bold text-gray-900 flex items-center gap-2">
-                          <span className="material-symbols-outlined text-teal-600 text-base">
-                            medication
-                          </span>
-                          <span>{item.medicine_name}</span>
+                        <td className="py-3 px-4 font-black text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-teal-600 text-base">medication</span>
+                            <span className="text-xs">{item.medicine_name}</span>
+                          </div>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                        <td className="py-3 px-4 text-xs font-bold text-slate-700">
+                          {item.company_name || "BM Pvt LTD"}
+                        </td>
+                        <td className="py-3 px-4 text-xs text-slate-600">
+                          {item.category || "General"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-50 text-teal-800 border border-teal-200">
                             {item.item_code || "GEN"}
                           </span>
-                          <span className="ml-1.5 text-gray-500">{item.category}</span>
                         </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-teal-800">
-                          {wStock} <span className="text-[10px] text-gray-400 font-normal">{item.box_label || "Packs"}</span>
+                        <td className="py-3 px-4 text-center font-mono font-black text-cyan-700 text-xs">
+                          {wStock} <span className="text-[9.5px] text-gray-400 font-normal">{item.box_label || "Packs"}</span>
                         </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-teal-900">
-                          {sStock} <span className="text-[10px] text-gray-400 font-normal">{item.unit_label || "Units"}</span>
+                        <td className="py-3 px-4 text-center font-mono font-black text-amber-700 text-xs">
+                          {sStock} <span className="text-[9.5px] text-gray-400 font-normal">{item.unit_label || "Units"}</span>
                         </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                        <td className="py-3 px-4 text-center">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-black ${
                             isLow
                               ? "bg-rose-100 text-rose-800 border border-rose-200"
                               : "bg-emerald-100 text-emerald-800 border border-emerald-200"
@@ -1037,18 +1067,18 @@ export default function WarehouseManagement() {
                             {totStock}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-gray-600">
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-600">
                           {canViewFinancials
                             ? formatPKR(item.cost_price_per_box || item.purchase_price || 0)
-                            : <span className="text-xs text-gray-400 font-semibold">🔒 Confidential</span>}
+                            : <span className="text-[10px] text-gray-400 font-semibold">🔒 Hidden</span>}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-gray-900">
+                        <td className="py-3 px-4 text-right font-mono font-black text-slate-950 text-xs">
                           {formatPKR(item.box_sale_price || item.sale_price || 0)}
                         </td>
-                        <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => handleOpenMovement(item)}
-                            className="px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-200 hover:bg-teal-600 hover:text-white text-teal-800 text-xs font-bold flex items-center gap-1 mx-auto transition-all shadow-sm"
+                            className="px-2.5 py-1 rounded-xl bg-teal-50 border border-teal-200 hover:bg-teal-600 hover:text-white text-teal-800 text-[11px] font-bold flex items-center gap-1 mx-auto transition-all shadow-xs cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-xs">analytics</span>
                             Stock Card
@@ -1539,22 +1569,35 @@ export default function WarehouseManagement() {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => {
-                              setSelectedPartyId(p.id);
-                              setB2bBuyerName(p.name);
-                              setB2bBuyerPhone(p.phone || "");
-                              setB2bCity(p.city || "Hyderabad");
-                              handleTabChange("b2b");
+                              setSaleInvoiceParty(p);
+                              setShowSaleInvoiceModal(true);
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] transition-all shadow-sm flex items-center gap-1"
-                            title="Create B2B Invoice for this party"
+                            className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                            title="Create Wholesale Sale Invoice for this party"
                           >
                             <span className="material-symbols-outlined text-sm">receipt_long</span>
                             Invoice
                           </button>
 
+                          {Number(p.balance_due || 0) > 0 && (
+                            <button
+                              onClick={() => {
+                                setUdhaarParty(p);
+                                setUdhaarAmountInput(String(p.balance_due || 0));
+                                setUdhaarNotes("");
+                                setShowReceiveUdhaarModal(true);
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                              title="Receive Udhaar / Credit Cash Repayment"
+                            >
+                              <span className="material-symbols-outlined text-sm">payments</span>
+                              Receive Udhaar
+                            </button>
+                          )}
+
                           <button
                             onClick={() => handleOpenEditParty(p)}
-                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 font-bold text-[11px] transition-all flex items-center gap-1"
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
                             title="Edit Party Code, Name, City, Phone & Details"
                           >
                             <span className="material-symbols-outlined text-sm text-teal-600">edit</span>
@@ -1563,7 +1606,7 @@ export default function WarehouseManagement() {
 
                           <button
                             onClick={() => handleDeleteParty(p)}
-                            className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-bold transition-all"
+                            className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-bold transition-all cursor-pointer"
                             title="Delete Party"
                           >
                             <span className="material-symbols-outlined text-sm">delete</span>
@@ -2206,6 +2249,113 @@ export default function WarehouseManagement() {
           </div>
         </div>,
         document.body
+      )}
+      {/* Receive Udhaar Repayment Modal (React Portal) */}
+      {showReceiveUdhaarModal && udhaarParty && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white max-w-md w-full rounded-3xl p-6 border-2 border-amber-500 shadow-2xl space-y-4 animate-scaleUp text-left">
+            <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-600" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
+                Receive Udhaar Payment
+              </h3>
+              <button type="button" onClick={() => setShowReceiveUdhaarModal(false)} className="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const amt = Number(udhaarAmountInput) || 0;
+                if (amt <= 0) { alert("Please enter a valid payment amount."); return; }
+                if (amt > Number(udhaarParty.balance_due || 0)) {
+                  if (!window.confirm(`Payment amount (Rs. ${amt}) is higher than outstanding balance (Rs. ${udhaarParty.balance_due}). Proceed?`)) return;
+                }
+                dbParties.recordPayment(udhaarParty.id, amt, udhaarPaymentMode, udhaarNotes, activeGodownOperator?.name || user?.name || "Staff");
+                alert(`✅ Successfully received Rs. ${amt} from ${udhaarParty.name}! Remaining Balance: Rs. ${Math.max(0, (udhaarParty.balance_due || 0) - amt)}`);
+                setShowReceiveUdhaarModal(false);
+                setUdhaarParty(null);
+                refreshData();
+              }}
+              className="space-y-3"
+            >
+              <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200 text-xs text-amber-900 font-bold space-y-1">
+                <div className="flex justify-between"><span>Party Name:</span><span className="font-black text-slate-950">{udhaarParty.name}</span></div>
+                <div className="flex justify-between"><span>Territory / City:</span><span>{udhaarParty.city}</span></div>
+                <div className="flex justify-between"><span>Current Outstanding Udhaar:</span><span className="font-black text-rose-700 font-mono text-sm">Rs. {Math.round(udhaarParty.balance_due || 0).toLocaleString()}</span></div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Cash Amount Received (Rs) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  autoFocus
+                  value={udhaarAmountInput}
+                  onChange={(e) => setUdhaarAmountInput(e.target.value)}
+                  placeholder="Enter cash amount"
+                  className="w-full px-3 py-2.5 rounded-xl border-2 border-amber-300 bg-white text-sm font-mono font-black text-slate-950 focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 cursor-text shadow-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">Payment Mode</label>
+                <select
+                  value={udhaarPaymentMode}
+                  onChange={(e) => setUdhaarPaymentMode(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-600"
+                >
+                  <option value="Cash">Cash In Hand</option>
+                  <option value="Bank Transfer">Bank Transfer / Cheque</option>
+                  <option value="Easypaisa / JazzCash">Easypaisa / JazzCash</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">Receipt Notes / Narration</label>
+                <input
+                  type="text"
+                  value={udhaarNotes}
+                  onChange={(e) => setUdhaarNotes(e.target.value)}
+                  placeholder="Optional notes e.g. Paid by salesman / direct cash"
+                  className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-600 cursor-text"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onClick={() => setShowReceiveUdhaarModal(false)} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer">Cancel</button>
+                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  Confirm Cash Received
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Sale Invoice Cockpit Modal */}
+      {showSaleInvoiceModal && (
+        <SaleInvoiceModal
+          isOpen={showSaleInvoiceModal}
+          onClose={() => {
+            setShowSaleInvoiceModal(false);
+            setSaleInvoiceParty(null);
+            refreshData();
+          }}
+          initialParty={saleInvoiceParty}
+          initialBillingType="wholesale_party"
+          onSave={() => {
+            setShowSaleInvoiceModal(false);
+            setSaleInvoiceParty(null);
+            refreshData();
+          }}
+        />
       )}
 
     </div>

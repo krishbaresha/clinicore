@@ -3834,8 +3834,35 @@ export const dbParties = {
       dbOutbox.enqueue("parties", updatedRecord, "UPDATE", id);
     }
   },
-  recordPayment: (partyId, amount) => {
-    dbParties.updateBalance(partyId, -Number(amount));
+  recordPayment: (partyId, amount, paymentMode = "Cash", notes = "", actorName = "Staff") => {
+    const amt = Number(amount) || 0;
+    if (amt <= 0) return null;
+    const party = dbParties.getById(partyId);
+    if (!party) return null;
+
+    dbParties.updateBalance(partyId, -amt);
+    const updatedParty = dbParties.getById(partyId);
+
+    // Auto-record CashBook / Ledger Inflow Entry
+    if (typeof dbCashBook !== "undefined" && dbCashBook.add) {
+      dbCashBook.add({
+        type: "INCOME",
+        category: "UDHAAR_RECOVERY",
+        title: `Udhaar Payment Received — ${party.name}`,
+        amount: amt,
+        payment_mode: paymentMode,
+        party_id: partyId,
+        party_name: party.name,
+        notes: notes || `Credit repayment received from ${party.name} (${party.city || "Sindh"})`,
+        recorded_by: actorName,
+        date: new Date().toLocaleDateString("en-US"),
+      });
+    }
+
+    try {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+    } catch {}
+    return updatedParty;
   },
   delete: (id) => {
     const list = getCollection(KEYS.PARTIES) || [];

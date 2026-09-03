@@ -3288,6 +3288,15 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Rightmost Field Clipping Prevention**: Configured rightmost `Salesman / Booker` combobox to open with `align="right"` (`right-0 left-auto max-w-[85vw]`), preventing the dropdown window from overflowing past the right edge of the card container.
     - **Verification**: 643/643 unit tests passed (`npm test`), Vite bundle compiled cleanly in 1.45s.
 
+57. **Milestone 130: Party Invoice Trigger, Udhaar Recovery Engine, Rich Godown Table UI & Zero-Lag Tab Switching**
+    - **Party Invoice Action Button Fix**: Linked the `Invoice` action button on party cards in `WarehouseManagement.jsx` to immediately launch `SaleInvoiceModal` pre-populated in Wholesale B2B Party mode with party code, name, city, and credit balance.
+    - **Udhaar Cash Recovery Engine (`Receive Udhaar`)**:
+      - Added a prominent `Receive Udhaar` button and modal in `WarehouseManagement.jsx` to process cash repayments for party credit balances.
+      - Updated `dbParties.recordPayment` to subtract from `balance_due`, record a CashBook income entry (`"Udhaar Payment Received from [Party]"`), and update persistent party ledgers.
+    - **Godown Master Stock Table Styling**: Upgraded Godown table headers and rows in `WarehouseManagement.jsx` to match the rich dark design of `MedicalStoreInventory.jsx` (`bg-slate-900 text-white` header with distinct `Godown`, `Counter`, `Total` stock badges).
+    - **Zero-Lag Instant Tab Switching**: Wrapped `filteredInventory`, `filteredParties`, `uniqueCities`, `totalGodownValuation`, `totalWholesaleB2BVolume`, and `totalPartyReceivables` in `useMemo` hooks to eliminate 1-2s lag during tab switching.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean Vite production bundle compilation in 1.61s.
+
 
 
 
