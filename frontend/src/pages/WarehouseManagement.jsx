@@ -119,6 +119,7 @@ export default function WarehouseManagement() {
   const [modalAccountTypeFilter, setModalAccountTypeFilter] = useState("All");
   const [modalAccountSearch, setModalAccountSearch] = useState("");
   const [accessAccountsImportStatus, setAccessAccountsImportStatus] = useState({ loading: false, result: null, error: "" });
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("all");
 
   // Godown / Multi-Warehouse Management State
   const [showGodownModal, setShowGodownModal] = useState(false);
@@ -773,10 +774,23 @@ export default function WarehouseManagement() {
     setActiveTab("logs");
   };
 
+  const uniqueCompanies = useMemo(() => {
+    const set = new Set();
+    inventory.forEach((i) => {
+      const c = (i.company_name || i.item_code || "").trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort();
+  }, [inventory]);
+
   // Filtered inventory list (Memoized for 0ms tab switching)
   const filteredInventory = useMemo(() => {
     return inventory
       .filter((item) => {
+        if (selectedCompanyFilter !== "all") {
+          const comp = (item.company_name || item.item_code || "").toLowerCase().trim();
+          if (comp !== selectedCompanyFilter.toLowerCase()) return false;
+        }
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
           const matchName = (item.medicine_name || "").toLowerCase().includes(q);
@@ -792,7 +806,7 @@ export default function WarehouseManagement() {
         const nameB = (b.medicine_name || "").trim();
         return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
       });
-  }, [inventory, searchQuery]);
+  }, [inventory, searchQuery, selectedCompanyFilter]);
 
   // Filtered parties list (Memoized)
   const filteredParties = useMemo(() => {
@@ -1009,17 +1023,35 @@ export default function WarehouseManagement() {
       {activeTab === "stock" && (
         <div className="space-y-4">
           
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-teal-100 shadow-sm">
-            <div className="relative flex-1 max-w-md">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
-              <input
-                type="text"
-                placeholder="Search Medicine name, code, category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-teal-600 text-xs font-medium focus:outline-none transition-all"
-              />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-teal-100 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3 flex-1">
+              <div className="relative flex-1 min-w-[220px]">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
+                <input
+                  type="text"
+                  placeholder="Search Medicine name, code, category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-teal-600 text-xs font-medium focus:outline-none transition-all"
+                />
+              </div>
+
+              {/* Manufacturing Company Filter Dropdown */}
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-teal-600 text-base">domain</span>
+                <select
+                  value={selectedCompanyFilter}
+                  onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+                  className="px-3.5 py-2.5 rounded-xl border border-teal-200 bg-teal-50/70 text-slate-900 text-xs font-bold focus:outline-none focus:border-teal-600 cursor-pointer shadow-xs"
+                >
+                  <option value="all">🏢 All Companies ({uniqueCompanies.length})</option>
+                  {uniqueCompanies.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
             </div>
+
             <div className="text-xs text-gray-500 flex items-center gap-2">
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-600 animate-pulse"></span>
               <span>Tip: Click on any row to open the <b>Product Movement &amp; Lifecycle Card</b></span>
@@ -1035,9 +1067,21 @@ export default function WarehouseManagement() {
                     <th className="py-3 px-4">Company</th>
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Code</th>
-                    <th className="py-3 px-4 text-center text-cyan-300 font-bold">Godown</th>
-                    <th className="py-3 px-4 text-center text-amber-300 font-bold">Counter</th>
-                    <th className="py-3 px-4 text-center text-emerald-300 font-bold">Total</th>
+
+                    {/* DYNAMIC GODOWN STOCK COLUMNS */}
+                    {godowns.length > 0 ? (
+                      godowns.map((g, idx) => (
+                        <th key={g.id || idx} className="py-3 px-3 text-center text-cyan-300 font-bold whitespace-nowrap border-l border-slate-800">
+                          <span className="material-symbols-outlined text-xs align-middle mr-1 text-cyan-400">warehouse</span>
+                          {g.name || `Godown ${idx + 1}`}
+                        </th>
+                      ))
+                    ) : (
+                      <th className="py-3 px-4 text-center text-cyan-300 font-bold">Godown</th>
+                    )}
+
+                    <th className="py-3 px-4 text-center text-amber-300 font-bold border-l border-slate-800">Counter</th>
+                    <th className="py-3 px-4 text-center text-emerald-300 font-bold border-l border-slate-800">Total</th>
                     <th className="py-3 px-4 text-right">Cost</th>
                     <th className="py-3 px-4 text-right">Sale</th>
                     <th className="py-3 px-4 text-center">Action</th>
@@ -1045,9 +1089,22 @@ export default function WarehouseManagement() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {filteredInventory.map((item) => {
-                    const wStock = item.warehouse_stock ?? 0;
                     const sStock = item.store_stock ?? (item.stock_qty ?? 0);
-                    const totStock = item.total_base_stock ?? (wStock + sStock);
+
+                    // Compute dynamic total stock across all godowns + store counter
+                    let sumGodownStock = 0;
+                    const godownStockMap = godowns.map((g, idx) => {
+                      let stk = 0;
+                      if (item.location_stocks && item.location_stocks[g.id] !== undefined) {
+                        stk = Number(item.location_stocks[g.id]) || 0;
+                      } else if (idx === 0) {
+                        stk = item.warehouse_stock ?? 0;
+                      }
+                      sumGodownStock += stk;
+                      return { godownId: g.id, name: g.name, stock: stk };
+                    });
+
+                    const totStock = item.total_base_stock ?? (sumGodownStock + sStock);
                     const isLow = totStock <= (item.low_stock_threshold || 6);
 
                     return (
@@ -1073,13 +1130,26 @@ export default function WarehouseManagement() {
                             {item.item_code || "GEN"}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-black text-cyan-700 text-xs">
-                          {wStock} <span className="text-[9.5px] text-gray-400 font-normal">{item.box_label || "Packs"}</span>
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono font-black text-amber-700 text-xs">
+
+                        {/* DYNAMIC GODOWN STOCK CELLS */}
+                        {godownStockMap.length > 0 ? (
+                          godownStockMap.map((g, idx) => (
+                            <td key={g.godownId || idx} className="py-3 px-3 text-center font-mono font-bold text-slate-800 border-l border-gray-100">
+                              <span className={g.stock > 0 ? "text-cyan-700 font-black" : "text-gray-400"}>
+                                {g.stock} <span className="text-[9.5px] text-slate-400 font-normal">{item.box_label || "Packs"}</span>
+                              </span>
+                            </td>
+                          ))
+                        ) : (
+                          <td className="py-3 px-4 text-center font-mono font-black text-cyan-700 text-xs">
+                            {item.warehouse_stock ?? 0} <span className="text-[9.5px] text-gray-400 font-normal">{item.box_label || "Packs"}</span>
+                          </td>
+                        )}
+
+                        <td className="py-3 px-4 text-center font-mono font-black text-amber-700 text-xs border-l border-gray-100">
                           {sStock} <span className="text-[9.5px] text-gray-400 font-normal">{item.unit_label || "Units"}</span>
                         </td>
-                        <td className="py-3 px-4 text-center">
+                        <td className="py-3 px-4 text-center border-l border-gray-100">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-black ${
                             isLow
                               ? "bg-rose-100 text-rose-800 border border-rose-200"

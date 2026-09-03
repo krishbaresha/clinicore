@@ -3353,11 +3353,11 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
     - **Receipt & Print Sync**: Payment mode with bank name/cheque # renders cleanly in both Live Thermal Receipt preview and physical thermal printouts (`Mode: Bank Transfer (Meezan Bank)` or `Mode: Cheque (HBL) [#4819]`).
     - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.79s.
 
-71. **Milestone 144: Party Table Clean Categorization & Stock Ledger Branding Harmony**
-    - **Clean Party Table Column Order**: Restructured Sindh Parties table headers & columns to exact order: `Party Code` | `Party Name` | `City` | `Address` | `Contact` | `Balance (Udhaar)`.
-    - **Removed Redundant Invoice Buttons**: Completely delinked and removed row-level `Invoice` button from Sindh Parties table and top header `Sale Invoice (DrCreate)` button.
-    - **Stock Ledger Modal Title & Theme Match**: Renamed modal header to **`Stock Ledger & Inventory Movement`** (`ClinicFlow POS`) and changed top button color from purple to matching teal/slate theme (`bg-teal-700 hover:bg-teal-800`).
-    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.52s.
+72. **Milestone 145: Dynamic Multi-Godown Stock Columns & Brand/Company Filter Engine**
+    - **Dynamic Godown Stock Columns**: Replaced hardcoded single godown column with dynamic rendering across all registered godowns (`godowns.map()`). Each godown (e.g. `Main Godown (Hyderabad)`, `Godown 2 (Karachi)`) now appears as a dedicated column header with real-time stock levels.
+    - **Manufacturing Company Filter**: Added `🏢 All Companies` dropdown next to search bar in Master Stock tab. Staff can select any brand/company (`BM Pvt LTD`, `Kent Homoeopathic`, `W.S. Laboratories`, `NP Laboratories`, etc.) to filter and view stock across all warehouses instantly.
+    - **Dynamic Location Stock Calculation**: Computes live per-godown stock from `item.location_stocks` and aggregates total stock across all godowns + store counter automatically.
+    - **Verification**: 643/643 unit tests passed (`npm test`), clean production Vite build in 1.29s.
 
 
 
