@@ -43,22 +43,23 @@ export default function ReceiptStudio() {
       if (saved) return JSON.parse(saved);
     } catch {}
     return {
-      clinic_name: "M.Ashraf Khan",
-      tagline: "Homeopathic Clinic",
+      clinic_name: "Dr. Asif Khan",
+      tagline: "Homoeopathic Clinic",
       address: "Lajpat Road, Hyderabad, Sindh, Pakistan",
-      phone: "0311 4234777\n0343 9376363",
+      phone: "0335-9376363\n0310-9376363",
+      header_image_base64: RECEIPT_HEADER_IMAGE_BASE64,
       logo_base64: CLINIC_LOGO_BASE64,
       logo_size: 62,
       logo_width: 53,
       logo_height: 60,
-      name_size: 15,
-      subtitle_size: 9,
-      contact_size: 9.5,
+      name_size: 16,
+      subtitle_size: 11,
+      contact_size: 11,
       paper_width: "80mm",
       font_family: "Georgia, 'Times New Roman', serif",
       urdu_footer_text: "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔",
       custom_policy_note: "Thanks for visiting! Get well soon.",
-      doctor_name: "Dr. M.Ashraf Khan",
+      doctor_name: "Dr. Asif Khan",
       doctor_qualifications: "D.H.M.S, R.H.M.P, Consultant Homoeopath",
       doctor_room: "Room # 1",
     };
@@ -1044,19 +1045,17 @@ export default function ReceiptStudio() {
                 .map((block) => {
                   switch (block.id) {
                     case "header_logo":
-                      return clinicConfig.logo_base64 ? (
+                      return (clinicConfig.header_image_base64 || RECEIPT_HEADER_IMAGE_BASE64 || clinicConfig.logo_base64) ? (
                         <div key={block.id} style={{ paddingTop: `${block.padY ?? 2}px`, paddingBottom: `${block.padY ?? 2}px` }} className="text-center leading-none">
                           <img
-                            src={clinicConfig.logo_base64}
-                            alt="Logo"
+                            src={clinicConfig.header_image_base64 || RECEIPT_HEADER_IMAGE_BASE64 || clinicConfig.logo_base64}
+                            alt="Header Banner"
                             style={{
-                              maxWidth: `${clinicConfig.logo_size || 140}px`,
-                              maxHeight: "85px",
-                              width: "auto",
-                              height: "auto",
+                              width: "100%",
+                              maxHeight: "95px",
+                              objectFit: "contain",
                               display: "block",
                               margin: "0 auto",
-                              objectFit: "contain",
                             }}
                           />
                         </div>
@@ -1183,7 +1182,7 @@ export default function ReceiptStudio() {
                         return (
                           <div key={block.id} className="text-[10px] text-slate-700 space-y-0.5 my-1">
                             <div>Closed By: <strong className="text-slate-900">Waheed Bhai (Cashier Desk)</strong></div>
-                            <div>Audit Scope: <span>All Terminals &amp; Godowns</span></div>
+                            <div>Audit Scope: <span>All Pharmacy &amp; Store Terminals</span></div>
                           </div>
                         );
                       }
@@ -1265,7 +1264,7 @@ export default function ReceiptStudio() {
                               <span className="font-bold">Rs. 34,200</span>
                             </div>
                             <div className="flex justify-between">
-                              <span>• Wholesale Godown Sales:</span>
+                              <span>• Wholesale B2B Sales:</span>
                               <span className="font-bold">Rs. 45,000</span>
                             </div>
                             <div className="flex justify-between text-rose-700">
@@ -1384,7 +1383,7 @@ export default function ReceiptStudio() {
 
                     case "urdu_footer":
                       return clinicConfig.urdu_footer_text ? (
-                        <div key={block.id} className="mt-3 pt-2 text-center font-urdu text-[10.5px] text-slate-800 leading-snug" dir="rtl">
+                        <div key={block.id} className="mt-4 pt-3 border-t-2 border-dashed border-slate-950 text-center font-urdu text-[22px] font-black text-slate-950 leading-relaxed" dir="rtl">
                           {clinicConfig.urdu_footer_text}
                         </div>
                       ) : null;

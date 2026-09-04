@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SaleInvoiceModal from "../components/SaleInvoiceModal.jsx";
-import { dbSales } from "../api/db.js";
 
 export default function SaleInvoicePOSPage() {
   const navigate = useNavigate();

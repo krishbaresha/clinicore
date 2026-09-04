@@ -4,13 +4,9 @@ import { dbInventory, dbClinic } from "../api/db.js";
 import { formatPKR, formatDate } from "../utils/formatters.js";
 import { printProductStockCard } from "../utils/thermalPrinter.js";
 
-export default function ProductMovementModal({ item, isOpen, onClose, onStockUpdated }) {
-  const [filterType, setFilterType] = useState("all"); // "all" | "inward" | "outward" | "transfers"
+export default function ProductMovementModal({ item, isOpen, onClose, onStockUpdated: _onStockUpdated }) {
+  const [filterType, setFilterType] = useState("all"); // "all" | "inward" | "outward"
   const [searchQuery, setSearchQuery] = useState("");
-  const [transferMode, setTransferMode] = useState(null); // null | "to_store" | "to_warehouse"
-  const [transferQty, setTransferQty] = useState(1);
-  const [transferredBy, setTransferredBy] = useState("Usama");
-  const [transferNotes, setTransferNotes] = useState("");
 
   const movementData = useMemo(() => {
     if (!item?.id) return null;
@@ -32,7 +28,6 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
   const transactions = (movementData?.transactions || []).filter((tx) => {
     if (filterType === "inward" && tx.type !== "PURCHASE") return false;
     if (filterType === "outward" && tx.type !== "RETAIL_SALE" && tx.type !== "WHOLESALE_B2B") return false;
-    if (filterType === "transfers" && tx.type !== "INTERNAL_TRANSFER") return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -45,36 +40,6 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
     }
     return true;
   });
-
-  const handleExecuteTransfer = (e) => {
-    e.preventDefault();
-    const qty = Number(transferQty) || 1;
-    if (qty <= 0) return;
-    const person = transferredBy.trim() || "Store Staff";
-
-    if (transferMode === "to_store") {
-      const wStock = currentItem.warehouse_stock ?? 0;
-      if (qty > wStock) {
-        alert(`Cannot transfer ${qty} units! Godown only has ${wStock} units.`);
-        return;
-      }
-      dbInventory.transferWarehouseToStore(currentItem.id, qty, transferNotes, person);
-      alert(`Successfully shifted ${qty} units from Godown to Store Counter by [${person}]!`);
-    } else if (transferMode === "to_warehouse") {
-      const sStock = currentItem.store_stock ?? (currentItem.stock_qty ?? 0);
-      if (qty > sStock) {
-        alert(`Cannot transfer ${qty} units! Store Counter only has ${sStock} units.`);
-        return;
-      }
-      dbInventory.transferStoreToWarehouse(currentItem.id, qty, transferNotes, person);
-      alert(`Successfully returned ${qty} units from Store Counter to Godown by [${person}]!`);
-    }
-
-    setTransferMode(null);
-    setTransferQty(1);
-    setTransferNotes("");
-    if (onStockUpdated) onStockUpdated();
-  };
 
   const modalContent = (
     <div
@@ -104,6 +69,11 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
                   {currentItem.category || "Homeopathic"}
                 </span>
               </div>
+              {(currentItem.product_description || currentItem.generic_name || currentItem.naration) && (
+                <p className="text-xs text-teal-100 font-normal mt-0.5">
+                  {currentItem.product_description || currentItem.generic_name || currentItem.naration}
+                </p>
+              )}
               <p className="text-xs text-teal-200/80 mt-0.5">
                 Product Stock Movement &amp; Traceability Card (1-Click Lifecycle Audit)
               </p>
@@ -117,85 +87,29 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
           </button>
         </div>
 
-        {/* Live Multi-Location Stock Breakdown Cards */}
-        <div className="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-b border-teal-100 grid grid-cols-2 md:grid-cols-5 gap-3 text-center shrink-0">
-          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm">
-            <div className="text-[10px] text-gray-500 font-bold uppercase">Main Godown</div>
-            <div className="text-base font-extrabold text-teal-950">{summary.warehouse_stock} units</div>
-          </div>
-          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm">
-            <div className="text-[10px] text-gray-500 font-bold uppercase">Store Counter</div>
-            <div className="text-base font-extrabold text-teal-950">{summary.store_stock} units</div>
-          </div>
-          <div className="p-2.5 bg-teal-600 text-white rounded-2xl shadow-sm">
-            <div className="text-[10px] text-teal-100 font-bold uppercase">Total Base Stock</div>
-            <div className="text-base font-extrabold">{summary.total_base_stock} units</div>
+        {/* Live Stock Breakdown Cards */}
+        <div className="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-b border-teal-100 grid grid-cols-2 md:grid-cols-4 gap-3 text-center shrink-0">
+          <div className="p-2.5 bg-teal-700 text-white rounded-2xl shadow-sm">
+            <div className="text-[10px] text-teal-100 font-bold uppercase">Total Available Stock</div>
+            <div className="text-base font-extrabold">{summary.total_base_stock ?? summary.store_stock ?? 0} units</div>
           </div>
           <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm">
             <div className="text-[10px] text-gray-500 font-bold uppercase">Total Inward</div>
-            <div className="text-base font-extrabold text-emerald-700">+{summary.total_purchased} units</div>
+            <div className="text-base font-extrabold text-emerald-700">+{summary.total_purchased || 0} units</div>
           </div>
-          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm col-span-2 md:col-span-1">
+          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm">
             <div className="text-[10px] text-gray-500 font-bold uppercase">Total Outward</div>
             <div className="text-base font-extrabold text-rose-600">
-              -{summary.total_sold_retail + summary.total_sold_wholesale} units
+              -{(summary.total_sold_retail || 0) + (summary.total_sold_wholesale || 0)} units
+            </div>
+          </div>
+          <div className="p-2.5 bg-white rounded-2xl border border-teal-100 shadow-sm">
+            <div className="text-[10px] text-gray-500 font-bold uppercase">Retail Sale Price</div>
+            <div className="text-base font-extrabold text-teal-950 font-mono">
+              {formatPKR(currentItem.box_sale_price || currentItem.unit_sale_price || currentItem.sale_price || 0)}
             </div>
           </div>
         </div>
-
-        {/* Internal Stock Transfer Drawer */}
-        {transferMode && (
-          <form onSubmit={handleExecuteTransfer} className="p-4 bg-amber-50/80 border-b border-amber-200 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
-            <div className="flex items-center gap-2 font-bold text-amber-950">
-              <span className="material-symbols-outlined text-amber-700">swap_horiz</span>
-              {transferMode === "to_store" ? "Shift from Godown ➔ Store Counter" : "Return from Store ➔ Godown"}
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <label className="font-semibold text-gray-700">Quantity:</label>
-              <input
-                type="number"
-                min="1"
-                value={transferQty}
-                onChange={(e) => setTransferQty(e.target.value)}
-                className="w-20 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-white font-bold text-xs"
-                required
-              />
-
-              <label className="font-semibold text-gray-700">Handler:</label>
-              <input
-                type="text"
-                value={transferredBy}
-                onChange={(e) => setTransferredBy(e.target.value)}
-                placeholder="Staff name"
-                className="w-28 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-white text-xs"
-                required
-              />
-
-              <input
-                type="text"
-                value={transferNotes}
-                onChange={(e) => setTransferNotes(e.target.value)}
-                placeholder="Reason / Notes (Optional)"
-                className="w-44 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-white text-xs"
-              />
-
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-sm"
-              >
-                Confirm Shift
-              </button>
-              <button
-                type="button"
-                onClick={() => setTransferMode(null)}
-                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
 
         {/* Filter and Search Bar */}
         <div className="p-4 bg-white border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
@@ -204,12 +118,11 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
               { id: "all", label: "All Audit Logs" },
               { id: "inward", label: "Inward (Purchases)" },
               { id: "outward", label: "Outward (Sales)" },
-              { id: "transfers", label: "Godown Shifts" },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setFilterType(tab.id)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   filterType === tab.id
                     ? "bg-white text-teal-900 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
@@ -226,29 +139,8 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
               placeholder="Filter voucher, party, salesman..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-1.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-teal-600 w-full sm:w-56"
+              className="px-3 py-1.5 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-teal-600 w-full sm:w-64"
             />
-
-            {!transferMode && (
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setTransferMode("to_store")}
-                  className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-800 border border-teal-200 rounded-xl text-xs font-bold transition-all"
-                  title="Shift stock from Godown to Front Store"
-                >
-                  Shift to Store
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTransferMode("to_warehouse")}
-                  className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition-all"
-                  title="Return stock from Front Store to Godown"
-                >
-                  Return to Godown
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -273,50 +165,58 @@ export default function ProductMovementModal({ item, isOpen, onClose, onStockUpd
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium">
-                  {transactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-teal-50/40 transition-colors">
-                      <td className="p-3 text-gray-600 whitespace-nowrap">
-                        {formatDate(tx.date || tx.created_at)}
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold inline-flex items-center gap-1 ${
-                          tx.type === "PURCHASE"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : tx.type === "WHOLESALE_B2B"
-                            ? "bg-indigo-100 text-indigo-800"
-                            : tx.type === "RETAIL_SALE"
-                            ? "bg-teal-100 text-teal-800"
-                            : tx.type === "SALE_RETURN"
-                            ? "bg-rose-100 text-rose-800"
-                            : "bg-amber-100 text-amber-900"
-                        }`}>
-                          <span className="material-symbols-outlined text-xs">
-                            {tx.type === "PURCHASE"
-                              ? "arrow_downward"
-                              : tx.type === "INTERNAL_TRANSFER"
-                              ? "sync_alt"
+                  {transactions.map((tx) => {
+                    const rawQty = tx.quantity !== undefined
+                      ? tx.quantity
+                      : (tx.qty_in > 0 ? tx.qty_in : (tx.qty_out > 0 ? -tx.qty_out : 0));
+                    const isPositive = rawQty > 0;
+                    const isNegative = rawQty < 0;
+
+                    return (
+                      <tr key={tx.id} className="hover:bg-teal-50/40 transition-colors">
+                        <td className="p-3 text-gray-600 whitespace-nowrap">
+                          {formatDate(tx.date || tx.created_at)}
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold inline-flex items-center gap-1 ${
+                            tx.type === "PURCHASE"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : tx.type === "WHOLESALE_B2B"
+                              ? "bg-indigo-100 text-indigo-800"
+                              : tx.type === "RETAIL_SALE"
+                              ? "bg-teal-100 text-teal-800"
                               : tx.type === "SALE_RETURN"
-                              ? "keyboard_return"
-                              : "arrow_upward"}
+                              ? "bg-rose-100 text-rose-800"
+                              : "bg-amber-100 text-amber-900"
+                          }`}>
+                            <span className="material-symbols-outlined text-xs">
+                              {tx.type === "PURCHASE"
+                                ? "arrow_downward"
+                                : tx.type === "INTERNAL_TRANSFER"
+                                ? "sync_alt"
+                                : tx.type === "SALE_RETURN"
+                                ? "keyboard_return"
+                                : "arrow_upward"}
+                            </span>
+                            {tx.type_label || tx.type}
                           </span>
-                          {tx.type_label || tx.type}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono font-bold text-teal-900">{tx.voucher_no || "-"}</td>
-                      <td className="p-3">
-                        <div className="font-bold text-gray-900">{tx.party_name || "Direct Counter"}</div>
-                        {tx.salesman && <div className="text-[10px] text-gray-400">Rep: {tx.salesman}</div>}
-                      </td>
-                      <td className={`p-3 text-center font-bold font-mono ${
-                        tx.quantity > 0 ? "text-emerald-700" : tx.quantity < 0 ? "text-rose-600" : "text-amber-800"
-                      }`}>
-                        {tx.quantity > 0 ? `+${tx.quantity}` : tx.quantity} units
-                      </td>
-                      <td className="p-3 text-right font-extrabold text-gray-900">
-                        {formatPKR(tx.total_amount)}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="p-3 font-mono font-bold text-teal-900">{tx.voucher_no || "-"}</td>
+                        <td className="p-3">
+                          <div className="font-bold text-gray-900">{tx.party_name || "Direct Counter"}</div>
+                          {tx.salesman && <div className="text-[10px] text-gray-400">Rep: {tx.salesman}</div>}
+                        </td>
+                        <td className={`p-3 text-center font-bold font-mono ${
+                          isPositive ? "text-emerald-700" : isNegative ? "text-rose-600" : "text-amber-800"
+                        }`}>
+                          {isPositive ? `+${rawQty}` : rawQty} units
+                        </td>
+                        <td className="p-3 text-right font-extrabold text-gray-900">
+                          {formatPKR(tx.total_amount)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

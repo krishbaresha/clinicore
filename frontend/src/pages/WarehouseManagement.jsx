@@ -64,17 +64,11 @@ export default function WarehouseManagement() {
   const [parties, setParties] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
   const [accounts, setAccounts] = useState([]);
-  const [godowns, setGodowns] = useState([]);
-
-  const _isLocationLocked = Boolean(
-    user && !user.is_owner && user.role !== "admin" && user.role !== "doctor" && user.assigned_warehouse_id
-  );
-  const _userAssignedWh = useMemo(() => godowns.find((w) => w.id === user?.assigned_warehouse_id), [godowns, user]);
   const canViewFinancials = Boolean(
     user?.is_owner || user?.role === "doctor" || user?.role === "admin" || user?.can_view_financials
   );
 
-  const [activeTab, setActiveTab] = useState(urlTab && ["stock", "b2b", "transfer", "parties", "logs", "godowns"].includes(urlTab) ? urlTab : "stock");
+  const [activeTab, setActiveTab] = useState(urlTab && ["stock", "b2b", "parties", "logs"].includes(urlTab) ? urlTab : "stock");
 
   // DrCreate Account Registration Form & Chart of Accounts State
   const [showAccountForm, setShowAccountForm] = useState(false);
@@ -121,42 +115,8 @@ export default function WarehouseManagement() {
   const [accessAccountsImportStatus, setAccessAccountsImportStatus] = useState({ loading: false, result: null, error: "" });
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("all");
 
-  // Godown / Multi-Warehouse Management State
-  const [showGodownModal, setShowGodownModal] = useState(false);
-  const [editingGodown, setEditingGodown] = useState(null);
-  const [godownForm, setGodownForm] = useState({
-    name: "", code: "", location: "", incharge_name: "", phone: "", notes: "", status: "active"
-  });
-
-  // Active Godown Operator Switcher (Single-login multi-staff workflow)
-  const [activeGodownOperator, setActiveGodownOperator] = useState(() => {
-    try {
-      const saved = localStorage.getItem("cf_warehouse_active_operator");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return { id: "op_godown_01", name: "Raza", role: "Incharge" };
-  });
-
-  const availableGodownOperators = useMemo(() => {
-    const users = dbUsers.getActiveStaff ? dbUsers.getActiveStaff("wh_001") : dbUsers.getAll();
-    const smList = dbSalesmen.getAll ? dbSalesmen.getAll() : [];
-    const list = [
-      ...users.map((u) => ({ id: u.id, name: u.display_label || u.name, role: u.role || "Incharge" })),
-      ...smList.map((s) => ({ id: s.id, name: s.name, role: "Salesman" })),
-    ];
-    const unique = [];
-    const names = new Set();
-    for (const op of list) {
-      if (op.name && !names.has(op.name.toLowerCase())) {
-        names.add(op.name.toLowerCase());
-        unique.push(op);
-      }
-    }
-    return unique.length > 0 ? unique : [{ id: "op_godown_01", name: "Raza", role: "Incharge" }];
-  }, []);
-
   useEffect(() => {
-    if (urlTab && ["stock", "b2b", "transfer", "parties", "logs", "godowns"].includes(urlTab)) {
+    if (urlTab && ["stock", "b2b", "parties", "logs"].includes(urlTab)) {
       setActiveTab(urlTab);
     }
   }, [urlTab]);
@@ -173,13 +133,6 @@ export default function WarehouseManagement() {
   // Product Movement Modal State
   const [selectedItemForModal, setSelectedItemForModal] = useState(null);
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
-
-  // Two-Way Internal Transfer Form
-  const [transferDirection, setTransferDirection] = useState("to_store"); // "to_store" | "to_warehouse"
-  const [selectedInvForTransfer, setSelectedInvForTransfer] = useState("");
-  const [transferQty, setTransferQty] = useState(1);
-  const [transferredBy, setTransferredBy] = useState("Usama");
-  const [transferNotes, setTransferNotes] = useState("");
 
   // B2B Wholesale Sale Form
   const [selectedPartyId, setSelectedPartyId] = useState("");
@@ -322,7 +275,6 @@ export default function WarehouseManagement() {
 
     setParties(dbParties.getAll());
     setSalesmen(dbSalesmen.getAll());
-    setGodowns(dbWarehouses.getAll());
     const allAccs = dbAccounts.getAll();
     setAccounts(allAccs);
     setAccountForm((prev) => ({
@@ -461,7 +413,7 @@ export default function WarehouseManagement() {
   }, [accounts]);
 
   // Modal backdrop body scroll lock
-  const isAnyPopupOpen = Boolean(showChartOfAccountsModal || showAddPartyModal || showGodownModal || isMovementModalOpen);
+  const isAnyPopupOpen = Boolean(showChartOfAccountsModal || showAddPartyModal || isMovementModalOpen);
   useEffect(() => {
     if (isAnyPopupOpen) {
       const prev = document.body.style.overflow;
@@ -520,115 +472,7 @@ export default function WarehouseManagement() {
     }
   };
 
-  // Transfer Source & Destination Locations
-  const [transferSourceLoc, setTransferSourceLoc] = useState("wh_001"); // "wh_001", "wh_str", or godown ID
-  const [transferDestLoc, setTransferDestLoc] = useState("wh_str"); // "wh_str", "wh_001", or godown ID
-  const [transferSearchQuery, setTransferSearchQuery] = useState("");
 
-  const handleExecuteTransfer = (e) => {
-    e.preventDefault();
-    if (!selectedInvForTransfer) { alert("Please select a medicine item to transfer."); return; }
-    const inv = inventory.find((i) => i.id === selectedInvForTransfer);
-    if (!inv) return;
-
-    if (transferSourceLoc === transferDestLoc) {
-      alert("Source Location and Destination Location cannot be the same. Please select different locations.");
-      return;
-    }
-
-    const qty = Number(transferQty) || 1;
-    if (qty <= 0) {
-      alert("Please enter a valid transfer quantity greater than 0.");
-      return;
-    }
-
-    const person = transferredBy.trim() || activeGodownOperator?.name || user?.name || "Store Staff";
-
-    // Resolve location names
-    const getLocationName = (locId) => {
-      if (locId === "wh_str" || locId === "store") return "Medical Store (POS Counter)";
-      if (locId === "wh_001" || locId === "godown" || locId === "main_warehouse") return "Main Godown (Hyderabad)";
-      const matchedGodown = godowns.find((g) => g.id === locId);
-      if (matchedGodown) return `${matchedGodown.name} (${matchedGodown.location || "Godown"})`;
-      return "Warehouse Godown";
-    };
-
-    const fromLocName = getLocationName(transferSourceLoc);
-    const toLocName = getLocationName(transferDestLoc);
-
-    // Check available source stock
-    let availableSourceStock = 0;
-    if (transferSourceLoc === "wh_str" || transferSourceLoc === "store") {
-      availableSourceStock = inv.store_stock ?? (inv.stock_qty ?? 0);
-    } else {
-      const locStocks = inv.location_stocks || {};
-      availableSourceStock = locStocks[transferSourceLoc] !== undefined 
-        ? locStocks[transferSourceLoc] 
-        : (inv.warehouse_stock ?? 0);
-    }
-
-    if (qty > availableSourceStock) {
-      alert(`Insufficient stock at [${fromLocName}]!\nAvailable: ${availableSourceStock} Units\nRequested: ${qty} Units`);
-      return;
-    }
-
-    // Execute transfer with full location stock reconciliation
-    const currentLocStocks = { ...(inv.location_stocks || {}) };
-    let currentStoreStock = inv.store_stock ?? (inv.stock_qty ?? 0);
-    let currentWhStock = inv.warehouse_stock ?? 0;
-
-    // Deduct from source
-    if (transferSourceLoc === "wh_str" || transferSourceLoc === "store") {
-      currentStoreStock = Math.max(0, currentStoreStock - qty);
-    } else {
-      currentLocStocks[transferSourceLoc] = Math.max(0, (currentLocStocks[transferSourceLoc] ?? currentWhStock) - qty);
-      currentWhStock = Math.max(0, currentWhStock - qty);
-    }
-
-    // Add to destination
-    if (transferDestLoc === "wh_str" || transferDestLoc === "store") {
-      currentStoreStock = currentStoreStock + qty;
-    } else {
-      currentLocStocks[transferDestLoc] = (currentLocStocks[transferDestLoc] ?? 0) + qty;
-      currentWhStock = currentWhStock + qty;
-    }
-
-    const totalBase = currentStoreStock + currentWhStock;
-
-    // Update DB Inventory
-    dbInventory.update(inv.id, {
-      store_stock: currentStoreStock,
-      stock_qty: currentStoreStock,
-      warehouse_stock: currentWhStock,
-      total_base_stock: totalBase,
-      location_stocks: currentLocStocks,
-      updated_at: new Date().toISOString(),
-    });
-
-    // Record Immutable Stock Transfer Audit Entry
-    dbStockTransfers.transfer({
-      inventory_id: inv.id,
-      medicine_name: inv.medicine_name,
-      item_code: inv.item_code || "GEN",
-      company_name: inv.company_name || "BM Pvt LTD",
-      qty: qty,
-      from_loc: fromLocName,
-      from_warehouse_id: transferSourceLoc,
-      to_loc: toLocName,
-      to_warehouse_id: transferDestLoc,
-      notes: transferNotes || `Stock Shift: ${fromLocName} ➔ ${toLocName}`,
-      transferred_by: person,
-      transferred_by_id: activeGodownOperator?.id || user?.id || "user_staff",
-      status: "completed",
-    });
-
-    alert(`✅ Stock Shift Recorded Successfully!\n• Item: ${inv.medicine_name}\n• Shifted: ${qty} Units\n• From: ${fromLocName}\n• To: ${toLocName}\n• Shifted By: ${person}`);
-
-    setSelectedInvForTransfer("");
-    setTransferQty(1);
-    setTransferNotes("");
-    refreshData();
-  };
 
   const handleAddB2BItemRow = () => {
     setB2bItems([
@@ -709,9 +553,9 @@ export default function WarehouseManagement() {
     for (const [invId, reqQty] of itemTotals.entries()) {
       const inv = inventory.find((i) => i.id === invId);
       if (inv) {
-        const available = inv.warehouse_stock ?? 0;
+        const available = inv.warehouse_stock ?? inv.store_stock ?? inv.stock_qty ?? 0;
         if (reqQty > available) {
-          alert(`Insufficient Godown stock for "${inv.medicine_name}". Available: ${available}, Total Requested in Invoice: ${reqQty}`);
+          alert(`Insufficient stock for "${inv.medicine_name}". Available: ${available}, Total Requested in Invoice: ${reqQty}`);
           return;
         }
       }
@@ -756,7 +600,7 @@ export default function WarehouseManagement() {
     };
 
     const sale = dbB2BSales.checkout(saleData);
-    alert(`Wholesale B2B Invoice #${sale.invoice_no} generated successfully! Stock deducted from Main Godown.`);
+    alert(`Wholesale B2B Invoice #${sale.invoice_no} generated successfully! Stock deducted from Store Inventory.`);
 
     // Reset Form
     setSelectedPartyId("");
@@ -831,13 +675,6 @@ export default function WarehouseManagement() {
   const uniqueCities = useMemo(() => {
     return Array.from(new Set(parties.map((p) => p.city).filter(Boolean)));
   }, [parties]);
-
-  const totalGodownValuation = useMemo(() => {
-    return inventory.reduce(
-      (sum, i) => sum + (i.warehouse_stock ?? 0) * (i.cost_price_per_box || i.purchase_price || 0),
-      0
-    );
-  }, [inventory]);
 
   const totalWholesaleB2BVolume = useMemo(() => {
     return b2bSales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
@@ -983,7 +820,7 @@ export default function WarehouseManagement() {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* TAB 1: GODOWN MASTER STOCK WITH 1-CLICK PRODUCT MOVEMENT MODAL      */}
+      {/* TAB 1: WHOLESALE MASTER STOCK WITH 1-CLICK PRODUCT MOVEMENT MODAL   */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       {activeTab === "stock" && (
         <div className="space-y-4">
@@ -1051,8 +888,15 @@ export default function WarehouseManagement() {
                       >
                         <td className="py-3 px-4 font-black text-slate-900">
                           <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-teal-600 text-base">medication</span>
-                            <span className="text-xs">{item.medicine_name}</span>
+                            <span className="material-symbols-outlined text-teal-600 text-base shrink-0">medication</span>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-slate-900 leading-tight">{item.medicine_name}</span>
+                              {(item.product_description || item.generic_name || item.naration) && (
+                                <span className="text-[11px] font-normal text-slate-500 line-clamp-1">
+                                  {item.product_description || item.generic_name || item.naration}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-3 px-4 text-xs font-bold text-slate-700">
@@ -1103,406 +947,7 @@ export default function WarehouseManagement() {
       )}
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* TAB 2: TWO-WAY STOCK TRANSFERS (GODOWN <-> STORE / GODOWNS)         */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {activeTab === "transfer" && (
-        <div className="space-y-6">
-          {/* Main Transfer Workflow Card */}
-          <div className="bg-white p-6 rounded-3xl border border-teal-100 shadow-sm space-y-6">
-            
-            {/* Header with Handler / Operator badge */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-              <div>
-                <h2 className="text-lg font-bold font-headline text-gray-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-teal-600">sync_alt</span>
-                  Internal Stock Transfer &amp; Shift Manager
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Shift medicine stock between Godowns and Front Counter with 100% transparent audit trails.
-                </p>
-              </div>
-
-              {/* Active Operator Pill */}
-              <div className="flex items-center gap-2 bg-teal-50/80 border border-teal-200 px-3.5 py-1.5 rounded-2xl">
-                <span className="material-symbols-outlined text-teal-700 text-sm">badge</span>
-                <span className="text-xs text-gray-600">Operator:</span>
-                <span className="text-xs font-bold text-teal-950 font-mono">
-                  {transferredBy || activeGodownOperator?.name || "Staff"}
-                </span>
-              </div>
-            </div>
-
-            <form onSubmit={handleExecuteTransfer} className="space-y-6">
-              
-              {/* STEP 1: Fast Transfer Preset Mode */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
-                  Select Transfer Route / Direction:
-                </label>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTransferSourceLoc("wh_001");
-                      setTransferDestLoc("wh_str");
-                      setTransferDirection("to_store");
-                    }}
-                    className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
-                      transferSourceLoc === "wh_001" && transferDestLoc === "wh_str"
-                        ? "bg-teal-50/90 border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-sm"
-                        : "bg-gray-50/70 border-gray-200 text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <span className="material-symbols-outlined text-lg">storefront</span>
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs text-teal-900 flex items-center gap-1.5">
-                        <span>Godown</span>
-                        <span className="material-symbols-outlined text-xs text-teal-600">arrow_forward</span>
-                        <span>Front Medical Store</span>
-                      </div>
-                      <p className="text-[11px] text-gray-500 mt-0.5 font-medium">
-                        Daily counter refill / Replenish front shelves
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTransferSourceLoc("wh_str");
-                      setTransferDestLoc("wh_001");
-                      setTransferDirection("to_warehouse");
-                    }}
-                    className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
-                      transferSourceLoc === "wh_str" && transferDestLoc === "wh_001"
-                        ? "bg-teal-50/90 border-teal-600 text-teal-950 ring-2 ring-teal-500/20 shadow-sm"
-                        : "bg-gray-50/70 border-gray-200 text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <span className="material-symbols-outlined text-lg">warehouse</span>
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs text-amber-950 flex items-center gap-1.5">
-                        <span>Front Medical Store</span>
-                        <span className="material-symbols-outlined text-xs text-amber-600">arrow_forward</span>
-                        <span>Godown</span>
-                      </div>
-                      <p className="text-[11px] text-gray-500 mt-0.5 font-medium">
-                        Stock return / Shift excess or slow-moving items back
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* STEP 2: Location Selectors (From & To) */}
-              <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs text-rose-600">upload</span>
-                    From (Source Location - Deducts Stock):
-                  </label>
-                  <select
-                    value={transferSourceLoc}
-                    onChange={(e) => setTransferSourceLoc(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  >
-                    <option value="wh_001">🏢 Main Godown (Hyderabad)</option>
-                    <option value="wh_str">🏪 Medical Store (POS Counter)</option>
-                    {godowns.filter(g => g.id !== "wh_001" && g.id !== "wh_str").map(g => (
-                      <option key={g.id} value={g.id}>📦 {g.name} ({g.location || "Godown"})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs text-emerald-600">download</span>
-                    To (Destination Location - Adds Stock):
-                  </label>
-                  <select
-                    value={transferDestLoc}
-                    onChange={(e) => setTransferDestLoc(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300 bg-white text-xs font-bold text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  >
-                    <option value="wh_str">🏪 Medical Store (POS Counter)</option>
-                    <option value="wh_001">🏢 Main Godown (Hyderabad)</option>
-                    {godowns.filter(g => g.id !== "wh_001" && g.id !== "wh_str").map(g => (
-                      <option key={g.id} value={g.id}>📦 {g.name} ({g.location || "Godown"})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* STEP 3: Medicine Item & Quantity Selection */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
-                  Select Medicine &amp; Transfer Quantity:
-                </label>
-
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                  <div className="md:col-span-8">
-                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                      Choose Medicine ({inventory.length} total in catalog):
-                    </label>
-                    <select
-                      value={selectedInvForTransfer}
-                      onChange={(e) => setSelectedInvForTransfer(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-teal-300 bg-white text-xs font-bold text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
-                    >
-                      <option value="">-- Click to Select Medicine Item --</option>
-                      {inventory.map((inv) => {
-                        const locStocks = inv.location_stocks || {};
-                        const srcStock = transferSourceLoc === "wh_str" 
-                          ? (inv.store_stock ?? inv.stock_qty ?? 0)
-                          : (locStocks[transferSourceLoc] !== undefined ? locStocks[transferSourceLoc] : (inv.warehouse_stock ?? 0));
-                        
-                        return (
-                          <option key={inv.id} value={inv.id}>
-                            [{inv.company_name || "BM"}] {inv.medicine_name} ({inv.item_code || "GEN"}) — Available in Source: {srcStock} Units
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                  <div className="md:col-span-4">
-                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                      Quantity to Shift (Units):
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="1"
-                        value={transferQty}
-                        onChange={(e) => setTransferQty(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-300 bg-white text-sm font-black font-mono text-center text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Selected Medicine Stock Visualizer */}
-                {selectedInvForTransfer && (() => {
-                  const activeInv = inventory.find((i) => i.id === selectedInvForTransfer);
-                  if (!activeInv) return null;
-
-                  const locStocks = activeInv.location_stocks || {};
-                  const srcStock = transferSourceLoc === "wh_str" 
-                    ? (activeInv.store_stock ?? activeInv.stock_qty ?? 0)
-                    : (locStocks[transferSourceLoc] !== undefined ? locStocks[transferSourceLoc] : (activeInv.warehouse_stock ?? 0));
-
-                  const dstStock = transferDestLoc === "wh_str"
-                    ? (activeInv.store_stock ?? activeInv.stock_qty ?? 0)
-                    : (locStocks[transferDestLoc] !== undefined ? locStocks[transferDestLoc] : (activeInv.warehouse_stock ?? 0));
-
-                  const q = Number(transferQty) || 0;
-                  const srcAfter = Math.max(0, srcStock - q);
-                  const dstAfter = dstStock + q;
-                  const isInsufficient = q > srcStock;
-
-                  return (
-                    <div className={`mt-3 p-4 rounded-2xl border transition-all ${
-                      isInsufficient ? "bg-rose-50 border-rose-300" : "bg-teal-50/60 border-teal-200"
-                    }`}>
-                      <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-                        <div>
-                          <span className="font-bold text-gray-900 block text-sm">
-                            {activeInv.medicine_name}
-                          </span>
-                          <span className="text-[11px] text-gray-500">
-                            Company: <b>{activeInv.company_name || "BM Pvt LTD"}</b> | Code: <b>{activeInv.item_code || "GEN"}</b>
-                          </span>
-                        </div>
-
-                        {/* Live Stock Comparison Card */}
-                        <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-xl border border-teal-200 shadow-2xs">
-                          <div className="text-center">
-                            <span className="text-[10px] text-gray-500 uppercase block font-semibold">Source Before:</span>
-                            <span className="font-mono font-bold text-gray-800">{srcStock}</span>
-                            <span className="text-[10px] text-teal-700 block font-bold">➔ After: {srcAfter}</span>
-                          </div>
-                          <div className="text-teal-400 font-bold">➔</div>
-                          <div className="text-center">
-                            <span className="text-[10px] text-gray-500 uppercase block font-semibold">Destination Before:</span>
-                            <span className="font-mono font-bold text-gray-800">{dstStock}</span>
-                            <span className="text-[10px] text-emerald-700 block font-bold">➔ After: {dstAfter}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {isInsufficient && (
-                        <div className="mt-2 text-xs font-bold text-rose-700 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">error</span>
-                          Cannot transfer {q} units! Source location only has {srcStock} units available.
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* STEP 4: Handler Person & Notes */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm text-teal-600">person</span>
-                    Shifted / Handled By (Staff Person):
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Usama / Bilal / Raza"
-                    value={transferredBy}
-                    onChange={(e) => setTransferredBy(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300 bg-gray-50 text-xs font-bold text-gray-800 focus:bg-white focus:outline-none focus:border-teal-600"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm text-gray-500">edit_note</span>
-                    Reason / Shift Remarks:
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Daily morning counter refill / Customer demand shift"
-                    value={transferNotes}
-                    onChange={(e) => setTransferNotes(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300 bg-gray-50 text-xs focus:bg-white focus:outline-none focus:border-teal-600"
-                  />
-                </div>
-              </div>
-
-              {/* Submit Action */}
-              <div className="pt-2 flex items-center justify-between flex-wrap gap-3">
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm text-teal-600">verified</span>
-                  Real-time stock deduction and ledger logging will be recorded instantly.
-                </p>
-
-                <button
-                  type="submit"
-                  className="px-6 py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">check_circle</span>
-                  Confirm &amp; Record Internal Stock Transfer
-                </button>
-              </div>
-
-            </form>
-          </div>
-
-          {/* Transfers History Log Table with Search */}
-          <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="p-4 bg-gray-50/80 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-700 text-base">history</span>
-                <span className="font-bold text-xs text-gray-800 uppercase tracking-wider">
-                  Internal Stock Shifts Audit Log ({transfers.length} records)
-                </span>
-              </div>
-
-              <div className="relative w-full sm:w-64">
-                <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">search</span>
-                <input
-                  type="text"
-                  placeholder="Filter by medicine, handler, location..."
-                  value={transferSearchQuery}
-                  onChange={(e) => setTransferSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs focus:outline-none focus:border-teal-600"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 font-bold border-b border-gray-100">
-                    <th className="py-3.5 px-4">Transfer #</th>
-                    <th className="py-3.5 px-4">Date &amp; Time</th>
-                    <th className="py-3.5 px-4">Medicine Item</th>
-                    <th className="py-3.5 px-4">Shift Route (From ➔ To)</th>
-                    <th className="py-3.5 px-4 text-center">Quantity</th>
-                    <th className="py-3.5 px-4">Shifted By (Handler)</th>
-                    <th className="py-3.5 px-4">Remarks / Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                  {transfers
-                    .filter((trf) => {
-                      if (!transferSearchQuery.trim()) return true;
-                      const q = transferSearchQuery.toLowerCase();
-                      return (
-                        (trf.transfer_no || "").toLowerCase().includes(q) ||
-                        (trf.medicine_name || "").toLowerCase().includes(q) ||
-                        (trf.transferred_by || "").toLowerCase().includes(q) ||
-                        (trf.from_loc || "").toLowerCase().includes(q) ||
-                        (trf.to_loc || "").toLowerCase().includes(q) ||
-                        (trf.notes || "").toLowerCase().includes(q)
-                      );
-                    })
-                    .map((trf) => (
-                      <tr key={trf.id} className="hover:bg-teal-50/50 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-teal-900">
-                          {trf.transfer_no || "TRF-LOG"}
-                        </td>
-                        <td className="py-3.5 px-4 text-gray-500 font-mono text-[11px]">
-                          {formatDate(trf.transfer_date || trf.created_at)}
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-gray-900">
-                          <span className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-teal-600 text-sm">medication</span>
-                            {trf.medicine_name}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
-                            <span>{trf.from_loc}</span>
-                            <span className="material-symbols-outlined text-xs text-teal-600">arrow_forward</span>
-                            <span>{trf.to_loc}</span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-mono font-black text-sm text-teal-950">
-                          {trf.qty} <span className="text-[10px] text-gray-400 font-normal">Units</span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="inline-flex items-center gap-1 font-bold text-gray-800 bg-gray-100 px-2.5 py-1 rounded-xl text-[11px] border border-gray-200">
-                            <span className="material-symbols-outlined text-xs text-teal-600">person</span>
-                            {trf.transferred_by || "Staff"}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-gray-500 text-[11px] max-w-xs truncate">
-                          {trf.notes || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  {transfers.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="py-8 text-center text-gray-400">
-                        <span className="material-symbols-outlined text-3xl block mb-1 text-gray-300">swap_horiz</span>
-                        No stock transfer entries recorded yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* TAB 4: SINDH PARTIES & CREDIT LEDGERS                               */}
+      {/* TAB 2: SINDH PARTIES & CREDIT LEDGERS                               */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       {activeTab === "parties" && (
         <div className="space-y-4">
@@ -1723,194 +1168,7 @@ export default function WarehouseManagement() {
         />
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* TAB: GODOWN / MULTI-WAREHOUSE MASTER MANAGEMENT                    */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {activeTab === "godowns" && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-teal-100 shadow-sm">
-            <div>
-              <div className="font-bold text-gray-900">Godown / Warehouse Master</div>
-              <div className="text-xs text-gray-500 mt-0.5">Manage all storage godowns. Stock valuation is computed per-location.</div>
-            </div>
-            <button
-              onClick={() => {
-                setEditingGodown(null);
-                setGodownForm({ name: "", code: "", location: "", incharge_name: "", phone: "", notes: "", status: "active" });
-                setShowGodownModal(true);
-              }}
-              className="bg-teal-600 text-white px-4 py-2.5 rounded-2xl font-bold text-xs hover:bg-teal-700 transition-colors shadow-md flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-base">add_home_work</span>
-              Add New Godown
-            </button>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {godowns.map((gd) => {
-              const val = dbWarehouses.getStockValuation(gd.id);
-              const itemCount = inventory.filter((i) => (i.location_stocks?.[gd.id] || (gd.id === "wh_001" ? i.warehouse_stock : gd.is_store_counter ? (i.store_stock ?? i.stock_qty) : 0) || 0) > 0).length;
-              return (
-                <div
-                  key={gd.id}
-                  className={`bg-white rounded-3xl border ${gd.is_store_counter ? "border-emerald-200" : gd.is_default ? "border-teal-300 ring-2 ring-teal-100" : "border-gray-200"} p-5 shadow-sm hover:shadow-md transition-all space-y-3`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${gd.is_store_counter ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-teal-50 border border-teal-200 text-teal-700"}`}>
-                        <span className="material-symbols-outlined text-2xl">{gd.is_store_counter ? "storefront" : "warehouse"}</span>
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-900 text-sm leading-tight">{gd.name}</div>
-                        <div className="text-[10px] font-mono text-gray-400 mt-0.5">{gd.code}</div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${gd.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200"}`}>
-                        {gd.status}
-                      </span>
-                      {gd.is_default && (
-                        <span className="text-[9px] font-black bg-teal-600 text-white px-2 py-0.5 rounded-full">PRIMARY</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs text-gray-600 bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                    <div className="flex justify-between"><span className="text-gray-400">Location:</span><span className="font-semibold truncate max-w-[160px]">{gd.location || "—"}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">Incharge:</span><span className="font-bold text-teal-800">{gd.incharge_name || "—"}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">Phone:</span><span className="font-semibold">{gd.phone || "—"}</span></div>
-                    <div className="flex justify-between border-t border-gray-200 pt-1.5">
-                      <span className="text-gray-400">Stock Items:</span><span className="font-black text-teal-700">{itemCount} SKUs</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Est. Value:</span>
-                      <span className="font-black text-gray-900">Rs. {val.totalValue.toLocaleString()}</span>
-                    </div>
-                  </div>
-                  {gd.notes && <div className="text-[10px] text-gray-400 italic">{gd.notes}</div>}
-
-                  <div className="pt-1 border-t border-gray-100 flex gap-2">
-                    <button
-                      onClick={() => {
-                        setEditingGodown(gd);
-                        setGodownForm({ name: gd.name, code: gd.code, location: gd.location || "", incharge_name: gd.incharge_name || "", phone: gd.phone || "", notes: gd.notes || "", status: gd.status || "active" });
-                        setShowGodownModal(true);
-                      }}
-                      className="flex-1 text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 py-2 rounded-xl transition-colors flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-sm">edit</span>
-                      Edit
-                    </button>
-                    {!gd.is_store_counter && !gd.is_default && (
-                      <button
-                        onClick={() => {
-                          if (!window.confirm(`Delete godown "${gd.name}"? This cannot be undone.`)) return;
-                          const ok = dbWarehouses.delete(gd.id);
-                          if (!ok) { alert("Cannot delete this godown (system-protected)."); return; }
-                          refreshData();
-                        }}
-                        className="text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 py-2 px-3 rounded-xl transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {godowns.length === 0 && (
-              <div className="col-span-full text-center py-16 bg-white rounded-3xl border border-gray-200">
-                <span className="material-symbols-outlined text-5xl text-gray-300 block mb-2">warehouse</span>
-                <div className="text-gray-500 font-semibold text-sm">No godowns found.</div>
-                <button onClick={() => { setEditingGodown(null); setGodownForm({ name: "", code: "", location: "", incharge_name: "", phone: "", notes: "", status: "active" }); setShowGodownModal(true); }} className="mt-3 bg-teal-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-teal-700">
-                  + Add First Godown
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Godown Add/Edit Modal (React Portal) */}
-      {showGodownModal && typeof document !== "undefined" && createPortal(
-        <div 
-          className="fixed inset-0 z-[999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
-          onClick={() => setShowGodownModal(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white max-w-md w-full rounded-3xl p-6 border-2 border-teal-600 shadow-2xl space-y-4 animate-scaleUp text-left"
-          >
-            <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
-              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-600" style={{ fontVariationSettings: "'FILL' 1" }}>warehouse</span>
-                {editingGodown ? `Edit: ${editingGodown.name}` : "Add New Godown"}
-              </h3>
-              <button type="button" onClick={() => setShowGodownModal(false)} className="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!godownForm.name.trim()) { alert("Godown name is required."); return; }
-                if (editingGodown) {
-                  dbWarehouses.update(editingGodown.id, godownForm);
-                } else {
-                  dbWarehouses.add(godownForm);
-                }
-                setShowGodownModal(false);
-                refreshData();
-              }}
-              className="space-y-3"
-            >
-              <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
-                <div className="col-span-2">
-                  <label className="block text-slate-800 font-bold mb-1">Godown Name *</label>
-                  <input type="text" required autoFocus value={godownForm.name} onChange={(e) => setGodownForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Main Godown (Lajpat Road)" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
-                </div>
-                <div>
-                  <label className="block text-slate-800 font-bold mb-1">Short Code</label>
-                  <input type="text" value={godownForm.code} onChange={(e) => setGodownForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. GDW-03" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
-                </div>
-                <div>
-                  <label className="block text-slate-800 font-bold mb-1">Status</label>
-                  <select value={godownForm.status} onChange={(e) => setGodownForm((f) => ({ ...f, status: e.target.value }))} className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:outline-none cursor-pointer">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-slate-800 font-bold mb-1">Location / Address</label>
-                  <input type="text" value={godownForm.location} onChange={(e) => setGodownForm((f) => ({ ...f, location: e.target.value }))} placeholder="e.g. Site Area, Near Bus Stop, Hyderabad" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
-                </div>
-                <div>
-                  <label className="block text-slate-800 font-bold mb-1">Incharge Name</label>
-                  <input type="text" value={godownForm.incharge_name} onChange={(e) => setGodownForm((f) => ({ ...f, incharge_name: e.target.value }))} placeholder="e.g. Raza Ahmed" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
-                </div>
-                <div>
-                  <label className="block text-slate-800 font-bold mb-1">Phone</label>
-                  <input type="text" value={godownForm.phone} onChange={(e) => setGodownForm((f) => ({ ...f, phone: e.target.value }))} placeholder="03001234567" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-slate-800 font-bold mb-1">Notes</label>
-                  <input type="text" value={godownForm.notes} onChange={(e) => setGodownForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional notes about this godown" className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-950 bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-text shadow-xs" />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2 border-t border-gray-100">
-                <button type="button" onClick={() => setShowGodownModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer">Cancel</button>
-                <button type="submit" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 rounded-xl text-xs transition-colors shadow-md cursor-pointer">
-                  {editingGodown ? "Save Changes" : "Add Godown"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* DrCreate / MS Access Style: Chart Of Accounts _List Popup Modal (React Portal) */}
       {showChartOfAccountsModal && typeof document !== "undefined" && createPortal(

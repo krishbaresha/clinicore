@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth.js";
 import { getFeesSummary } from "../api/visits.js";
 import {
@@ -11,164 +11,18 @@ import {
   dbClinic,
   dbShiftClosings,
   dbCashBook,
-  dbAccounts,
-  dbParties,
-  dbSuppliers,
-  dbPartyLedger,
   dbDayClosing,
 } from "../api/db.js";
 import { formatCurrency } from "../utils/formatters.js";
-import { printDayEndClosingReceipt, printCashVoucherReceipt, printPartyPaymentReceipt } from "../utils/thermalPrinter.js";
+import { printDayEndClosingReceipt } from "../utils/thermalPrinter.js";
 import DayClosingReceiptModal from "../components/DayClosingReceiptModal.jsx";
+import { RECEIPT_HEADER_IMAGE_BASE64 } from "../utils/receiptHeaderBase64.js";
 
 const RANGES = ["daily", "weekly", "monthly"];
 
-/**
- * Searchable Combobox for Chart of Accounts (260+ Parties, Suppliers, Expense Accounts)
- */
-function SearchableAccountSelect({
-  label,
-  value,
-  onChange,
-  options = [],
-  placeholder = "Select or search account...",
-  required = false,
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
-
-  const filteredOptions = useMemo(() => {
-    if (!search.trim()) return options;
-    const q = search.toLowerCase();
-    return options.filter(
-      (opt) =>
-        (opt.label || "").toLowerCase().includes(q) ||
-        (opt.sublabel || "").toLowerCase().includes(q) ||
-        (opt.badge || "").toLowerCase().includes(q)
-    );
-  }, [options, search]);
-
-  const selectedOpt = options.find((o) => o.id === value || o.label === value || o.account_name === value);
-
-  return (
-    <div ref={dropdownRef} className="relative w-full">
-      {label && (
-        <label className="block text-[11px] font-black text-slate-700 mb-1 uppercase tracking-tight">
-          {label} {required && <span className="text-rose-500">*</span>}
-        </label>
-      )}
-
-      {/* Trigger Box */}
-      <button
-        type="button"
-        onClick={() => {
-          setIsOpen(!isOpen);
-          setSearch("");
-        }}
-        className={`w-full min-h-[44px] bg-white border ${
-          isOpen ? "border-teal-600 ring-2 ring-teal-100" : "border-slate-300 hover:border-slate-400"
-        } rounded-xl px-3.5 py-2 text-xs font-bold text-left flex items-center justify-between shadow-2xs transition-all cursor-pointer`}
-      >
-        <span className={`truncate ${selectedOpt ? "text-slate-900 font-black" : "text-slate-400 font-medium"}`}>
-          {selectedOpt ? (
-            <span className="flex items-center gap-1.5 truncate">
-              {selectedOpt.badge && (
-                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-teal-100 text-teal-900">
-                  {selectedOpt.badge}
-                </span>
-              )}
-              <span>{selectedOpt.label}</span>
-              {selectedOpt.sublabel && (
-                <span className="text-[10.5px] text-slate-500 font-normal">({selectedOpt.sublabel})</span>
-              )}
-            </span>
-          ) : (
-            placeholder
-          )}
-        </span>
-        <span className="material-symbols-outlined text-base text-slate-400 ml-1 shrink-0">
-          {isOpen ? "expand_less" : "expand_more"}
-        </span>
-      </button>
-
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[999] overflow-hidden flex flex-col max-h-64 animate-in fade-in zoom-in-95 duration-100">
-          <div className="p-2.5 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-            <span className="material-symbols-outlined text-base text-slate-400">search</span>
-            <input
-              type="text"
-              autoFocus
-              placeholder="Search account name, city, type..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-transparent text-xs font-bold text-slate-900 focus:outline-none placeholder-slate-400"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="text-[10px] text-slate-400 hover:text-slate-700 font-black cursor-pointer"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          <div className="overflow-y-auto custom-scrollbar flex-1 p-1.5 space-y-0.5 divide-y divide-slate-50">
-            {filteredOptions.length === 0 ? (
-              <div className="py-5 text-center text-xs text-slate-400 font-medium">No matching accounts found.</div>
-            ) : (
-              filteredOptions.map((opt) => (
-                <button
-                  key={opt.id || opt.label}
-                  type="button"
-                  onClick={() => {
-                    onChange(opt.label || opt.account_name, opt);
-                    setIsOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-teal-50 rounded-xl flex items-center justify-between text-xs transition-colors group cursor-pointer"
-                >
-                  <div className="truncate flex items-center gap-1.5">
-                    {opt.badge && (
-                      <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-slate-100 group-hover:bg-teal-200 group-hover:text-teal-950 text-slate-700">
-                        {opt.badge}
-                      </span>
-                    )}
-                    <span className="font-bold text-slate-800 group-hover:text-teal-950 truncate">{opt.label}</span>
-                    {opt.sublabel && (
-                      <span className="text-[10.5px] text-slate-400 group-hover:text-teal-700 truncate">
-                        • {opt.sublabel}
-                      </span>
-                    )}
-                  </div>
-                  {opt.extra && (
-                    <span className="text-[10.5px] font-black text-rose-600 shrink-0 ml-2 font-mono">{opt.extra}</span>
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function FeesReports() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("zreport"); // "zreport" | "cashbook" | "opd_analytics"
+  const [activeTab, setActiveTab] = useState("closing"); // "closing" | "trends"
   const [range, setRange] = useState("monthly");
   const [summary, setSummary] = useState(null);
 
@@ -189,24 +43,27 @@ export default function FeesReports() {
     note1000: 0,
     note500: 0,
     note100: 0,
+    note75: 0,
     note50: 0,
     note20: 0,
     note10: 0,
   });
   const [closingNotes, setClosingNotes] = useState("");
   const [savedClosings, setSavedClosings] = useState([]);
+  const [showDenomCounter, setShowDenomCounter] = useState(true);
   const [toastMsg, setToastMsg] = useState("");
-  const [showDenomCounter, setShowDenomCounter] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() =>
+    new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+  );
 
-  // CashBook Form State (Inline Tab 2)
-  const [cbVoucherNo, setCbVoucherNo] = useState("C-5160");
-  const [cbTerm, setCbTerm] = useState("Receive"); // "Receive" | "Paid"
-  const [cbAccountName, setCbAccountName] = useState("");
-  const [cbAmount, setCbAmount] = useState("");
-  const [cbNaration, setCbNaration] = useState("");
-  const [cbAutoPrint, setCbAutoPrint] = useState(true);
-  const [cbHistorySearch, setCbHistorySearch] = useState("");
-  const [cbViewMode, setCbViewMode] = useState("daily"); // "daily" | "all"
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(
+        new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+      );
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   const isPrimaryDoctorOrOwner = Boolean(user?.is_owner || user?.role === "admin");
   const canViewAllFinancials = Boolean(
@@ -231,7 +88,6 @@ export default function FeesReports() {
     const r = getFeesSummary(range, targetDoctorId);
     if (r.success) setSummary(r.data);
     setSavedClosings(dbShiftClosings.getAll());
-    setCbVoucherNo(dbCashBook.getNextVoucherNo());
   };
 
   useEffect(() => {
@@ -241,72 +97,12 @@ export default function FeesReports() {
     return () => window.removeEventListener("clinicflow_status_update", handleStatusUpdate);
   }, [range, targetDoctorId, closingDate]);
 
-  // Account options for Searchable Select
-  const accountOptions = useMemo(() => {
-    const accList = dbAccounts.getAll() || [];
-    const parties = dbParties.getAll() || [];
-    const suppliers = dbSuppliers.getAll() || [];
-
-    const options = [];
-    const addedNames = new Set();
-
-    // 1. Add Wholesale Parties
-    parties.forEach((p) => {
-      const bal = Number(p.current_balance || p.balance_due || 0);
-      const nameKey = p.name.toLowerCase().trim();
-      addedNames.add(nameKey);
-      options.push({
-        id: p.id || p.name,
-        label: p.name,
-        badge: "Party",
-        sublabel: `${p.city || "City"} • Code: ${p.party_code || p.id}`,
-        extra: bal > 0 ? `Udhaar Dues: Rs. ${bal.toLocaleString("en-US")}` : null,
-        raw: p,
-      });
-    });
-
-    // 2. Add Pharma Suppliers / Companies
-    suppliers.forEach((s) => {
-      const bal = Number(s.current_balance || s.balance_due || 0);
-      const nameKey = s.name.toLowerCase().trim();
-      if (!addedNames.has(nameKey)) {
-        addedNames.add(nameKey);
-        options.push({
-          id: s.id || s.name,
-          label: s.name,
-          badge: "Company",
-          sublabel: `Code: ${s.supplier_code || s.code || s.id}`,
-          extra: bal > 0 ? `Payable Dues: Rs. ${bal.toLocaleString("en-US")}` : null,
-          raw: s,
-        });
-      }
-    });
-
-    // 3. Add General Accounts
-    accList.forEach((acc) => {
-      const nameKey = acc.account_name.toLowerCase().trim();
-      if (!addedNames.has(nameKey)) {
-        addedNames.add(nameKey);
-        options.push({
-          id: acc.id || acc.account_name,
-          label: acc.account_name,
-          badge: acc.account_type || "General",
-          sublabel: acc.naration || "",
-          extra: null,
-          raw: acc,
-        });
-      }
-    });
-
-    return options;
-  }, [activeTab]);
-
   // ---------------------------------------------------------------------------
   // FINANCIAL CALCULATIONS (Day-End Reconciliation)
   // ---------------------------------------------------------------------------
   const targetDateStr = closingDate;
 
-  // 0. Base Collections
+  // Base Collections
   const allCashBook = dbCashBook.getAll() || [];
   const allVisits = dbVisits.getAll() || [];
   const allSales = dbSales.getAll() || [];
@@ -320,17 +116,7 @@ export default function FeesReports() {
     return dbDayClosing.getDayClosingData(closingDate);
   }, [closingDate, activeTab, allCashBook.length, allSales.length, allPurchases.length]);
 
-  // Day of Week
-  const dayOfWeekName = useMemo(() => {
-    try {
-      const d = new Date(closingDate + "T00:00:00");
-      return d.toLocaleDateString("en-US", { weekday: "long" });
-    } catch {
-      return "Today";
-    }
-  }, [closingDate]);
-
-  // 1. Inflows
+  // Inflows
   const dayVisits = allVisits.filter((v) => (v.visit_date || "").split("T")[0] === targetDateStr);
   const dayOpdFees = dayVisits.reduce((sum, v) => sum + (Number(v.fee_amount) || 0), 0);
 
@@ -361,99 +147,26 @@ export default function FeesReports() {
     0
   );
 
-  // Auto-Aggregated Real-Time Roznamcha (CashBook) Filtered View
-  const displayCashBookEntries = useMemo(() => {
-    // 1. Manual CashBook Vouchers
-    const manualVouchers = (allCashBook || []).map((c) => ({
-      id: c.id || c.voucher_no,
-      voucher_no: c.voucher_no,
-      date: c.date || c.created_at,
-      account_name: c.account_name || "General Account",
-      naration: c.naration || "Roznamcha Voucher",
-      term: c.term || c.type || "Receive",
-      amount: Number(c.amount) || 0,
-      source: "MANUAL_VOUCHER",
-      raw: c,
-    }));
-
-    // 2. Udhaar Cash Recoveries (dbPartyLedger)
-    const partyRecoveries = (dbPartyLedger.getAll() || [])
-      .filter((tx) => tx.tx_type === "PAYMENT")
-      .map((tx) => ({
-        id: tx.id || tx.receipt_no,
-        voucher_no: tx.receipt_no || "REC-1001",
-        date: tx.created_at || tx.date,
-        account_name: tx.party_name || "Wholesale Party",
-        naration: `Udhaar Recovery (${tx.payment_mode || "Cash"}${tx.bank_name ? ` - ${tx.bank_name}` : ""}) ${tx.notes ? `— ${tx.notes}` : ""}`,
-        term: "Receive",
-        amount: Number(tx.amount) || 0,
-        source: "PARTY_RECOVERY",
-        raw: tx,
-      }));
-
-    // 3. POS Pharmacy Cash Sales (dbSales)
-    const posSales = (allSales || [])
-      .filter((s) => !s.is_voided && Number(s.paid_amount !== undefined ? s.paid_amount : s.total_amount) > 0)
-      .map((s) => ({
-        id: s.id || s.invoice_no,
-        voucher_no: s.invoice_no || s.voucher_no || "INV-1001",
-        date: s.sale_date || s.created_at,
-        account_name: s.buyer_name || s.patient_name || "POS Walk-In Customer",
-        naration: `Pharmacy Cash Sale (${s.payment_mode || "Cash"})`,
-        term: "Receive",
-        amount: Number(s.paid_amount !== undefined ? s.paid_amount : s.total_amount) || 0,
-        source: "POS_SALE",
-        raw: s,
-      }));
-
-    // 4. Daily Expenses (dbExpenses)
-    const expenses = (allExpenses || []).map((e) => ({
-      id: e.id,
-      voucher_no: typeof e.id === "string" ? `EXP-${e.id.slice(-4).toUpperCase()}` : `EXP-${e.id}`,
-      date: e.expense_date || e.date,
-      account_name: e.category || e.title || "Clinic Expense",
-      naration: e.description || e.notes || "Petty Cash Expense",
-      term: "Paid",
-      amount: Number(e.amount) || 0,
-      source: "EXPENSE",
-      raw: e,
-    }));
-
-    // Combine all financial streams into one master Roznamcha
-    let merged = [...manualVouchers, ...partyRecoveries, ...posSales, ...expenses];
-
-    // Filter by Date (Daily vs All History)
-    if (cbViewMode === "daily") {
-      merged = merged.filter((r) => (r.date || "").split("T")[0] === closingDate);
-    }
-
-    // Filter by Search Query
-    if (cbHistorySearch.trim()) {
-      const q = cbHistorySearch.toLowerCase();
-      merged = merged.filter(
-        (r) =>
-          (r.voucher_no || "").toLowerCase().includes(q) ||
-          (r.account_name || "").toLowerCase().includes(q) ||
-          (r.naration || "").toLowerCase().includes(q)
-      );
-    }
-
-    // Sort chronologically descending
-    return merged.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  }, [allCashBook, allSales, allExpenses, cbViewMode, closingDate, cbHistorySearch]);
-
-  // CashBook Inflows & Outflows from Auto-Aggregated Roznamcha
+  // Day CashBook Vouchers Inflows and Outflows
   const dayCashRecTotal = useMemo(() => {
-    return displayCashBookEntries
-      .filter((r) => (r.date || "").split("T")[0] === targetDateStr && r.term === "Receive")
-      .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-  }, [displayCashBookEntries, targetDateStr]);
+    return (allCashBook || [])
+      .filter(
+        (c) =>
+          (c.date || c.created_at || "").split("T")[0] === targetDateStr &&
+          (c.term === "Receive" || c.type === "Receive")
+      )
+      .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  }, [allCashBook, targetDateStr]);
 
   const dayCashPaidTotal = useMemo(() => {
-    return displayCashBookEntries
-      .filter((r) => (r.date || "").split("T")[0] === targetDateStr && r.term === "Paid")
-      .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-  }, [displayCashBookEntries, targetDateStr]);
+    return (allCashBook || [])
+      .filter(
+        (c) =>
+          (c.date || c.created_at || "").split("T")[0] === targetDateStr &&
+          (c.term === "Paid" || c.type === "Paid")
+      )
+      .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  }, [allCashBook, targetDateStr]);
 
   const totalInflow = dayOpdFees + dayPharmacySales + dayWholesaleSales + dayCashRecTotal;
 
@@ -474,7 +187,7 @@ export default function FeesReports() {
 
   const totalOutflow = totalDayExpenses + daySupplierCash + dayReturnRefunds;
 
-  // Net Drawer Cash Formula: Opening Float + Inflow - Outflow
+  // Net Drawer Cash: Opening Float + Inflow - Outflow
   const netCashInHand = openingCash + totalInflow - totalOutflow;
 
   // Physical Counted Total
@@ -483,6 +196,7 @@ export default function FeesReports() {
     (Number(denominations.note1000) || 0) * 1000 +
     (Number(denominations.note500) || 0) * 500 +
     (Number(denominations.note100) || 0) * 100 +
+    (Number(denominations.note75) || 0) * 75 +
     (Number(denominations.note50) || 0) * 50 +
     (Number(denominations.note20) || 0) * 20 +
     (Number(denominations.note10) || 0) * 10;
@@ -494,10 +208,29 @@ export default function FeesReports() {
   // ---------------------------------------------------------------------------
   const handlePrintZReport = (closingObj = null) => {
     const dataToPrint = closingObj || {
+      date: closingDate,
       closing_date: closingDate,
       closed_by: user?.name || "Cashier / Doctor",
       total_tokens: dayVisits.length,
       opening_cash: openingCash,
+      sales: dayClosingData?.sales || {
+        total: dayPharmacySales + dayWholesaleSales,
+        cash: dayPharmacySales + dayWholesaleSales,
+        credit: 0,
+      },
+      purchases: dayClosingData?.purchases || {
+        total: daySupplierCash,
+        cash: daySupplierCash,
+        credit: 0,
+      },
+      payments_paid: dayClosingData?.payments_paid || {
+        total: totalDayExpenses,
+        items: [],
+      },
+      payments_received: dayClosingData?.payments_received || {
+        total: totalInflow,
+        items: [],
+      },
       opd_fees: dayOpdFees,
       pharmacy_sales: dayPharmacySales,
       wholesale_b2b: dayWholesaleSales + dayCashRecTotal,
@@ -507,6 +240,7 @@ export default function FeesReports() {
       total_inflow: totalInflow,
       total_outflow: totalOutflow,
       net_cash_in_hand: netCashInHand,
+      closing_cash: netCashInHand,
       expected_cash: netCashInHand,
       physical_cash: physicalCashTotal > 0 ? physicalCashTotal : netCashInHand,
       cash_variance: physicalCashTotal > 0 ? cashVariance : 0,
@@ -551,6 +285,16 @@ export default function FeesReports() {
       shift_name: "Day-End Shift",
       total_tokens: dayVisits.length,
       opening_cash: openingCash,
+      sales: dayClosingData?.sales || {
+        total: dayPharmacySales + dayWholesaleSales,
+        cash: dayPharmacySales + dayWholesaleSales,
+        credit: 0,
+      },
+      purchases: dayClosingData?.purchases || {
+        total: daySupplierCash,
+        cash: daySupplierCash,
+        credit: 0,
+      },
       opd_fees: dayOpdFees,
       pharmacy_sales: dayPharmacySales,
       wholesale_sales: dayWholesaleSales + dayCashRecTotal,
@@ -560,6 +304,7 @@ export default function FeesReports() {
       returns_refunds: dayReturnRefunds,
       total_outflow: totalOutflow,
       expected_cash: netCashInHand,
+      closing_cash: netCashInHand,
       physical_cash: physicalCashTotal,
       cash_variance: cashVariance,
       denominations: { ...denominations },
@@ -588,89 +333,15 @@ export default function FeesReports() {
     }
   };
 
-  // CashBook Submission (Tab 2)
-  const handleCashBookSubmit = (e) => {
-    e.preventDefault();
-    const numAmount = Number(cbAmount);
-    if (!numAmount || numAmount <= 0) {
-      alert("⚠️ Please enter a valid non-zero transaction Amount.");
-      return;
-    }
-    if (!cbAccountName || !cbAccountName.trim()) {
-      alert("⚠️ Please select an Account Name.");
-      return;
-    }
-
-    // 🔴 ZERO-UDHAAR BALANCE CHECK: Block receiving Udhaar recovery when party has 0 pending credit
-    const selectedOpt = accountOptions.find(
-      (o) => o.label.toLowerCase() === cbAccountName.toLowerCase() || o.id === cbAccountName
-    );
-
-    if (cbTerm === "Receive" && selectedOpt && (selectedOpt.badge === "Party" || selectedOpt.badge === "Company")) {
-      const currentBalance = Number(selectedOpt.raw?.current_balance ?? selectedOpt.raw?.balance_due ?? 0);
-      if (currentBalance <= 0) {
-        alert(
-          `🚫 Action Blocked!\n\n"${selectedOpt.label}" currently has Rs. 0 outstanding Udhaar balance in the system.\n\nYou cannot record an Udhaar Cash Receive voucher when there is no pending credit due.`
-        );
-        return;
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
       }
-      if (numAmount > currentBalance) {
-        alert(
-          `⚠️ Invalid Receive Amount!\n\nThe entered amount (Rs. ${numAmount.toLocaleString()}) exceeds "${selectedOpt.label}" outstanding Udhaar balance of Rs. ${currentBalance.toLocaleString()}.\n\nPlease enter an amount up to Rs. ${currentBalance.toLocaleString()}.`
-        );
-        return;
-      }
-    }
-
-    const newEntry = dbCashBook.addEntry({
-      date: closingDate,
-      voucher_no: cbVoucherNo,
-      term: cbTerm,
-      account_name: cbAccountName,
-      naration: cbNaration || (cbTerm === "Receive" ? "Cash Received" : "Cash Paid"),
-      amount: numAmount,
-    });
-
-    if (cbAutoPrint) {
-      try {
-        printCashVoucherReceipt(newEntry, dbClinic.get());
-      } catch (err) {
-        console.error("Slip print failed:", err);
-      }
-    }
-
-    showToast(`✅ ${cbTerm === "Receive" ? "Cash Receipt" : "Cash Payment"} ${cbVoucherNo} posted!`);
-    setCbAmount("");
-    setCbNaration("");
-    setCbAccountName("");
-    loadData();
-  };
-
-  const handleCashBookDelete = (entry) => {
-    if (confirm(`Delete Cash Voucher ${entry.voucher_no} (Rs. ${entry.amount})?`)) {
-      dbCashBook.deleteEntry(entry.id || entry.voucher_no);
-      showToast(`🗑️ Voucher ${entry.voucher_no} deleted.`);
-      loadData();
     }
   };
-
-  const handleCashBookReprint = (entry) => {
-    try {
-      if (entry.source === "PARTY_RECOVERY") {
-        printPartyPaymentReceipt(entry.raw, dbClinic.get());
-      } else {
-        printCashVoucherReceipt(entry.raw || entry, dbClinic.get());
-      }
-    } catch (err) {
-      console.error("CashBook voucher reprint failed:", err);
-    }
-  };
-
-  // Narration Presets
-  const quickNarations =
-    cbTerm === "Receive"
-      ? ["Bill Clear", "Cash Received", "Token Consultation Fee", "Advance Payment", "Udhaar Recovery", "Customer Ledger Settlement"]
-      : ["Staff Tea & Refreshment", "Shop Daily Expenses", "Electricity / Utility Bill", "Courier & Transport Freight", "Medicine Purchase Bill", "Doctor Personal Drawing", "Staff Daily Allowance"];
 
   const maxFee = summary?.chart_data?.length ? Math.max(...summary.chart_data.map((d) => d.fees), 1) : 1;
   const clinic = dbClinic.get();
@@ -679,9 +350,11 @@ export default function FeesReports() {
     return (
       <div className="w-full bg-white rounded-3xl p-8 sm:p-12 text-center border border-slate-200 shadow-sm max-w-lg mx-auto my-12 space-y-4">
         <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mx-auto">
-          <span className="material-symbols-outlined text-3xl">lock</span>
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
-        <h3 className="text-xl font-black text-slate-900">Financial Access Restricted</h3>
+        <h3 className="text-xl font-bold text-slate-900">Financial Access Restricted</h3>
         <p className="text-xs text-slate-500 leading-relaxed">
           You do not have administrative permission to view clinic revenue, cashbook vouchers, or day closing reconciliation.
           Only the Primary Doctor, Owner, or authorized Cashier can view financial records.
@@ -691,347 +364,439 @@ export default function FeesReports() {
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 flex flex-col gap-6 pb-24 font-sans zero-horizontal-overflow">
-      {/* Toast Banner */}
+    <div className="w-full max-w-full min-w-0 flex flex-col gap-2.5 sm:gap-3 pb-2 font-sans zero-horizontal-overflow">
+      {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-[9999] bg-slate-900 text-white text-xs font-black px-4 py-3 rounded-2xl shadow-2xl border border-teal-500/40 flex items-center gap-2 animate-in slide-in-from-top duration-200">
+        <div className="fixed top-5 right-5 z-[9999] bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-2xl border border-teal-500/40 flex items-center gap-2 animate-in slide-in-from-top duration-200">
           <span>{toastMsg}</span>
           <button onClick={() => setToastMsg("")} className="text-slate-400 hover:text-white font-bold ml-2 cursor-pointer">✕</button>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="glass-card p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
-              <span className="material-symbols-outlined text-2xl">receipt_long</span>
+      {/* BEGIN: PageHeader & ActionRow */}
+      <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        {/* Title & Subtitle */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0 shadow-2xs">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">
+                {canViewAllFinancials ? "Financial Registers & CashBook" : "My OPD Fee Reports"}
+              </h1>
+              {canViewAllFinancials && (
+                <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-medium border border-slate-200">
+                  Daily Cash Desk
+                </span>
+              )}
             </div>
-            <span>{canViewAllFinancials ? "Financial Registers & CashBook" : "My OPD Fee Reports"}</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
-            {canViewAllFinancials
-              ? "Day-End Cash Closures, Physical Denominations HUD & Roznamcha Double-Entry Ledger"
-              : `Consultation fee collections for ${user?.name || "Doctor"}`}
-          </p>
+            <p className="text-[10.5px] sm:text-[11px] text-slate-500 font-normal leading-tight">
+              {canViewAllFinancials
+                ? "Day-End Cash Closures, Physical Denominations HUD & Roznamcha Double-Entry Ledger"
+                : `Consultation fee collections for ${user?.name || "Doctor"}`}
+            </p>
+          </div>
         </div>
 
+        {/* Header Action CTAs */}
         {canViewAllFinancials && (
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Desktop Software Mode Button */}
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
             <button
               type="button"
               onClick={() => setShowDayClosingModal(true)}
-              className="touch-pill min-h-[44px] bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-4 py-2.5 rounded-xl font-black text-xs shadow-lg shadow-teal-700/20 flex items-center gap-2 transition-all active:scale-95 cursor-pointer border border-emerald-400/30"
+              className="inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white px-3 py-1.5 rounded-lg font-semibold text-xs shadow-2xs transition transform active:scale-98 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-base">receipt_long</span>
+              <svg className="w-3.5 h-3.5 text-teal-200" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
               <span>Day Closing (UserForm12)</span>
             </button>
-
             <button
               type="button"
               onClick={() => handlePrintZReport()}
-              className="touch-pill min-h-[44px] bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-black text-xs shadow-md shadow-slate-900/20 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg font-medium text-xs shadow-2xs transition cursor-pointer"
             >
-              <span className="material-symbols-outlined text-base">print</span>
-              <span>Print Z-Report (80mm)</span>
+              <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Print Z-Report</span>
             </button>
           </div>
         )}
       </div>
+      {/* END: PageHeader & ActionRow */}
 
-      {/* ── 3 Bento Navigation Tabs ── */}
+      {/* BEGIN: NavigationTabs */}
       {canViewAllFinancials && (
-        <div className="flex border-b border-slate-200/80 gap-2 overflow-x-auto custom-scrollbar pb-1">
-          <button
-            onClick={() => setActiveTab("zreport")}
-            className={`min-h-[44px] px-4 font-black text-xs transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-              activeTab === "zreport"
-                ? "border-emerald-600 text-emerald-950 bg-emerald-50/70 rounded-t-2xl shadow-2xs"
-                : "border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-t-2xl"
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg text-emerald-700">receipt_long</span>
-            <span>📋 Day Closing Receipt (روزانہ کلوزنگ رسید)</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("cashbook")}
-            className={`min-h-[44px] px-4 font-black text-xs transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-              activeTab === "cashbook"
-                ? "border-teal-600 text-teal-950 bg-teal-50/70 rounded-t-2xl shadow-2xs"
-                : "border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-t-2xl"
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg text-teal-700">menu_book</span>
-            <span>📖 CashBook Ledger (Roznamcha)</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("opd_analytics")}
-            className={`min-h-[44px] px-4 font-black text-xs transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-              activeTab === "opd_analytics"
-                ? "border-teal-600 text-teal-950 bg-teal-50/70 rounded-t-2xl shadow-2xs"
-                : "border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-t-2xl"
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg text-teal-700">analytics</span>
-            <span>📈 OPD Doctor Fee Trends</span>
-          </button>
+        <div className="border-b border-slate-200 overflow-x-auto no-scrollbar">
+          <nav className="flex space-x-6 text-xs sm:text-sm font-medium whitespace-nowrap min-w-max pb-px">
+            {/* Active Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("closing")}
+              className={`py-1.5 px-1 border-b-2 font-semibold flex items-center gap-1.5 transition cursor-pointer text-xs sm:text-sm ${
+                activeTab === "closing"
+                  ? "border-teal-700 text-teal-700"
+                  : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+              }`}
+            >
+              <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Day Closing Receipt</span>
+            </button>
+
+            {/* OPD Doctor Fee Trends Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("trends")}
+              className={`py-1.5 px-1 border-b-2 font-medium flex items-center gap-1.5 transition cursor-pointer text-xs sm:text-sm ${
+                activeTab === "trends"
+                  ? "border-teal-700 text-teal-700 font-semibold"
+                  : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+              }`}
+            >
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>OPD Doctor Fee Trends</span>
+            </button>
+          </nav>
         </div>
       )}
+      {/* END: NavigationTabs */}
 
       {/* ===================================================================== */}
       {/* TAB 1: 📋 Day Closing Receipt & Physical Denominations HUD           */}
       {/* ===================================================================== */}
-      {activeTab === "zreport" && canViewAllFinancials && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* ─── LEFT: 80MM THERMAL RECEIPT SLIP PREVIEW (5 Cols) ─────── */}
-            <div className="lg:col-span-5 glass-card p-5 sm:p-6 border-2 border-emerald-500/30 shadow-xl relative overflow-hidden flex flex-col font-mono text-xs text-slate-800">
-              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600" />
-              
-              {/* Slip Header */}
-              <div className="text-center pb-3 border-b border-dashed border-slate-300 space-y-1">
-                <div className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                  {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
+      {activeTab === "closing" && canViewAllFinancials && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+          {/* ======================= LEFT COLUMN: 80MM ESC/POS RECEIPT (4-5 Cols) ======================= */}
+          <section aria-label="Receipt Preview" className="lg:col-span-5 xl:col-span-4 flex flex-col">
+            <div className="bg-white border-2 border-slate-300/90 rounded-xl p-3 sm:p-3.5 shadow-2xs relative overflow-hidden text-slate-950 font-sans">
+              <div>
+                {/* Paper Preview Label Header */}
+                <div className="text-center pb-1 border-b border-dashed border-slate-300 mb-1.5">
+                  <span className="text-[9px] uppercase font-mono tracking-widest text-slate-400 font-bold">
+                    [ RECEIPT PREVIEW — 80MM ESC/POS ]
+                  </span>
                 </div>
-                <div className="text-[10px] text-slate-500 font-sans">
-                  {clinic?.address || "Lajpat Road, Hyderabad"}
-                </div>
-                <div className="text-[10px] text-slate-500 font-sans">
-                  Tel: {clinic?.phone || "0347-3100304"}
-                </div>
-                <div className="inline-block px-2.5 py-0.5 mt-1 rounded bg-slate-100 text-slate-800 text-[10.5px] font-black uppercase tracking-wider">
-                  DAY CLOSING RECEIPT
-                </div>
-              </div>
 
-              {/* Date & Day */}
-              <div className="py-2.5 border-b border-dashed border-slate-300 flex justify-between text-[11px] font-bold text-slate-600">
-                <span>Date: {closingDate}</span>
-                <span>Day: {dayOfWeekName}</span>
-              </div>
+                {/* Clinic Header Banner Image (Full Coverage) */}
+                <div className="text-center pb-2 -mx-2 -mt-1">
+                  <img
+                    src={RECEIPT_HEADER_IMAGE_BASE64}
+                    alt="Dr. Asif Khan Homoeopathic Clinic"
+                    className="w-full h-auto object-contain block"
+                  />
+                </div>
 
-              {/* In-Receipt Sections */}
-              <div className="py-3 space-y-3.5 flex-1">
-                {/* 1. SALE */}
-                <div className="space-y-1">
-                  <div className="font-black text-slate-900 text-xs border-b border-slate-200 pb-0.5">
-                    === SALE ===
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Total Sale:</span>
-                    <span className="font-black text-slate-900 font-mono">
-                      Rs. {(dayClosingData?.sales?.total || 0).toLocaleString()}
+                {/* Date & Closing Receipt Header (Matching MS Access DrCreate Format) */}
+                <div className="flex items-center justify-between font-semibold text-xs text-slate-900 my-1">
+                  <span>Date</span>
+                  <span className="font-mono font-semibold">
+                    {closingDate} <span className="text-[11px] text-slate-700 ml-1.5 font-sans font-bold">{currentTime}</span>
+                  </span>
+                </div>
+
+                <div className="text-center font-serif font-bold text-sm text-slate-900 my-1 tracking-wide">
+                  Closing Receipt
+                </div>
+
+                {/* Dotted Divider */}
+                <div className="border-t border-dashed border-slate-900 my-2" />
+
+                {/* Opening Drawer Float (if > 0) */}
+                {openingCash > 0 && (
+                  <div className="flex items-center justify-between font-semibold text-xs text-slate-900 py-0.5 mb-1 bg-amber-50/60 px-1 rounded border border-amber-200">
+                    <span>Opening Drawer Float:</span>
+                    <span className="font-mono font-bold">
+                      Rs. {Number(openingCash).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-slate-600 pl-2">
-                    <span>Cash Sale:</span>
-                    <span className="font-mono">Rs. {(dayClosingData?.sales?.cash || 0).toLocaleString()}</span>
+                )}
+
+                {/* 1. SALE */}
+                <div className="my-2.5 space-y-0.5">
+                  <div className="flex items-center justify-between font-semibold text-xs text-slate-900">
+                    <span className="font-serif font-bold text-xs">Sale</span>
+                    <span className="font-mono font-semibold text-xs text-slate-900">
+                      Rs. {(dayClosingData?.sales?.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-slate-600 pl-2">
-                    <span>Credit Sale:</span>
-                    <span className="font-mono">Rs. {(dayClosingData?.sales?.credit || 0).toLocaleString()}</span>
+                  <div className="flex justify-between text-[11px] text-slate-700 pl-2">
+                    <span>Cash</span>
+                    <span className="font-mono">
+                      Rs. {(dayClosingData?.sales?.cash || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-700 pl-2">
+                    <span>Credit</span>
+                    <span className="font-mono">
+                      Rs. {(dayClosingData?.sales?.credit || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
                 </div>
 
                 {/* 2. PURCHASE */}
-                <div className="space-y-1">
-                  <div className="font-black text-slate-900 text-xs border-b border-slate-200 pb-0.5">
-                    === PURCHASE ===
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Total Purchase:</span>
-                    <span className="font-black text-slate-900 font-mono">
-                      Rs. {(dayClosingData?.purchases?.total || 0).toLocaleString()}
+                <div className="my-2.5 space-y-0.5">
+                  <div className="flex items-center justify-between font-semibold text-xs text-slate-900">
+                    <span className="font-serif font-bold text-xs">Purchase</span>
+                    <span className="font-mono font-semibold text-xs text-slate-900">
+                      Rs. {(dayClosingData?.purchases?.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-slate-600 pl-2">
-                    <span>Cash Purchase:</span>
-                    <span className="font-mono">Rs. {(dayClosingData?.purchases?.cash || 0).toLocaleString()}</span>
+                  <div className="flex justify-between text-[11px] text-slate-700 pl-2">
+                    <span>Cash</span>
+                    <span className="font-mono">
+                      Rs. {(dayClosingData?.purchases?.cash || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-slate-600 pl-2">
-                    <span>Credit Purchase:</span>
-                    <span className="font-mono">Rs. {(dayClosingData?.purchases?.credit || 0).toLocaleString()}</span>
+                  <div className="flex justify-between text-[11px] text-slate-700 pl-2">
+                    <span>Credit</span>
+                    <span className="font-mono">
+                      Rs. {(dayClosingData?.purchases?.credit || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
                 </div>
 
-                {/* 3. PAYMENT PAID (Outflow) */}
-                <div className="space-y-1">
-                  <div className="flex justify-between font-black text-rose-900 text-xs border-b border-rose-200 pb-0.5">
-                    <span>=== PAYMENT PAID ===</span>
-                    <span className="font-mono">Rs. {(dayClosingData?.payments_paid?.total || 0).toLocaleString()}</span>
+                {/* 3. PAYMENT PAID */}
+                <div className="my-2.5">
+                  <div className="flex items-center justify-between font-semibold text-xs text-slate-900 mb-0.5">
+                    <span className="font-serif font-bold text-xs">Payment Paid</span>
+                    <span className="font-mono font-semibold text-xs text-slate-900">
+                      Rs. {(dayClosingData?.payments_paid?.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-semibold border-b border-dotted border-slate-400 pb-0.5 mb-1 text-slate-600 pl-2">
+                    <span>Account Name</span>
+                    <span>Amount</span>
                   </div>
                   {dayClosingData?.payments_paid?.items?.length === 0 ? (
-                    <div className="text-[10px] text-slate-400 pl-2 italic">No payments paid</div>
+                    <div className="text-[10px] text-slate-400 italic text-center py-0.5">
+                      No payments paid on this date.
+                    </div>
                   ) : (
-                    dayClosingData.payments_paid.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-[10.5px] pl-2 text-slate-700">
-                        <span className="truncate max-w-[200px]">
-                          • {item.account_name} {item.naration ? `(${item.naration})` : ""}
-                        </span>
-                        <span className="font-bold shrink-0 font-mono">Rs. {Number(item.amount || 0).toLocaleString()}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* 4. PAYMENT RECEIVE (Inflow) */}
-                <div className="space-y-1">
-                  <div className="flex justify-between font-black text-emerald-900 text-xs border-b border-emerald-200 pb-0.5">
-                    <span>=== PAYMENT RECEIVE ===</span>
-                    <span className="font-mono">Rs. {(dayClosingData?.payments_received?.total || 0).toLocaleString()}</span>
-                  </div>
-                  {dayClosingData?.payments_received?.items?.length === 0 ? (
-                    <div className="text-[10px] text-slate-400 pl-2 italic">No payments received</div>
-                  ) : (
-                    dayClosingData.payments_received.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-[10.5px] pl-2 text-slate-700">
-                        <span className="truncate max-w-[200px]">
-                          • {item.account_name} {item.naration ? `(${item.naration})` : ""}
-                        </span>
-                        <span className="font-bold shrink-0 font-mono">Rs. {Number(item.amount || 0).toLocaleString()}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* 5. CLOSING CASH */}
-                <div className="bg-slate-900 text-white p-3.5 rounded-2xl space-y-1 shadow-inner border border-slate-800">
-                  <div className="text-[10px] font-black text-amber-300 uppercase tracking-widest text-center">
-                    FINAL CLOSING CASH IN HAND
-                  </div>
-                  <div className={`text-2xl font-black text-center font-mono ${netCashInHand >= 0 ? "text-amber-300" : "text-rose-400"}`}>
-                    Rs. {netCashInHand.toLocaleString()}
-                  </div>
-                  {openingCash > 0 && (
-                    <div className="text-[9.5px] text-slate-400 text-center">
-                      (Includes Rs. {openingCash.toLocaleString()} Opening Float)
+                    <div className="max-h-24 overflow-y-auto custom-scrollbar space-y-0.5 pr-0.5 pl-2">
+                      {dayClosingData?.payments_paid?.items?.map((it, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-[10.5px] text-slate-800">
+                          <span className="truncate max-w-[170px]">
+                            {it.account_name} {it.naration ? `(${it.naration})` : ""}
+                          </span>
+                          <span className="font-mono font-medium shrink-0">
+                            Rs. {Number(it.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Thermal Receipt Bottom Tear-Edge Graphic */}
-              <div className="text-center pt-2 text-[9px] text-slate-400 font-sans border-t border-dashed border-slate-300">
-                CliniCore Thermal Printing Engine
+                {/* 4. PAYMENT RECEIVE */}
+                <div className="my-2.5">
+                  <div className="flex items-center justify-between font-semibold text-xs text-slate-900 mb-0.5">
+                    <span className="font-serif font-bold text-xs">Payment Receive</span>
+                    <span className="font-mono font-semibold text-xs text-slate-900">
+                      Rs. {(dayClosingData?.payments_received?.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-semibold border-b border-dotted border-slate-400 pb-0.5 mb-1 text-slate-600 pl-2">
+                    <span>Account Name</span>
+                    <span>Amount</span>
+                  </div>
+                  {dayClosingData?.payments_received?.items?.length === 0 ? (
+                    <div className="text-[10px] text-slate-400 italic text-center py-0.5">
+                      No cash payments received on this date.
+                    </div>
+                  ) : (
+                    <div className="max-h-24 overflow-y-auto custom-scrollbar space-y-0.5 pr-0.5 pl-2">
+                      {dayClosingData?.payments_received?.items?.map((it, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-[10.5px] text-slate-800">
+                          <span className="truncate max-w-[170px]">
+                            {it.account_name} {it.naration ? `(${it.naration})` : ""}
+                          </span>
+                          <span className="font-mono font-medium shrink-0">
+                            Rs. {Number(it.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Dotted Divider */}
+                <div className="border-t border-dashed border-slate-900 my-2" />
+
+                {/* 5. CLOSING CASH */}
+                <div className="my-2 flex justify-between items-center py-0.5 bg-white">
+                  <span className="font-serif font-bold text-sm text-slate-900 tracking-wide">
+                    Closing Cash
+                  </span>
+                  <span className="font-mono font-bold text-base text-slate-900">
+                    Rs. {netCashInHand.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                {/* Doctor Signature Line with ample signing room */}
+                <div className="mt-20 sm:mt-24 flex justify-end">
+                  <div className="border-t border-slate-900 w-44 text-center text-[9px] font-bold uppercase pt-1.5 text-slate-800">
+                    DR. SIGNATURE
+                  </div>
+                </div>
+
+                {/* Watermark Footer */}
+                <div className="mt-2 pt-1 border-t border-dotted border-slate-400 text-center font-mono text-[8px] text-slate-500">
+                  <div className="font-bold text-slate-700">*** Powered by CliniCore Software ***</div>
+                  <div>K.B Developer 03142291356</div>
+                </div>
               </div>
             </div>
+          </section>
 
-            {/* ─── RIGHT: CONTROL CONSOLE & DENOMINATION HUD (7 Cols) ────── */}
-            <div className="lg:col-span-7 space-y-5">
-              
-              {/* WhatsApp Quick Dispatcher Card */}
-              <div className="glass-card bg-gradient-to-br from-emerald-600 to-teal-800 text-white p-5 rounded-3xl shadow-lg space-y-3 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-2xl">chat</span>
-                    <span className="font-black text-sm uppercase tracking-wide">WhatsApp Daily Summary Report</span>
+          {/* ======================= RIGHT COLUMN: OPERATIONAL CONTROLS (7-8 Cols) ======================= */}
+          <section aria-label="Operational Controls" className="lg:col-span-7 xl:col-span-8 space-y-2.5">
+            {/* ROW 1: WhatsApp Report + Closing Config Controls in 2-Column Responsive Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-stretch">
+              {/* WhatsApp Quick Dispatcher (5 Cols) */}
+              <div className="sm:col-span-5 bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-800 rounded-xl p-2.5 sm:p-3 text-white shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-6 h-6 rounded bg-white/10 flex items-center justify-center">
+                        <svg className="w-3.5 h-3.5 text-teal-100" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 012.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 01-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24M8.53 7.33c-.16 0-.43.06-.66.31-.23.25-.87.85-.87 2.07s.89 2.4 1.01 2.57c.13.16 1.74 2.67 4.23 3.74.59.26 1.05.41 1.41.53.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.16-.48-.29s-1.47-.73-1.7-.81c-.23-.09-.39-.13-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.53.07-.25-.13-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.12-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43z"></path>
+                        </svg>
+                      </div>
+                      <h3 className="font-bold text-[11px] tracking-tight text-white uppercase">WhatsApp Report</h3>
+                    </div>
+                    <span className="bg-white/20 text-white text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                      1-Click
+                    </span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-bold">1-Click Share</span>
-                </div>
-
-                <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="03473100304"
                     value={whatsAppNo}
                     onChange={(e) => setWhatsAppNo(e.target.value)}
-                    className="flex-1 min-h-[44px] bg-white/10 border border-white/30 placeholder-white/60 text-white rounded-xl px-3.5 py-2 text-xs font-black focus:outline-none focus:bg-white/20"
+                    placeholder="03473100304"
+                    className="w-full bg-black/20 border border-white/25 rounded-lg px-2.5 py-1 text-white placeholder-teal-200/60 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
                   />
-                  <button
-                    type="button"
-                    onClick={handleSendWhatsApp}
-                    className="touch-target-44 min-h-[44px] bg-white text-emerald-950 hover:bg-emerald-50 px-4 py-2 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base">send</span>
-                    <span>Send WhatsApp</span>
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleSendWhatsApp}
+                  className="mt-2 w-full bg-white hover:bg-teal-50 text-teal-900 font-semibold px-2.5 py-1 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" strokeLinecap="round" strokeLinejoin="round"></path>
+                  </svg>
+                  <span>Send WhatsApp</span>
+                </button>
               </div>
 
-              {/* Date, Opening Float & Control Buttons */}
-              <div className="glass-card p-5 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Closing Config Panel (7 Cols) */}
+              <div className="sm:col-span-7 bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 space-y-2 shadow-2xs">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-black text-slate-700 mb-1 uppercase tracking-tight">Select Closing Date</label>
+                    <label className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 mb-0.5" htmlFor="closingDateInput">
+                      Closing Date
+                    </label>
                     <input
+                      id="closingDateInput"
                       type="date"
                       value={closingDate}
                       onChange={(e) => setClosingDate(e.target.value)}
-                      className="w-full min-h-[44px] bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono shadow-2xs"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-800 font-mono text-xs focus:bg-white focus:border-teal-600 focus:ring-1 focus:ring-teal-600 cursor-pointer"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black text-slate-700 mb-1 uppercase tracking-tight">
-                      Opening Drawer Float (صبح کا کیش)
-                    </label>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500" htmlFor="drawerFloatInput">
+                        Opening Float (Morning Cash)
+                      </label>
+                    </div>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">Rs.</span>
+                      <span className="absolute inset-y-0 left-0 pl-2 flex items-center font-mono font-medium text-slate-400 text-xs">
+                        Rs.
+                      </span>
                       <input
+                        id="drawerFloatInput"
                         type="number"
                         min="0"
-                        placeholder="0"
                         value={openingCash || ""}
                         onChange={(e) => handleOpeningCashChange(e.target.value)}
-                        className="w-full min-h-[44px] bg-amber-50/70 border border-amber-300 rounded-xl pl-9 pr-3.5 py-2 text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner font-mono"
+                        placeholder="0"
+                        className="w-full bg-slate-50 border border-amber-300 rounded-lg pl-7 pr-2 py-1 text-slate-900 font-mono text-xs font-semibold focus:bg-white focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-2.5 pt-2 border-t border-slate-100 flex-wrap">
+                <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => handlePrintZReport()}
-                    className="touch-target-44 flex-1 min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white py-3 px-4 rounded-xl font-black text-xs shadow-md shadow-emerald-700/20 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                    className="flex-1 bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white font-semibold py-1.5 px-2.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-base">print</span>
-                    <span>Print 80mm Closing Slip</span>
+                    <svg className="w-3.5 h-3.5 text-teal-200" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" strokeLinecap="round" strokeLinejoin="round"></path>
+                    </svg>
+                    <span>Print 80mm Slip</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setShowDayClosingModal(true)}
-                    className="touch-target-44 min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    onClick={toggleFullScreen}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 px-2.5 rounded-lg text-xs transition flex items-center justify-center gap-1 border border-slate-200 cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-base">open_in_full</span>
+                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" strokeLinecap="round" strokeLinejoin="round"></path>
+                    </svg>
                     <span>Full Screen</span>
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* Operator / Staff Cash Inflow Breakdown Card */}
-              <div className="glass-card p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
-                      <span className="material-symbols-outlined text-lg">badge</span>
+            {/* ROW 2: Operator Accountability & Archived Shift Logs (Side-by-Side on md+) */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-stretch">
+              {/* Operator Cash Accountability Card (6 Cols) */}
+              <div className="sm:col-span-6 bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-6 h-6 rounded bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round"></path>
+                      </svg>
                     </div>
                     <div>
-                      <h3 className="font-bold text-xs text-slate-900">Operator Cash Accountability</h3>
-                      <p className="text-[10px] text-slate-500">Sales breakdown by cashier</p>
+                      <h4 className="font-bold text-[11px] text-slate-900 leading-tight">Operator Accountability</h4>
+                      <p className="text-[9px] text-slate-400">Cashier breakdown</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-black bg-teal-100 text-teal-950 px-2.5 py-0.5 rounded-full">
-                    {operatorBreakdown.length} Operators
+                  <span className="bg-slate-100 text-slate-600 text-[9.5px] font-semibold px-1.5 py-0.5 rounded-full border border-slate-200">
+                    {operatorBreakdown.length} {operatorBreakdown.length === 1 ? "User" : "Users"}
                   </span>
                 </div>
 
                 {operatorBreakdown.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic py-2">No retail sales recorded on this date.</p>
+                  <div className="py-3 text-center text-[10px] text-slate-400 italic">
+                    No retail sales recorded on this date.
+                  </div>
                 ) : (
-                  <div className="space-y-2 pt-1">
+                  <div className="space-y-1 pt-1.5 max-h-24 overflow-y-auto custom-scrollbar pr-0.5">
                     {operatorBreakdown.map((op, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-teal-50/50 border border-teal-100 text-xs">
-                        <div>
-                          <span className="font-bold text-slate-900">{op.name}</span>
-                          <div className="text-[10px] text-slate-500">{op.count} invoices processed</div>
+                      <div key={idx} className="flex items-center justify-between p-1.5 rounded-lg bg-teal-50/50 border border-teal-100 text-xs">
+                        <div className="truncate max-w-[130px]">
+                          <span className="font-bold text-slate-900 text-[11px] truncate block">{op.name}</span>
+                          <div className="text-[9px] text-slate-500">{op.count} invoices</div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-black text-teal-950 font-mono">Rs. {op.cashSales.toLocaleString()}</div>
-                          <div className="text-[9.5px] text-slate-400 font-mono">Total: Rs. {op.totalSales.toLocaleString()}</div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-teal-950 font-mono text-xs">Rs. {op.cashSales.toLocaleString()}</div>
+                          <div className="text-[8.5px] text-slate-400 font-mono">Tot: Rs. {op.totalSales.toLocaleString()}</div>
                         </div>
                       </div>
                     ))}
@@ -1039,457 +804,204 @@ export default function FeesReports() {
                 )}
               </div>
 
-              {/* Physical Cash Denominations HUD Accordion with Live Variance */}
-              <div className="glass-card border border-slate-200 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowDenomCounter(!showDenomCounter)}
-                  className="w-full min-h-[48px] p-4 flex items-center justify-between text-left hover:bg-slate-50/80 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="material-symbols-outlined text-emerald-600">request_quote</span>
-                    <span className="font-black text-slate-900 text-xs">
-                      Physical Cash Drawer Denominations ({physicalCashTotal > 0 ? `Rs. ${physicalCashTotal.toLocaleString()}` : "Count Notes"})
-                    </span>
+              {/* Saved Shift Closings History Log (6 Cols) */}
+              <div className="sm:col-span-6 bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-6 h-6 rounded bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
+                      <svg className="w-3.5 h-3.5 text-teal-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[11px] text-slate-900 leading-tight">Archived Shift Logs</h4>
+                      <p className="text-[9px] text-slate-400">Past closures</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {physicalCashTotal > 0 && (
-                      <span className={`text-[10.5px] font-black px-2.5 py-0.5 rounded-full font-mono ${
-                        cashVariance === 0
-                          ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
-                          : cashVariance < 0
-                          ? "bg-rose-100 text-rose-900 border border-rose-300"
-                          : "bg-amber-100 text-amber-900 border border-amber-300"
-                      }`}>
-                        {cashVariance === 0 ? "🟢 Balanced" : cashVariance < 0 ? `🔴 Short: Rs. ${Math.abs(cashVariance).toLocaleString()}` : `🟡 Surplus: +Rs. ${cashVariance.toLocaleString()}`}
-                      </span>
-                    )}
-                    <span className="material-symbols-outlined text-slate-400">
-                      {showDenomCounter ? "expand_less" : "expand_more"}
-                    </span>
-                  </div>
-                </button>
+                  <span className="text-[9.5px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                    {savedClosings.length} logs
+                  </span>
+                </div>
 
-                {showDenomCounter && (
-                  <div className="p-4 pt-0 border-t border-slate-100 space-y-4 animate-in fade-in">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3">
-                      {[
-                        { note: 5000, key: "note5000" },
-                        { note: 1000, key: "note1000" },
-                        { note: 500, key: "note500" },
-                        { note: 100, key: "note100" },
-                        { note: 50, key: "note50" },
-                        { note: 20, key: "note20" },
-                        { note: 10, key: "note10" },
-                      ].map(({ note, key }) => (
-                        <div key={key} className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200 text-center">
-                          <div className="text-[10.5px] font-black text-slate-600">Rs. {note}</div>
+                {savedClosings.length === 0 ? (
+                  <div className="py-3 text-center text-[10px] text-slate-400 italic">
+                    No archived shift logs found.
+                  </div>
+                ) : (
+                  <div className="max-h-24 overflow-y-auto custom-scrollbar space-y-1 pt-1.5 pr-0.5">
+                    {savedClosings.map((c) => (
+                      <div key={c.id} className="p-1.5 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                        <div className="truncate max-w-[110px]">
+                          <div className="font-bold text-slate-900 text-[10.5px] truncate">{new Date(c.closed_at || c.date).toLocaleDateString()}</div>
+                          <div className="text-[8.5px] text-slate-500 truncate">{c.closed_by || "Cashier"}</div>
+                        </div>
+                        <div className="text-right flex items-center gap-1 shrink-0">
+                          <span className="font-bold text-slate-900 font-mono text-[11px]">Rs. {(c.expected_cash || 0).toLocaleString()}</span>
+                          <button
+                            type="button"
+                            onClick={() => handlePrintZReport(c)}
+                            className="p-1 text-teal-700 hover:bg-teal-100 rounded cursor-pointer"
+                            title="Print Slip"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteClosing(c.id)}
+                            className="p-1 text-rose-500 hover:bg-rose-100 rounded cursor-pointer"
+                            title="Delete"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ROW 3: Physical Cash Drawer Denominations (Full Width of Right Column) */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowDenomCounter(!showDenomCounter)}
+                className="w-full p-2.5 sm:p-3 flex items-center justify-between text-left hover:bg-slate-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" strokeLinecap="round" strokeLinejoin="round"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs text-slate-900 leading-tight">
+                      Physical Cash Drawer Denominations (Count Notes)
+                    </h4>
+                    <p className="text-[9.5px] text-slate-400">Physical note quantities in till</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {physicalCashTotal > 0 && (
+                    <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Rs. {physicalCashTotal.toLocaleString()}
+                    </span>
+                  )}
+                  <svg
+                    className={`w-4 h-4 text-slate-400 transform transition-transform duration-200 ${showDenomCounter ? "" : "rotate-180"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round"></path>
+                  </svg>
+                </div>
+              </button>
+
+              {showDenomCounter && (
+                <div className="p-2.5 sm:p-3 border-t border-slate-100 bg-slate-50/40 space-y-2.5">
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                    {[
+                      { note: 5000, key: "note5000" },
+                      { note: 1000, key: "note1000" },
+                      { note: 500, key: "note500" },
+                      { note: 100, key: "note100" },
+                      { note: 75, key: "note75" },
+                      { note: 50, key: "note50" },
+                      { note: 20, key: "note20" },
+                      { note: 10, key: "note10" },
+                    ].map(({ note, key }) => {
+                      const count = Number(denominations[key]) || 0;
+                      const subtotal = note * count;
+                      return (
+                        <div key={key} className="bg-white p-1.5 rounded-lg border border-slate-200 text-center">
+                          <div className="text-[10px] font-bold text-slate-700 leading-tight">
+                            Rs. {note}
+                          </div>
                           <input
                             type="number"
                             min="0"
                             value={denominations[key] || ""}
                             onChange={(e) => setDenominations({ ...denominations, [key]: Number(e.target.value) })}
                             placeholder="0"
-                            className="w-full min-h-[36px] bg-white border border-slate-300 rounded-lg py-1 text-xs font-black text-center mt-1 font-mono shadow-2xs"
+                            className="denom-input w-full bg-slate-50 border border-slate-200 rounded text-xs font-mono py-0.5 px-1 my-1 focus:bg-white focus:ring-1 focus:ring-teal-600 focus:outline-none text-center"
                           />
+                          <div className="text-[8.5px] text-slate-400 font-mono truncate leading-none">
+                            Rs. {subtotal.toLocaleString()}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Live Variance Feedback Box */}
-                    <div className="p-3 rounded-2xl bg-slate-100 flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <div className="text-[10.5px] font-bold text-slate-600">Total Counted:</div>
-                        <div className="text-sm font-black text-slate-900 font-mono">Rs. {physicalCashTotal.toLocaleString()}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10.5px] font-bold text-slate-600">Variance Status:</div>
-                        <div className={`text-xs font-black font-mono ${
-                          cashVariance === 0 ? "text-emerald-700" : cashVariance < 0 ? "text-rose-700" : "text-amber-700"
-                        }`}>
-                          {cashVariance === 0
-                            ? "✅ Perfectly Balanced (Rs. 0)"
-                            : cashVariance < 0
-                            ? `⚠️ Short: -Rs. ${Math.abs(cashVariance).toLocaleString()} (Drawer deficit)`
-                            : `⚠️ Surplus: +Rs. ${cashVariance.toLocaleString()} (Drawer extra)`}
-                        </div>
-                      </div>
-                      <div className="w-full sm:w-auto">
-                        <input
-                          type="text"
-                          value={closingNotes}
-                          onChange={(e) => setClosingNotes(e.target.value)}
-                          placeholder="Closing notes / handover remarks..."
-                          className="w-full text-xs border border-slate-300 rounded-xl px-3 py-1.5 focus:outline-none focus:border-teal-500"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleSaveShiftClosing}
-                        className="touch-target-44 min-h-[40px] bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md whitespace-nowrap"
-                      >
-                        Lock &amp; Save Shift
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Saved Shift History Log */}
-              {savedClosings.length > 0 && (
-                <div className="glass-card p-4 space-y-3">
-                  <div className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-emerald-600 text-base">history</span>
-                    <span>Archived Closing Records</span>
+                      );
+                    })}
                   </div>
 
-                  <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                    {savedClosings.map((c) => (
-                      <div key={c.id} className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                        <div>
-                          <div className="font-bold text-slate-900">{new Date(c.closed_at || c.date).toLocaleDateString()}</div>
-                          <div className="text-[10px] text-slate-500 font-medium">By: {c.closed_by || "Cashier"}</div>
-                        </div>
-                        <div className="text-right flex items-center gap-2">
-                          <span className="font-black text-slate-900 font-mono">Rs. {(c.expected_cash || 0).toLocaleString()}</span>
-                          <button
-                            type="button"
-                            onClick={() => handlePrintZReport(c)}
-                            className="p-1.5 text-teal-700 hover:bg-teal-100 rounded-lg cursor-pointer"
-                            title="Print Slip"
-                          >
-                            <span className="material-symbols-outlined text-base">print</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteClosing(c.id)}
-                            className="p-1.5 text-rose-500 hover:bg-rose-100 rounded-lg cursor-pointer"
-                            title="Delete"
-                          >
-                            <span className="material-symbols-outlined text-base">delete</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  {/* Live Variance Status, Remarks & Shift Save Action */}
+                  <div className="p-2 rounded-lg bg-white border border-slate-200 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-slate-600">Total:</span>
+                      <span className="font-mono font-bold text-teal-800 text-xs">
+                        Rs. {physicalCashTotal.toLocaleString()}
+                      </span>
+                      <span className="text-slate-300">|</span>
+                      <span className={`text-[10.5px] font-bold font-mono px-1.5 py-0.5 rounded ${
+                        cashVariance === 0
+                          ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                          : cashVariance < 0
+                          ? "bg-rose-100 text-rose-900 border border-rose-300"
+                          : "bg-amber-100 text-amber-900 border border-amber-300"
+                      }`}>
+                        {cashVariance === 0
+                          ? "Balanced"
+                          : cashVariance < 0
+                          ? `Short: -Rs. ${Math.abs(cashVariance).toLocaleString()}`
+                          : `Surplus: +Rs. ${cashVariance.toLocaleString()}`}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-[140px]">
+                      <input
+                        type="text"
+                        value={closingNotes}
+                        onChange={(e) => setClosingNotes(e.target.value)}
+                        placeholder="Closing notes / remarks..."
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 focus:bg-white focus:border-teal-600 focus:outline-none"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveShiftClosing}
+                      className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer shadow-2xs shrink-0"
+                    >
+                      Lock &amp; Save Shift
+                    </button>
                   </div>
                 </div>
               )}
-
             </div>
-          </div>
+          </section>
         </div>
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 2: 📖 Embedded CashBook Ledger (Roznamcha)                        */}
+      {/* TAB 2: 📈 OPD Consultation Fee Trends                                 */}
       {/* ===================================================================== */}
-      {activeTab === "cashbook" && canViewAllFinancials && (
-        <div className="space-y-6">
-          {/* Top Form: Fast Double-Entry Voucher Input */}
-          <form onSubmit={handleCashBookSubmit} className="glass-card p-5 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-600">receipt_long</span>
-                <span>Record CashBook Voucher (Double-Entry Roznamcha)</span>
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => dbCashBook.exportCSV()}
-                  className="touch-pill min-h-[36px] text-xs font-black text-teal-800 hover:text-teal-950 flex items-center gap-1.5 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200 cursor-pointer shadow-2xs"
-                >
-                  <span className="material-symbols-outlined text-sm">download</span>
-                  <span>Export CSV</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-3.5 items-end">
-              {/* Voucher No */}
-              <div className="lg:col-span-2">
-                <label className="block text-[11px] font-black text-slate-600 mb-1 uppercase tracking-tight">Voucher No</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={cbVoucherNo}
-                  className="w-full min-h-[44px] bg-slate-100 border border-slate-300 rounded-xl px-3 py-2 text-xs font-black text-teal-950 font-mono text-center shadow-inner cursor-not-allowed"
-                />
-              </div>
-
-              {/* Term: Receive vs Paid */}
-              <div className="lg:col-span-3">
-                <label className="block text-[11px] font-black text-slate-700 mb-1 uppercase tracking-tight">
-                  Term / Type <span className="text-rose-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setCbTerm("Receive")}
-                    className={`min-h-[38px] flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      cbTerm === "Receive"
-                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-sm">arrow_downward</span>
-                    <span>Receive (In)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setCbTerm("Paid")}
-                    className={`min-h-[38px] flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      cbTerm === "Paid"
-                        ? "bg-rose-600 text-white shadow-md shadow-rose-600/30"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-sm">arrow_upward</span>
-                    <span>Paid (Out)</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Searchable Account Name */}
-              <div className="lg:col-span-4">
-                <SearchableAccountSelect
-                  label="Account Name"
-                  required
-                  value={cbAccountName}
-                  onChange={(val) => setCbAccountName(val)}
-                  options={accountOptions}
-                  placeholder={cbTerm === "Receive" ? "Select Customer / Party..." : "Select Expense / Supplier..."}
-                />
-                {cbAccountName && (() => {
-                  const selectedOpt = accountOptions.find((o) => o.label.toLowerCase() === cbAccountName.toLowerCase() || o.id === cbAccountName);
-                  if (!selectedOpt || !selectedOpt.extra) return null;
-                  return (
-                    <div className="mt-1 px-2.5 py-0.5 bg-amber-100 border border-amber-300 rounded-lg text-amber-950 text-[11px] font-black flex items-center justify-between animate-fade-in shadow-2xs">
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs text-amber-700">account_balance_wallet</span>
-                        <span>Account Balance:</span>
-                      </span>
-                      <span className="font-mono text-[11px] font-black text-rose-700">{selectedOpt.extra}</span>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Amount */}
-              <div className="lg:col-span-3">
-                <label className="block text-[11px] font-black text-slate-700 mb-1 uppercase tracking-tight">
-                  Amount (Rs.) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">Rs.</span>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="0.00"
-                    value={cbAmount}
-                    onChange={(e) => setCbAmount(e.target.value)}
-                    className="w-full min-h-[44px] bg-white border border-slate-300 rounded-xl pl-9 pr-3.5 py-2 text-xs font-black text-slate-900 focus:border-teal-600 focus:outline-none shadow-2xs font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Narration */}
-              <div className="lg:col-span-9">
-                <label className="block text-[11px] font-black text-slate-700 mb-1 uppercase tracking-tight">Narration / Details</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Bill Clear, Chai Kharcha, Utility Bill, Delivery Courier..."
-                  value={cbNaration}
-                  onChange={(e) => setCbNaration(e.target.value)}
-                  className="w-full min-h-[44px] bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 focus:border-teal-600 focus:outline-none shadow-2xs"
-                />
-              </div>
-
-              {/* Submit */}
-              <div className="lg:col-span-3">
-                <button
-                  type="submit"
-                  className="touch-target-44 w-full min-h-[44px] bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs transition-all shadow-md shadow-slate-900/20 flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">check_circle</span>
-                  <span>Post Voucher</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Naration Presets */}
-            <div className="pt-2.5 border-t border-slate-100 flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-1">Presets:</span>
-              {quickNarations.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => setCbNaration(tag)}
-                  className="min-h-[30px] px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 rounded-lg transition-colors border border-slate-200/80 cursor-pointer"
-                >
-                  + {tag}
-                </button>
-              ))}
-
-              <label className="ml-auto flex items-center gap-2 text-[11px] font-bold text-slate-600 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={cbAutoPrint}
-                  onChange={(e) => setCbAutoPrint(e.target.checked)}
-                  className="rounded text-teal-600 focus:ring-teal-500"
-                />
-                <span>80mm Thermal Receipt Slip</span>
-              </label>
-            </div>
-          </form>
-
-          {/* CashBook Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="glass-card bg-emerald-50/70 border-emerald-200/80 p-4 sm:p-5">
-              <div className="text-[11px] font-black uppercase tracking-wider text-emerald-800">Total Debit (Receipts)</div>
-              <div className="text-xl sm:text-2xl font-black text-emerald-950 mt-1 font-mono">
-                + Rs. {dayCashRecTotal.toLocaleString()}
-              </div>
-            </div>
-
-            <div className="glass-card bg-rose-50/70 border-rose-200/80 p-4 sm:p-5">
-              <div className="text-[11px] font-black uppercase tracking-wider text-rose-800">Total Credit (Payments)</div>
-              <div className="text-xl sm:text-2xl font-black text-rose-950 mt-1 font-mono">
-                - Rs. {dayCashPaidTotal.toLocaleString()}
-              </div>
-            </div>
-
-            <div className="glass-card bg-slate-900 text-white border-slate-800 p-4 sm:p-5">
-              <div className="text-[11px] font-black uppercase tracking-wider text-slate-400">Net Day Roznamcha Balance</div>
-              <div className={`text-xl sm:text-2xl font-black mt-1 font-mono ${dayCashRecTotal - dayCashPaidTotal >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                Rs. {(dayCashRecTotal - dayCashPaidTotal).toLocaleString()}
-              </div>
-            </div>
-          </div>
-
-          {/* Table View with Horizontal Scroll Container */}
-          <div className="glass-card overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="font-black text-slate-900 text-sm">Vouchers Register</span>
-                <span className="text-xs text-slate-400 font-mono">({displayCashBookEntries.length} entries)</span>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* View toggle */}
-                <div className="flex bg-slate-100 p-0.5 rounded-xl text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setCbViewMode("daily")}
-                    className={`min-h-[34px] px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                      cbViewMode === "daily" ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500"
-                    }`}
-                  >
-                    Today ({closingDate})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCbViewMode("all")}
-                    className={`min-h-[34px] px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                      cbViewMode === "all" ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500"
-                    }`}
-                  >
-                    All History
-                  </button>
-                </div>
-
-                <input
-                  type="text"
-                  placeholder="Search voucher, party..."
-                  value={cbHistorySearch}
-                  onChange={(e) => setCbHistorySearch(e.target.value)}
-                  className="min-h-[36px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-1 text-xs font-medium focus:outline-none focus:border-teal-600 shadow-2xs"
-                />
-              </div>
-            </div>
-
-            {displayCashBookEntries.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400 font-medium">
-                No cashbook entries recorded. Use the form above to post your first voucher.
-              </div>
-            ) : (
-              <div className="table-scroll-container overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left text-xs min-w-[640px]">
-                  <thead className="bg-slate-50 text-slate-600 font-black border-b border-slate-100">
-                    <tr>
-                      <th className="px-4 py-3">Voucher #</th>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3">Account Name</th>
-                      <th className="px-4 py-3">Narration</th>
-                      <th className="px-4 py-3 text-right">Debit (Receive)</th>
-                      <th className="px-4 py-3 text-right">Credit (Paid)</th>
-                      <th className="px-4 py-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                    {displayCashBookEntries.map((exp) => {
-                      const isRec = (exp.term || exp.type) === "Receive";
-                      return (
-                        <tr key={exp.id || exp.voucher_no} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-4 py-3 font-mono font-black text-teal-900">{exp.voucher_no}</td>
-                          <td className="px-4 py-3 text-slate-500 font-mono whitespace-nowrap">
-                            {(exp.date || "").split("T")[0]}
-                          </td>
-                          <td className="px-4 py-3 font-bold text-slate-900">{exp.account_name}</td>
-                          <td className="px-4 py-3 text-slate-600">{exp.naration || "—"}</td>
-                          <td className="px-4 py-3 text-right font-black text-emerald-700 font-mono">
-                            {isRec ? `Rs. ${Number(exp.amount || 0).toLocaleString()}` : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-black text-rose-700 font-mono">
-                            {!isRec ? `Rs. ${Number(exp.amount || 0).toLocaleString()}` : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleCashBookReprint(exp)}
-                                className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-lg cursor-pointer"
-                                title="Print Slip"
-                              >
-                                <span className="material-symbols-outlined text-base">print</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCashBookDelete(exp)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
-                                title="Delete Voucher"
-                              >
-                                <span className="material-symbols-outlined text-base">delete</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ===================================================================== */}
-      {/* TAB 3: 📈 OPD Consultation Fee Trends                                 */}
-      {/* ===================================================================== */}
-      {(activeTab === "opd_analytics" || !canViewAllFinancials) && (
-        <div className="space-y-5">
+      {(activeTab === "trends" || !canViewAllFinancials) && (
+        <div className="space-y-4">
           {/* Range Toggle */}
-          <div className="flex gap-1.5 bg-slate-100 rounded-2xl p-1 self-start">
+          <div className="flex gap-1.5 bg-slate-100 rounded-xl p-1 self-start">
             {RANGES.map((r) => (
               <button
                 key={r}
                 id={`range-${r}`}
                 onClick={() => setRange(r)}
-                className={`min-h-[38px] px-4 py-1.5 rounded-xl font-black text-xs uppercase transition-all cursor-pointer ${
+                className={`min-h-[32px] px-3 py-1 rounded-lg font-bold text-xs uppercase transition-all cursor-pointer ${
                   range === r
-                    ? "bg-teal-700 text-white shadow-xs"
+                    ? "bg-teal-700 text-white shadow-2xs"
                     : "text-slate-600 hover:bg-slate-200"
                 }`}
               >
@@ -1501,37 +1013,37 @@ export default function FeesReports() {
           {summary && (
             <>
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="glass-card p-5 sm:p-6 flex flex-col gap-2">
-                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Total Consultation Fees</p>
-                  <p className="text-2xl sm:text-3xl font-black text-teal-800 font-mono">{formatCurrency(summary.total_fees)}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 flex flex-col gap-1.5 shadow-2xs">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Consultation Fees</p>
+                  <p className="text-xl sm:text-2xl font-bold text-teal-800 font-mono">{formatCurrency(summary.total_fees)}</p>
                 </div>
-                <div className="glass-card p-5 sm:p-6 flex flex-col gap-2">
-                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">OPD Patient Visits</p>
-                  <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">{summary.visit_count}</p>
+                <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 flex flex-col gap-1.5 shadow-2xs">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">OPD Patient Visits</p>
+                  <p className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{summary.visit_count}</p>
                 </div>
               </div>
 
               {/* Bar Chart */}
-              <div className="glass-card p-5 sm:p-6">
-                <p className="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">
+              <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs">
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">
                   Fee Breakdown — {range.charAt(0).toUpperCase() + range.slice(1)}
                 </p>
                 {summary.chart_data.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-8">No visits in this period.</p>
+                  <p className="text-xs text-slate-400 text-center py-6">No visits in this period.</p>
                 ) : (
-                  <div className="flex items-end gap-3 overflow-x-auto custom-scrollbar pb-2" style={{ minHeight: "140px" }}>
+                  <div className="flex items-end gap-2.5 overflow-x-auto custom-scrollbar pb-1.5" style={{ minHeight: "120px" }}>
                     {summary.chart_data.map((d, i) => {
-                      const pct = Math.max(4, Math.round((d.fees / maxFee) * 120));
+                      const pct = Math.max(4, Math.round((d.fees / maxFee) * 100));
                       return (
                         <div key={i} className="flex flex-col items-center gap-1 flex-shrink-0">
-                          <span className="text-[10.5px] font-bold text-slate-600 font-mono">{formatCurrency(d.fees)}</span>
+                          <span className="text-[10px] font-bold text-slate-600 font-mono">{formatCurrency(d.fees)}</span>
                           <div
-                            className="w-10 bg-teal-600 hover:bg-teal-700 rounded-t-lg transition-all"
+                            className="w-9 bg-teal-600 hover:bg-teal-700 rounded-t-lg transition-all"
                             style={{ height: `${pct}px` }}
                             title={`${d.date}: ${formatCurrency(d.fees)}`}
                           />
-                          <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap font-mono">{d.date}</span>
+                          <span className="text-[9.5px] font-bold text-slate-500 whitespace-nowrap font-mono">{d.date}</span>
                         </div>
                       );
                     })}
@@ -1551,4 +1063,6 @@ export default function FeesReports() {
     </div>
   );
 }
+
+
 

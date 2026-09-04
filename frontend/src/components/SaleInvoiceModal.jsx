@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { dbSales, dbInventory, dbParties, dbAccounts, dbClinic, dbGrnMetadata, dbVisits, dbPatients, dbUsers, dbTransports, toTitleCase } from "../api/db.js";
+import { dbSales, dbInventory, dbParties, dbAccounts, dbClinic, dbGrnMetadata, dbVisits, dbPatients, dbUsers, dbTransports, toTitleCase, getMaxDiscountLimit } from "../api/db.js";
 import { printSaleInvoiceReceipt } from "../utils/thermalPrinter.js";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
 import { RECEIPT_HEADER_IMAGE_BASE64 } from "../utils/receiptHeaderBase64.js";
@@ -193,18 +193,16 @@ function ExpandableCombobox({
                       setSearch("");
                     }}
                     onMouseEnter={() => setHighlightedIdx(idx)}
-                    className={`w-full text-left p-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
-                      isHighlighted || isSelected
+                    className={`w-full text-left p-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${isHighlighted || isSelected
                         ? "bg-emerald-600 text-white font-black shadow-xs"
                         : "hover:bg-emerald-50 text-gray-800 font-bold"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       {opt.badge && (
                         <span
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-black shrink-0 ${
-                            isHighlighted || isSelected ? "bg-emerald-700 text-emerald-100" : "bg-emerald-100 text-emerald-800"
-                          }`}
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-black shrink-0 ${isHighlighted || isSelected ? "bg-emerald-700 text-emerald-100" : "bg-emerald-100 text-emerald-800"
+                            }`}
                         >
                           {opt.badge}
                         </span>
@@ -249,6 +247,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   const [partyCodeSearch, setPartyCodeSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("All");
   const [companyCodeInput, setCompanyCodeInput] = useState("");
+  const [showReceiptDrawer, setShowReceiptDrawer] = useState(false);
 
   // Emergency Zero Stock / Short Stock Shift & Local Procurement Modal State
   const [zeroStockModal, setZeroStockModal] = useState({
@@ -281,7 +280,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       const users = dbUsers.getAll ? dbUsers.getAll() : [];
       const docs = users.filter((u) => u.role === "doctor" || u.is_doctor || u.role === "admin");
       if (docs.length > 0) return docs;
-    } catch {}
+    } catch { }
     const clinic = dbClinic.get();
     return [
       { id: "doc_001", name: clinic.doctor_name || "Dr. M. Ashraf Khan", fee: clinic.doctor_fee || 500 },
@@ -305,7 +304,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     transport: "",
     bilty_no: "",
     destination_type: "warehouse",
-    extra_bill_discount: "0",
     freight_charges: "0",
     attending_doctor_id: "",
     attending_doctor_name: "",
@@ -323,7 +321,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     qty: "1",
     rate: "",
     gross: "",
-    disc_pct: "40",
+    disc_pct: "0",
   });
 
   const [saleItems, setSaleItems] = useState([]);
@@ -363,10 +361,14 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   const bankNameInputRef = useRef(null);
   const chequeNoInputRef = useRef(null);
   const discPctInputRef = useRef(null);
-  const discFlatInputRef = useRef(null);
   const saleItemsEndRef = useRef(null);
   const tableContainerRef = useRef(null);
   const cashPaidInputRef = useRef(null);
+
+  // Transport Autocomplete State & Refs
+  const [showTransportSuggestions, setShowTransportSuggestions] = useState(false);
+  const [highlightedTransportIdx, setHighlightedTransportIdx] = useState(0);
+  const transportSuggestionsRef = useRef(null);
 
   // Focus next input field helper for seamless Enter key navigation
   const handleGenericEnterNext = (e, nextRef) => {
@@ -419,16 +421,64 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     }
   }, [initialParty, initialBillingType]);
 
+  // Helper to format patient relation into standard short-form (s/o, d/o, w/o, h/o, c/o)
+  const formatPatientRelation = (pat) => {
+    if (!pat) return "";
+    const guardian = (pat.relation_name || pat.guardian_name || pat.father_name || "").trim();
+    const relType = (pat.relation_type || pat.relationship || pat.relation || pat.relation_prefix || "").trim().toLowerCase();
+    
+    if (!guardian) {
+      if (pat.relation && /^(s\/o|d\/o|w\/o|h\/o|c\/o|m\/o)\b/i.test(pat.relation)) {
+        return pat.relation.trim();
+      }
+      return "";
+    }
+    
+    // If guardian already has a short prefix like "s/o", "w/o", "d/o", return directly
+    if (/^(s\/o|d\/o|w\/o|h\/o|c\/o|m\/o|f\/o)\b/i.test(guardian)) {
+      return guardian;
+    }
+    
+    // Determine short prefix
+    let prefix = "s/o";
+    if (relType.includes("daughter") || relType === "d/o" || relType === "daughter of") {
+      prefix = "d/o";
+    } else if (relType.includes("wife") || relType === "w/o" || relType === "wife of") {
+      prefix = "w/o";
+    } else if (relType.includes("husband") || relType === "h/o" || relType === "husband of") {
+      prefix = "h/o";
+    } else if (relType.includes("mother") || relType === "m/o" || relType === "mother of") {
+      prefix = "m/o";
+    } else if (relType.includes("care") || relType.includes("guardian") || relType === "c/o") {
+      prefix = "c/o";
+    } else if (relType.includes("father") || relType === "s/o" || relType === "son of" || relType === "father of") {
+      const gender = (pat.gender || "").toLowerCase();
+      prefix = (gender === "female" || gender === "f") ? "d/o" : "s/o";
+    } else if (pat.gender && (pat.gender.toLowerCase() === "female" || pat.gender.toLowerCase() === "f")) {
+      prefix = "d/o";
+    }
+    
+    return `${prefix} ${guardian}`;
+  };
+
   const handleSelectTodayPatient = (visitId) => {
     if (!visitId) return;
     const visit = todayVisits.find((v) => v.id === visitId);
     if (visit) {
+      const pat = visit.patient_id ? dbPatients.getById(visit.patient_id) : null;
+      const rawName = visit.patient_name || pat?.full_name || pat?.name || "Patient";
+      const relation = formatPatientRelation(pat);
+      let displayName = rawName;
+      if (relation && !displayName.toLowerCase().includes(relation.toLowerCase())) {
+        displayName = `${rawName} (${relation})`;
+      }
       setSaleForm((prev) => ({
         ...prev,
-        account_name: visit.patient_name || "",
+        account_name: displayName,
         token_no: String(visit.token_number || ""),
         visit_id: visit.id,
         patient_id: visit.patient_id,
+        naration: relation || "",
       }));
     }
   };
@@ -443,19 +493,18 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const matchedVisit = todayVisits.find((v) => Number(v.token_number) === num) || dbVisits.getTodayAll().find((v) => Number(v.token_number) === num);
     if (matchedVisit) {
       const pat = matchedVisit.patient_id ? dbPatients.getById(matchedVisit.patient_id) : null;
-      let displayName = matchedVisit.patient_name || pat?.full_name || pat?.name || "Patient";
-      const relation = pat?.relation_name
-        ? `${pat.relation || "s/o"} ${pat.relation_name}`
-        : (pat?.guardian_name ? `${pat.relationship || "s/o"} ${pat.guardian_name}` : "");
-      if (relation && !displayName.includes(relation)) {
-        displayName = `${displayName} (${relation})`;
+      const rawName = matchedVisit.patient_name || pat?.full_name || pat?.name || "Patient";
+      const relation = formatPatientRelation(pat);
+      let displayName = rawName;
+      if (relation && !displayName.toLowerCase().includes(relation.toLowerCase())) {
+        displayName = `${rawName} (${relation})`;
       }
       setSaleForm((prev) => ({
         ...prev,
         account_name: displayName,
         visit_id: matchedVisit.id,
         patient_id: matchedVisit.patient_id,
-        naration: relation ? `Relation: ${relation}` : "",
+        naration: relation || "",
       }));
     }
   };
@@ -524,10 +573,16 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     return list;
   }, [inventoryList]);
 
-  // Customer Account Options
+  // Customer Account Options (Strictly Wholesale B2B Parties only — Never Expenses or Cash)
   const accountOptions = useMemo(() => {
     const list = [];
+    const seenNames = new Set();
+
     partiesList.forEach((p) => {
+      const pName = (p.name || "").trim();
+      const pLower = pName.toLowerCase();
+      if (!pName || ["expense", "cash", "capital", "supplier", "sales man", "salesman"].includes(pLower)) return;
+      seenNames.add(pLower);
       list.push({
         id: p.name,
         party_id: p.id,
@@ -539,20 +594,31 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
         raw: p,
       });
     });
+
     accountsList.forEach((a) => {
-      if (!partiesList.some((p) => p.name.toLowerCase() === a.account_name.toLowerCase())) {
+      const aName = (a.account_name || "").trim();
+      const aLower = aName.toLowerCase();
+      const aType = (a.account_type || "").toLowerCase().trim();
+      const isForbidden =
+        !aName ||
+        ["expense", "cash", "capital", "supplier", "sales man", "salesman"].includes(aLower) ||
+        ["expense", "cash", "capital", "supplier", "sales man", "salesman"].includes(aType);
+
+      if (!isForbidden && !seenNames.has(aLower)) {
+        seenNames.add(aLower);
         list.push({
           id: a.account_name,
           party_id: a.id,
           label: a.account_name,
           sublabel: `${a.city || a.account_type || "Party"} · Balance: Rs. ${a.opening_balance || 0}`,
-          badge: `📒 ${a.account_type || "Account"}`,
+          badge: `📒 ${a.account_type || "Party"}`,
           phone: a.phone,
           city: a.city,
           raw: a,
         });
       }
     });
+
     return list;
   }, [partiesList, accountsList]);
 
@@ -585,6 +651,64 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     });
     return list;
   }, [transportsList]);
+
+  const transportSuggestions = useMemo(() => {
+    const q = (saleForm.transport || "").trim().toLowerCase();
+    const allT = (transportsList || []).map((t) => (typeof t === "string" ? t : t?.name || "")).filter(Boolean);
+    if (!q) return allT.slice(0, 10);
+    return allT.filter((t) => t.toLowerCase().includes(q)).slice(0, 10);
+  }, [saleForm.transport, transportsList]);
+
+  const handleSelectTransport = (val) => {
+    setSaleForm((prev) => ({ ...prev, transport: val }));
+    setShowTransportSuggestions(false);
+    setTimeout(() => {
+      biltyInputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleTransportKeyDown = (e) => {
+    if (showTransportSuggestions && transportSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setHighlightedTransportIdx((prev) => Math.min(transportSuggestions.length - 1, prev + 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setHighlightedTransportIdx((prev) => Math.max(0, prev - 1));
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const selected = transportSuggestions[highlightedTransportIdx];
+        if (selected) {
+          handleSelectTransport(selected);
+        } else {
+          setShowTransportSuggestions(false);
+          biltyInputRef.current?.focus();
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowTransportSuggestions(false);
+        return;
+      }
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowTransportSuggestions(false);
+      transportInputRef.current?.blur();
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      biltyInputRef.current?.focus();
+    }
+  };
 
   // Filtered Products by Company / Brand Code
   const filteredProducts = useMemo(() => {
@@ -619,7 +743,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const rawQ = medicineSearchText.trim().toLowerCase();
     const cleanQ = rawQ.replace(/[\s\-_./]/g, "");
 
-    // Tier 1: Exact start-with / prefix matches on Name, Code, or Words
+    // Tier 1: Exact start-with / prefix matches on Name, Code, Words, or Description
     const prefixMatches = [];
     // Tier 2: Substring matches (Only used if 0 prefix matches found)
     const substringMatches = [];
@@ -630,27 +754,32 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       const code = (inv.item_code || "").toLowerCase();
       const cleanCode = code.replace(/[\s\-_./]/g, "");
       const generic = (inv.generic_name || "").toLowerCase();
+      const desc = (inv.product_description || inv.naration || "").toLowerCase();
+      const cleanDesc = desc.replace(/[\s\-_./]/g, "");
 
-      // Check strict prefix on code or name
+      // Check strict prefix on code, name, or description
       const codeExact = code === rawQ || (cleanQ.length > 0 && cleanCode === cleanQ);
       const nameExact = name === rawQ || (cleanQ.length > 0 && cleanName === cleanQ);
+      const descExact = desc === rawQ || (cleanQ.length > 0 && cleanDesc === cleanQ);
       const codeStartsWith = code.startsWith(rawQ) || (cleanQ.length > 0 && cleanCode.startsWith(cleanQ));
       const nameStartsWith = name.startsWith(rawQ) || (cleanQ.length > 0 && cleanName.startsWith(cleanQ));
+      const descStartsWith = desc.startsWith(rawQ) || (cleanQ.length > 0 && cleanDesc.startsWith(cleanQ));
 
-      // Check if any word starts with query (e.g. "Syrup T-1" -> "T-1")
-      const words = name.split(/[\s\-_/]+/);
+      // Check if any word starts with query (e.g. "Syrup T-1" -> "T-1", "Sexual Desire" -> "Desire")
+      const words = `${name} ${desc} ${generic}`.split(/[\s\-_/]+/);
       const wordStartsWith = words.some((w) => w.startsWith(rawQ) || (cleanQ.length > 0 && w.replace(/[\s\-_./]/g, "").startsWith(cleanQ)));
 
-      if (codeExact || nameExact || codeStartsWith || nameStartsWith || wordStartsWith) {
+      if (codeExact || nameExact || descExact || codeStartsWith || nameStartsWith || descStartsWith || wordStartsWith) {
         let rank = 0;
         if (codeExact) rank = 100;
         else if (nameExact) rank = 90;
         else if (codeStartsWith) rank = 80;
         else if (nameStartsWith) rank = 70;
+        else if (descExact || descStartsWith) rank = 65;
         else rank = 60;
 
         prefixMatches.push({ inv, rank });
-      } else if (name.includes(rawQ) || code.includes(rawQ) || (generic && generic.includes(rawQ))) {
+      } else if (name.includes(rawQ) || code.includes(rawQ) || (generic && generic.includes(rawQ)) || (desc && desc.includes(rawQ))) {
         substringMatches.push(inv);
       }
     });
@@ -714,16 +843,32 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
         medicineInputRef.current?.focus();
         if (medicineInputRef.current?.select) medicineInputRef.current.select();
       }
-      // Escape: Close Sale Invoice Modal
+      // Escape: Dismiss active popups, suggestions, or blur input without closing main invoice
       else if (e.key === "Escape") {
         e.preventDefault();
-        if (onClose) onClose();
+        e.stopPropagation();
+        if (showMedicineSuggestions) {
+          setShowMedicineSuggestions(false);
+          return;
+        }
+        if (showTransportSuggestions) {
+          setShowTransportSuggestions(false);
+          return;
+        }
+        if (showReceiptDrawer) {
+          setShowReceiptDrawer(false);
+          return;
+        }
+        // Blur whatever element is currently active to safely dismiss selection
+        if (document.activeElement && typeof document.activeElement.blur === "function") {
+          document.activeElement.blur();
+        }
       }
     };
 
     window.addEventListener("keydown", handleGlobalPOSKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalPOSKeyDown);
-  }, [billingType, showListModal, showNewPartyModal, showSalesmanPinModal, saleItems, saleForm, onClose]);
+  }, [billingType, showListModal, showNewPartyModal, showSalesmanPinModal, showMedicineSuggestions, showTransportSuggestions, showReceiptDrawer, saleItems, saleForm]);
 
   // Account Name Selection Handlers
   const handleSelectAccount = (accName, opt) => {
@@ -829,7 +974,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const rate = Number(inv.unit_sale_price || inv.sale_price || inv.box_sale_price) || 0;
     const qty = Number(saleCart.qty) || 1;
     const gross = Math.round(qty * rate);
-    const discPct = saleCart.disc_pct === "" || saleCart.disc_pct === undefined ? 40 : (Number(saleCart.disc_pct) || 0);
+    const discPct = Number(saleCart.disc_pct) || 0;
     const discFlat = Number(saleCart.disc_flat) || 0;
     const net = Math.round(Math.max(0, gross - (gross * (discPct / 100)) - discFlat));
 
@@ -840,6 +985,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     setSaleCart({
       product_code: inv.item_code || "",
       medicine_name: inv.medicine_name,
+      product_description: inv.product_description || inv.generic_name || inv.naration || "",
       company_name: inv.company_name || "",
       category: inv.category || inv.medicine_category || inv.company_name || "General",
       packing: inv.packing || "",
@@ -933,10 +1079,12 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     );
 
     if (match) {
-      const rate = Number(match.unit_sale_price || match.sale_price || match.box_sale_price) || 0;
+      const rate = Number(match.unit_sale_price || match.box_sale_price || match.sale_price || match.unit_price || match.retail_price) || 0;
       const qty = Number(saleCart.qty) || 1;
       const gross = Math.round(qty * rate);
-      const discPct = saleCart.disc_pct === "" || saleCart.disc_pct === undefined ? 40 : (Number(saleCart.disc_pct) || 0);
+      let discPct = Number(saleCart.disc_pct) || 0;
+      const maxLimit = getMaxDiscountLimit();
+      if (discPct > maxLimit) discPct = maxLimit;
       const discFlat = Number(saleCart.disc_flat) || 0;
       const net = Math.round(Math.max(0, gross - (gross * (discPct / 100)) - discFlat));
 
@@ -974,13 +1122,29 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   };
 
   const handleUpdateCartMath = (field, val) => {
+    const maxLimit = getMaxDiscountLimit();
     setSaleCart((prev) => {
       const updated = { ...prev, [field]: val };
       const q = Number(field === "qty" ? val : updated.qty) || 0;
       const r = Number(field === "rate" ? val : updated.rate) || 0;
       const gross = Math.round(q * r);
-      const dPct = Number(field === "disc_pct" ? val : updated.disc_pct) || 0;
-      const dFlat = Number(field === "disc_flat" ? val : updated.disc_flat) || 0;
+      let dPct = Number(field === "disc_pct" ? val : updated.disc_pct) || 0;
+      let dFlat = Number(field === "disc_flat" ? val : updated.disc_flat) || 0;
+
+      // ⚠️ System Discount Lock: Cashier cannot give > maxLimit (default 28%) discount on any medicine
+      if (dPct > maxLimit) {
+        dPct = maxLimit;
+        updated.disc_pct = String(maxLimit);
+        setSaveSuccessMsg(`🚫 Discount Locked: Maximum allowed discount is ${maxLimit}%.`);
+        setTimeout(() => setSaveSuccessMsg(""), 3500);
+      }
+      if (gross > 0 && dFlat > gross * (maxLimit / 100)) {
+        dFlat = Math.round(gross * (maxLimit / 100));
+        updated.disc_flat = String(dFlat);
+        setSaveSuccessMsg(`🚫 Discount Locked: Maximum allowed discount is ${maxLimit}%.`);
+        setTimeout(() => setSaveSuccessMsg(""), 3500);
+      }
+
       const net = Math.round(Math.max(0, gross - (gross * (dPct / 100)) - dFlat));
       updated.gross = String(gross);
       updated.net_amount = String(net);
@@ -993,7 +1157,9 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const q = Number(itemData.qty) || 1;
     const r = Number(itemData.rate) || 0;
     const gross = Math.round(q * r);
-    const dPct = Number(itemData.discPct ?? itemData.disc_pct) || 0;
+    const maxLimit = getMaxDiscountLimit();
+    let dPct = Number(itemData.discPct ?? itemData.disc_pct) || 0;
+    if (dPct > maxLimit) dPct = maxLimit;
     const dFlat = Number(itemData.discFlat ?? itemData.disc_flat) || 0;
     const net = Math.round(Math.max(0, gross - (gross * (dPct / 100)) - dFlat));
     const medName = (itemData.medicine_name || "").trim();
@@ -1032,6 +1198,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
         inventory_id: itemData.inventory_id || "",
         product_code: itemData.product_code || "",
         medicine_name: medName,
+        product_description: itemData.product_description || "",
         company_name: compName,
         category: itemData.category || "General",
         packing: itemData.packing || "",
@@ -1060,7 +1227,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       qty: "1",
       rate: "",
       gross: "",
-      disc_pct: "40",
+      disc_pct: "0",
       disc_flat: "0",
       net_amount: "",
     });
@@ -1073,20 +1240,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       }
       medicineInputRef.current?.focus();
     }, 40);
-  };
-
-  const handleConfirmInternalTransfer = (shiftQtyVal) => {
-    if (!zeroStockModal.targetInv) return;
-    const invId = zeroStockModal.targetInv.id;
-    const qToShift = Number(shiftQtyVal) || zeroStockModal.requestedQty;
-    dbInventory.transferWarehouseToStore(invId, qToShift, "Emergency POS Counter Shift", activeUser);
-
-    refreshData();
-    commitItemToSaleCart(zeroStockModal.cartItem);
-
-    setSaveSuccessMsg(`✅ Shifted ${qToShift} units from Godown to Counter! Item added to bill.`);
-    setTimeout(() => setSaveSuccessMsg(""), 3500);
-    setZeroStockModal((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleConfirmLocalPurchase = () => {
@@ -1129,8 +1282,22 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const q = Number(saleCart.qty) || 1;
     const r = Number(saleCart.rate) || 0;
     const gross = Math.round(q * r);
-    const dPct = Number(saleCart.disc_pct) || 0;
-    const dFlat = Number(saleCart.disc_flat) || 0;
+    const maxLimit = getMaxDiscountLimit();
+    let dPct = Number(saleCart.disc_pct) || 0;
+    let dFlat = Number(saleCart.disc_flat) || 0;
+
+    // ⚠️ System Discount Lock: Cashier cannot give > maxLimit discount on any medicine
+    if (dPct > maxLimit) {
+      dPct = maxLimit;
+      setSaveSuccessMsg(`🚫 Discount Locked: Cashier cannot give > ${maxLimit}% discount on any medicine!`);
+      setTimeout(() => setSaveSuccessMsg(""), 3500);
+    }
+    if (gross > 0 && dFlat > gross * (maxLimit / 100)) {
+      dFlat = Math.round(gross * (maxLimit / 100));
+      setSaveSuccessMsg(`🚫 Discount Locked: Cashier cannot give > ${maxLimit}% discount on any medicine!`);
+      setTimeout(() => setSaveSuccessMsg(""), 3500);
+    }
+
     const net = Math.round(Math.max(0, gross - (gross * (dPct / 100)) - dFlat));
 
     const medName = saleCart.medicine_name.trim();
@@ -1199,14 +1366,13 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
   const totalBillCalculated = useMemo(() => {
     const subtotal = saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
-    const extraDisc = Number(saleForm.extra_bill_discount) || 0;
     const freight = Number(saleForm.freight_charges) || 0;
     const posFee = billingType === "patient" ? 1 : 0;
     const docFee = (billingType === "patient" && saleForm.attending_doctor_id && !saleForm.doctor_fee_waived)
       ? (Number(saleForm.doctor_fee) || 0)
       : 0;
-    return Math.round(Math.max(0, subtotal + docFee - extraDisc + freight + posFee));
-  }, [saleItems, saleForm.extra_bill_discount, saleForm.freight_charges, saleForm.attending_doctor_id, saleForm.doctor_fee, saleForm.doctor_fee_waived, billingType]);
+    return Math.round(Math.max(0, subtotal + docFee + freight + posFee));
+  }, [saleItems, saleForm.freight_charges, saleForm.attending_doctor_id, saleForm.doctor_fee, saleForm.doctor_fee_waived, billingType]);
 
   const puranaUdhaar = useMemo(() => {
     if (billingType === "wholesale_party") {
@@ -1268,7 +1434,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     }
     const resolvedAccountName = saleForm.account_name.trim() || (billingType === "patient" ? "Walk-In Patient" : "Walk-In Customer");
     const itemsSubtotal = saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
-    const extraDisc = Number(saleForm.extra_bill_discount) || 0;
     const freight = Number(saleForm.freight_charges) || 0;
     const grandTotal = totalBillCalculated;
     const partyBalance = puranaUdhaar;
@@ -1279,7 +1444,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       account_name: resolvedAccountName,
       items: saleItems,
       subtotal: itemsSubtotal,
-      extra_discount: extraDisc,
       freight_charges: freight,
       pos_service_fee: posServiceFee,
       previous_balance: partyBalance,
@@ -1315,7 +1479,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const resolvedAccountName = toTitleCase(saleForm.account_name.trim()) || (billingType === "patient" ? "Walk-In Patient" : "Walk-In Customer");
 
     const itemsSubtotal = saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
-    const extraDisc = Number(saleForm.extra_bill_discount) || 0;
     const freight = Number(saleForm.freight_charges) || 0;
     const grandTotal = totalBillCalculated;
     const partyBalance = puranaUdhaar;
@@ -1336,7 +1499,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       account_name: resolvedAccountName,
       items: saleItems,
       subtotal: itemsSubtotal,
-      extra_discount: extraDisc,
       freight_charges: freight,
       pos_service_fee: posServiceFee,
       previous_balance: partyBalance,
@@ -1395,7 +1557,6 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
       transport: "",
       bilty_no: "",
       cash_received: "",
-      extra_bill_discount: "0",
       freight_charges: "0",
     }));
     setPartyCodeSearch("");
@@ -1425,20 +1586,19 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
   const modalBody = (
     <>
       <div className={`bg-white w-full ${isPage ? 'rounded-2xl shadow-sm border border-emerald-300 h-full max-h-full flex-1 min-h-0' : 'max-w-[98vw] 2xl:max-w-[1550px] rounded-3xl shadow-2xl border border-emerald-300 my-auto h-[95vh] max-h-[95vh]'} overflow-hidden flex flex-col`}>
-        {/* Visual Green Gradient Header (Compact 48px) */}
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 px-4 py-2 text-white flex items-center justify-between shadow-xs shrink-0">
+        {/* Solid Theme Teal Header Banner */}
+        <div className="bg-[#0f766e] px-4 py-2 text-white flex items-center justify-between shadow-xs shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-white/20 border border-white/30 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
-              <span className="material-symbols-outlined text-xl">point_of_sale</span>
+            <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+              <span className="material-symbols-outlined text-xl text-emerald-300">point_of_sale</span>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/25 text-emerald-100 border border-white/20">
-                  Wholesale &amp; Retail POS
+                <span className="text-[9.5px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
+                  WHOLESALE &amp; RETAIL POS • clinicflow terminal
                 </span>
-                <span className="text-[9px] font-bold text-emerald-200">ClinicFlow Cockpit</span>
               </div>
-              <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight">
+              <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight text-white">
                 SALE INVOICE
               </h2>
             </div>
@@ -1447,8 +1607,17 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setShowReceiptDrawer(true)}
+              className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
+              title="Toggle Live Thermal Receipt Preview"
+            >
+              <span className="material-symbols-outlined text-sm text-emerald-300">receipt_long</span>
+              Preview Receipt
+            </button>
+            <button
+              type="button"
               onClick={() => setShowListModal(true)}
-              className="bg-slate-900/80 hover:bg-slate-900 text-white px-3 py-1.5 rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1 border border-white/20"
+              className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm">list_alt</span>
               Invoices List
@@ -1456,1162 +1625,1136 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
             <button
               type="button"
               onClick={handleSaveSaleBill}
-              className="bg-white text-emerald-800 hover:bg-emerald-50 px-4 py-1.5 rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1"
+              className="bg-white text-emerald-950 hover:bg-emerald-50 px-4 py-1.5 rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-sm">print</span>
-              Save &amp; Print
+              <span className="material-symbols-outlined text-sm text-emerald-800">print</span>
+              Save &amp; Print (F9)
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="w-7 h-7 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              className="w-7 h-7 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">close</span>
             </button>
           </div>
         </div>
 
-        {/* Viewport-Fit Non-Scroll Body (Left POS Cockpit + Right Live Thermal Receipt) */}
-        <div className="p-2 sm:p-2.5 overflow-hidden flex-1 min-h-0 bg-slate-50/60">
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-2.5 h-full min-h-0 overflow-hidden">
-            
-            {/* Left Main Form Column (8 cols on XL screens) */}
-            <div className="xl:col-span-8 flex flex-col h-full min-h-0 space-y-2 overflow-hidden">
-              
-              {/* Section 1: Customer & Party Details Bar (Compact) */}
-              <div className="shrink-0 bg-emerald-50/40 border border-emerald-200 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
-                <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-emerald-200 pb-1.5">
-                  <div className="text-[11px] font-black text-emerald-950 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
-                    <span className="material-symbols-outlined text-sm text-emerald-700">receipt_long</span>
-                    <span>Customer &amp; Party Details</span>
-                    
-                    {/* Visual Shortcut Key Badges Bar */}
-                    <div className="hidden sm:flex items-center gap-1 ml-2">
-                      <span className="bg-emerald-900/10 text-emerald-950 font-bold px-1.5 py-0.2 rounded text-[9px] border border-emerald-300 font-mono">F4: Mode</span>
-                      <span className="bg-emerald-900/10 text-emerald-950 font-bold px-1.5 py-0.2 rounded text-[9px] border border-emerald-300 font-mono">F8: Cash</span>
-                      <span className="bg-emerald-900/10 text-emerald-950 font-bold px-1.5 py-0.2 rounded text-[9px] border border-emerald-300 font-mono">F9: Save &amp; Print</span>
-                      <span className="bg-emerald-900/10 text-emerald-950 font-bold px-1.5 py-0.2 rounded text-[9px] border border-emerald-300 font-mono">Alt+N: Medicine</span>
-                    </div>
-                  </div>
+        {/* Viewport-Fit Full-Width Body */}
+        <div className="p-2.5 sm:p-3 overflow-hidden flex-1 min-h-0 bg-slate-100/60 flex flex-col space-y-2">
 
-                  {/* Billing Mode Switcher */}
-                  <div className="inline-flex bg-emerald-100/90 p-0.5 rounded-lg text-xs font-bold border border-emerald-300 shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => setBillingType("patient")}
-                      title="Press F4 to toggle billing mode"
-                      className={`px-2.5 py-0.5 rounded-md text-[10.5px] font-black transition-all cursor-pointer ${billingType === "patient"
-                          ? "bg-emerald-800 text-white shadow-xs"
-                          : "text-emerald-900 hover:text-emerald-950"
-                        }`}
-                    >
-                      👤 Patient / Walk-In
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBillingType("wholesale_party")}
-                      title="Press F4 to toggle billing mode"
-                      className={`px-2.5 py-0.5 rounded-md text-[10.5px] font-black transition-all cursor-pointer ${billingType === "wholesale_party"
-                          ? "bg-amber-800 text-white shadow-xs"
-                          : "text-amber-900 hover:text-amber-950"
-                        }`}
-                    >
-                      🏢 Wholesale B2B Party
-                    </button>
-                  </div>
+          {/* Unified Section 1 & 2: Customer, Party & Fast Line Item Entry in a Single Prominent Card */}
+          <div className="shrink-0 bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 space-y-3 shadow-xs">
+            {/* Header: Title & Billing Mode Switcher */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 pb-2.5">
+              <div className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 flex-wrap">
+                <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center border border-teal-200">
+                  <span className="material-symbols-outlined text-lg">receipt_long</span>
                 </div>
-
-                {billingType === "patient" ? (
-                  <>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-1.5 items-end">
-                      <div className="md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Date (Locked)</label>
-                        <input
-                          type="text"
-                          readOnly={true}
-                          value={saleForm.date}
-                          className="w-full bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-700"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-emerald-950 mb-0.5">Invoice #</label>
-                        <input
-                          type="text"
-                          readOnly={true}
-                          value={saleForm.voucher_no}
-                          className="w-full bg-emerald-100/80 border border-emerald-300 rounded-lg px-2 py-1 text-xs font-black text-emerald-950 font-mono"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-teal-800 mb-0.5">Token #</label>
-                        <input
-                          type="text"
-                          value={saleForm.token_no}
-                          onChange={(e) => handleTokenNumberChange(e.target.value)}
-                          placeholder="e.g. 14, T-05"
-                          className="w-full bg-teal-50 border border-teal-300 rounded-lg px-2 py-1 text-xs font-mono font-bold text-teal-950 text-center"
-                        />
-                      </div>
-                      <div className="col-span-2 sm:col-span-2 md:col-span-4">
-                        <label className="block text-[9.5px] font-bold text-gray-700 mb-0.5">
-                          Patient / Customer Name <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          ref={customerNameInputRef}
-                          type="text"
-                          required={true}
-                          value={saleForm.account_name}
-                          onChange={(e) => setSaleForm({ ...saleForm, account_name: e.target.value })}
-                          onBlur={() => {
-                            if (saleForm.account_name) {
-                              setSaleForm((prev) => ({ ...prev, account_name: toTitleCase(prev.account_name) }));
-                            }
-                          }}
-                          onKeyDown={(e) => handleGenericEnterNext(e, narationInputRef)}
-                          placeholder="Enter Patient or Walk-In Name..."
-                          className="w-full bg-white border border-emerald-400 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 focus:border-emerald-600"
-                        />
-                      </div>
-                      <div className="col-span-2 sm:col-span-2 md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Relation / Info</label>
-                        <input
-                          ref={narationInputRef}
-                          type="text"
-                          value={saleForm.naration}
-                          onChange={(e) => setSaleForm({ ...saleForm, naration: e.target.value })}
-                          onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
-                          placeholder="e.g. s/o, w/o..."
-                          className="w-full bg-gray-50 border border-gray-300 rounded-lg px-2 py-1 text-xs font-medium text-gray-800"
-                        />
-                      </div>
-                      <div className="col-span-2 sm:col-span-4 md:col-span-3 flex items-end gap-1">
-                        <div className="flex-1 min-w-0">
-                          <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Payment Mode</label>
-                          <select
-                            value={saleForm.payment_mode || "Cash"}
-                            onChange={(e) => setSaleForm({ ...saleForm, payment_mode: e.target.value })}
-                            className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
-                          >
-                            <option value="Cash">💵 Cash</option>
-                            <option value="Credit">📜 Credit / Udhaar</option>
-                            <option value="Easypaisa">📱 Easypaisa</option>
-                            <option value="JazzCash">📱 JazzCash</option>
-                            <option value="Bank Transfer">🏦 Bank Transfer</option>
-                          </select>
-                        </div>
-                        {saleForm.payment_mode === "Bank Transfer" && (
-                          <div className="flex-1 min-w-0">
-                            <label className="block text-[9.5px] font-bold text-teal-800 mb-0.5">Bank Name</label>
-                            <input
-                              type="text"
-                              value={saleForm.bank_name || ""}
-                              onChange={(e) => setSaleForm({ ...saleForm, bank_name: e.target.value })}
-                              onBlur={() => {
-                                if (saleForm.bank_name) {
-                                  setSaleForm((prev) => ({ ...prev, bank_name: toTitleCase(prev.bank_name) }));
-                                }
-                              }}
-                              placeholder="e.g. Meezan, HBL..."
-                              className="w-full bg-teal-50 border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 outline-none"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Row 2: Attending Doctor, Consultation Fee & Fee Waived Checkbox */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-1.5 items-end pt-1 border-t border-emerald-100">
-                      <div className="col-span-2 sm:col-span-2 md:col-span-5">
-                        <label className="block text-[9.5px] font-bold text-teal-900 mb-0.5 flex items-center justify-between">
-                          <span>Attending Doctor (Consultant)</span>
-                          {saleForm.attending_doctor_name && (
-                            <span className="text-[9px] text-teal-700 font-bold">✓ Selected</span>
-                          )}
-                        </label>
-                        <select
-                          value={saleForm.attending_doctor_id || ""}
-                          onChange={(e) => {
-                            const docId = e.target.value;
-                            const selectedDoc = registeredDoctors.find((d) => d.id === docId || d.name === docId || d.full_name === docId);
-                            const fee = selectedDoc ? (selectedDoc.consultation_fee || selectedDoc.fee || 500) : 0;
-                            setSaleForm((prev) => ({
-                              ...prev,
-                              attending_doctor_id: docId,
-                              attending_doctor_name: selectedDoc ? (selectedDoc.name || selectedDoc.full_name) : (docId ? docId : ""),
-                              doctor_fee: String(fee),
-                            }));
-                          }}
-                          className="w-full bg-teal-50/70 border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 focus:border-teal-600 outline-none cursor-pointer"
-                        >
-                          <option value="">-- Select Registered Doctor --</option>
-                          {registeredDoctors.map((doc) => (
-                            <option key={doc.id || doc.name} value={doc.id || doc.name}>
-                              👨‍⚕️ {doc.name || doc.full_name} (Fee: Rs. {doc.consultation_fee || doc.fee || 500})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {saleForm.attending_doctor_id && (
-                        <>
-                          <div className="col-span-1 sm:col-span-1 md:col-span-3">
-                            <label className="block text-[9.5px] font-bold text-slate-700 mb-0.5">
-                              Dr Fee (Rs)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={saleForm.doctor_fee || "0"}
-                              onChange={(e) => setSaleForm({ ...saleForm, doctor_fee: e.target.value })}
-                              disabled={saleForm.doctor_fee_waived}
-                              className={`w-full border rounded-lg px-2 py-1 text-xs font-mono font-bold ${
-                                saleForm.doctor_fee_waived
-                                  ? "bg-slate-100 text-slate-400 line-through border-slate-200"
-                                  : "bg-white text-slate-900 border-teal-400"
-                              }`}
-                            />
-                          </div>
-
-                          <div className="col-span-1 sm:col-span-1 md:col-span-4 flex items-center pb-0.5">
-                            <label className={`inline-flex items-center gap-1.5 border px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
-                              saleForm.doctor_fee_waived
-                                ? "bg-rose-100 border-rose-400 text-rose-950 font-black shadow-2xs"
-                                : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
-                            }`}>
-                              <input
-                                type="checkbox"
-                                checked={Boolean(saleForm.doctor_fee_waived)}
-                                onChange={(e) => setSaleForm({ ...saleForm, doctor_fee_waived: e.target.checked })}
-                                className="w-3.5 h-3.5 text-rose-600 rounded border-rose-300 focus:ring-rose-500 cursor-pointer"
-                              />
-                              <span className="text-[10px] uppercase tracking-tight font-bold">
-                                {saleForm.doctor_fee_waived ? "❌ Fee Waived (Free)" : "Fee Charged"}
-                              </span>
-                            </label>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Matched Patient Udhaar Banner */}
-                    {matchedPatient && (
-                      <div className="bg-teal-50 border border-teal-300 rounded-lg px-3 py-1 flex items-center justify-between text-xs text-teal-950 gap-2 shadow-2xs mt-1">
-                        <div className="flex items-center gap-1.5 font-bold">
-                          <span className="material-symbols-outlined text-base text-teal-700">person</span>
-                          <span>{matchedPatient.full_name || matchedPatient.name}</span>
-                          {(matchedPatient.relation_name || matchedPatient.guardian_name) && (
-                            <span className="text-[10px] text-teal-800 bg-teal-100/80 px-1.5 py-0.2 rounded border border-teal-200">
-                              {matchedPatient.relation || "s/o"} {matchedPatient.relation_name || matchedPatient.guardian_name}
-                            </span>
-                          )}
-                          {matchedPatient.mr_number && (
-                            <span className="text-[10px] font-mono bg-white px-1.5 py-0.2 rounded border border-teal-300">
-                              {matchedPatient.mr_number}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 font-mono">
-                          <span className="text-[10px] uppercase font-bold text-slate-600">Previous Udhaar:</span>
-                          <span className={`text-xs font-black ${Number(matchedPatient.balance_due || matchedPatient.current_balance || matchedPatient.pending_balance || 0) > 0 ? "text-rose-700" : "text-emerald-700"}`}>
-                            Rs. {Number(matchedPatient.balance_due || matchedPatient.current_balance || matchedPatient.pending_balance || 0).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-1.5 items-end">
-                      <div className="md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Date (Locked)</label>
-                        <input
-                          type="text"
-                          readOnly={true}
-                          value={saleForm.date}
-                          className="w-full bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-700"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-emerald-950 mb-0.5">Invoice #</label>
-                        <input
-                          type="text"
-                          readOnly={true}
-                          value={saleForm.voucher_no}
-                          className="w-full bg-emerald-100/80 border border-emerald-300 rounded-lg px-2 py-1 text-xs font-black text-emerald-950 font-mono"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5 flex items-center justify-between">
-                          <span>Party Code</span>
-                          {partyCodeSearch && <span className="text-[9px] text-emerald-700 font-bold">✓</span>}
-                        </label>
-                        <div className="relative">
-                          <input
-                            ref={partyCodeInputRef}
-                            type="text"
-                            value={partyCodeSearch}
-                            onChange={(e) => handlePartyCodeChange(e.target.value)}
-                            placeholder="e.g. 001, Muslim"
-                            className="w-full bg-amber-50/70 border border-amber-300 rounded-lg px-2 py-1 text-xs font-mono font-black text-amber-950 uppercase"
-                          />
-                          {partyCodeSearch && (
-                            <button
-                              type="button"
-                              onClick={() => handlePartyCodeChange("")}
-                              className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
-                            >
-                              <span className="material-symbols-outlined text-xs">close</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="col-span-2 sm:col-span-2 md:col-span-3">
-                        <ExpandableCombobox
-                          label="Party Name"
-                          value={saleForm.account_name}
-                          onChange={handleSelectAccount}
-                          options={accountOptions}
-                          placeholder="Select Party Name..."
-                          searchPlaceholder="Search Parties..."
-                          onAddNew={() => setShowNewPartyModal(true)}
-                          addNewLabel="New Party"
-                          required={true}
-                        />
-                      </div>
-                      <div className="col-span-2 sm:col-span-2 md:col-span-3">
-                        <ExpandableCombobox
-                          label="Salesman"
-                          value={saleForm.reference || activeUser}
-                          onChange={handleSelectSalesman}
-                          options={referenceOptions}
-                          placeholder="Select Salesman..."
-                          searchPlaceholder="Search staff..."
-                          required={true}
-                          align="right"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Row 2: Territory, Transport, Bilty, Payment Mode, Brand */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-1.5 items-end pt-1">
-                      <div className="md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Type (City)</label>
-                        <input
-                          ref={cityInputRef}
-                          type="text"
-                          value={saleForm.party_type}
-                          onChange={(e) => setSaleForm({ ...saleForm, party_type: e.target.value })}
-                          placeholder="e.g. HYD"
-                          className="w-full bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-800"
-                        />
-                      </div>
-                      {/* Direct Dynamic Editable Transport Autocomplete Field */}
-                      <div className="col-span-2 sm:col-span-2 md:col-span-3 relative">
-                        <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5 flex items-center justify-between">
-                          <span>Transport</span>
-                          {saleForm.transport && (
-                            <button
-                              type="button"
-                              onClick={() => setSaleForm({ ...saleForm, transport: "" })}
-                              className="text-[8.5px] text-rose-600 font-bold hover:underline"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </label>
-                        <div className="relative">
-                          <input
-                            ref={transportInputRef}
-                            type="text"
-                            value={saleForm.transport}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setSaleForm({ ...saleForm, transport: val });
-                              setShowTransportDropdown(true);
-                            }}
-                            onFocus={() => setShowTransportDropdown(true)}
-                            onBlur={() => {
-                              if (saleForm.transport) {
-                                const formatted = toTitleCase(saleForm.transport);
-                                setSaleForm((prev) => ({ ...prev, transport: formatted }));
-                              }
-                              setTimeout(() => setShowTransportDropdown(false), 200);
-                            }}
-                            onKeyDown={(e) => handleGenericEnterNext(e, biltyInputRef)}
-                            placeholder="Type transport (e.g. By Hand)..."
-                            className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
-                          />
-                          {/* Dropdown Suggestions */}
-                          {showTransportDropdown && transportOptions.length > 0 && (
-                            <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-white border border-teal-400 rounded-xl shadow-xl max-h-44 overflow-y-auto divide-y divide-gray-100">
-                              {transportOptions
-                                .filter((opt) => !saleForm.transport || opt.label.toLowerCase().includes(saleForm.transport.toLowerCase()))
-                                .map((opt) => (
-                                  <button
-                                    key={opt.id}
-                                    type="button"
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      setSaleForm({ ...saleForm, transport: opt.label });
-                                      setShowTransportDropdown(false);
-                                    }}
-                                    className="w-full px-2.5 py-1.5 text-left text-xs font-bold text-gray-800 hover:bg-teal-50 flex items-center justify-between transition-colors cursor-pointer"
-                                  >
-                                    <span className="flex items-center gap-1">
-                                      <span className="text-[9px] text-teal-700 font-bold bg-teal-100 px-1 rounded">🚚 Carrier</span>
-                                      <span>{opt.label}</span>
-                                    </span>
-                                    {saleForm.transport === opt.label && (
-                                      <span className="material-symbols-outlined text-xs text-teal-600">check</span>
-                                    )}
-                                  </button>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Bilty#</label>
-                        <input
-                          ref={biltyInputRef}
-                          type="text"
-                          value={saleForm.bilty_no}
-                          onChange={(e) => setSaleForm({ ...saleForm, bilty_no: e.target.value })}
-                          onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
-                          placeholder="0000"
-                          className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-800"
-                        />
-                      </div>
-                      {/* Payment Mode Selector & Dynamic Bank / Cheque Fields */}
-                      <div className="col-span-2 sm:col-span-4 md:col-span-4 flex items-end gap-1.5">
-                        <div className="flex-1 min-w-0">
-                          <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5">Payment Mode</label>
-                          <select
-                            value={saleForm.payment_mode || "Cash"}
-                            onChange={(e) => setSaleForm({ ...saleForm, payment_mode: e.target.value })}
-                            className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
-                          >
-                            <option value="Cash">💵 Cash</option>
-                            <option value="Credit">📜 Credit / Udhaar</option>
-                            <option value="Easypaisa">📱 Easypaisa</option>
-                            <option value="JazzCash">📱 JazzCash</option>
-                            <option value="Bank Transfer">🏦 Bank Transfer</option>
-                            <option value="Cheque">🧾 Cheque / Bank</option>
-                          </select>
-                        </div>
-
-                        {/* Conditional Bank Name Input */}
-                        {(saleForm.payment_mode === "Bank Transfer" || saleForm.payment_mode === "Cheque") && (
-                          <div className="flex-1 min-w-0">
-                            <label className="block text-[9.5px] font-bold text-teal-800 mb-0.5">Bank Name</label>
-                            <input
-                              ref={bankNameInputRef}
-                              type="text"
-                              value={saleForm.bank_name || ""}
-                              onChange={(e) => setSaleForm({ ...saleForm, bank_name: e.target.value })}
-                              onBlur={() => {
-                                if (saleForm.bank_name) {
-                                  setSaleForm((prev) => ({ ...prev, bank_name: toTitleCase(prev.bank_name) }));
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (saleForm.payment_mode === "Cheque") {
-                                  handleGenericEnterNext(e, chequeNoInputRef);
-                                } else {
-                                  handleGenericEnterNext(e, medicineInputRef);
-                                }
-                              }}
-                              placeholder="e.g. Meezan, HBL..."
-                              className="w-full bg-teal-50 border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 focus:border-teal-500 outline-none"
-                            />
-                          </div>
-                        )}
-
-                        {/* Conditional Cheque Number Input */}
-                        {saleForm.payment_mode === "Cheque" && (
-                          <div className="w-24 shrink-0">
-                            <label className="block text-[9.5px] font-bold text-teal-800 mb-0.5">Cheque #</label>
-                            <input
-                              ref={chequeNoInputRef}
-                              type="text"
-                              value={saleForm.cheque_no || ""}
-                              onChange={(e) => setSaleForm({ ...saleForm, cheque_no: e.target.value })}
-                              onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
-                              placeholder="e.g. 4819"
-                              className="w-full bg-teal-50 border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 focus:border-teal-500 outline-none font-mono"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Matched Party Udhaar Inline Strip */}
-                    {matchedParty && (
-                      <div className="bg-amber-100/90 border border-amber-300 rounded-lg px-3 py-1 flex items-center justify-between text-xs text-amber-950 gap-2 shadow-2xs mt-1">
-                        <div className="flex items-center gap-1.5 font-bold">
-                          <span className="material-symbols-outlined text-base text-amber-700">account_balance_wallet</span>
-                          <span>{matchedParty.name} {matchedParty.city ? `(${matchedParty.city})` : ""}</span>
-                          {matchedParty.party_code && (
-                            <span className="text-[10px] font-mono bg-white px-1.5 py-0.2 rounded border border-amber-300">
-                              #{matchedParty.party_code}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 font-mono">
-                          <span className="text-[10px] uppercase font-bold text-slate-600">Previous Udhaar:</span>
-                          <span className={`text-xs font-black ${Number(matchedParty.current_balance || matchedParty.opening_balance || 0) > 0 ? "text-rose-700" : "text-emerald-700"}`}>
-                            Rs. {Number(matchedParty.current_balance || matchedParty.opening_balance || 0).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                <span>CUSTOMER &amp; PARTY DETAILS</span>
               </div>
 
-              {/* Save / Print Notification Alert Banner */}
-              {saveSuccessMsg && (
-                <div className="shrink-0 bg-slate-900 text-white px-3 py-1.5 text-xs font-black text-center flex items-center justify-center gap-2 rounded-xl border border-emerald-400 shadow-md">
-                  <span className="material-symbols-outlined text-emerald-400 text-sm">print</span>
-                  <span>{saveSuccessMsg}</span>
+              {/* Billing Mode Switcher */}
+              <div className="inline-flex bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setBillingType("patient")}
+                  title="Press F4 to toggle billing mode"
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${billingType === "patient"
+                    ? "bg-[#0f766e] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                    }`}
+                >
+                  👤 Patient / Walk-in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingType("wholesale_party")}
+                  title="Press F4 to toggle billing mode"
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${billingType === "wholesale_party"
+                    ? "bg-[#0f766e] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                    }`}
+                >
+                  🏢 Wholesale B2B Party
+                </button>
+              </div>
+            </div>
+
+            {billingType === "patient" ? (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2.5 items-end">
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs text-slate-500">lock</span>
+                      <span>Date (Locked)</span>
+                    </label>
+                    <input
+                      type="text"
+                      readOnly={true}
+                      tabIndex={-1}
+                      value={saleForm.date}
+                      className="w-full h-9 sm:h-10 bg-slate-100/90 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-700 outline-none cursor-not-allowed select-none shadow-inner"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-teal-950 mb-1">Invoice #</label>
+                    <input
+                      type="text"
+                      readOnly={true}
+                      value={saleForm.voucher_no}
+                      className="w-full h-9 sm:h-10 bg-teal-50 border border-teal-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-black text-teal-950 font-mono text-center outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Token #</label>
+                    <input
+                      type="text"
+                      value={saleForm.token_no}
+                      onChange={(e) => handleTokenNumberChange(e.target.value)}
+                      placeholder="e.g. 14, T-05"
+                      className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-mono font-bold text-slate-800 placeholder:text-slate-400 text-center focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2 sm:col-span-2 md:col-span-4">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
+                      Patient / Customer Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      ref={customerNameInputRef}
+                      type="text"
+                      required={true}
+                      value={saleForm.account_name}
+                      onChange={(e) => setSaleForm({ ...saleForm, account_name: e.target.value })}
+                      onBlur={() => {
+                        if (saleForm.account_name) {
+                          setSaleForm((prev) => ({ ...prev, account_name: toTitleCase(prev.account_name) }));
+                        }
+                      }}
+                      onKeyDown={(e) => handleGenericEnterNext(e, narationInputRef)}
+                      placeholder="Enter Patient or Walk-In Name..."
+                      className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2 sm:col-span-2 md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Relation / Info</label>
+                    <input
+                      ref={narationInputRef}
+                      type="text"
+                      value={saleForm.naration}
+                      onChange={(e) => setSaleForm({ ...saleForm, naration: e.target.value })}
+                      onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
+                      placeholder="e.g. s/o, w/o..."
+                      className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                    />
+                  </div>
                 </div>
-              )}
 
-              {/* Section 2: Cart Fast Entry Bar */}
-              <div className="shrink-0 bg-teal-50/70 border border-teal-200 rounded-xl p-2 space-y-1 shadow-2xs">
-                <div className="text-[10.5px] font-black text-teal-950 uppercase tracking-wider flex items-center justify-between flex-wrap gap-1">
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm text-teal-700">add_shopping_cart</span>
-                    Fast Line Item Entry
-                  </span>
-
-                  {/* Quick Company / Brand Code Filter Badges & Dropdown */}
-                  <div className="flex items-center gap-1.5 text-[9.5px] max-w-full overflow-hidden">
-                    <span className="text-gray-600 font-bold text-[9px] uppercase whitespace-nowrap shrink-0">Brand Code:</span>
-                    <div className="flex items-center gap-1 overflow-x-auto max-w-[180px] sm:max-w-[280px] no-scrollbar shrink">
-                      {companyOptions.slice(0, 8).map((c) => {
-                        const isActive = selectedCompany === c.id;
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCompany(c.id);
-                              setCompanyCodeInput(c.code || c.id);
-                            }}
-                            className={`px-1.5 py-0.2 rounded font-black text-[9.5px] transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                              isActive
-                                ? "bg-teal-700 text-white shadow-2xs"
-                                : "bg-white text-teal-800 border border-teal-200 hover:bg-teal-100"
-                            }`}
-                            title={`Filter strictly by ${c.name || c.id}`}
-                          >
-                            {c.code || c.id}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Direct Company Code Quick Entry Input */}
-                    <div className="flex items-center gap-1 bg-white border border-teal-300 rounded px-1.5 py-0.5 shrink-0" title="Type company code (e.g. BM, MKT, PB, BLS, GHR)">
-                      <span className="text-[9px] font-black text-teal-800 uppercase">Code:</span>
-                      <input
-                        type="text"
-                        value={companyCodeInput}
-                        onChange={(e) => {
-                          const val = e.target.value.toUpperCase();
-                          setCompanyCodeInput(val);
-                          if (!val.trim()) {
-                            setSelectedCompany("All");
-                            return;
-                          }
-                          const match = companyOptions.find(
-                            (c) =>
-                              (c.code || c.id || "").toUpperCase() === val.trim() ||
-                              (c.name || "").toUpperCase().startsWith(val.trim())
-                          );
-                          if (match) {
-                            setSelectedCompany(match.id);
-                          }
-                        }}
-                        placeholder="e.g. BM"
-                        className="w-14 bg-transparent text-[10px] font-mono font-black text-teal-950 uppercase outline-none placeholder:text-gray-400 placeholder:font-normal"
-                      />
-                    </div>
-
-                    {companyOptions.length > 1 && (
+                {/* Row 2: Payment Mode & Attending Doctor */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2.5 items-end">
+                  <div className="col-span-2 sm:col-span-2 md:col-span-4 flex items-end gap-2">
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Payment Mode</label>
                       <select
-                        value={selectedCompany}
-                        onChange={(e) => {
-                          setSelectedCompany(e.target.value);
-                          const found = companyOptions.find((c) => c.id === e.target.value);
-                          setCompanyCodeInput(found?.code || found?.id || "");
-                        }}
-                        className="bg-white border border-teal-300 rounded px-1.5 py-0.5 text-[9.5px] font-bold text-teal-950 max-w-[130px] truncate shrink-0 focus:border-teal-500 outline-none"
-                        title="Select from all registered companies"
+                        value={saleForm.payment_mode || "Cash"}
+                        onChange={(e) => setSaleForm({ ...saleForm, payment_mode: e.target.value })}
+                        className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none cursor-pointer"
                       >
-                        {companyOptions.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.label}
+                        <option value="Cash">Cash (F8)</option>
+                        <option value="Credit">📜 Credit / Udhaar</option>
+                        <option value="Easypaisa">📱 Easypaisa</option>
+                        <option value="JazzCash">📱 JazzCash</option>
+                        <option value="Bank Transfer">🏦 Bank Transfer</option>
+                      </select>
+                    </div>
+                    {saleForm.payment_mode === "Bank Transfer" && (
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-[11px] sm:text-xs font-bold text-teal-800 mb-1">Bank Name</label>
+                        <input
+                          type="text"
+                          value={saleForm.bank_name || ""}
+                          onChange={(e) => setSaleForm({ ...saleForm, bank_name: e.target.value })}
+                          onBlur={() => {
+                            if (saleForm.bank_name) {
+                              setSaleForm((prev) => ({ ...prev, bank_name: toTitleCase(prev.bank_name) }));
+                            }
+                          }}
+                          placeholder="e.g. Meezan, HBL..."
+                          className="w-full h-9 sm:h-10 bg-teal-50 border border-teal-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-teal-950 focus:border-teal-500 outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-2 md:col-span-8 flex items-end gap-2">
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                        <span>Attending Doctor (Consultant)</span>
+                        {saleForm.attending_doctor_name && (
+                          <span className="text-[10px] text-teal-700 font-bold">✓ Selected</span>
+                        )}
+                      </label>
+                      <select
+                        value={saleForm.attending_doctor_id || ""}
+                        onChange={(e) => {
+                          const docId = e.target.value;
+                          const selectedDoc = registeredDoctors.find((d) => d.id === docId || d.name === docId || d.full_name === docId);
+                          const fee = selectedDoc ? (selectedDoc.consultation_fee || selectedDoc.fee || 500) : 0;
+                          setSaleForm((prev) => ({
+                            ...prev,
+                            attending_doctor_id: docId,
+                            attending_doctor_name: selectedDoc ? (selectedDoc.name || selectedDoc.full_name) : (docId ? docId : ""),
+                            doctor_fee: String(fee),
+                          }));
+                        }}
+                        className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-teal-600 outline-none cursor-pointer"
+                      >
+                        <option value="">-- Select Registered Doctor --</option>
+                        {registeredDoctors.map((doc) => (
+                          <option key={doc.id || doc.name} value={doc.id || doc.name}>
+                            👨‍⚕️ {doc.name || doc.full_name} (Fee: Rs. {doc.consultation_fee || doc.fee || 500})
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    {saleForm.attending_doctor_id && (
+                      <>
+                        <div className="w-28 shrink-0">
+                          <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
+                            Dr Fee (Rs)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={saleForm.doctor_fee || "0"}
+                            onChange={(e) => setSaleForm({ ...saleForm, doctor_fee: e.target.value })}
+                            disabled={saleForm.doctor_fee_waived}
+                            className={`w-full h-9 sm:h-10 border rounded-xl px-3 py-2 text-xs sm:text-sm font-mono font-bold ${saleForm.doctor_fee_waived
+                                ? "bg-slate-100 text-slate-400 line-through border-slate-200"
+                                : "bg-white text-slate-900 border-teal-400"
+                              }`}
+                          />
+                        </div>
+
+                        <div className="shrink-0 flex items-center pb-0.5">
+                          <label className={`inline-flex items-center gap-1.5 border px-3 py-2 h-9 sm:h-10 rounded-xl cursor-pointer transition-all ${saleForm.doctor_fee_waived
+                              ? "bg-rose-100 border-rose-400 text-rose-950 font-black shadow-2xs"
+                              : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
+                            }`}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(saleForm.doctor_fee_waived)}
+                              onChange={(e) => setSaleForm({ ...saleForm, doctor_fee_waived: e.target.checked })}
+                              className="w-4 h-4 text-rose-600 rounded border-rose-300 focus:ring-rose-500 cursor-pointer"
+                            />
+                            <span className="text-[11px] uppercase tracking-tight font-bold">
+                              {saleForm.doctor_fee_waived ? "❌ Fee Waived" : "Fee Charged"}
+                            </span>
+                          </label>
+                        </div>
+                      </>
                     )}
                   </div>
-
-                  <span className="text-[9px] text-teal-700 font-bold hidden lg:inline">
-                    ⌨️ F9: Save &amp; Print · F8: Cash Paid
-                  </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-1.5 items-end">
-                  {/* Direct Inline Typeahead Autocomplete Product Name (5 columns) */}
-                  <div className="col-span-2 sm:col-span-3 md:col-span-5 relative" ref={medicineInputWrapperRef}>
-                    <label className="block text-[9.5px] font-bold text-gray-700 mb-0.5 flex items-center justify-between">
-                      <span>Product Name <span className="text-red-500">*</span></span>
-                      {selectedCompany !== "All" && (
-                        <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[8.5px] font-black rounded border border-emerald-300 flex items-center gap-1">
-                          <span>🏢 {selectedCompany} ({filteredProducts.length})</span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedCompany("All")}
-                            className="text-rose-600 hover:text-rose-800 font-bold text-[10px]"
-                            title="Reset company filter"
-                          >
-                            ✕
-                          </button>
+                {/* Matched Patient Udhaar Banner */}
+                {matchedPatient && (
+                  <div className="bg-teal-50 border border-teal-300 rounded-xl px-3.5 py-2 flex items-center justify-between text-xs sm:text-sm text-teal-950 gap-2 shadow-2xs">
+                    <div className="flex items-center gap-2 font-bold">
+                      <span className="material-symbols-outlined text-base text-teal-700">person</span>
+                      <span>{matchedPatient.full_name || matchedPatient.name}</span>
+                      {(matchedPatient.relation_name || matchedPatient.guardian_name) && (
+                        <span className="text-xs text-teal-800 bg-teal-100/80 px-2 py-0.5 rounded-md border border-teal-200">
+                          {matchedPatient.relation || "s/o"} {matchedPatient.relation_name || matchedPatient.guardian_name}
                         </span>
                       )}
+                      {matchedPatient.mr_number && (
+                        <span className="text-xs font-mono bg-white px-2 py-0.5 rounded-md border border-teal-300 font-bold">
+                          {matchedPatient.mr_number}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 font-mono">
+                      <span className="text-xs uppercase font-bold text-slate-600">Previous Udhaar:</span>
+                      <span className={`text-xs sm:text-sm font-black ${Number(matchedPatient.balance_due || matchedPatient.current_balance || matchedPatient.pending_balance || 0) > 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                        Rs. {Number(matchedPatient.balance_due || matchedPatient.current_balance || matchedPatient.pending_balance || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2.5 items-end">
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs text-slate-500">lock</span>
+                      <span>Date (Locked)</span>
+                    </label>
+                    <input
+                      type="text"
+                      readOnly={true}
+                      tabIndex={-1}
+                      value={saleForm.date}
+                      className="w-full h-9 sm:h-10 bg-slate-100/90 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-700 outline-none cursor-not-allowed select-none shadow-inner"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-teal-950 mb-1">Invoice #</label>
+                    <input
+                      type="text"
+                      readOnly={true}
+                      value={saleForm.voucher_no}
+                      className="w-full h-9 sm:h-10 bg-teal-50 border border-teal-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-black text-teal-950 font-mono text-center outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1 flex items-center justify-between">
+                      <span>Party Code</span>
+                      {partyCodeSearch && <span className="text-[10px] text-emerald-700 font-bold">✓</span>}
                     </label>
                     <div className="relative">
                       <input
-                        ref={medicineInputRef}
+                        ref={partyCodeInputRef}
                         type="text"
-                        value={medicineSearchText}
-                        onChange={(e) => {
-                          setMedicineSearchText(e.target.value);
-                          setShowMedicineSuggestions(true);
-                          setHighlightedMedIndex(0);
-                          setSaleCart((prev) => ({ ...prev, medicine_name: e.target.value }));
-                        }}
-                        onFocus={() => setShowMedicineSuggestions(true)}
-                        onKeyDown={handleMedicineKeyDown}
-                        placeholder="Type medicine name, formula..."
-                        className="w-full bg-white border border-teal-400 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 placeholder:text-gray-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 outline-none"
+                        value={partyCodeSearch}
+                        onChange={(e) => handlePartyCodeChange(e.target.value)}
+                        placeholder="e.g. 001, Muslim"
+                        className="w-full h-9 sm:h-10 bg-amber-50/70 border border-amber-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-mono font-black text-amber-950 uppercase outline-none"
                       />
-                      {medicineSearchText && (
+                      {partyCodeSearch && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setMedicineSearchText("");
-                            setShowMedicineSuggestions(false);
-                            setSaleCart((prev) => ({
-                              ...prev,
-                              inventory_id: "",
-                              medicine_name: "",
-                              company_name: "",
-                              product_code: "",
-                              category: "",
-                              packing: "",
-                              rate: "",
-                              gross: "",
-                              net_amount: "",
-                            }));
-                            medicineInputRef.current?.focus();
-                          }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          onClick={() => handlePartyCodeChange("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
                         >
                           <span className="material-symbols-outlined text-xs">close</span>
                         </button>
                       )}
                     </div>
+                  </div>
+                  <div className="col-span-2 sm:col-span-2 md:col-span-3">
+                    <ExpandableCombobox
+                      label="Party Name"
+                      value={saleForm.account_name}
+                      onChange={handleSelectAccount}
+                      options={accountOptions}
+                      placeholder="Select Party Name..."
+                      searchPlaceholder="Search Parties..."
+                      onAddNew={() => setShowNewPartyModal(true)}
+                      addNewLabel="New Party"
+                      required={true}
+                    />
+                  </div>
+                  <div className="col-span-2 sm:col-span-2 md:col-span-3">
+                    <ExpandableCombobox
+                      label="Salesman"
+                      value={saleForm.reference || activeUser}
+                      onChange={handleSelectSalesman}
+                      options={referenceOptions}
+                      placeholder="Select Salesman..."
+                      searchPlaceholder="Search staff..."
+                      required={true}
+                      align="right"
+                    />
+                  </div>
+                </div>
 
-                    {/* Floating Suggestion Tray */}
-                    {showMedicineSuggestions && medicineSearchText.trim().length > 0 && (
-                      <div
-                        ref={suggestionsContainerRef}
-                        className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-teal-500 rounded-xl shadow-2xl max-h-64 overflow-y-auto divide-y divide-gray-100 animate-fade-in"
-                      >
-                        <div className="bg-teal-900 text-teal-100 text-[9.5px] font-black px-2.5 py-1 flex items-center justify-between sticky top-0 z-10">
-                          <span className="flex items-center gap-1.5">
-                            <span>SUGGESTIONS ({typeaheadSuggestions.length})</span>
-                            {selectedCompany !== "All" && (
-                              <span className="text-[8.5px] bg-emerald-700 text-emerald-100 px-1.5 py-0.2 rounded font-mono">
-                                🏢 {selectedCompany}
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-[8.5px] text-teal-300 font-normal">↑ ↓ Navigate · Enter Select</span>
-                        </div>
-                        {typeaheadSuggestions.length === 0 ? (
-                          <div className="p-3 text-center text-xs text-gray-400 italic">
-                            No medicines found matching "{medicineSearchText}"
+                {/* Row 2: Territory, Transport, Bilty, Payment Mode */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2.5 items-end">
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Type (City)</label>
+                    <input
+                      ref={cityInputRef}
+                      type="text"
+                      value={saleForm.party_type}
+                      onChange={(e) => setSaleForm({ ...saleForm, party_type: e.target.value })}
+                      placeholder="e.g. HYD"
+                      className="w-full h-9 sm:h-10 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 outline-none"
+                    />
+                  </div>
+
+                  {/* Transport Autocomplete */}
+                  <div className="col-span-2 sm:col-span-2 md:col-span-3 relative">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1 flex items-center justify-between">
+                      <span>Transport</span>
+                      {saleForm.transport && (
+                        <span className="text-[10px] text-teal-700 font-bold">✓</span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        ref={transportInputRef}
+                        type="text"
+                        value={saleForm.transport || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSaleForm((prev) => ({ ...prev, transport: val }));
+                          setShowTransportSuggestions(true);
+                          setHighlightedTransportIdx(0);
+                        }}
+                        onFocus={() => setShowTransportSuggestions(true)}
+                        onKeyDown={handleTransportKeyDown}
+                        placeholder="e.g. Al-Madina, Shah Latif"
+                        className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-teal-500 outline-none"
+                      />
+                      {showTransportSuggestions && transportSuggestions.length > 0 && (
+                        <div
+                          ref={transportSuggestionsRef}
+                          className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-teal-500 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-gray-100"
+                        >
+                          <div className="bg-teal-900 text-teal-100 text-[10px] font-black px-3 py-1 flex justify-between items-center sticky top-0">
+                            <span>TRANSPORTS ({transportSuggestions.length})</span>
+                            <span className="text-[9px] text-teal-300 font-normal">↑ ↓ Enter</span>
                           </div>
-                        ) : (
-                          typeaheadSuggestions.map((inv, idx) => {
-                            const isHighlighted = idx === highlightedMedIndex;
-                            const stockUnits = inv.warehouse_stock || inv.store_stock || 0;
-                            const salePrice = inv.unit_sale_price || inv.sale_price || inv.box_sale_price || 0;
+                          {transportSuggestions.map((t, idx) => {
+                            const isH = idx === highlightedTransportIdx;
                             return (
                               <div
-                                key={inv.id || idx}
-                                id={`med-sugg-${idx}`}
-                                onMouseEnter={() => setHighlightedMedIndex(idx)}
-                                onClick={() => handleSelectTypeaheadMedicine(inv)}
-                                className={`px-2.5 py-1.5 cursor-pointer transition-colors flex items-center justify-between gap-2 ${isHighlighted
-                                    ? "bg-teal-50 border-l-4 border-teal-600 text-teal-950 font-bold"
-                                    : "hover:bg-gray-50 text-gray-800"
-                                  }`}
+                                key={t.id || t.name || idx}
+                                onMouseEnter={() => setHighlightedTransportIdx(idx)}
+                                onClick={() => handleSelectTransport(t.name || t)}
+                                className={`px-3 py-2 cursor-pointer text-xs font-bold ${isH ? "bg-teal-50 text-teal-950 border-l-4 border-teal-600 font-black" : "hover:bg-gray-50 text-gray-800"}`}
                               >
-                                <div className="flex-1 min-w-0 text-left">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-black truncate">{inv.medicine_name}</span>
-                                    {inv.company_name && (
-                                      <span className="px-1 py-0.2 rounded text-[8.5px] font-black bg-emerald-100 text-emerald-800 shrink-0">
-                                        {inv.company_name}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-[9.5px] text-gray-500 font-normal truncate mt-0.5 flex items-center gap-1">
-                                    {inv.item_code && <span className="font-mono font-bold text-teal-700">{inv.item_code}</span>}
-                                    {inv.packing && <span>· {inv.packing}</span>}
-                                  </div>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <div className="text-xs font-black text-emerald-800 font-mono">
-                                    Rs. {Number(salePrice).toLocaleString()}
-                                  </div>
-                                  <div className={`text-[9px] font-bold ${stockUnits <= 0 ? "text-rose-600" : stockUnits <= 5 ? "text-amber-600" : "text-gray-500"}`}>
-                                    Stock: {stockUnits}
-                                  </div>
-                                </div>
+                                🚚 {t.name || t}
                               </div>
                             );
-                          })
-                        )}
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bilty No */}
+                  <div className="col-span-1 md:col-span-2">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Bilty #</label>
+                    <input
+                      ref={biltyInputRef}
+                      type="text"
+                      value={saleForm.bilty_no || ""}
+                      onChange={(e) => setSaleForm({ ...saleForm, bilty_no: e.target.value })}
+                      onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
+                      placeholder="e.g. 7482"
+                      className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-teal-500 outline-none font-mono"
+                    />
+                  </div>
+
+                  {/* Payment Mode */}
+                  <div className="col-span-2 sm:col-span-2 md:col-span-5 flex items-end gap-2">
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Payment Mode</label>
+                      <select
+                        value={saleForm.payment_mode || "Cash"}
+                        onChange={(e) => setSaleForm({ ...saleForm, payment_mode: e.target.value })}
+                        className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none cursor-pointer"
+                      >
+                        <option value="Cash">💵 Cash</option>
+                        <option value="Credit">📜 Credit / Udhaar</option>
+                        <option value="Easypaisa">📱 Easypaisa</option>
+                        <option value="JazzCash">📱 JazzCash</option>
+                        <option value="Bank Transfer">🏦 Bank Transfer</option>
+                        <option value="Cheque">🧾 Cheque / Bank</option>
+                      </select>
+                    </div>
+
+                    {(saleForm.payment_mode === "Bank Transfer" || saleForm.payment_mode === "Cheque") && (
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-[11px] sm:text-xs font-bold text-teal-800 mb-1">Bank Name</label>
+                        <input
+                          ref={bankNameInputRef}
+                          type="text"
+                          value={saleForm.bank_name || ""}
+                          onChange={(e) => setSaleForm({ ...saleForm, bank_name: e.target.value })}
+                          onBlur={() => {
+                            if (saleForm.bank_name) {
+                              setSaleForm((prev) => ({ ...prev, bank_name: toTitleCase(prev.bank_name) }));
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (saleForm.payment_mode === "Cheque") {
+                              handleGenericEnterNext(e, chequeNoInputRef);
+                            } else {
+                              handleGenericEnterNext(e, medicineInputRef);
+                            }
+                          }}
+                          placeholder="e.g. Meezan, HBL..."
+                          className="w-full h-9 sm:h-10 bg-teal-50 border border-teal-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-teal-950 focus:border-teal-500 outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {saleForm.payment_mode === "Cheque" && (
+                      <div className="w-28 shrink-0">
+                        <label className="block text-[11px] sm:text-xs font-bold text-teal-800 mb-1">Cheque #</label>
+                        <input
+                          ref={chequeNoInputRef}
+                          type="text"
+                          value={saleForm.cheque_no || ""}
+                          onChange={(e) => setSaleForm({ ...saleForm, cheque_no: e.target.value })}
+                          onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
+                          placeholder="e.g. 4819"
+                          className="w-full h-9 sm:h-10 bg-teal-50 border border-teal-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-teal-950 focus:border-teal-500 outline-none font-mono"
+                        />
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Qty */}
-                  <div className="md:col-span-1">
-                    <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5 text-center">Qty</label>
-                    <input
-                      ref={qtyInputRef}
-                      type="number"
-                      min="1"
-                      value={saleCart.qty}
-                      onChange={(e) => handleUpdateCartMath("qty", e.target.value)}
-                      onKeyDown={(e) => handleGenericEnterNext(e, rateInputRef)}
-                      className="w-full bg-white border border-gray-300 rounded-lg px-1.5 py-1 text-xs font-black text-center text-gray-900"
-                    />
+                {/* Matched Party Udhaar Inline Strip */}
+                {matchedParty && (
+                  <div className="bg-amber-50 border border-amber-300 rounded-xl px-3.5 py-2 flex items-center justify-between text-xs sm:text-sm text-amber-950 gap-2 shadow-2xs">
+                    <div className="flex items-center gap-2 font-bold">
+                      <span className="material-symbols-outlined text-base text-amber-700">account_balance_wallet</span>
+                      <span>{matchedParty.name} {matchedParty.city ? `(${matchedParty.city})` : ""}</span>
+                      {matchedParty.party_code && (
+                        <span className="text-xs font-mono bg-white px-2 py-0.5 rounded border border-amber-300 font-bold">
+                          #{matchedParty.party_code}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 font-mono">
+                      <span className="text-xs uppercase font-bold text-slate-600">Previous Udhaar:</span>
+                      <span className={`text-xs sm:text-sm font-black ${Number(matchedParty.current_balance || matchedParty.opening_balance || 0) > 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                        Rs. {Number(matchedParty.current_balance || matchedParty.opening_balance || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Save / Print Notification Alert Banner */}
+            {saveSuccessMsg && (
+              <div className="bg-[#0f766e] text-white px-4 py-2 text-xs sm:text-sm font-black text-center flex items-center justify-center gap-2 rounded-xl border border-teal-400 shadow-md">
+                <span className="material-symbols-outlined text-teal-200 text-base">print</span>
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Subtle Divider between Customer Details & Fast Line Item Entry */}
+            {/* Subtle Divider between Customer Details & Fast Line Item Entry */}
+            <div className="border-t border-slate-200 pt-3">
+              <div className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center justify-between flex-wrap gap-2.5 mb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center border border-teal-200">
+                    <span className="material-symbols-outlined text-lg">add_shopping_cart</span>
+                  </div>
+                  <span>FAST LINE ITEM ENTRY</span>
+                </div>
+
+                {/* Quick Company / Brand Code Filter Badges & Dropdown (Enlarged & Clear) */}
+                <div className="flex items-center gap-2 text-xs sm:text-sm max-w-full overflow-hidden flex-wrap">
+                  <span className="text-slate-700 font-black text-xs uppercase whitespace-nowrap shrink-0">Brand:</span>
+                  <div className="flex items-center gap-1.5 overflow-x-auto max-w-[240px] sm:max-w-[380px] no-scrollbar shrink py-0.5">
+                    {companyOptions.slice(0, 8).map((c) => {
+                      const isActive = selectedCompany === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCompany(c.id);
+                            setCompanyCodeInput(c.code || c.id);
+                          }}
+                          className={`px-3.5 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap shrink-0 ${isActive
+                              ? "bg-[#0f766e] text-white shadow-xs"
+                              : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                            }`}
+                          title={`Filter strictly by ${c.name || c.id}`}
+                        >
+                          {c.code || c.id}
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  {/* Rate */}
-                  <div className="md:col-span-1">
-                    <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5 text-center">Rate</label>
-                    <input
-                      ref={rateInputRef}
-                      type="number"
-                      value={saleCart.rate}
-                      onChange={(e) => handleUpdateCartMath("rate", e.target.value)}
-                      onKeyDown={(e) => handleGenericEnterNext(e, discPctInputRef)}
-                      className="w-full bg-white border border-gray-300 rounded-lg px-1.5 py-1 text-xs font-bold text-center text-gray-900"
-                    />
-                  </div>
-
-                  {/* Gross */}
-                  <div className="md:col-span-1">
-                    <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5 text-center">Gross</label>
+                  {/* Direct Company Code Quick Entry Input (Spacious) */}
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 shrink-0" title="Type company code (e.g. BM, MKT, PB, BLS, GHR)">
+                    <span className="text-xs font-black text-slate-700 uppercase">Quick Code:</span>
                     <input
                       type="text"
-                      value={saleCart.gross}
-                      readOnly
-                      className="w-full bg-gray-100 border border-gray-200 rounded-lg px-1 py-1 text-xs font-bold text-center text-gray-700"
-                    />
-                  </div>
-
-                  {/* Disc % */}
-                  <div className="md:col-span-1">
-                    <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5 text-center">Disc%</label>
-                    <input
-                      ref={discPctInputRef}
-                      type="number"
-                      value={saleCart.disc_pct}
-                      onChange={(e) => handleUpdateCartMath("disc_pct", e.target.value)}
-                      onKeyDown={(e) => handleGenericEnterNext(e, discFlatInputRef)}
-                      className="w-full bg-white border border-gray-300 rounded-lg px-1 py-1 text-xs font-bold text-center text-gray-900"
-                    />
-                  </div>
-
-                  {/* Disc 0 */}
-                  <div className="md:col-span-1">
-                    <label className="block text-[9.5px] font-bold text-gray-600 mb-0.5 text-center">Disc 0</label>
-                    <input
-                      ref={discFlatInputRef}
-                      type="number"
-                      value={saleCart.disc_flat}
-                      onChange={(e) => handleUpdateCartMath("disc_flat", e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddSaleItem();
-                          setTimeout(() => medicineInputRef.current?.focus(), 40);
+                      value={companyCodeInput}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setCompanyCodeInput(val);
+                        if (!val.trim()) {
+                          setSelectedCompany("All");
+                          return;
+                        }
+                        const match = companyOptions.find(
+                          (c) =>
+                            (c.code || c.id || "").toUpperCase() === val.trim() ||
+                            (c.name || "").toUpperCase().startsWith(val.trim())
+                        );
+                        if (match) {
+                          setSelectedCompany(match.id);
                         }
                       }}
-                      className="w-full bg-white border border-gray-300 rounded-lg px-1 py-1 text-xs font-bold text-center text-gray-900"
+                      placeholder="E.G. BM"
+                      className="w-20 sm:w-24 bg-transparent text-xs sm:text-sm font-mono font-black text-teal-950 uppercase outline-none placeholder:text-slate-400"
                     />
                   </div>
 
-                  {/* Net Amount */}
-                  <div className="md:col-span-1">
-                    <label className="block text-[9.5px] font-bold text-emerald-800 mb-0.5 text-center">Net</label>
-                    <input
-                      type="text"
-                      value={saleCart.net_amount}
-                      readOnly
-                      className="w-full bg-emerald-100/80 border border-emerald-300 rounded-lg px-1 py-1 text-xs font-black text-center text-emerald-950"
-                    />
-                  </div>
-
-                  {/* Add Button */}
-                  <div className="md:col-span-1">
-                    <button
-                      type="button"
-                      onClick={handleAddSaleItem}
-                      className="w-full bg-teal-700 hover:bg-teal-800 text-white font-black py-1.5 rounded-lg text-xs flex items-center justify-center gap-0.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  {companyOptions.length > 1 && (
+                    <select
+                      value={selectedCompany}
+                      onChange={(e) => {
+                        setSelectedCompany(e.target.value);
+                        const found = companyOptions.find((c) => c.id === e.target.value);
+                        setCompanyCodeInput(found?.code || found?.id || "");
+                      }}
+                      className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-800 max-w-[150px] truncate shrink-0 focus:border-teal-500 outline-none cursor-pointer"
+                      title="Select from all registered companies"
                     >
-                      <span className="material-symbols-outlined text-sm">add</span>
-                      Add
-                    </button>
-                  </div>
+                      {companyOptions.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
-              {/* Section 3: Added Items Table (Dynamically Takes ALL Remaining Screen Height) */}
-              <div className="flex-1 min-h-[120px] bg-white border border-gray-200 rounded-xl overflow-hidden shadow-2xs flex flex-col">
-                <div ref={tableContainerRef} className="overflow-y-auto flex-1 custom-scrollbar">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-emerald-900 text-white font-black uppercase tracking-wider text-[10px] sticky top-0 z-10 shadow-2xs">
-                      <tr>
-                        <th className="px-3 py-2">Item Name</th>
-                        <th className="px-2 py-2 text-center">Qty</th>
-                        <th className="px-2 py-2 text-center">Rate</th>
-                        <th className="px-2 py-2 text-center">Gross</th>
-                        <th className="px-2 py-2 text-center">Disc(%)</th>
-                        <th className="px-2 py-2 text-center">Disc(0)</th>
-                        <th className="px-3 py-2 text-right">Net</th>
-                        <th className="px-2 py-2 text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 font-medium">
-                      {saleItems.length === 0 ? (
-                        <tr>
-                          <td colSpan="8" className="text-center py-6 text-gray-400 font-bold bg-gray-50/40">
-                            <span className="material-symbols-outlined text-2xl text-gray-300 block mb-0.5">point_of_sale</span>
-                            No items in cart yet. Type Medicine Name to add.
-                          </td>
-                        </tr>
+              {/* Fast Entry Row: Product Name + Math Inputs (No Flat Disc 0) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2 sm:gap-2.5 items-end">
+                {/* Product Name Autocomplete Search Field (5 columns) */}
+                <div className="col-span-2 sm:col-span-3 md:col-span-5 relative" ref={medicineInputWrapperRef}>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>PRODUCT NAME <span className="text-rose-500">*</span></span>
+                    {selectedCompany !== "All" && (
+                      <span className="px-2 py-0.5 bg-teal-50 text-teal-800 text-[10px] font-black rounded border border-teal-300 flex items-center gap-1">
+                        <span>🏢 {selectedCompany} ({filteredProducts.length})</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCompany("All")}
+                          className="text-rose-600 hover:text-rose-800 font-bold text-xs ml-1"
+                          title="Reset company filter"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    )}
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="material-symbols-outlined text-lg text-teal-700 absolute left-3 pointer-events-none">search</span>
+                    <input
+                      ref={medicineInputRef}
+                      type="text"
+                      value={medicineSearchText}
+                      onChange={(e) => {
+                        setMedicineSearchText(e.target.value);
+                        setShowMedicineSuggestions(true);
+                        setHighlightedMedIndex(0);
+                        setSaleCart((prev) => ({ ...prev, medicine_name: e.target.value }));
+                      }}
+                      onFocus={() => setShowMedicineSuggestions(true)}
+                      onKeyDown={handleMedicineKeyDown}
+                      placeholder="Type medicine name, formula, code..."
+                      className="w-full h-10 sm:h-11 bg-[#fbfcfb] border border-teal-400 rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 outline-none"
+                    />
+                    {medicineSearchText && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMedicineSearchText("");
+                          setShowMedicineSuggestions(false);
+                          setSaleCart((prev) => ({
+                            ...prev,
+                            inventory_id: "",
+                            medicine_name: "",
+                            company_name: "",
+                            product_code: "",
+                            category: "",
+                            packing: "",
+                            rate: "",
+                            gross: "",
+                            net_amount: "",
+                          }));
+                          medicineInputRef.current?.focus();
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Floating Suggestion Tray */}
+                  {showMedicineSuggestions && medicineSearchText.trim().length > 0 && (
+                    <div
+                      ref={suggestionsContainerRef}
+                      className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border-2 border-teal-600 rounded-2xl shadow-2xl max-h-72 overflow-y-auto divide-y divide-gray-100 animate-fade-in"
+                    >
+                      <div className="bg-[#0f766e] text-white text-[10px] sm:text-[11px] font-black px-3.5 py-1.5 flex items-center justify-between sticky top-0 z-10">
+                        <span className="flex items-center gap-2">
+                          <span>SUGGESTIONS ({typeaheadSuggestions.length})</span>
+                          {selectedCompany !== "All" && (
+                            <span className="text-[9px] bg-teal-800 text-teal-100 px-2 py-0.5 rounded font-mono">
+                              🏢 {selectedCompany}
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-[9.5px] text-teal-100 font-normal">↑ ↓ Navigate · Enter Select</span>
+                      </div>
+                      {typeaheadSuggestions.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-gray-500 italic">
+                          No medicines found matching "{medicineSearchText}"
+                        </div>
                       ) : (
-                        <>
-                          {saleItems.map((item, idx) => (
-                            <tr key={item.id || idx} className="hover:bg-emerald-50/40 transition-colors">
-                              <td className="px-3 py-1.5 font-bold text-gray-900">
-                                <div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span>{item.medicine_name}</span>
-                                    {item.product_code && (
-                                      <span className="text-[9.5px] text-gray-400 font-mono">[{item.product_code}]</span>
-                                    )}
-                                    {item.packing && (
-                                      <span className="text-[8.5px] bg-slate-100 text-slate-700 px-1 py-0.2 rounded font-bold">
-                                        {item.packing}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {item.company_name && (
-                                    <div className="text-[9px] text-emerald-800 font-bold mt-0.5">
-                                      🏢 {item.company_name}
-                                    </div>
+                        typeaheadSuggestions.map((inv, idx) => {
+                          const isHighlighted = idx === highlightedMedIndex;
+                          const stockUnits = inv.warehouse_stock || inv.store_stock || 0;
+                          const salePrice = inv.unit_sale_price || inv.sale_price || inv.box_sale_price || 0;
+                          return (
+                            <div
+                              key={inv.id || idx}
+                              id={`med-sugg-${idx}`}
+                              onMouseEnter={() => setHighlightedMedIndex(idx)}
+                              onClick={() => handleSelectTypeaheadMedicine(inv)}
+                              className={`px-3.5 py-2.5 cursor-pointer transition-colors flex items-center justify-between gap-2.5 ${isHighlighted
+                                ? "bg-teal-50 border-l-4 border-teal-700 text-teal-950 font-bold"
+                                : "hover:bg-gray-50 text-gray-800"
+                                }`}
+                            >
+                              <div className="flex-1 min-w-0 text-left">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs sm:text-sm font-black truncate">{inv.medicine_name}</span>
+                                  {(inv.product_description || inv.generic_name || inv.naration) && (
+                                    <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shadow-2xs">
+                                      — {inv.product_description || inv.generic_name || inv.naration}
+                                    </span>
+                                  )}
+                                  {inv.company_name && (
+                                    <span className="px-2 py-0.5 rounded text-[9.5px] font-black bg-teal-100 text-teal-900 shrink-0">
+                                      {inv.company_name}
+                                    </span>
                                   )}
                                 </div>
-                              </td>
-                              <td className="px-2 py-1.5 text-center font-black text-emerald-800">{item.qty}</td>
-                              <td className="px-2 py-1.5 text-center text-gray-700">Rs. {Number(item.rate).toLocaleString()}</td>
-                              <td className="px-2 py-1.5 text-center text-gray-700">Rs. {Number(item.gross).toLocaleString()}</td>
-                              <td className="px-2 py-1.5 text-center text-gray-600">{item.disc_pct}</td>
-                              <td className="px-2 py-1.5 text-center text-gray-600">Rs. {item.disc_flat}</td>
-                              <td className="px-3 py-1.5 text-right font-black text-gray-900">Rs. {Number(item.net).toLocaleString()}</td>
-                              <td className="px-2 py-1.5 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveSaleItem(idx)}
-                                  className="text-rose-600 hover:text-rose-800 p-0.5 rounded hover:bg-rose-50 transition-colors cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-sm">delete</span>
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                          <tr ref={saleItemsEndRef}>
-                            <td colSpan="8" className="p-0 border-0" />
-                          </tr>
-                        </>
+                                <div className="text-[10px] sm:text-[11px] text-gray-500 font-normal truncate mt-0.5 flex items-center gap-1.5">
+                                  {inv.item_code && <span className="font-mono font-bold text-teal-700">{inv.item_code}</span>}
+                                  {inv.category && <span className="text-slate-500 font-medium">· {inv.category}</span>}
+                                  {inv.packing && <span>· {inv.packing}</span>}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-xs sm:text-sm font-black text-teal-900 font-mono">
+                                  Rs. {Number(salePrice).toLocaleString()}
+                                </div>
+                                <div className={`text-[10px] font-bold ${stockUnits <= 0 ? "text-rose-600" : stockUnits <= 5 ? "text-amber-600" : "text-gray-500"}`}>
+                                  Stock: {stockUnits}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
                       )}
-                    </tbody>
-                  </table>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Section 4: Footer Controls Bar (Fixed at bottom) */}
-              <div className="shrink-0 bg-white border border-gray-200 rounded-xl p-1.5 px-3 flex flex-wrap items-center justify-between gap-2 shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => setShowListModal(true)}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-black px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm">list_alt</span>
-                  Invoices Logbook
-                </button>
+                {/* QTY */}
+                <div className="md:col-span-1">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 text-center">QTY</label>
+                  <input
+                    ref={qtyInputRef}
+                    type="number"
+                    min="1"
+                    value={saleCart.qty}
+                    onChange={(e) => handleUpdateCartMath("qty", e.target.value)}
+                    onKeyDown={(e) => handleGenericEnterNext(e, rateInputRef)}
+                    className="w-full h-10 sm:h-11 bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-black text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
+                  />
+                </div>
 
-                {/* Financial Summary Controls */}
-                <div className="flex flex-wrap items-center gap-2 justify-end">
-                  {/* Items Subtotal */}
-                  <div className="bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded-lg text-right">
-                    <div className="text-[8.5px] font-bold text-gray-500 uppercase">Subtotal</div>
-                    <div className="text-xs font-black text-gray-900">
-                      Rs. {saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0).toLocaleString()}
-                    </div>
-                  </div>
+                {/* RATE */}
+                <div className="md:col-span-1">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 text-center">RATE</label>
+                  <input
+                    ref={rateInputRef}
+                    type="number"
+                    value={saleCart.rate}
+                    onChange={(e) => handleUpdateCartMath("rate", e.target.value)}
+                    onKeyDown={(e) => handleGenericEnterNext(e, discPctInputRef)}
+                    className="w-full h-10 sm:h-11 bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-bold text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
+                  />
+                </div>
 
-                  {/* Bill Discount Input Field */}
-                  <div className="bg-amber-50/80 border border-amber-300 px-2 py-0.5 rounded-lg text-right flex items-center gap-1.5">
-                    <span className="text-[8.5px] font-bold text-amber-900 uppercase whitespace-nowrap">
-                      Bill Discount (Rs.):
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={saleForm.extra_bill_discount ?? "0"}
-                      onChange={(e) => setSaleForm({ ...saleForm, extra_bill_discount: e.target.value })}
-                      className="w-16 bg-white border border-amber-300 rounded px-1 py-0.2 text-xs font-mono font-black text-amber-950 text-right focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                    />
-                  </div>
+                {/* GROSS */}
+                <div className="md:col-span-1">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 text-center">GROSS</label>
+                  <input
+                    type="text"
+                    value={saleCart.gross || "-"}
+                    readOnly
+                    className="w-full h-10 sm:h-11 bg-slate-100 border border-slate-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-bold text-center text-slate-600 outline-none cursor-not-allowed"
+                  />
+                </div>
 
-                  {/* Previous Udhaar / Balance Box */}
-                  {puranaUdhaar > 0 && (
-                    <div className="bg-rose-50 border border-rose-300 px-2.5 py-0.5 rounded-lg text-right text-rose-950">
-                      <div className="text-[8.5px] font-bold uppercase tracking-wider text-rose-700">Previous Balance</div>
-                      <div className="text-xs font-black font-mono">
-                        Rs. {puranaUdhaar.toLocaleString()}
-                      </div>
-                    </div>
-                  )}
+                {/* DISC% */}
+                <div className="md:col-span-1">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 text-center">DISC%</label>
+                  <input
+                    ref={discPctInputRef}
+                    type="number"
+                    value={saleCart.disc_pct}
+                    onChange={(e) => handleUpdateCartMath("disc_pct", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddSaleItem();
+                        setTimeout(() => medicineInputRef.current?.focus(), 40);
+                      }
+                    }}
+                    className="w-full h-10 sm:h-11 bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-bold text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
+                  />
+                </div>
 
-                  {/* Net Grand Total */}
-                  <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 font-black px-3 py-0.5 rounded-xl text-xs text-right shadow-2xs">
-                    <div className="text-[8.5px] font-bold text-emerald-800 uppercase">
-                      {puranaUdhaar > 0 ? "Total Payable" : "Net Total"}
-                    </div>
-                    Rs. {grandPayable.toLocaleString()}
-                  </div>
+                {/* NET */}
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] sm:text-xs font-bold text-teal-800 mb-1 text-center">NET</label>
+                  <input
+                    type="text"
+                    value={saleCart.net_amount || "0.00"}
+                    readOnly
+                    className="w-full h-10 sm:h-11 bg-teal-50 border border-teal-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-black text-center text-teal-950 outline-none"
+                  />
+                </div>
 
-                  {/* Cash Paid / Received Input Field with F8 Focus */}
-                  <div className="bg-slate-50 border border-slate-300 px-2 py-0.5 rounded-lg text-right flex items-center gap-1.5">
-                    <span className="text-[8.5px] font-bold text-slate-600 uppercase whitespace-nowrap">
-                      Cash Paid <span className="text-[7.5px] text-teal-700 font-mono">(F8)</span>:
-                    </span>
-                    <input
-                      ref={cashPaidInputRef}
-                      type="number"
-                      placeholder={isUdhaarMode ? "0" : String(grandPayable)}
-                      value={saleForm.cash_received}
-                      onChange={(e) => setSaleForm({ ...saleForm, cash_received: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSaveSaleBill();
-                        }
-                      }}
-                      className="w-16 bg-white border border-slate-300 rounded px-1 py-0.2 text-xs font-mono font-bold text-slate-900 text-right focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  {/* Change Return or Remaining Udhaar pill */}
-                  {changeReturnCalculated > 0 && (
-                    <div className="bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-lg text-right text-emerald-950">
-                      <div className="text-[8.5px] font-bold uppercase tracking-wider text-emerald-700">Change Return</div>
-                      <div className="text-xs font-black font-mono">
-                        Rs. {changeReturnCalculated.toLocaleString()}
-                      </div>
-                    </div>
-                  )}
-
-                  {remainingCalculated > 0 && (
-                    <div className="bg-rose-50 border border-rose-300 px-2.5 py-0.5 rounded-lg text-right text-rose-950">
-                      <div className="text-[8.5px] font-bold uppercase tracking-wider text-rose-700">Remaining Udhaar</div>
-                      <div className="text-xs font-black font-mono">
-                        Rs. {remainingCalculated.toLocaleString()}
-                      </div>
-                    </div>
-                  )}
-
+                {/* ADD ITEM BUTTON */}
+                <div className="md:col-span-1">
                   <button
                     type="button"
-                    onClick={handleSaveSaleBill}
-                    className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-4 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1 shadow-md shadow-emerald-200 cursor-pointer active:scale-95 transition-all"
+                    onClick={handleAddSaleItem}
+                    className="w-full h-10 sm:h-11 bg-[#0f766e] hover:bg-[#115e59] text-white font-black py-2 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-sm">print</span>
-                    Save &amp; Print (F9)
+                    <span>Add</span>
                   </button>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Right Column (4 cols): REAL-TIME LIVE 80mm THERMAL RECEIPT PREVIEW */}
-            <div className="xl:col-span-4 flex flex-col h-full min-h-0 space-y-1.5 overflow-hidden">
-              <div className="shrink-0 bg-slate-900 text-white p-2 px-3 rounded-xl flex items-center justify-between shadow-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-emerald-400 text-base">receipt_long</span>
-                  <div>
-                    <div className="text-xs font-black tracking-tight flex items-center gap-1.5">
-                      LIVE THERMAL RECEIPT
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    </div>
+          {/* Section 3: Cart Items Table (Takes All Remaining Height) */}
+          <div className="flex-1 min-h-[140px] bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs flex flex-col">
+            <div ref={tableContainerRef} className="overflow-y-auto flex-1 custom-scrollbar">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-teal-700 text-white font-black uppercase tracking-wider text-[10px] sm:text-[11px] sticky top-0 z-10 shadow-xs">
+                  <tr>
+                    <th className="px-4 py-2.5">ITEM NAME</th>
+                    <th className="px-3 py-2.5 text-center">QTY</th>
+                    <th className="px-3 py-2.5 text-center">RATE</th>
+                    <th className="px-3 py-2.5 text-center">GROSS</th>
+                    <th className="px-3 py-2.5 text-center">DISC(%)</th>
+                    <th className="px-4 py-2.5 text-right">NET</th>
+                    <th className="px-3 py-2.5 text-center">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {saleItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="p-0 border-0">
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600 mb-2.5 shadow-2xs">
+                            <span className="material-symbols-outlined text-2xl">shopping_cart</span>
+                          </div>
+                          <div className="text-sm font-black text-slate-700">No items in cart yet</div>
+                          <div className="text-xs text-slate-400 mt-0.5">Search or type medicine name to add to sale invoice</div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {saleItems.map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-4 py-2 font-bold text-slate-900">
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{item.medicine_name}</span>
+                                {item.product_description && (
+                                  <span className="text-[10px] text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-bold">
+                                    — {item.product_description}
+                                  </span>
+                                )}
+                                {item.product_code && (
+                                  <span className="text-[9.5px] text-slate-400 font-mono">[{item.product_code}]</span>
+                                )}
+                                {item.packing && (
+                                  <span className="text-[8.5px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded-md font-bold">
+                                    {item.packing}
+                                  </span>
+                                )}
+                              </div>
+                              {item.company_name && (
+                                <div className="text-[9.5px] text-teal-800 font-bold mt-0.5">
+                                  🏢 {item.company_name}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-center font-black text-teal-800">{item.qty}</td>
+                          <td className="px-3 py-2 text-center text-slate-700">Rs. {Number(item.rate).toLocaleString()}</td>
+                          <td className="px-3 py-2 text-center text-slate-700">Rs. {Number(item.gross).toLocaleString()}</td>
+                          <td className="px-3 py-2 text-center text-slate-600">{item.disc_pct}</td>
+                          <td className="px-4 py-2 text-right font-black text-slate-900">Rs. {Number(item.net).toLocaleString()}</td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSaleItem(idx)}
+                              className="text-rose-600 hover:text-rose-800 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Remove item"
+                            >
+                              <span className="material-symbols-outlined text-base">delete</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      <tr ref={saleItemsEndRef}>
+                        <td colSpan="7" className="p-0 border-0" />
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section 4: Footer Controls & Financial Bar (Enlarged & High Visibility) */}
+          <div className="shrink-0 bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setShowListModal(true)}
+              className="bg-[#0f766e] hover:bg-[#115e59] text-white font-black px-5 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-base">list_alt</span>
+              <span>Invoices Logbook</span>
+            </button>
+
+            {/* Financial Summary Controls (Enlarged Elements) */}
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 justify-end">
+              {/* Items Subtotal */}
+              <div className="px-2 text-right">
+                <div className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">SUBTOTAL</div>
+                <div className="text-sm sm:text-base font-black text-slate-900 font-mono">
+                  Rs. {saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0).toLocaleString()}
+                </div>
+              </div>
+
+              {/* Previous Udhaar / Balance Box */}
+              {puranaUdhaar > 0 && (
+                <div className="bg-rose-50 border border-rose-300 px-3.5 py-1.5 rounded-xl text-right text-rose-950">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-rose-700">Previous Balance</div>
+                  <div className="text-xs sm:text-sm font-black font-mono">
+                    Rs. {puranaUdhaar.toLocaleString()}
                   </div>
                 </div>
+              )}
+
+              {/* Net Grand Total Pill (Large & Prominent) */}
+              <div className="bg-teal-50 border-2 border-teal-500 text-teal-950 font-black px-4 py-1.5 rounded-xl text-xs sm:text-sm text-right shadow-2xs flex items-center gap-2">
+                <span className="text-[10px] sm:text-xs font-bold text-teal-800 uppercase">
+                  {puranaUdhaar > 0 ? "TOTAL PAYABLE" : "NET TOTAL"}
+                </span>
+                <span className="text-base sm:text-lg font-black text-teal-950 font-mono">
+                  Rs. {grandPayable.toLocaleString()}
+                </span>
+              </div>
+
+              {/* Cash Paid / Received Input Field with F8 Focus (Spacious & Large) */}
+              <div className="bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-xl text-right flex items-center gap-2">
+                <span className="text-[10px] sm:text-xs font-bold text-slate-700 uppercase whitespace-nowrap">
+                  CASH PAID <span className="text-[9px] text-teal-800 font-mono font-bold">(F8)</span>:
+                </span>
+                <input
+                  ref={cashPaidInputRef}
+                  type="number"
+                  placeholder={isUdhaarMode ? "0" : String(grandPayable)}
+                  value={saleForm.cash_received}
+                  onChange={(e) => setSaleForm({ ...saleForm, cash_received: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSaveSaleBill();
+                    }
+                  }}
+                  className="w-24 sm:w-28 h-8 sm:h-9 bg-white border border-slate-300 rounded-lg px-2 text-sm sm:text-base font-mono font-black text-slate-900 text-right focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none"
+                />
+              </div>
+
+              {/* Change Return or Remaining Udhaar pill */}
+              {changeReturnCalculated > 0 && (
+                <div className="bg-emerald-50 border border-emerald-300 px-3.5 py-1.5 rounded-xl text-right text-emerald-950">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-emerald-700">Change Return</div>
+                  <div className="text-xs sm:text-sm font-black font-mono text-emerald-900">
+                    Rs. {changeReturnCalculated.toLocaleString()}
+                  </div>
+                </div>
+              )}
+
+              {remainingCalculated > 0 && (
+                <div className="bg-rose-50 border border-rose-300 px-3.5 py-1.5 rounded-xl text-right text-rose-950">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-rose-700">Remaining Udhaar</div>
+                  <div className="text-xs sm:text-sm font-black font-mono text-rose-900">
+                    Rs. {remainingCalculated.toLocaleString()}
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSaveSaleBill}
+                className="bg-[#0f766e] hover:bg-[#115e59] text-white font-black px-6 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-teal-900/20 cursor-pointer active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-base">print</span>
+                <span>Save &amp; Print (F9)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Animated Slide-Over Live Thermal Receipt Drawer */}
+      {showReceiptDrawer && (
+        <div className="fixed inset-0 z-50 overflow-hidden flex justify-end animate-fade-in">
+          {/* Translucent Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300 cursor-pointer"
+            onClick={() => setShowReceiptDrawer(false)}
+          />
+
+          {/* Slide-In Thermal Panel */}
+          <div className="relative w-full max-w-[460px] bg-[#115e59] text-white shadow-2xl h-full flex flex-col z-10 animate-slide-in-right transform transition-transform duration-300 border-l border-teal-700">
+            {/* Drawer Header */}
+            <div className="shrink-0 bg-[#0f766e] px-4 py-3 border-b border-teal-600/50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-200 text-lg">receipt_long</span>
+                <div>
+                  <div className="text-xs font-black tracking-wider uppercase flex items-center gap-2 text-white">
+                    <span>LIVE THERMAL RECEIPT</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  </div>
+                  <div className="text-[10px] text-teal-100/80 font-mono">80mm ESC/POS Realtime Stream</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleSaveSaleBill}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg font-black text-xs flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  className="bg-white hover:bg-teal-50 text-teal-900 px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-xs">print</span>
+                  <span className="material-symbols-outlined text-sm text-teal-800">print</span>
                   Print (F9)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowReceiptDrawer(false)}
+                  className="w-7 h-7 rounded-xl bg-white/10 hover:bg-white/20 text-teal-100 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                  title="Close Receipt Preview"
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
               </div>
+            </div>
 
-              {/* Thermal Paper Slip Frame (Internal Scroll Only If Needed) */}
-              <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border-2 border-slate-300 bg-white p-3 shadow-md font-mono text-[10px] text-slate-900 space-y-1.5 relative custom-scrollbar">
-                {/* Clean Flat Header Layout */}
+            {/* Thermal Paper Slip Frame Container */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-teal-900/40 custom-scrollbar flex justify-center">
+              <div className="rounded-xl border-2 border-slate-950 bg-white p-3.5 shadow-xl font-sans text-[13px] text-slate-950 space-y-2 relative">
+                {/* Clean Flat Header Banner Layout */}
                 <div className="border-b-2 border-slate-950 pb-1.5 text-slate-950">
-                  <div className="flex items-start justify-between gap-1.5">
-                    {/* Left: Logo */}
-                    <div className="w-[46px] min-w-[46px] h-[52px] flex items-center justify-center shrink-0">
-                      <img
-                        src={CLINIC_LOGO_BASE64}
-                        alt="Logo"
-                        className="w-[46px] h-[50px] object-contain block"
-                      />
-                    </div>
-
-                    {/* Middle: Clinic Name + Subtitle + Address */}
-                    <div className="flex-1 min-w-0 text-left font-serif">
-                      <div className="text-[15px] leading-[16px] font-bold text-slate-950 whitespace-nowrap tracking-tight">
-                        M.Ashraf Khan
-                      </div>
-                      <div className="text-[9.5px] leading-[11px] font-bold text-slate-700 whitespace-nowrap mt-0.5">
-                        Homeopathic Clinic
-                      </div>
-                      <div className="text-[8.5px] leading-[11px] font-sans font-medium text-slate-600 whitespace-nowrap mt-1">
-                        Lajpat Road, Hyderabad, Sindh, PK
-                      </div>
-                    </div>
-
-                    {/* Right: Phone Numbers stacked */}
-                    <div className="text-right text-[9px] leading-[11.5px] font-mono font-bold text-slate-900 whitespace-nowrap shrink-0 self-end">
-                      <div>0311 4234777</div>
-                      <div>0343 9376363</div>
-                    </div>
-                  </div>
+                  <img
+                    src={RECEIPT_HEADER_IMAGE_BASE64}
+                    alt="Dr. Asif Khan Homoeopathic Clinic"
+                    className="w-full object-contain block mx-auto"
+                  />
                 </div>
 
                 {/* Meta Information */}
                 {billingType === "wholesale_party" ? (
-                  <div className="border-b border-dashed border-slate-400 pb-2 text-[10px] space-y-1 font-mono">
+                  <div className="border-b-2 border-dashed border-slate-900 pb-2 text-[13px] space-y-1 font-mono font-bold text-slate-950">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-950">Invoice #: {saleForm.voucher_no}</span>
-                      <span className="text-slate-800 font-semibold">Issue Date: {saleForm.date}</span>
+                      <span className="font-black text-sm">Invoice #: {saleForm.voucher_no}</span>
+                      <span>Date: {saleForm.date}</span>
                     </div>
                     <div className="flex justify-between items-start gap-2">
-                      <span className="font-black text-slate-950 text-[10.5px] leading-tight">
+                      <span className="font-black text-[14.5px] leading-tight">
                         Name: {toTitleCase(saleForm.account_name) || "WHOLESALE PARTY"}
                       </span>
-                      <span className="text-slate-900 font-bold whitespace-nowrap text-right shrink-0">
+                      <span className="whitespace-nowrap text-right shrink-0">
                         Salesman: {toTitleCase(saleForm.reference || activeUser || "Clinic Staff")}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-slate-800 font-bold">
+                    <div className="flex justify-between items-center">
                       <span>City : {(saleForm.party_type || "HAIDERABAD").toUpperCase()}</span>
-                      <span className="text-emerald-950 font-black">
+                      <span className="font-black">
                         Mode: {saleForm.payment_mode || "Cash"}
                         {saleForm.bank_name && ` (${toTitleCase(saleForm.bank_name)})`}
                         {saleForm.cheque_no && ` [#${saleForm.cheque_no}]`}
                       </span>
                     </div>
                     {saleForm.transport && saleForm.transport.trim() && saleForm.transport.trim() !== "0" && (
-                      <div className="text-slate-800 font-bold">
+                      <div>
                         Transport: {toTitleCase(saleForm.transport)}
                       </div>
                     )}
                     {saleForm.bilty_no && saleForm.bilty_no.trim() && saleForm.bilty_no.trim() !== "0" && (
-                      <div className="text-slate-800 font-bold">
+                      <div>
                         Bilty #: {saleForm.bilty_no.trim()}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="border-b border-dashed border-slate-400 pb-2 text-[10px] space-y-1">
+                  <div className="border-b-2 border-dashed border-slate-900 pb-2 text-[13px] font-bold text-slate-950 space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Date: {saleForm.date}</span>
-                      <span className="font-bold text-slate-950">Inv: #{saleForm.voucher_no}</span>
+                      <span>Date: {saleForm.date}</span>
+                      <span className="font-black text-[14px]">Inv: #{saleForm.voucher_no}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500">Cashier: {saleForm.reference || activeUser}</span>
-                      <span className="font-bold text-slate-950">
+                      <span>Cashier: {saleForm.reference || activeUser}</span>
+                      <span className="font-black">
                         Mode: {saleForm.payment_mode || "Cash"}
                         {saleForm.bank_name && ` (${toTitleCase(saleForm.bank_name)})`}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                      <span className="font-black text-slate-950 text-[10.5px]">
+                    <div className="flex justify-between items-center pt-1.5 border-t border-slate-300">
+                      <span className="font-black text-[14.5px]">
                         Customer: {toTitleCase(saleForm.account_name) || "Walk-In Patient"}
                       </span>
                       {saleForm.token_no && (
-                        <span className="bg-emerald-800 text-white px-1.5 py-0.5 rounded font-black text-[10px]">
+                        <span className="bg-slate-950 text-white px-2 py-0.5 rounded font-black text-xs">
                           Token #: {saleForm.token_no}
                         </span>
                       )}
                     </div>
                     {saleForm.transport && saleForm.transport.trim() && saleForm.transport.trim() !== "0" && (
-                      <div className="text-slate-700 font-bold">
+                      <div>
                         Transport: {toTitleCase(saleForm.transport)}
                       </div>
                     )}
                     {saleForm.bilty_no && saleForm.bilty_no.trim() && saleForm.bilty_no.trim() !== "0" && (
-                      <div className="text-slate-700 font-bold">
+                      <div>
                         Bilty #: {saleForm.bilty_no.trim()}
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Items Table — Clean single-bordered table: | S/r | Qty | Particulars | Rate | Dis | Net | */}
-                <div className="my-1 overflow-hidden">
+                {/* Items Table — Clean single-bordered table */}
+                <div className="my-1.5 overflow-hidden">
                   {saleItems.length === 0 ? (
-                    <div className="text-center py-5 text-slate-400 italic text-[10px] bg-slate-50 border border-slate-300 rounded">
+                    <div className="text-center py-6 text-slate-600 font-bold italic text-sm bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg">
                       -- No items in cart --
                     </div>
                   ) : (
-                    <table className="w-full text-[9px] border-collapse border border-slate-800">
+                    <table className="w-full text-xs border-collapse border-2 border-slate-950">
                       <thead>
-                        <tr className="bg-slate-100 text-slate-950 font-black">
-                          <th className="border border-slate-800 text-center py-1 px-1 w-6">S/r</th>
-                          <th className="border border-slate-800 text-center py-1 px-1 w-7">Qty</th>
-                          <th className="border border-slate-800 text-left py-1 px-1.5">Particulars</th>
-                          <th className="border border-slate-800 text-center py-1 px-1 w-9">Rate</th>
-                          <th className="border border-slate-800 text-center py-1 px-1 w-8">Dis</th>
-                          <th className="border border-slate-800 text-right py-1 px-1.5 w-12 font-black">Net</th>
+                        <tr className="bg-slate-100 text-slate-950 font-black text-[11.5px]">
+                          <th className="border border-slate-950 text-center py-1.5 px-1 w-7">S/r</th>
+                          <th className="border border-slate-950 text-center py-1.5 px-1 w-8">Qty</th>
+                          <th className="border border-slate-950 text-left py-1.5 px-2">Particulars</th>
+                          <th className="border border-slate-950 text-center py-1.5 px-1 w-11">Rate</th>
+                          <th className="border border-slate-950 text-center py-1.5 px-1 w-9">Dis</th>
+                          <th className="border border-slate-950 text-right py-1.5 px-2 w-14 font-black">Net</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2620,33 +2763,33 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                             ? item.disc_pct
                             : (Number(item.disc_flat) > 0 ? `Rs.${item.disc_flat}` : "-");
                           return (
-                            <tr key={item.id || i} className="hover:bg-slate-50">
-                              <td className="border border-slate-800 text-center py-1 px-0.5 font-bold text-slate-900">
+                            <tr key={item.id || i} className="hover:bg-slate-50 text-[12.5px] font-bold">
+                              <td className="border border-slate-950 text-center py-1.5 px-0.5 text-slate-950">
                                 {i + 1}
                               </td>
-                              <td className="border border-slate-800 text-center py-1 px-0.5 font-bold text-slate-900">
+                              <td className="border border-slate-950 text-center py-1.5 px-0.5 font-black text-slate-950">
                                 {item.qty}
                               </td>
-                              <td className="border border-slate-800 text-left py-1 px-1.5 font-bold text-slate-950 leading-tight">
+                              <td className="border border-slate-950 text-left py-1.5 px-2 font-black text-slate-950 leading-tight">
                                 <div>{item.medicine_name}</div>
                                 {item.company_name && (
-                                  <div className="text-[7.5px] text-slate-600 font-sans font-semibold">
+                                  <div className="text-[10px] text-slate-700 font-sans font-bold">
                                     [{item.company_name}]
                                   </div>
                                 )}
                                 {(item.packing) && (
-                                  <div className="text-[7.5px] text-slate-500 font-mono font-normal">
+                                  <div className="text-[10px] text-slate-600 font-mono font-medium">
                                     {item.packing}
                                   </div>
                                 )}
                               </td>
-                              <td className="border border-slate-800 text-center py-1 px-0.5 font-mono text-slate-800">
+                              <td className="border border-slate-950 text-center py-1.5 px-0.5 font-mono text-slate-900">
                                 {Number(item.rate).toLocaleString()}
                               </td>
-                              <td className="border border-slate-800 text-center py-1 px-0.5 font-mono text-slate-600">
+                              <td className="border border-slate-950 text-center py-1.5 px-0.5 font-mono text-slate-800">
                                 {discLabel}
                               </td>
-                              <td className="border border-slate-800 text-right py-1 px-1.5 font-mono font-black text-slate-950">
+                              <td className="border border-slate-950 text-right py-1.5 px-2 font-mono font-black text-slate-950 text-[13px]">
                                 {Number(item.net).toLocaleString()}
                               </td>
                             </tr>
@@ -2658,108 +2801,151 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 </div>
 
                 {/* Totals Summary */}
-                <div className="space-y-1 text-[11px] pt-1">
-                  {saleForm.attending_doctor_id && (
-                    <>
-                      <div className="flex justify-between text-slate-700 text-[10px]">
-                        <span>Dr. Fee ({saleForm.attending_doctor_name || "Doctor"}):</span>
-                        <span className="font-bold text-slate-900">
-                          Rs. {Number(saleForm.doctor_fee || 0).toLocaleString("en-US")}
+                {(() => {
+                  const itemsSubtotal = saleItems.reduce((sum, item) => sum + (Number(item.net) || 0), 0);
+                  const itemsGross = saleItems.reduce((sum, item) => sum + (Number(item.gross) || (Number(item.qty) * Number(item.rate)) || 0), 0);
+                  const totalDiscount = Math.max(0, itemsGross - itemsSubtotal);
+                  const freight = Number(saleForm.freight_charges) || 0;
+
+                  return (
+                    <div className="space-y-1 text-[13.5px] font-bold text-slate-950 pt-1">
+                      {totalDiscount > 0 && (
+                        <>
+                          <div className="flex justify-between text-slate-800 text-xs font-bold">
+                            <span>Gross Total:</span>
+                            <span className="font-mono">
+                              Rs. {Math.round(itemsGross).toLocaleString("en-US")}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-rose-700 text-xs font-bold">
+                            <span>Discount:</span>
+                            <span className="font-mono">
+                              -Rs. {Math.round(totalDiscount).toLocaleString("en-US")}
+                            </span>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span className="font-black text-[14px] font-mono">
+                          Rs. {Math.round(itemsSubtotal).toLocaleString("en-US")}
                         </span>
                       </div>
-                      {saleForm.doctor_fee_waived && (
-                        <div className="flex justify-between text-rose-700 text-[10px] font-bold">
-                          <span>Dr. Fee Waived (Free):</span>
-                          <span className="font-black text-rose-800">
-                            -Rs. {Number(saleForm.doctor_fee || 0).toLocaleString("en-US")}
+
+                      {saleForm.attending_doctor_id && (
+                        <>
+                          <div className="flex justify-between text-slate-900 text-xs font-bold">
+                            <span>Dr. Fee ({saleForm.attending_doctor_name || "Doctor"}):</span>
+                            <span className="font-black font-mono">
+                              Rs. {Number(saleForm.doctor_fee || 0).toLocaleString("en-US")}
+                            </span>
+                          </div>
+                          {saleForm.doctor_fee_waived && (
+                            <div className="flex justify-between text-rose-700 text-xs font-black">
+                              <span>Dr. Fee Waived (Free):</span>
+                              <span className="font-mono">
+                                -Rs. {Number(saleForm.doctor_fee || 0).toLocaleString("en-US")}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {freight > 0 && (
+                        <div className="flex justify-between text-slate-900 text-xs font-bold">
+                          <span>Freight Charges:</span>
+                          <span className="font-black font-mono">
+                            Rs. {Math.round(freight).toLocaleString("en-US")}
                           </span>
                         </div>
                       )}
-                    </>
-                  )}
-                  {posServiceFee > 0 && (
-                    <div className="flex justify-between text-slate-600 text-[10px]">
-                      <span>POS Service Fee:</span>
-                      <span className="font-bold text-slate-800">
-                        Rs. {Math.round(posServiceFee).toLocaleString("en-US")}
-                      </span>
+                      {posServiceFee > 0 && (
+                        <div className="flex justify-between text-slate-900 text-xs font-bold">
+                          <span>POS Service Fee:</span>
+                          <span className="font-black font-mono">
+                            Rs. {Math.round(posServiceFee).toLocaleString("en-US")}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-t border-dashed border-slate-900 pt-1">
+                        <span>Current Bill:</span>
+                        <span className="font-black text-[14.5px] font-mono">
+                          Rs. {Math.round(totalBillCalculated).toLocaleString("en-US")}
+                        </span>
+                      </div>
+                      {puranaUdhaar > 0 && (
+                        <div className="flex justify-between">
+                          <span>Previous Balance:</span>
+                          <span className="font-black text-[14.5px] font-mono">
+                            Rs. {Math.round(puranaUdhaar).toLocaleString("en-US")}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-base font-black border-t-2 border-slate-950 pt-1.5 text-slate-950">
+                        <span>{puranaUdhaar > 0 ? "Total Payable:" : "Total Amount:"}</span>
+                        <span className="font-black text-[17px] font-mono">
+                          Rs. {Math.round(grandPayable).toLocaleString("en-US")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-0.5">
+                        <span>Cash Paid:</span>
+                        <span className="font-black text-[14.5px] font-mono">
+                          Rs. {Math.round(cashPaidNum).toLocaleString("en-US")}
+                        </span>
+                      </div>
+                      {changeReturnCalculated > 0 && (
+                        <div className="flex justify-between text-emerald-950 font-black">
+                          <span>Change Return:</span>
+                          <span className="font-black text-[15px] font-mono">
+                            Rs. {Math.round(changeReturnCalculated).toLocaleString("en-US")}
+                          </span>
+                        </div>
+                      )}
+                      {remainingCalculated > 0 && (
+                        <div className="flex justify-between text-rose-950 font-black border-t border-dashed border-slate-950 pt-1">
+                          <span>Remaining Balance:</span>
+                          <span className="font-black text-[15.5px] font-mono">
+                            Rs. {Math.round(remainingCalculated).toLocaleString("en-US")}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <div className="flex justify-between text-slate-700">
-                    <span className="font-medium">Current Bill:</span>
-                    <span className="font-bold text-slate-950">
-                      Rs. {Math.round(totalBillCalculated).toLocaleString("en-US")}
-                    </span>
-                  </div>
-                  {puranaUdhaar > 0 && (
-                    <div className="flex justify-between text-slate-800 font-semibold">
-                      <span>Previous Balance:</span>
-                      <span className="font-bold text-slate-950">
-                        Rs. {Math.round(puranaUdhaar).toLocaleString("en-US")}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-[11.5px] font-bold border-t border-slate-800 pt-1 text-slate-950">
-                    <span>{puranaUdhaar > 0 ? "Total Payable:" : "Total Amount:"}</span>
-                    <span className="font-black text-slate-950">
-                      Rs. {Math.round(grandPayable).toLocaleString("en-US")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-slate-800 font-semibold pt-0.5">
-                    <span>Cash Paid:</span>
-                    <span className="font-bold text-slate-950">
-                      Rs. {Math.round(cashPaidNum).toLocaleString("en-US")}
-                    </span>
-                  </div>
-                  {changeReturnCalculated > 0 && (
-                    <div className="flex justify-between text-emerald-900 font-semibold">
-                      <span>Change Return:</span>
-                      <span className="font-bold text-emerald-950">
-                        Rs. {Math.round(changeReturnCalculated).toLocaleString("en-US")}
-                      </span>
-                    </div>
-                  )}
-                  {remainingCalculated > 0 && (
-                    <div className="flex justify-between text-rose-900 font-bold border-t border-dotted border-rose-400 pt-0.5 mt-0.5">
-                      <span>Remaining Balance:</span>
-                      <span className="font-black text-rose-950">
-                        Rs. {Math.round(remainingCalculated).toLocaleString("en-US")}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
 
-                {/* Urdu Footer Disclaimer */}
-                <div className="border-t border-dashed border-slate-400 pt-2 text-center text-[10px] font-bold text-slate-800 leading-snug">
-                  <div>خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔</div>
+                {/* Urdu Footer Disclaimer — Extra Large High-Visibility */}
+                <div className="border-t-2 border-dashed border-slate-950 mt-5 pt-3.5 text-center" style={{ direction: "rtl" }}>
+                  <div className="font-black text-slate-950 text-[23px] leading-relaxed tracking-wide font-serif">
+                    خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔
+                  </div>
                 </div>
 
                 {/* Doctor Signature Line with Proper Gap for Physical Sign */}
-                <div className="pt-7 pb-1 flex justify-end">
-                  <div className="border-t-2 border-slate-900 w-[45%] text-center text-[8.5px] font-black uppercase text-slate-900 pt-1">
+                <div className="pt-6 pb-1 flex justify-end">
+                  <div className="border-t-2 border-slate-950 w-[45%] text-center text-[11px] font-black uppercase text-slate-950 pt-1">
                     Dr. Signature
                   </div>
                 </div>
 
                 {/* Powered By Watermark */}
-                <div className="text-center text-[8px] text-slate-400 font-mono border-t border-dotted border-slate-300 pt-1.5 space-y-0.5">
-                  <div className="font-semibold text-slate-500">*** Powered by CliniCore Software ***</div>
-                  <div className="text-[7.5px] text-slate-400">K.B Developer 03142291356</div>
+                <div className="text-center text-[9.5px] text-slate-600 font-mono border-t border-dotted border-slate-400 pt-1.5 space-y-0.5">
+                  <div className="font-bold text-slate-700">*** Powered by CliniCore Software ***</div>
+                  <div className="text-[9px] text-slate-600 font-semibold">K.B Developer 03142291356</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* SALE INVOICE _List Modal */}
       {showListModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-fade-in">
           <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="bg-gradient-to-r from-slate-900 to-emerald-950 p-4 sm:p-5 text-white flex items-center justify-between">
+            <div className="bg-[#0f766e] p-4 sm:p-5 text-white flex items-center justify-between border-b border-teal-700">
               <div>
-                <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Sale Invoices Logbook</div>
-                <h3 className="text-xl font-black flex items-center gap-2">
+                <div className="text-[10px] font-bold text-teal-200 uppercase tracking-widest">Sale Invoices Logbook</div>
+                <h3 className="text-xl font-black flex items-center gap-2 text-white">
                   SALE INVOICE <span className="text-sm font-bold opacity-80">_List</span>
                 </h3>
               </div>
@@ -3071,61 +3257,21 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 </div>
               </div>
 
-              {/* Option A: Internal Warehouse Shift */}
-              <div className="bg-teal-50/80 border border-teal-300 rounded-2xl p-3.5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-teal-950 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm text-teal-700">local_shipping</span>
-                    Option A: Shift Stock From Warehouse (Godown)
+              {/* Emergency Local Stock Inward Form */}
+              <div className="bg-amber-50/80 border border-amber-300 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-amber-700">storefront</span>
+                  <h4 className="text-xs font-black text-amber-950">
+                    Emergency Local Market / Counter Purchase
                   </h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
-                    Godown Stock: {Number(zeroStockModal.targetInv.warehouse_stock ?? 0)} units
-                  </span>
                 </div>
-
-                {Number(zeroStockModal.targetInv.warehouse_stock ?? 0) > 0 ? (
-                  <div className="space-y-2 pt-1">
-                    <p className="text-[11px] text-teal-900 font-medium">
-                      Warehouse has stock available! Transfer stock to store counter now:
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={zeroStockModal.shiftQty}
-                        onChange={(e) => setZeroStockModal((prev) => ({ ...prev, shiftQty: Math.max(1, Number(e.target.value) || 1) }))}
-                        className="w-24 bg-white border border-teal-300 rounded-xl px-3 py-1.5 text-xs font-bold text-teal-950 outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleConfirmInternalTransfer(zeroStockModal.shiftQty)}
-                        className="flex-1 bg-teal-700 hover:bg-teal-800 text-white font-black text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm">swap_horiz</span>
-                        <span>Shift {zeroStockModal.shiftQty} Units &amp; Continue Billing</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-[11px] text-slate-500 font-bold italic bg-white/70 p-2 rounded-xl border border-teal-200">
-                    ⚠️ Zero stock in warehouse. Use Option B (Local Market Purchase) below.
-                  </div>
-                )}
-              </div>
-
-              {/* Option B: Local Market Emergency Purchase */}
-              <div className="bg-amber-50/80 border border-amber-300 rounded-2xl p-3.5 space-y-2.5">
-                <h4 className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-sm text-amber-700">storefront</span>
-                  Option B: Local Market Cash / Udhaar Purchase
-                </h4>
                 <p className="text-[11px] text-amber-900 font-medium">
-                  Purchase emergency stock from local market to fulfill billing:
+                  Inward stock directly to store counter to fulfill billing:
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="block text-[10px] font-bold text-amber-900 mb-0.5">Quantity Purchased</label>
+                    <label className="block text-[10px] font-bold text-amber-900 mb-0.5">Quantity to Inward</label>
                     <input
                       type="number"
                       min="1"
@@ -3160,10 +3306,10 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                 <button
                   type="button"
                   onClick={handleConfirmLocalPurchase}
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black text-xs py-2.5 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
-                  <span>✅ Inward {zeroStockModal.shiftQty} Units &amp; Continue Billing</span>
+                  <span>Inward {zeroStockModal.shiftQty} Units &amp; Continue Billing</span>
                 </button>
               </div>
             </div>

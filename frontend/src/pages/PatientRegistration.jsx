@@ -370,38 +370,13 @@ function toTitleCase(str) {
             id="thermal-receipt"
             className="bg-white rounded-3xl shadow-2xl border border-slate-300 p-5 font-sans text-slate-900 overflow-hidden"
           >
-            {/* ── Exact Vector Header (Georgia / Times New Roman) ── */}
-            <div className="border-b border-slate-950 pb-1 font-serif text-slate-950">
-              <div className="flex items-center justify-between gap-1">
-                {/* Left: Logo Box (53px x 60px) */}
-                <div className="w-[53px] min-w-[53px] h-[60px] flex items-center justify-center overflow-hidden shrink-0">
-                  <img
-                    src={CLINIC_LOGO_BASE64}
-                    alt="Logo"
-                    className="w-[62px] h-[62px] object-contain block"
-                  />
-                </div>
-
-                {/* Center: Clinic Name (15px) & Subtitle (9px) */}
-                <div className="flex-1 min-w-0 px-0.5 text-left">
-                  <div className="text-[15px] leading-[16px] font-bold text-slate-950 whitespace-nowrap tracking-tight">
-                    M.Ashraf Khan
-                  </div>
-                  <div className="text-[9px] leading-[11px] font-bold text-slate-900 whitespace-nowrap mt-0.5">
-                    Homeopathic Clinic
-                  </div>
-                </div>
-
-                {/* Right: Address & Contact (9.5px) */}
-                <div className="text-right text-[9.5px] leading-[11.5px] font-semibold text-slate-900 whitespace-nowrap shrink-0">
-                  <div>Lajpat Road, Hyderabad</div>
-                  <div>Sindh, Pakistan</div>
-                  <div className="font-bold">
-                    <div>0311 4234777</div>
-                    <div>0343 9376363</div>
-                  </div>
-                </div>
-              </div>
+            {/* ── Exact Header Banner Image ── */}
+            <div className="border-b-2 border-slate-950 pb-1 text-slate-950">
+              <img
+                src={RECEIPT_HEADER_IMAGE_BASE64}
+                alt="Dr. Asif Khan Homoeopathic Clinic"
+                className="w-full object-contain block mx-auto"
+              />
             </div>
 
             {/* ── Print Date & Time Row ── */}

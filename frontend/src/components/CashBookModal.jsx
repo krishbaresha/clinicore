@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { useAuth } from "../hooks/useAuth.js";
 import { dbCashBook, dbAccounts, dbParties, dbSuppliers, dbClinic } from "../api/db.js";
 import { printCashVoucherReceipt } from "../utils/thermalPrinter.js";
 
@@ -162,6 +163,7 @@ function SearchableAccountSelect({
  * DrCreate & MS Access CASHBOOK _FORM Modal Engine
  */
 export default function CashBookModal({ isOpen, onClose }) {
+  const { user } = useAuth();
   // Form State
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [voucherNo, setVoucherNo] = useState("C-5160");
@@ -258,6 +260,7 @@ export default function CashBookModal({ isOpen, onClose }) {
       return;
     }
 
+    const activeCashier = user?.name || user?.full_name || user?.username || "Admin / Cashier";
     const newEntry = dbCashBook.addEntry({
       date,
       voucher_no: voucherNo,
@@ -265,6 +268,7 @@ export default function CashBookModal({ isOpen, onClose }) {
       account_name: accountName,
       naration: naration || (term === "Receive" ? "Cash Received" : "Cash Paid"),
       amount: numAmount,
+      cashier: activeCashier,
     });
 
     if (autoPrint) {
@@ -297,7 +301,8 @@ export default function CashBookModal({ isOpen, onClose }) {
   // Handle Entry Reprint
   const handlePrint = (entry) => {
     const clinicData = dbClinic.get();
-    printCashVoucherReceipt(entry, clinicData);
+    const activeCashier = user?.name || user?.full_name || user?.username || "Admin / Cashier";
+    printCashVoucherReceipt({ ...entry, cashier: entry.cashier || activeCashier }, clinicData);
   };
 
   // Quick Naration Presets

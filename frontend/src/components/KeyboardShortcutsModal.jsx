@@ -77,7 +77,7 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }) {
                     { kbd: "Alt + 6", desc: "Store Inventory & Stock Ledger" },
                     { kbd: "Alt + 7", desc: "Sales Log & Returns" },
                     { kbd: "Alt + 8", desc: "Purchases (GRN Inward)" },
-                    { kbd: "Alt + 9", desc: "Godown & Wholesale B2B" },
+                    { kbd: "Alt + 9", desc: "Wholesale B2B & Parties" },
                     { kbd: "Alt + 0", desc: "Patients Directory & EMR" },
                     { kbd: "Alt + F", desc: "Fees & CashBook Register" },
                     { kbd: "F12 / ?", desc: "Open / Close This Shortcut Deck" },

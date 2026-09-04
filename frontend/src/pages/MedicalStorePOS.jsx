@@ -198,10 +198,8 @@ export default function MedicalStorePOS() {
   const [showRxModal, setShowRxModal] = useState(false);
 
   // ── Smart POS Stock-Out Replenishment Modal State ──
-  const [replenishModalItem, setReplenishModalItem] = useState(null); // { item, requestedQty, godownStock, storeStock }
-  const [replenishMode, setReplenishMode] = useState("transfer"); // "transfer" | "emergency_purchase"
-  const [replenishSourceGodown, setReplenishSourceGodown] = useState("");
-  const [replenishTransferQty, setReplenishTransferQty] = useState("10");
+  const [replenishModalItem, setReplenishModalItem] = useState(null); // { item, requestedQty, storeStock }
+  const [replenishMode, setReplenishMode] = useState("emergency_purchase");
   const [replenishPurchaseVendor, setReplenishPurchaseVendor] = useState("");
   const [replenishPurchaseQty, setReplenishPurchaseQty] = useState("20");
   const [replenishPurchaseRate, setReplenishPurchaseRate] = useState("");
@@ -544,65 +542,19 @@ export default function MedicalStorePOS() {
   const openReplenishModal = (invItem, neededQty = 1) => {
     const inv = dbInventory.getById(invItem.id || invItem.inventory_id) || invItem;
     const storeAvail = inv.store_stock ?? inv.stock_qty ?? 0;
-    const godownAvail = inv.godown_stock ?? (inv.total_base_stock ? Math.max(0, inv.total_base_stock - storeAvail) : 0);
-    const warehouses = dbWarehouses.getAll() || [];
-    const nonStoreWh = warehouses.find((w) => !w.is_store_counter && w.status === "active");
 
     setReplenishModalItem({
       item: inv,
       requestedQty: neededQty,
       storeStock: storeAvail,
-      godownStock: godownAvail,
     });
-    setReplenishMode(godownAvail > 0 ? "transfer" : "emergency_purchase");
-    setReplenishSourceGodown(nonStoreWh?.id || "wh_001");
-    setReplenishTransferQty(String(Math.max(neededQty, 10)));
+    setReplenishMode("emergency_purchase");
     setReplenishPurchaseQty(String(Math.max(neededQty, 20)));
     setReplenishPurchaseRate(String(inv.cost_price || inv.trade_price || inv.unit_sale_price || "0"));
     const sups = dbSuppliers.getAll() || [];
     const localSup = sups.find((s) => s.is_local_market || s.name.toLowerCase().includes("local") || s.name.toLowerCase().includes("market"));
     setReplenishPurchaseVendor(localSup?.id || sups[0]?.id || "");
     setShowNewVendorInline(false);
-  };
-
-  const handleApplyGodownTransfer = () => {
-    if (!replenishModalItem) return;
-    const qty = parseInt(replenishTransferQty) || 0;
-    if (qty <= 0) {
-      alert("Please enter a valid transfer quantity.");
-      return;
-    }
-    const inv = dbInventory.getById(replenishModalItem.item.id);
-    if (!inv) return;
-
-    // Execute transfer in DB
-    const currentStore = inv.store_stock ?? 0;
-    const currentGodown = inv.godown_stock ?? (inv.total_base_stock ? Math.max(0, inv.total_base_stock - currentStore) : 0);
-    const newStore = currentStore + qty;
-    const newGodown = Math.max(0, currentGodown - qty);
-
-    dbInventory.update(inv.id, {
-      store_stock: newStore,
-      godown_stock: newGodown,
-      stock_qty: newStore,
-      total_base_stock: newStore + newGodown,
-    });
-
-    if (dbStockTransfers && typeof dbStockTransfers.create === "function") {
-      dbStockTransfers.create({
-        medicine_id: inv.id,
-        medicine_name: inv.medicine_name || inv.name,
-        from_warehouse_id: replenishSourceGodown || "wh_001",
-        to_warehouse_id: "wh_str",
-        quantity: qty,
-        notes: "Smart POS Auto Stock-Out Transfer",
-      });
-    }
-
-    setInventoryResults(dbInventory.getAll());
-    const targetItem = replenishModalItem.item;
-    setReplenishModalItem(null);
-    addToCart(targetItem, replenishModalItem.requestedQty || 1);
   };
 
   const handleApplyEmergencyPurchase = () => {
@@ -1443,93 +1395,22 @@ export default function MedicalStorePOS() {
               </button>
             </div>
 
-            {/* Current Stock Availability Cards */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-center">
-                <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">Store Counter Stock</span>
-                <span className="text-xl font-black text-rose-900">{replenishModalItem.storeStock}</span>
-                <span className="text-[10px] text-rose-600 font-semibold block mt-0.5">Out of Stock</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Warehouse Godown Stock</span>
-                <span className="text-xl font-black text-emerald-900">{replenishModalItem.godownStock}</span>
-                <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">
-                  {replenishModalItem.godownStock > 0 ? "✓ Units Available" : "0 in Godown"}
-                </span>
-              </div>
+            {/* Current Stock Availability */}
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-center">
+              <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">Store Pharmacy Stock</span>
+              <span className="text-xl font-black text-rose-900">{replenishModalItem.storeStock} units</span>
+              <span className="text-[10px] text-rose-600 font-semibold block mt-0.5">Out of Stock / Low Quantity</span>
             </div>
 
-            {/* Strategy Tabs: Transfer vs Emergency Purchase */}
-            <div className="flex bg-gray-100 p-1 rounded-2xl gap-1">
-              <button
-                type="button"
-                onClick={() => setReplenishMode("transfer")}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  replenishMode === "transfer"
-                    ? "bg-white text-teal-900 shadow-xs border border-gray-200"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                🏢 Option A: Godown Transfer
-              </button>
-              <button
-                type="button"
-                onClick={() => setReplenishMode("emergency_purchase")}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  replenishMode === "emergency_purchase"
-                    ? "bg-white text-teal-900 shadow-xs border border-gray-200"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                ⚡ Option B: Local Emergency Purchase
-              </button>
-            </div>
-
-            {/* Option A: Transfer Form */}
-            {replenishMode === "transfer" ? (
-              <div className="space-y-3 bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
-                <p className="text-xs text-teal-900 leading-relaxed font-medium">
-                  Transfer units directly from Central Godown to the Store Counter shelf so billing can continue immediately.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Source Godown</label>
-                    <select
-                      value={replenishSourceGodown}
-                      onChange={(e) => setReplenishSourceGodown(e.target.value)}
-                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-800"
-                    >
-                      {(dbWarehouses.getAll() || []).filter((w) => !w.is_store_counter).map((w) => (
-                        <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Transfer Qty</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={replenishTransferQty}
-                      onChange={(e) => setReplenishTransferQty(e.target.value)}
-                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 text-center font-mono"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleApplyGodownTransfer}
-                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-xs flex items-center justify-center gap-1.5"
-                >
-                  <span className="material-symbols-outlined text-sm">move_to_inbox</span>
-                  Confirm Transfer &amp; Add to Cart
-                </button>
+            {/* Emergency Local Purchase / Inward Form */}
+            <div className="space-y-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-700 text-base">storefront</span>
+                <h4 className="text-xs font-black text-amber-950">Emergency Local Market / Store Purchase</h4>
               </div>
-            ) : (
-              /* Option B: Emergency Local Purchase Form */
-              <div className="space-y-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
-                <p className="text-xs text-amber-900 leading-relaxed font-medium">
-                  Buy from a nearby local market vendor. You can record it as <b>Unpaid (Pay at Night Closing)</b> to maintain an automatic ledger!
-                </p>
+              <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                Buy emergency units from a nearby vendor or record local inward to fulfill billing immediately.
+              </p>
 
                 {!showNewVendorInline ? (
                   <div>

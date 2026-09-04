@@ -163,7 +163,7 @@ export function generateCliniCoreEmailTemplate({
                     <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 4px; font-family: monospace;">
                       Rs. ${Number(totalStockValuation).toLocaleString("en-US")}
                     </div>
-                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Central Godown &amp; Pharmacy</div>
+                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Main Pharmacy &amp; Store</div>
                   </td>
                 </tr>
                 <tr><td height="12" colspan="3"></td></tr>

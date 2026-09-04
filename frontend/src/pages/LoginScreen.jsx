@@ -18,9 +18,9 @@ export default function LoginScreen() {
   const [search, setSearch] = useState("");
   const [liveAppVersion, setLiveAppVersion] = useState(() => {
     try {
-      return localStorage.getItem("cf_applied_version") || (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.3";
+      return (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || localStorage.getItem("cf_applied_version") || "2.5.9";
     } catch {
-      return "2.5.3";
+      return "2.5.9";
     }
   });
 
@@ -93,13 +93,6 @@ export default function LoginScreen() {
       color: "from-emerald-700 to-emerald-600",
       description: "Prescriptions & diagnoses.",
       roles: ["doctor", "owner", "admin"]
-    },
-    warehouse: {
-      title: "Warehouse & stock logs",
-      icon: "warehouse",
-      color: "from-indigo-700 to-indigo-600",
-      description: "Stock ledgers & godowns.",
-      roles: ["warehouse_incharge", "manager", "owner", "admin"]
     }
   };
 
@@ -227,19 +220,19 @@ export default function LoginScreen() {
               <p className="text-xs text-slate-500 mt-1.5"></p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-md mx-auto">
               {Object.entries(PORTAL_METRICS).map(([key, data]) => (
                 <button
                   key={key}
                   onClick={() => handlePortalSelect(key)}
-                  className="bg-white border-2 border-slate-100 hover:border-teal-600/80 rounded-3xl p-5 text-left transition-all active:scale-[0.98] cursor-pointer shadow-sm hover:shadow-md flex flex-col justify-between h-52 group"
+                  className="bg-white border-2 border-slate-100 hover:border-teal-600/80 rounded-3xl p-6 text-left transition-all active:scale-[0.98] cursor-pointer shadow-sm hover:shadow-md flex flex-col justify-between h-56 group"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-colors">
-                    <span className="material-symbols-outlined text-2xl">{data.icon}</span>
+                  <div className="w-14 h-14 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-colors shadow-xs">
+                    <span className="material-symbols-outlined text-3xl">{data.icon}</span>
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm text-slate-900 group-hover:text-teal-950 capitalize">{key === "clinic" ? "OPD & Counter POS" : data.title}</h3>
-                    <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">{data.description}</p>
+                    <h3 className="font-extrabold text-base text-slate-900 group-hover:text-teal-950 capitalize">{key === "clinic" ? "OPD & Counter POS" : data.title}</h3>
+                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{data.description}</p>
                   </div>
                 </button>
               ))}

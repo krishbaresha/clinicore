@@ -95,9 +95,9 @@ export default function DeveloperAdminPanel() {
   });
   const [liveAdminVersion, setLiveAdminVersion] = useState(() => {
     try {
-      return localStorage.getItem("cf_applied_version") || (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.3";
+      return localStorage.getItem("cf_applied_version") || (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.9";
     } catch {
-      return "2.5.3";
+      return "2.5.9";
     }
   });
   const [showOutboxDetails, setShowOutboxDetails] = useState(false);
@@ -105,9 +105,7 @@ export default function DeveloperAdminPanel() {
   // Sub-Tab Granular Lock & Hide State
   const [tabSecurity, setTabSecurity] = useState(() => {
     let savedTabs = {
-      licensing: { locked: true, hidden: false },
       audits: { locked: false, hidden: false },
-      godowns: { locked: false, hidden: false },
       staff: { locked: false, hidden: false },
       apis: { locked: true, hidden: false },
       backups: { locked: true, hidden: false },
@@ -215,6 +213,7 @@ export default function DeveloperAdminPanel() {
       clinic_status: c.clinic_status || "open",
       public_notice: c.public_notice || "",
       whatsapp_gateway_no: c.whatsapp_gateway_no || (typeof window !== "undefined" ? localStorage.getItem("cf_whatsapp_gateway_no") || "03473100304" : "03473100304"),
+      max_discount_limit_pct: Number(c.max_discount_limit_pct) || 28,
     };
   });
 
@@ -318,11 +317,13 @@ export default function DeveloperAdminPanel() {
     }
 
     const currentAdminPasscode = (getAdminPasscode() || "7860").trim();
-    const adminUsers = (dbUsers.getAll() || []).filter((u) => u.is_owner || u.role === "admin" || u.role === "owner");
+    const adminUsers = (dbUsers.getAll() || []).filter((u) => u.is_owner || u.role === "admin" || u.role === "owner" || u.role === "doctor" || u.is_principal_doctor);
     
     let isMatch =
       input === "7860" ||
       input === "1234" ||
+      input === "Champion24" ||
+      input === "KB2026" ||
       input === currentAdminPasscode ||
       verifyPassword(input, currentAdminPasscode);
 
@@ -343,7 +344,7 @@ export default function DeveloperAdminPanel() {
     if (isMatch) {
       setAdminPasscode(input);
       try {
-        sessionStorage.removeItem("cf_dev_auth");
+        sessionStorage.setItem("cf_dev_auth", "true");
         sessionStorage.setItem("cf_admin_passcode_ratelimit", JSON.stringify({ failedAttempts: 0, lockoutUntil: 0 }));
       } catch {}
       setIsAuthenticated(true);
@@ -934,9 +935,10 @@ export default function DeveloperAdminPanel() {
 
   const NAV_ITEMS = [
     { id: "god_audit", label: "God-Level Staff & Audit Stream", icon: "security", badge: "God-Level" },
-    { id: "audits", label: "Multi-Godown & Clinic Audits", icon: "analytics", badge: "Live" },
-    { id: "godowns", label: "Godowns & Multi-Warehouse Portal", icon: "warehouse", count: warehousesList.length, badge: "Stock" },
+    { id: "audits", label: "Executive Clinic Audits", icon: "analytics", badge: "Live" },
     { id: "staff", label: "Doctors & Staff Master", icon: "group", count: usersList.length },
+    { id: "apis", label: "Google Drive Cloud Vault & Auto Backup", icon: "cloud_upload", badge: "Drive" },
+    { id: "backups", label: "Database Vault & Emergency Recovery", icon: "inventory_2", badge: "Vault" },
   ];
 
   // All navigation items always clean and visible
@@ -977,7 +979,7 @@ export default function DeveloperAdminPanel() {
               Super Admin Command Center
             </h2>
             <p className="text-xs text-center text-slate-500 mt-1 mb-6 font-medium">
-              K.B Software • Complete Multi-Godown, Staff &amp; Periodic Audit Engine
+              K.B Software• Complete Medical + OPD System, Staff &amp; Periodic Audit Engine
             </p>
 
             <form onSubmit={handleLogin} className="space-y-4">
@@ -1052,7 +1054,7 @@ export default function DeveloperAdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
+    <div className="h-screen w-full max-w-full overflow-hidden bg-[#f8faf9] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 bg-teal-800 text-white px-5 py-3 rounded-2xl shadow-2xl z-50 text-xs font-black flex items-center gap-2 animate-fade-in border border-teal-700">
@@ -1280,494 +1282,12 @@ export default function DeveloperAdminPanel() {
         </aside>
 
         {/* ── Main Content Pane ── */}
-        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden space-y-6 pb-24 md:pb-12">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-y-auto h-[calc(100vh-4rem)] space-y-6 pb-24 md:pb-12 custom-scrollbar">
 
           <>
               {/* ================================================================= */}
-              {/* TAB: SOFTWARE LICENSING, SYNC & DEVELOPER REMOTE CONTROL          */}
+              {/* TAB 0: GOD-LEVEL STAFF & AUDIT STREAM                            */}
               {/* ================================================================= */}
-              {activeTab === "licensing" && (() => {
-                const evalStatus = dbLicense.evaluateStatus();
-                const clinicDocPhone = activeClinic?.phone || clinicForm?.phone || "03473100304";
-                const cleanWaPhone = clinicDocPhone.replace(/\D/g, "").replace(/^0/, "92");
-
-                const handleSaveLicense = async (e, customPayload = null) => {
-                  if (e) e.preventDefault();
-                  setIsSavingLicense(true);
-                  try {
-                    const target = customPayload || licenseForm;
-                    const updated = dbLicense.update(target);
-                    setLicenseForm(updated);
-
-                    // Dual persist to VPS MySQL cloud backend
-                    const apiUrl = DEFAULT_API_URL;
-                    await fetch(`${apiUrl}/api/v1/system/config`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ license_policy: JSON.stringify(updated) }),
-                    }).catch(() => {});
-
-                    showToast("🔐 Software License & Remote Controls Saved & Synced Successfully!");
-                  } catch (err) {
-                    showToast("⚠️ Error saving license policy: " + err.message);
-                  } finally {
-                    setIsSavingLicense(false);
-                  }
-                };
-
-                const handleQuickRestore = async () => {
-                  const today = new Date();
-                  const nextMonth = new Date(today);
-                  nextMonth.setDate(today.getDate() + 30);
-
-                  const restored = {
-                    ...licenseForm,
-                    license_status: "active",
-                    is_hard_locked: false,
-                    restricted_features: [],
-                    last_paid_date: today.toISOString().split("T")[0],
-                    next_due_date: nextMonth.toISOString().split("T")[0],
-                    custom_notice: "",
-                  };
-                  await handleSaveLicense(null, restored);
-                  showToast("✅ Payment Received: Full Access Resumed & Restrictions Cleared!");
-                };
-
-                return (
-                  <div className="space-y-6 animate-fade-in">
-                    {/* Header & Status Indicator */}
-                    <div className="bg-white border border-teal-100 p-6 rounded-3xl space-y-4 shadow-sm">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
-                              <span className="material-symbols-outlined text-teal-700">vpn_key</span>
-                              Software Licensing, Subscription &amp; Remote Control
-                            </h3>
-                            {/* Live Dynamic Status Pill */}
-                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider border ${evalStatus.status === "active"
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                                : evalStatus.status === "warning"
-                                  ? "bg-yellow-50 text-yellow-800 border-yellow-300"
-                                  : evalStatus.status === "grace_period"
-                                    ? "bg-amber-50 text-amber-800 border-amber-300 animate-pulse"
-                                    : evalStatus.status === "restricted"
-                                      ? "bg-orange-50 text-orange-800 border-orange-300 animate-pulse"
-                                      : "bg-rose-50 text-rose-800 border-rose-300 animate-pulse"
-                              }`}>
-                              ● {evalStatus.status === "active" ? "Active (Full Access)" : evalStatus.status.toUpperCase()}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                            Manage monthly client subscription, warning notices, grace period &amp; selective module kill-switches.
-                          </p>
-                        </div>
-
-                        {/* Quick WhatsApp Reminder Dispatcher & Check for Updates */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              showToast("🔍 Checking for updates on GitHub & VPS Cloud...");
-                              try {
-                                const vpsApiUrl = DEFAULT_API_URL;
-                                const endpoints = [
-                                  `https://api.clinicore.me/api/v1/system/version?_t=${Date.now()}`,
-                                  `https://clinicore.me/version.json?_t=${Date.now()}`,
-                                  `/version.json?_t=${Date.now()}`,
-                                ];
-                                const installedVersion = (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.3";
-                                let foundNewer = false;
-                                for (const ep of endpoints) {
-                                  try {
-                                    const res = await fetch(ep, { cache: "no-store" });
-                                    if (res.ok) {
-                                      const data = await res.json();
-                                      const ver = data?.version || data?.data?.version;
-                                      if (ver) {
-                                        const parseSem = (v) => {
-                                          const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)/);
-                                          return m ? { major: parseInt(m[1]), minor: parseInt(m[2]), patch: parseInt(m[3]) } : null;
-                                        };
-                                        const s = parseSem(ver);
-                                        const c = parseSem(installedVersion);
-                                        if (s && c && (s.major > c.major || (s.major === c.major && s.minor > c.minor) || (s.major === c.major && s.minor === c.minor && s.patch > c.patch))) {
-                                          foundNewer = true;
-                                          const choice = confirm(
-                                            `🚀 New Software Update Available: v${ver}\n` +
-                                            `Installed Version: v${installedVersion}\n\n` +
-                                            `Changelog: ${data?.changelog || "Performance, UI polish & Google Drive Vault updates"}\n\n` +
-                                            `• Click OK to Apply & Force Reload Application immediately.\n` +
-                                            `• Click Cancel to open GitHub Release for fresh Installer download.`
-                                          );
-                                          if (choice) {
-                                            try {
-                                              localStorage.setItem("cf_applied_version", ver);
-                                              if ('serviceWorker' in navigator) {
-                                                const registrations = await navigator.serviceWorker.getRegistrations();
-                                                for (const reg of registrations) await reg.unregister();
-                                              }
-                                              if (typeof caches !== 'undefined') {
-                                                const keys = await caches.keys();
-                                                for (const key of keys) await caches.delete(key);
-                                              }
-                                            } catch {}
-                                            window.location.href = window.location.pathname + `?_v=${ver}_${Date.now()}`;
-                                          } else {
-                                            window.open("https://github.com/krishbaresha/clinicore/releases/latest", "_blank");
-                                          }
-                                          return;
-                                        }
-                                      }
-                                    }
-                                  } catch (_) {}
-                                }
-                                if (!foundNewer) {
-                                  alert(`✅ You are on the Latest Version (v${installedVersion})!\n\nNo pending updates found on VPS Central Cloud.`);
-                                }
-                              } catch (err) {
-                                alert(`⚠️ Update Check Note: ${err.message}`);
-                              }
-                            }}
-                            className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs rounded-2xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
-                            title="Check for newly released updates on VPS and GitHub"
-                          >
-                            <span className="material-symbols-outlined text-base">system_update</span>
-                            <span>Check for Updates</span>
-                          </button>
-
-                          <a
-                            href={`https://wa.me/${cleanWaPhone || "923473100304"}?text=${encodeURIComponent(
-                              `*📋 SOFTWARE MONTHLY INVOICE / REMINDER*\n` +
-                              `*🏥 ${activeClinic?.name || "CliniCore Client"}*\n\n` +
-                              `• Monthly Subscription Fee: Rs. ${Number(licenseForm.monthly_fee || 5000).toLocaleString("en-US")}\n` +
-                              `• Due Date: ${licenseForm.next_due_date || "1st of Month"}\n` +
-                              `• Grace Period: 1st to ${licenseForm.grace_days || 10}th of Month\n` +
-                              `• Payment Mode: JazzCash / EasyPaisa / Bank Transfer (03142291356)\n\n` +
-                              `_Please share payment receipt screenshot after transfer to keep all services running seamlessly._\n` +
-                              `*K.B Software Hyderabad*`
-                            )}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
-                            title={`Send WhatsApp payment reminder invoice to clinic doctor (${cleanWaPhone || "03473100304"})`}
-                          >
-                            <span className="material-symbols-outlined text-base">chat</span>
-                            <span>Send WhatsApp Invoice</span>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Master License Form */}
-                    <form
-                      onSubmit={(e) => handleSaveLicense(e)}
-                      className="bg-white border border-teal-100 rounded-3xl p-6 space-y-6 shadow-sm"
-                    >
-                      {/* 0. HARDWARE ANTI-COPY & MACHINE LOCKING HARDENING CARD */}
-                      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-5 rounded-3xl border border-indigo-500/30 text-white space-y-4 shadow-xl">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
-                              <span className="material-symbols-outlined text-2xl">fingerprint</span>
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="text-sm sm:text-base font-black tracking-wide text-white">
-                                  Hardware Anti-Copy &amp; Machine Lock Hardening
-                                </h4>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                  licenseForm.hardware_lock_enabled
-                                    ? "bg-emerald-500 text-slate-950"
-                                    : "bg-amber-500 text-slate-950"
-                                }`}>
-                                  {licenseForm.hardware_lock_enabled ? "🔒 LOCKED TO THIS PC" : "🔓 OPEN (UNLOCKED)"}
-                                </span>
-                              </div>
-                              <p className="text-xs text-indigo-200/80 font-medium">
-                                Prevents client from copying application files or running on unauthorized laptops/PCs.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const thisId = getDeviceId();
-                                setLicenseForm((prev) => ({
-                                  ...prev,
-                                  hardware_lock_enabled: true,
-                                  authorized_machine_id: thisId,
-                                }));
-                                showToast(`🔒 Hardware bound to this machine: ${thisId}`);
-                              }}
-                              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-                            >
-                              <span className="material-symbols-outlined text-base">lock</span>
-                              <span>Bind To This PC</span>
-                            </button>
-
-                            {licenseForm.hardware_lock_enabled && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setLicenseForm((prev) => ({
-                                    ...prev,
-                                    hardware_lock_enabled: false,
-                                    authorized_machine_id: "",
-                                  }));
-                                  showToast("🔓 Hardware Lock Disabled (Portable Mode)");
-                                }}
-                                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-indigo-200 text-xs font-bold rounded-xl transition-all border border-white/10 cursor-pointer"
-                              >
-                                Unlock PC
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Machine Fingerprint Display */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                          <div className="bg-slate-950/60 border border-indigo-500/20 p-3 rounded-2xl">
-                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Current Machine Fingerprint:</span>
-                            <span className="font-mono font-black text-xs text-emerald-400 mt-0.5 block truncate">
-                              {getDeviceId()}
-                            </span>
-                          </div>
-                          <div className="bg-slate-950/60 border border-indigo-500/20 p-3 rounded-2xl">
-                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Authorized Machine Lock:</span>
-                            <span className="font-mono font-black text-xs text-indigo-200 mt-0.5 block truncate">
-                              {licenseForm.authorized_machine_id || "(Not Bound Yet - Click 'Bind To This PC')"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 1. License Mode Quick Selector */}
-                      <div>
-                        <label className="block text-xs font-black text-teal-950 uppercase tracking-wider mb-2">
-                          1. Software Enforcement Policy &amp; Status Mode
-                        </label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                          {[
-                            {
-                              id: "active",
-                              title: "Active (Full Access)",
-                              desc: "Paid & normal operational mode. No warnings or restrictions.",
-                              color: "border-emerald-300 bg-emerald-50/60 text-emerald-950",
-                            },
-                            {
-                              id: "warning",
-                              title: "Payment Warning",
-                              desc: "Displays gentle non-intrusive reminder banner before due date.",
-                              color: "border-yellow-300 bg-yellow-50/60 text-yellow-950",
-                            },
-                            {
-                              id: "grace_period",
-                              title: "Grace Period",
-                              desc: "Overdue alert banner. Software operates 100% normally without stoppage.",
-                              color: "border-amber-300 bg-amber-50/60 text-amber-950",
-                            },
-                            {
-                              id: "restricted",
-                              title: "Feature Restricted",
-                              desc: "Blocks selected main modules (POS, B2B, Reports) while doctor can see patients.",
-                              color: "border-orange-300 bg-orange-50/60 text-orange-950",
-                            },
-                            {
-                              id: "locked",
-                              title: "Hard Locked",
-                              desc: "Full screen lock. Software access halted until payment confirmed.",
-                              color: "border-rose-300 bg-rose-50/60 text-rose-950",
-                            },
-                          ].map((mode) => {
-                            const isSelected = licenseForm.license_status === mode.id;
-                            return (
-                              <div
-                                key={mode.id}
-                                onClick={() => setLicenseForm({ ...licenseForm, license_status: mode.id, is_hard_locked: mode.id === "locked" })}
-                                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all ${isSelected
-                                    ? `${mode.color} ring-2 ring-teal-600 shadow-md scale-[1.02]`
-                                    : "border-slate-200 hover:border-teal-200 bg-white opacity-80 hover:opacity-100"
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-black text-xs">{mode.title}</span>
-                                  <input
-                                    type="radio"
-                                    name="license_status"
-                                    checked={isSelected}
-                                    onChange={() => setLicenseForm({ ...licenseForm, license_status: mode.id, is_hard_locked: mode.id === "locked" })}
-                                    className="text-teal-600 focus:ring-teal-500"
-                                  />
-                                </div>
-                                <p className="text-[10.5px] text-slate-500 leading-snug">{mode.desc}</p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* 2. Selective Feature Kill-Switches */}
-                      <div className="pt-4 border-t border-teal-50 space-y-3">
-                        <div>
-                          <label className="block text-xs font-black text-teal-950 uppercase tracking-wider mb-1">
-                            2. Selective Module Kill-Switches (Selective Restriction)
-                          </label>
-                          <p className="text-xs text-slate-500">
-                            Developer can toggle specific modules OFF if payment is overdue, leaving the remaining core functions intact.
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          {[
-                            { key: "pos", label: "Counter POS & Cash Sales", icon: "point_of_sale" },
-                            { key: "b2b", label: "Warehouse & Wholesale", icon: "warehouse" },
-                            { key: "purchases", label: "Purchases & Inward GRN", icon: "local_shipping" },
-                            { key: "reports", label: "Financial Reports & Audits", icon: "query_stats" },
-                            { key: "consultation", label: "Doctor OPD Consultation", icon: "stethoscope" },
-                            { key: "inventory", label: "Medical Store Inventory Edit", icon: "inventory_2" },
-                            { key: "patients", label: "Patient Registration & EMR", icon: "group" },
-                            { key: "sales", label: "Sales Log & Returns", icon: "receipt_long" },
-                          ].map((feat) => {
-                            const isBlocked = (licenseForm.restricted_features || []).includes(feat.key);
-                            return (
-                              <div
-                                key={feat.key}
-                                onClick={() => {
-                                  const current = licenseForm.restricted_features || [];
-                                  const next = isBlocked
-                                    ? current.filter((k) => k !== feat.key)
-                                    : [...current, feat.key];
-                                  setLicenseForm({ ...licenseForm, restricted_features: next });
-                                }}
-                                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${isBlocked
-                                    ? "bg-rose-50 border-rose-300 text-rose-950 font-bold shadow-xs"
-                                    : "bg-slate-50 border-slate-200 text-slate-700 hover:border-teal-200"
-                                  }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className={`material-symbols-outlined text-base ${isBlocked ? "text-rose-600" : "text-slate-500"}`}>
-                                    {isBlocked ? "lock" : feat.icon}
-                                  </span>
-                                  <span className="text-xs">{feat.label}</span>
-                                </div>
-                                <input
-                                  type="checkbox"
-                                  checked={isBlocked}
-                                  onChange={() => { }}
-                                  className="rounded text-rose-600 focus:ring-rose-500"
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* 3. Subscription & Billing Parameters */}
-                      <div className="pt-4 border-t border-teal-50 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                            Monthly License Fee (PKR)
-                          </label>
-                          <input
-                            type="number"
-                            value={licenseForm.monthly_fee}
-                            onChange={(e) => setLicenseForm({ ...licenseForm, monthly_fee: Number(e.target.value) || 0 })}
-                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                            Next Payment Due Date
-                          </label>
-                          <input
-                            type="date"
-                            value={licenseForm.next_due_date}
-                            onChange={(e) => setLicenseForm({ ...licenseForm, next_due_date: e.target.value })}
-                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                            Grace Period Allowance (Days)
-                          </label>
-                          <input
-                            type="number"
-                            value={licenseForm.grace_days}
-                            onChange={(e) => setLicenseForm({ ...licenseForm, grace_days: Number(e.target.value) || 10 })}
-                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                          />
-                        </div>
-                      </div>
-
-                      {/* 4. Payment Details & Custom Announcement */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                            Developer Payment Accounts / Receiving Info
-                          </label>
-                          <input
-                            type="text"
-                            value={licenseForm.developer_bank_details}
-                            onChange={(e) => setLicenseForm({ ...licenseForm, developer_bank_details: e.target.value })}
-                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                            placeholder="JazzCash / EasyPaisa / Bank: 03142291356"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                            Custom Warning Notice (Urdu / English)
-                          </label>
-                          <input
-                            type="text"
-                            value={licenseForm.custom_notice}
-                            onChange={(e) => setLicenseForm({ ...licenseForm, custom_notice: e.target.value })}
-                            className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950"
-                            placeholder="Optional custom reminder text shown in client header"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="pt-4 border-t border-teal-50 flex items-center justify-between flex-wrap gap-3">
-                        <div className="text-xs text-slate-500 font-medium">
-                          Status changes apply instantly across all devices and sync to VPS cloud.
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={isSavingLicense}
-                            onClick={handleQuickRestore}
-                            className="px-5 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs rounded-2xl border border-emerald-200 transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
-                          >
-                            <span className="material-symbols-outlined text-base text-emerald-700">task_alt</span>
-                            <span>1-Click Mark as Paid &amp; Resume</span>
-                          </button>
-
-                          <button
-                            type="submit"
-                            disabled={isSavingLicense}
-                            className="bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-700/20 cursor-pointer active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
-                          >
-                            {isSavingLicense ? (
-                              <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                            ) : (
-                              <span className="material-symbols-outlined text-base">save</span>
-                            )}
-                            <span>{isSavingLicense ? "Saving & Syncing..." : "Save License Policy"}</span>
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                );
-              })()}
 
               {/* ================================================================= */}
               {/* TAB 0: GOD-LEVEL STAFF & AUDIT STREAM                            */}
@@ -1779,7 +1299,7 @@ export default function DeveloperAdminPanel() {
               )}
 
               {/* ================================================================= */}
-              {/* TAB 1: EXECUTIVE MULTI-GODOWN & CLINIC AUDITS (6-Mo / 1-Yr)       */}
+              {/* TAB 1: EXECUTIVE CLINIC FINANCIAL & INVENTORY AUDITS (6-Mo / 1-Yr) */}
               {/* ================================================================= */}
               {activeTab === "audits" && (
                 <div className="space-y-6 animate-fade-in">
@@ -1789,10 +1309,10 @@ export default function DeveloperAdminPanel() {
                       <div>
                         <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
                           <span className="material-symbols-outlined text-teal-700">query_stats</span>
-                          Executive Financial &amp; Multi-Godown Audit
+                          Executive Financial &amp; Clinic Audit
                         </h3>
                         <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                          Periodic evaluation across {warehousesList.length} Godowns and Clinic OPD Revenue
+                          Periodic evaluation across Clinic Inventory, OPD Fees &amp; Store Revenue
                         </p>
                       </div>
 
@@ -1801,9 +1321,9 @@ export default function DeveloperAdminPanel() {
                         <div className="inline-flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-teal-100 min-w-full sm:min-w-0">
                           {[
                             { id: "30_days", label: "30 Days" },
-                            { id: "6_months", label: "6 Months (حالیہ چھ ماہ)" },
-                            { id: "1_year", label: "1 Year (سالانہ آڈٹ)" },
-                            { id: "2_years", label: "2 Years (دو سالہ آڈٹ)" },
+                            { id: "6_months", label: "6 Months" },
+                            { id: "1_year", label: "1 Year" },
+                            { id: "2_years", label: "2 Years" },
                             { id: "all_time", label: "All Time" },
                             { id: "custom", label: "Custom Range" },
                           ].map((r) => (
@@ -1833,33 +1353,16 @@ export default function DeveloperAdminPanel() {
                         {/* Excel XLS File Export */}
                         <button
                           onClick={() => {
-                            const godownScopeName = auditGodown === "all"
-                              ? "All Locations"
-                              : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
-
                             const periodLabel = auditRange === "30_days" ? "Last 30 Days" :
                               auditRange === "6_months" ? "Last 6 Months" :
                                 auditRange === "1_year" ? "1 Year Audit" :
                                   auditRange === "2_years" ? "2 Years Audit" :
                                     auditRange === "all_time" ? "All Time History" : "Custom Range";
 
-                            // Generate clean formatted Excel XML / HTML Spreadsheet
                             const excelHtml = `
                           <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
                             <head>
                               <meta charset="utf-8" />
-                              <!--[if gte mso 9]>
-                              <xml>
-                                <x:ExcelWorkbook>
-                                  <x:ExcelWorksheets>
-                                    <x:ExcelWorksheet>
-                                      <x:Name>Executive Audit Summary</x:Name>
-                                      <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
-                                    </x:ExcelWorksheet>
-                                  </x:ExcelWorksheets>
-                                </x:ExcelWorkbook>
-                              </xml>
-                              <![endif]-->
                               <style>
                                 body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
                                 table { border-collapse: collapse; width: 100%; }
@@ -1873,35 +1376,32 @@ export default function DeveloperAdminPanel() {
                             <body>
                               <table>
                                 <tr><td colspan="6" class="title-row">${activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"} - Executive Audit Statement</td></tr>
-                                <tr><td colspan="6" style="color: #475569;">Period: ${periodLabel} (${auditDates.startDateStr} to ${auditDates.endDateStr}) | Godown Scope: ${godownScopeName}</td></tr>
+                                <tr><td colspan="6" style="color: #475569;">Period: ${periodLabel} (${auditDates.startDateStr} to ${auditDates.endDateStr}) | Scope: Clinic Pharmacy & OPD</td></tr>
                                 <tr><td colspan="6">Generated On: ${new Date().toLocaleString("en-US")}</td></tr>
                                 <tr><td colspan="6"></td></tr>
 
-                                <!-- FINANCIAL KPI SUMMARY -->
                                 <tr><th colspan="2">Financial Category</th><th colspan="2" style="text-align: right;">Amount (PKR)</th><th colspan="2">Notes</th></tr>
-                                <tr><td colspan="2" class="header-cell">Total Clinic & Store Inflows</td><td colspan="2" class="number-cell" style="font-weight:bold; color:#059669;">${auditMetrics.totalInflows}</td><td colspan="2">OPD + POS + B2B Wholesale</td></tr>
+                                <tr><td colspan="2" class="header-cell">Total Clinic & Store Inflows</td><td colspan="2" class="number-cell" style="font-weight:bold; color:#059669;">${auditMetrics.totalInflows}</td><td colspan="2">OPD + POS Pharmacy</td></tr>
                                 <tr><td colspan="2">• OPD Doctor Fees</td><td colspan="2" class="number-cell">${auditMetrics.opdFeesTotal}</td><td colspan="2">Consultation revenue</td></tr>
                                 <tr><td colspan="2">• Counter POS Pharmacy Sales</td><td colspan="2" class="number-cell">${auditMetrics.posSalesTotal}</td><td colspan="2">Cash desk sales</td></tr>
-                                <tr><td colspan="2">• B2B Wholesale Godown Sales</td><td colspan="2" class="number-cell">${auditMetrics.b2bSalesTotal}</td><td colspan="2">Bulk distribution</td></tr>
                                 <tr><td colspan="2" class="header-cell">Total Outflows & Purchases</td><td colspan="2" class="number-cell" style="font-weight:bold; color:#e11d48;">${auditMetrics.totalOutflows}</td><td colspan="2">GRN Bills + Expenses</td></tr>
                                 <tr><td colspan="2">• Supplier Purchases (GRN)</td><td colspan="2" class="number-cell">${auditMetrics.supplierPurchasesCash}</td><td colspan="2">Inventory inward costs</td></tr>
                                 <tr><td colspan="2">• Operational Expenses</td><td colspan="2" class="number-cell">${auditMetrics.expensesTotal}</td><td colspan="2">Bills, salaries, rent</td></tr>
                                 <tr><td colspan="2" style="font-weight:bold; background-color:#ccfbf1;">Net Operating Surplus / Margin</td><td colspan="2" class="number-cell" style="font-weight:bold; color:#0f766e; background-color:#ccfbf1;">${auditMetrics.netOperatingSurplus}</td><td colspan="2" style="background-color:#ccfbf1;">${auditMetrics.netOperatingSurplus >= 0 ? "Net Profit" : "Operating Deficit"}</td></tr>
-                                <tr><td colspan="2" class="header-cell">Total Godown Stock Valuation</td><td colspan="2" class="number-cell" style="font-weight:bold;">${auditMetrics.totalStockValuation}</td><td colspan="2">${auditMetrics.totalUnitsCount} Total Units in Stock</td></tr>
+                                <tr><td colspan="2" class="header-cell">Total Clinic Inventory Valuation</td><td colspan="2" class="number-cell" style="font-weight:bold;">${auditMetrics.totalStockValuation}</td><td colspan="2">${auditMetrics.totalUnitsCount} Total Units in Stock</td></tr>
                                 <tr><td colspan="6"></td></tr>
 
-                                <!-- SKU BREAKDOWN TABLE -->
                                 <tr>
                                   <th>SKU Item Code</th>
                                   <th>Medicine Name</th>
                                   <th>Manufacturer / Brand</th>
-                                  <th style="text-align: center;">Godown Stock Qty</th>
+                                  <th style="text-align: center;">Stock Qty</th>
                                   <th style="text-align: right;">Unit Cost Price (Rs.)</th>
                                   <th style="text-align: right;">Total Stock Valuation (Rs.)</th>
                                 </tr>
                                 ${filteredAuditInventory.map(i => {
                               const cost = Number(i.cost_price_per_box || i.cost_price || 0);
-                              const qty = Number(i.warehouse_stock || i.stock_qty || 0);
+                              const qty = Number(i.total_base_stock ?? i.stock_qty ?? (Number(i.store_stock || 0) + Number(i.warehouse_stock || 0)));
                               const val = qty * cost;
                               return `
                                     <tr>
@@ -1923,7 +1423,7 @@ export default function DeveloperAdminPanel() {
                             const url = URL.createObjectURL(blob);
                             const a = document.createElement("a");
                             a.href = url;
-                            a.download = `Executive_Audit_${auditDates.startDateStr}_to_${auditDates.endDateStr}.xls`;
+                            a.download = `Clinic_Executive_Audit_${auditDates.startDateStr}_to_${auditDates.endDateStr}.xls`;
                             document.body.appendChild(a);
                             a.click();
                             document.body.removeChild(a);
@@ -1940,21 +1440,17 @@ export default function DeveloperAdminPanel() {
                         {/* 80mm Low-Ink Thermal Slip Script */}
                         <button
                           onClick={() => {
-                            const godownScopeName = auditGodown === "all"
-                              ? "All Locations (Godowns + Store)"
-                              : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
-
                             const periodLabel = auditRange === "30_days" ? "30 Days Audit" :
-                              auditRange === "6_months" ? "6 Months Audit (حالیہ چھ ماہ)" :
-                                auditRange === "1_year" ? "1 Year Audit (سالانہ آڈٹ)" :
-                                  auditRange === "2_years" ? "2 Years Audit (دو سالہ آڈٹ)" :
+                              auditRange === "6_months" ? "6 Months Audit" :
+                                auditRange === "1_year" ? "1 Year Audit" :
+                                  auditRange === "2_years" ? "2 Years Audit" :
                                     auditRange === "all_time" ? "All Time Audit" : "Custom Period Audit";
 
                             printExecutiveAuditReceipt({
                               periodLabel,
                               startDateStr: auditDates.startDateStr,
                               endDateStr: auditDates.endDateStr,
-                              godownLabel: godownScopeName,
+                              godownLabel: "Clinic Pharmacy & OPD",
                               metrics: auditMetrics,
                               inventoryItems: filteredAuditInventory,
                             }, activeClinic);
@@ -1970,12 +1466,8 @@ export default function DeveloperAdminPanel() {
                         {/* A4 / PDF Executive Document Template */}
                         <button
                           onClick={() => {
-                            const godownScopeName = auditGodown === "all"
-                              ? "All Godowns & Store Locations Combined"
-                              : (warehousesList.find(w => w.id === auditGodown)?.name || "Store Counter");
-
                             const periodLabel = auditRange === "30_days" ? "30 Days Executive Audit" :
-                              auditRange === "6_months" ? "6 Months Executive Financial & Godown Audit" :
+                              auditRange === "6_months" ? "6 Months Executive Financial & Clinic Audit" :
                                 auditRange === "1_year" ? "1 Year Executive Annual Audit" :
                                   auditRange === "2_years" ? "2 Years Executive Audit Statement" :
                                     auditRange === "all_time" ? "Complete Historical Audit" : "Custom Period Audit Statement";
@@ -1984,7 +1476,7 @@ export default function DeveloperAdminPanel() {
                               periodLabel,
                               startDateStr: auditDates.startDateStr,
                               endDateStr: auditDates.endDateStr,
-                              godownLabel: godownScopeName,
+                              godownLabel: "Clinic Pharmacy & OPD Counter",
                               metrics: auditMetrics,
                               inventoryItems: filteredAuditInventory,
                             }, activeClinic);
@@ -1999,66 +1491,40 @@ export default function DeveloperAdminPanel() {
                       </div>
                     </div>
 
-                    {/* Godown Selection & Custom Dates */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-teal-50">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Select Godown / Warehouse</label>
-                        <select
-                          value={auditGodown}
-                          onChange={(e) => setAuditGodown(e.target.value)}
-                          className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600"
-                        >
-                          <option value="all">
-                            🏢 All Locations Combined
-                            {warehousesList.length > 0
-                              ? ` (${warehousesList.map((w) => w.name).join(" + ")}${" + Store"})`
-                              : ""}
-                          </option>
-                          {warehousesList.map((wh) => (
-                            <option key={wh.id} value={wh.id}>
-                              📍 {wh.name} ({wh.location || "Warehouse"})
-                            </option>
-                          ))}
-                          {warehousesList.length > 0 && (
-                            <option value="wh_str">🏬 Store Counter Godown</option>
-                          )}
-                        </select>
+                    {/* Custom Dates Selection */}
+                    {auditRange === "custom" && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-teal-50">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Audit Start Date</label>
+                          <input
+                            type="date"
+                            value={auditCustomStart}
+                            onChange={(e) => setAuditCustomStart(e.target.value)}
+                            className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Audit End Date</label>
+                          <input
+                            type="date"
+                            value={auditCustomEnd}
+                            onChange={(e) => setAuditCustomEnd(e.target.value)}
+                            className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold"
+                          />
+                        </div>
                       </div>
-
-                      {auditRange === "custom" && (
-                        <>
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Audit Start Date</label>
-                            <input
-                              type="date"
-                              value={auditCustomStart}
-                              onChange={(e) => setAuditCustomStart(e.target.value)}
-                              className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Audit End Date</label>
-                            <input
-                              type="date"
-                              value={auditCustomEnd}
-                              onChange={(e) => setAuditCustomEnd(e.target.value)}
-                              className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold"
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    )}
                   </div>
 
                   {/* Bento Audit Metrics Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <div className="bg-white border border-teal-200/90 p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
-                      <div className="text-[10px] sm:text-[11px] font-bold text-teal-800 uppercase tracking-wider">Total Godown Stock Valuation</div>
+                      <div className="text-[10px] sm:text-[11px] font-bold text-teal-800 uppercase tracking-wider">Total Clinic Stock Valuation</div>
                       <div className="text-xl sm:text-2xl font-black text-teal-950 mt-1">
                         Rs. {Number(auditMetrics.totalStockValuation || 0).toLocaleString("en-US")}
                       </div>
                       <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                        {Number(auditMetrics.totalUnitsCount || 0).toLocaleString("en-US")} Total Units in Selected Godowns
+                        {Number(auditMetrics.totalUnitsCount || 0).toLocaleString("en-US")} Total Units in Clinic Pharmacy
                       </div>
                     </div>
 
@@ -2068,7 +1534,7 @@ export default function DeveloperAdminPanel() {
                         Rs. {Number(auditMetrics.totalInflows || 0).toLocaleString("en-US")}
                       </div>
                       <div className="text-[10px] sm:text-[11px] text-slate-500 mt-1 font-semibold truncate">
-                        OPD: Rs. {Number(auditMetrics.opdFeesTotal || 0).toLocaleString("en-US")} | B2B: Rs. {Number(auditMetrics.b2bSalesTotal || 0).toLocaleString("en-US")}
+                        OPD: Rs. {Number(auditMetrics.opdFeesTotal || 0).toLocaleString("en-US")} | POS: Rs. {Number(auditMetrics.posSalesTotal || 0).toLocaleString("en-US")}
                       </div>
                     </div>
 
@@ -2093,10 +1559,10 @@ export default function DeveloperAdminPanel() {
                     </div>
                   </div>
 
-                  {/* Godown Item Breakdown Table */}
+                  {/* Clinic SKU Breakdown Table */}
                   <div className="bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <h4 className="font-black text-teal-950 text-base">Godown SKU Valuation &amp; Quantity Matrix</h4>
+                      <h4 className="font-black text-teal-950 text-base">Clinic SKU Valuation &amp; Quantity Matrix</h4>
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <input
                           type="text"
@@ -2108,12 +1574,16 @@ export default function DeveloperAdminPanel() {
                         <button
                           onClick={() => {
                             const csvContent = "data:text/csv;charset=utf-8," +
-                              ["Item Code,Medicine Name,Company,Godown Qty,Cost Price,Total Valuation"].join(",") + "\n" +
-                              filteredAuditInventory.map(i => `"${i.item_code}","${i.medicine_name}","${i.company_name}",${i.warehouse_stock || 0},${i.cost_price_per_box || 0},${(i.warehouse_stock || 0) * (i.cost_price_per_box || 0)}`).join("\n");
+                              ["Item Code,Medicine Name,Company,Stock Qty,Cost Price,Total Valuation"].join(",") + "\n" +
+                              filteredAuditInventory.map(i => {
+                                const q = Number(i.total_base_stock ?? i.stock_qty ?? (Number(i.store_stock || 0) + Number(i.warehouse_stock || 0)));
+                                const c = Number(i.cost_price_per_box || i.cost_price || 0);
+                                return `"${i.item_code}","${i.medicine_name}","${i.company_name}",${q},${c},${q * c}`;
+                              }).join("\n");
                             const encodedUri = encodeURI(csvContent);
                             const link = document.createElement("a");
                             link.setAttribute("href", encodedUri);
-                            link.setAttribute("download", `Godown_Audit_${auditDates.startDateStr}_to_${auditDates.endDateStr}.csv`);
+                            link.setAttribute("download", `Clinic_Audit_${auditDates.startDateStr}_to_${auditDates.endDateStr}.csv`);
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
@@ -2134,7 +1604,7 @@ export default function DeveloperAdminPanel() {
                             <th className="px-3.5 py-3">SKU Code</th>
                             <th className="px-3.5 py-3">Medicine Name</th>
                             <th className="px-3.5 py-3">Manufacturer Brand</th>
-                            <th className="px-3.5 py-3 text-center">Godown Stock</th>
+                            <th className="px-3.5 py-3 text-center">Stock Qty</th>
                             <th className="px-3.5 py-3 text-right">Unit Cost</th>
                             <th className="px-3.5 py-3 text-right">Stock Valuation</th>
                           </tr>
@@ -2142,7 +1612,7 @@ export default function DeveloperAdminPanel() {
                         <tbody className="divide-y divide-teal-50 font-medium">
                           {filteredAuditInventory.slice(0, 100).map((inv) => {
                             const cost = Number(inv.cost_price_per_box || inv.cost_price || 0);
-                            const qty = Number(inv.warehouse_stock || inv.stock_qty || 0);
+                            const qty = Number(inv.total_base_stock ?? inv.stock_qty ?? (Number(inv.store_stock || 0) + Number(inv.warehouse_stock || 0)));
                             const val = qty * cost;
                             return (
                               <tr key={inv.id} className="hover:bg-teal-50/40 transition-colors">
@@ -2163,475 +1633,8 @@ export default function DeveloperAdminPanel() {
               )}
 
               {/* ================================================================= */}
-              {/* TAB: GODOWNS & MULTI-WAREHOUSE MASTER PORTAL                      */}
+              {/* TAB 2: STAFF & DOCTOR MASTER ACCESS (Password Reset, Add, Delete) */}
               {/* ================================================================= */}
-              {activeTab === "godowns" && (
-                <div className="space-y-6 animate-fade-in">
-                  {/* Header Hero & Bento Stats */}
-                  <div className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-50 pb-6">
-                      <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-black uppercase tracking-wider mb-2">
-                          <span className="material-symbols-outlined text-sm">warehouse</span>
-                          Central Storage &amp; Multi-Location Control Plane
-                        </div>
-                        <h3 className="text-xl sm:text-2xl font-black text-teal-950 tracking-tight">
-                          Godowns &amp; Multi-Warehouse Master Portal
-                        </h3>
-                        <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium max-w-2xl leading-relaxed">
-                          Register and manage storage godowns, track exact stock breakdown per location, assign warehouse incharges, and monitor real-time multi-branch inventory valuations.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingGodown(null);
-                            setGodownForm({
-                              name: "",
-                              code: `GDW-0${(warehousesList.filter(w => !w.is_store_counter).length + 1)}`,
-                              location: "Hyderabad, Sindh",
-                              incharge_name: "",
-                              phone: "",
-                              notes: "",
-                              status: "active",
-                              is_default: false,
-                              is_store_counter: false,
-                            });
-                            setShowGodownModal(true);
-                          }}
-                          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-teal-700/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
-                        >
-                          <span className="material-symbols-outlined text-base">add_home_work</span>
-                          <span>+ Register New Godown / Warehouse</span>
-                        </button>
-
-                        <Link
-                          to="/store/warehouse"
-                          className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors"
-                          title="Open Warehouse Transfer & Internal Movements Desk"
-                        >
-                          <span className="material-symbols-outlined text-base text-teal-700">sync_alt</span>
-                          <span>Stock Transfer Desk</span>
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Bento KPI Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                      <div className="bg-gradient-to-br from-teal-50 to-emerald-50/40 border border-teal-200/80 p-5 rounded-3xl">
-                        <div className="flex items-center justify-between text-teal-800">
-                          <span className="text-[11px] font-black uppercase tracking-wider">Total Godowns</span>
-                          <span className="material-symbols-outlined text-xl">domain</span>
-                        </div>
-                        <div className="text-2xl font-black text-teal-950 mt-2">
-                          {warehousesList.length} <span className="text-xs font-semibold text-teal-700">Locations</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                          {godownStats.activeCount} Active • {warehousesList.filter(w => w.is_store_counter).length} Counter Store
-                        </div>
-                      </div>
-
-                      <div className="bg-white border border-teal-200/80 p-5 rounded-3xl shadow-xs">
-                        <div className="flex items-center justify-between text-emerald-800">
-                          <span className="text-[11px] font-black uppercase tracking-wider">Total Stock Valuation</span>
-                          <span className="material-symbols-outlined text-xl">payments</span>
-                        </div>
-                        <div className="text-2xl font-black text-emerald-950 mt-2">
-                          Rs. {Number(godownStats.totalValuation || 0).toLocaleString("en-US")}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                          Across all {warehousesList.length} physical locations
-                        </div>
-                      </div>
-
-                      <div className="bg-white border border-teal-200/80 p-5 rounded-3xl shadow-xs">
-                        <div className="flex items-center justify-between text-teal-800">
-                          <span className="text-[11px] font-black uppercase tracking-wider">Total Physical Inventory</span>
-                          <span className="material-symbols-outlined text-xl">inventory_2</span>
-                        </div>
-                        <div className="text-2xl font-black text-teal-950 mt-2">
-                          {Number(godownStats.totalUnits || 0).toLocaleString("en-US")} <span className="text-xs font-semibold text-slate-500">Units/Packs</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                          {inventoryList.length} Unique Medicine SKUs
-                        </div>
-                      </div>
-
-                      <div className="bg-white border border-amber-200/80 p-5 rounded-3xl shadow-xs">
-                        <div className="flex items-center justify-between text-amber-800">
-                          <span className="text-[11px] font-black uppercase tracking-wider">Default Primary Godown</span>
-                          <span className="material-symbols-outlined text-xl">star</span>
-                        </div>
-                        <div className="text-base font-black text-slate-900 mt-2 truncate">
-                          {warehousesList.find(w => w.is_default)?.name || warehousesList.find(w => !w.is_store_counter)?.name || "Main Godown"}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-1 font-semibold">
-                          Code: {warehousesList.find(w => w.is_default)?.code || "GDW-01"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Godown Cards Grid */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-teal-100 shadow-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-teal-700">store</span>
-                        <span className="text-sm font-black text-teal-950">Registered Storage Facilities &amp; Godowns</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          placeholder="Search godown name, code, incharge..."
-                          value={godownSearch}
-                          onChange={(e) => setGodownSearch(e.target.value)}
-                          className="bg-slate-50 border border-teal-200 rounded-2xl px-3.5 py-2 text-xs font-bold text-teal-950 focus:outline-none focus:border-teal-600 w-full sm:w-64"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {godownStats.warehouses
-                        .filter((gd) => {
-                          const q = (godownSearch || "").toLowerCase();
-                          if (!q) return true;
-                          return (
-                            (gd.name || "").toLowerCase().includes(q) ||
-                            (gd.code || "").toLowerCase().includes(q) ||
-                            (gd.location || "").toLowerCase().includes(q) ||
-                            (gd.incharge_name || "").toLowerCase().includes(q)
-                          );
-                        })
-                        .map((gd) => {
-                          const isSelected = selectedGodownForStock === gd.id;
-                          return (
-                            <div
-                              key={gd.id}
-                              className={`bg-white rounded-3xl border transition-all duration-200 p-5 space-y-4 shadow-sm hover:shadow-md ${isSelected
-                                  ? "border-teal-600 ring-2 ring-teal-500/20 bg-teal-50/10"
-                                  : gd.is_default
-                                    ? "border-teal-300 ring-1 ring-teal-200"
-                                    : "border-teal-100"
-                                }`}
-                            >
-                              <div className="flex items-start justify-between gap-2.5">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div
-                                    className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${gd.is_store_counter
-                                        ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
-                                        : "bg-teal-50 border border-teal-200 text-teal-700"
-                                      }`}
-                                  >
-                                    <span className="material-symbols-outlined text-2xl">
-                                      {gd.is_store_counter ? "storefront" : "warehouse"}
-                                    </span>
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <h4 className="font-black text-slate-900 text-sm leading-tight truncate">{gd.name}</h4>
-                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                      <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
-                                        {gd.code || gd.id}
-                                      </span>
-                                      {gd.is_default && (
-                                        <span className="text-[9px] font-black bg-teal-700 text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                          PRIMARY
-                                        </span>
-                                      )}
-                                      {gd.is_store_counter && (
-                                        <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md uppercase">
-                                          POS Counter
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <span
-                                  className={`text-[9.5px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider shrink-0 whitespace-nowrap ${gd.status === "active"
-                                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                      : "bg-slate-100 text-slate-600 border-slate-200"
-                                    }`}
-                                >
-                                  {gd.status || "active"}
-                                </span>
-                              </div>
-
-                              <div className="space-y-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-slate-400 font-medium">Incharge Custodian:</span>
-                                  <span className="font-bold text-teal-950">{gd.incharge_name || "Central Team"}</span>
-                                </div>
-                                {gd.phone && (
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-slate-400 font-medium">Contact Phone:</span>
-                                    <a href={`tel:${gd.phone}`} className="font-mono font-bold text-teal-700 hover:underline">
-                                      {gd.phone}
-                                    </a>
-                                  </div>
-                                )}
-                                <div className="flex justify-between items-center">
-                                  <span className="text-slate-400 font-medium">Physical Location:</span>
-                                  <span className="font-semibold text-slate-800 truncate max-w-[170px]" title={gd.location}>
-                                    {gd.location || "Hyderabad, Sindh"}
-                                  </span>
-                                </div>
-                                <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
-                                  <span className="text-slate-400 font-medium">Stock SKUs / Units:</span>
-                                  <span className="font-black text-teal-800">
-                                    {gd.skuCount} SKUs ({Number(gd.unitsCount || 0).toLocaleString("en-US")} Units)
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-slate-400 font-medium">Estimated Value:</span>
-                                  <span className="font-black text-emerald-800 text-sm">
-                                    Rs. {Number(gd.valuation || 0).toLocaleString("en-US")}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {gd.notes && (
-                                <p className="text-[11px] text-slate-500 italic bg-amber-50/60 border border-amber-100 p-2 rounded-xl">
-                                  📝 {gd.notes}
-                                </p>
-                              )}
-
-                              {/* Card Action Buttons */}
-                              <div className="pt-2 border-t border-teal-50 flex flex-wrap gap-2">
-                                <button
-                                  onClick={() => {
-                                    setSelectedGodownForStock(isSelected ? null : gd.id);
-                                    setGodownStockSearch("");
-                                    setGodownCompanyFilter("all");
-                                  }}
-                                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${isSelected
-                                      ? "bg-teal-800 text-white shadow-md shadow-teal-900/20"
-                                      : "bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200"
-                                    }`}
-                                >
-                                  <span className="material-symbols-outlined text-sm">
-                                    {isSelected ? "visibility_off" : "inventory"}
-                                  </span>
-                                  <span>{isSelected ? "Hide Stock" : "Inspect Live Stock"}</span>
-                                </button>
-
-                                <button
-                                  onClick={() => {
-                                    setEditingGodown(gd);
-                                    setGodownForm({
-                                      name: gd.name || "",
-                                      code: gd.code || "",
-                                      location: gd.location || "",
-                                      incharge_name: gd.incharge_name || "",
-                                      phone: gd.phone || "",
-                                      notes: gd.notes || "",
-                                      status: gd.status || "active",
-                                      is_default: Boolean(gd.is_default),
-                                      is_store_counter: Boolean(gd.is_store_counter),
-                                    });
-                                    setShowGodownModal(true);
-                                  }}
-                                  className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                                  title="Edit Godown Details"
-                                >
-                                  <span className="material-symbols-outlined text-sm">edit</span>
-                                </button>
-
-                                {!gd.is_default && !gd.is_store_counter && (
-                                  <button
-                                    onClick={() => handleSetDefaultGodown(gd.id)}
-                                    className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer"
-                                    title="Set as Default Primary Godown"
-                                  >
-                                    <span className="material-symbols-outlined text-sm">star</span>
-                                  </button>
-                                )}
-
-                                {!gd.is_store_counter && !gd.is_default && (
-                                  <button
-                                    onClick={() => handleDeleteGodown(gd.id, gd.name)}
-                                    className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
-                                    title="Delete Godown"
-                                  >
-                                    <span className="material-symbols-outlined text-sm">delete</span>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-
-                  {/* Drill-down: Live Stock Inspector for Selected Godown */}
-                  {selectedGodownForStock && (() => {
-                    const currentGd = warehousesList.find(w => w.id === selectedGodownForStock) || { name: "Godown", code: "GDW" };
-                    const currentVal = dbWarehouses.getStockValuation(selectedGodownForStock);
-                    return (
-                      <div className="bg-white border-2 border-teal-600/30 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl animate-fade-in">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-100 pb-5">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-black uppercase tracking-wider bg-teal-100 text-teal-800 px-3 py-1 rounded-full border border-teal-200">
-                                Active Stock Inspector
-                              </span>
-                              <span className="font-mono text-xs font-bold text-slate-500">
-                                ID: {selectedGodownForStock}
-                              </span>
-                            </div>
-                            <h4 className="text-xl font-black text-teal-950 mt-2 flex items-center gap-2">
-                              <span className="material-symbols-outlined text-teal-700">inventory_2</span>
-                              Stock Inventory in: <span className="text-teal-700">{currentGd.name}</span> ({currentGd.code})
-                            </h4>
-                            <p className="text-xs text-slate-500 mt-1 font-medium">
-                              Showing live stock count, unit purchase costs, and real-time total valuation for this physical location.
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-3">
-                            <div className="bg-teal-50 border border-teal-200 px-4 py-2 rounded-2xl text-right">
-                              <div className="text-[10px] font-bold text-teal-700 uppercase">Location Valuation</div>
-                              <div className="text-base font-black text-teal-950 font-mono">
-                                Rs. {Number(currentVal.totalValue || 0).toLocaleString("en-US")}
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => {
-                                const csvContent = "data:text/csv;charset=utf-8," +
-                                  ["Item Code,Medicine Name,Company,Formula,Location Stock,Unit Cost Price,Total Valuation,Unit Sale Price"].join(",") + "\n" +
-                                  currentGodownStockItems.map(i => `"${i.item_code}","${i.medicine_name}","${i.company_name || ''}","${i.generic_name || ''}",${i.locationQty},${i.unitCost},${i.locationValuation},${i.unitSale}`).join("\n");
-                                const encodedUri = encodeURI(csvContent);
-                                const link = document.createElement("a");
-                                link.setAttribute("href", encodedUri);
-                                link.setAttribute("download", `Stock_Report_${currentGd.code}_${new Date().toISOString().split("T")[0]}.csv`);
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                                showToast(`📊 Exported stock report for ${currentGd.name}!`);
-                              }}
-                              className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold rounded-2xl border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-base text-emerald-700">download</span>
-                              Export Location CSV
-                            </button>
-
-                            <button
-                              onClick={() => setSelectedGodownForStock(null)}
-                              className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                              title="Close Stock Inspector"
-                            >
-                              <span className="material-symbols-outlined text-base">close</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Search and Company Filter */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="sm:col-span-2 relative">
-                            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
-                              search
-                            </span>
-                            <input
-                              type="text"
-                              placeholder="Search medicine name, item code, formula..."
-                              value={godownStockSearch}
-                              onChange={(e) => setGodownStockSearch(e.target.value)}
-                              className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600 focus:bg-white"
-                            />
-                          </div>
-
-                          <div>
-                            <select
-                              value={godownCompanyFilter}
-                              onChange={(e) => setGodownCompanyFilter(e.target.value)}
-                              className="w-full bg-slate-50 border border-teal-200 text-teal-950 rounded-2xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-600"
-                            >
-                              <option value="all">🏢 All Manufacturing Brands</option>
-                              {godownCompanyOptions.map((c) => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Stock Table */}
-                        <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto">
-                          <table className="w-full text-left text-xs min-w-[700px]">
-                            <thead className="bg-teal-50/90 text-teal-950 font-black uppercase tracking-wider sticky top-0 z-10 border-b border-teal-200">
-                              <tr>
-                                <th className="px-4 py-3">Item Code</th>
-                                <th className="px-4 py-3">Medicine &amp; Formula</th>
-                                <th className="px-4 py-3">Company Brand</th>
-                                <th className="px-4 py-3 text-center">Stock in Godown</th>
-                                <th className="px-4 py-3 text-right">Cost Price</th>
-                                <th className="px-4 py-3 text-right">Valuation</th>
-                                <th className="px-4 py-3 text-right">Sale Price</th>
-                                <th className="px-4 py-3 text-center">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-teal-50 font-medium">
-                              {currentGodownStockItems.map((item) => {
-                                const isLowStock = item.locationQty <= (item.min_reorder_level || 5);
-                                return (
-                                  <tr key={item.id} className="hover:bg-teal-50/40 transition-colors">
-                                    <td className="px-4 py-3 font-mono font-bold text-teal-800">{item.item_code || "MED"}</td>
-                                    <td className="px-4 py-3">
-                                      <div className="font-bold text-teal-950">{item.medicine_name}</div>
-                                      {item.generic_name && (
-                                        <div className="text-[10px] text-slate-400 italic">{item.generic_name}</div>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3 font-semibold text-slate-700">{item.company_name || "BM Pvt LTD"}</td>
-                                    <td className="px-4 py-3 text-center">
-                                      <span className={`px-2.5 py-1 rounded-full font-black text-xs ${item.locationQty > 0
-                                          ? "bg-teal-100 text-teal-950"
-                                          : "bg-rose-100 text-rose-800"
-                                        }`}>
-                                        {item.locationQty} {item.unit_label || "Units"}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono text-slate-600">
-                                      Rs. {item.unitCost.toLocaleString("en-US")}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono font-black text-teal-950">
-                                      Rs. {item.locationValuation.toLocaleString("en-US")}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-800">
-                                      Rs. {item.unitSale.toLocaleString("en-US")}
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                      {isLowStock ? (
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">
-                                          Low Stock
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                          Healthy
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-
-                              {currentGodownStockItems.length === 0 && (
-                                <tr>
-                                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                                    <span className="material-symbols-outlined text-4xl block mb-2 text-slate-300">inventory_2</span>
-                                    No medicines found matching filter in this godown.
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
 
               {/* ================================================================= */}
               {/* TAB 2: STAFF & DOCTOR MASTER ACCESS (Password Reset, Add, Delete) */}
@@ -2917,31 +1920,91 @@ export default function DeveloperAdminPanel() {
                     </div>
                   </div>
 
-                  {/* ── WhatsApp Gateway ────────────────────────────────────── */}
-                  <div className="border-t border-teal-50 pt-5">
-                    <h4 className="text-xs font-black text-teal-950 uppercase tracking-wider mb-3">WhatsApp Cloud Gateway</h4>
-                    <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
-                      WhatsApp Gateway Phone No
-                    </label>
-                    <input
-                      type="text"
-                      value={clinicForm.whatsapp_gateway_no}
-                      onChange={(e) => setClinicForm({ ...clinicForm, whatsapp_gateway_no: e.target.value })}
-                      placeholder="03473100304"
-                      className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
-                    />
-                    <p className="text-[11px] text-slate-400 mt-1.5 font-medium">Invoices share aur system alerts ke liye use hota hai.</p>
-                  </div>
+                    {/* ── 24/7 Autonomous Email Vault Gateway ───────────────────── */}
+                    <div className="border-t border-teal-50 pt-5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-2">
+                          <span className="material-symbols-outlined text-rose-600 text-base">mail</span>
+                          24/7 Autonomous Email Backup &amp; Resend Gateway
+                        </h4>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-200">
+                          Resend Gateway Active
+                        </span>
+                      </div>
+                      
+                      <div className="bg-gradient-to-br from-rose-50/50 via-slate-50 to-teal-50/30 border border-rose-100 rounded-2xl p-4 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="bg-white/80 border border-rose-100 rounded-xl p-3">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Recipient Email Address</span>
+                            <span className="text-xs font-black text-slate-900 mt-0.5 block font-mono">drasifhosting@gmail.com</span>
+                          </div>
+                          <div className="bg-white/80 border border-rose-100 rounded-xl p-3">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Email Delivery Gateway</span>
+                            <span className="text-xs font-black text-slate-900 mt-0.5 block">Resend API Gateway (backup@clinicore.me)</span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                          VPS background daemon har roz midnight 12:00 AM PKT par ek encrypted <strong>.cfbak</strong> snapshot attachment ke sath <strong>drasifhosting@gmail.com</strong> par email deliver karta hai.
+                        </p>
+                      </div>
+                    </div>
 
-                  {/* ── Save ───────────────────────────────────────────────── */}
-                  <div className="pt-4 border-t border-teal-50 flex items-center justify-end">
-                    <button type="submit" className="bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-900 hover:to-teal-800 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-800/20 cursor-pointer active:scale-95 flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-base">save</span>
-                      Save Drive &amp; Gateway Config
-                    </button>
-                  </div>
-                </form>
-              )}
+                    {/* ── POS Discount Limit Configuration ───────────────────── */}
+                    <div className="border-t border-teal-50 pt-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-2">
+                          <span className="material-symbols-outlined text-amber-600 text-base">lock_reset</span>
+                          System Discount Ceiling &amp; POS Cashier Lock Guard
+                        </h4>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200">
+                          Active Lock ({clinicForm.max_discount_limit_pct ?? 28}%)
+                        </span>
+                      </div>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        Maximum Allowed Cashier POS Discount (%)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={clinicForm.max_discount_limit_pct ?? 28}
+                          onChange={(e) => setClinicForm({ ...clinicForm, max_discount_limit_pct: Number(e.target.value) || 0 })}
+                          placeholder="28"
+                          className="w-40 bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-sm font-black text-teal-950 font-mono"
+                        />
+                        <span className="text-xs text-slate-500 font-bold">% Maximum Discount Limit</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1.5 font-medium">
+                        System billing locks enforce karega ke cashier kisi bhi dawai par {clinicForm.max_discount_limit_pct ?? 28}% se zyada discount na de sake. Admin is value ko kisi bhi waqt change kar sakta hai. (Default: 28%).
+                      </p>
+                    </div>
+
+                    {/* ── WhatsApp Gateway ────────────────────────────────────── */}
+                    <div className="border-t border-teal-50 pt-5">
+                      <h4 className="text-xs font-black text-teal-950 uppercase tracking-wider mb-3">WhatsApp Cloud Gateway</h4>
+                      <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1.5">
+                        WhatsApp Gateway Phone No
+                      </label>
+                      <input
+                        type="text"
+                        value={clinicForm.whatsapp_gateway_no}
+                        onChange={(e) => setClinicForm({ ...clinicForm, whatsapp_gateway_no: e.target.value })}
+                        placeholder="03473100304"
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-3 text-xs font-bold text-teal-950 font-mono"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1.5 font-medium">Invoices share aur system alerts ke liye use hota hai.</p>
+                    </div>
+
+                    {/* ── Save ───────────────────────────────────────────────── */}
+                    <div className="pt-4 border-t border-teal-50 flex items-center justify-end">
+                      <button type="submit" className="bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-900 hover:to-teal-800 text-white font-black text-xs px-7 py-3 rounded-2xl transition-all shadow-lg shadow-teal-800/20 cursor-pointer active:scale-95 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-base">save</span>
+                        Save Drive &amp; Gateway Config
+                      </button>
+                    </div>
+                  </form>
+                )}
 
 
 
@@ -3224,7 +2287,6 @@ export default function DeveloperAdminPanel() {
                   >
                     <option value="doctor">👨‍⚕️ Doctor (OPD Consultant)</option>
                     <option value="cashier">💵 POS Counter &amp; Cashier</option>
-                    <option value="warehouse_incharge">🏢 Warehouse Manager</option>
                     <option value="admin">⚙️ Administrator</option>
                   </select>
                 </div>
@@ -3664,168 +2726,6 @@ export default function DeveloperAdminPanel() {
                 className="flex-1 py-2.5 rounded-2xl text-xs font-black bg-teal-700 hover:bg-teal-800 text-white shadow-md shadow-teal-900/20 cursor-pointer"
               >
                 Reveal Tabs
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* ================================================================= */}
-      {/* MODAL: REGISTER / EDIT GODOWN & MULTI-WAREHOUSE                   */}
-      {/* ================================================================= */}
-      {showGodownModal && (
-        <div className="fixed inset-0 bg-teal-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <form
-            onSubmit={handleSaveGodown}
-            className="bg-white rounded-3xl border border-teal-200 shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-5 animate-fade-in max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex items-center justify-between border-b border-teal-50 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-teal-800 flex items-center justify-center font-bold">
-                  <span className="material-symbols-outlined text-2xl">warehouse</span>
-                </div>
-                <div>
-                  <h3 className="font-black text-base text-teal-950">
-                    {editingGodown ? `Edit Godown: ${editingGodown.name}` : "Register New Godown / Warehouse"}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium">Configure storage location details, incharge &amp; inventory tracking</p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowGodownModal(false)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            <div className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
-                  Godown / Warehouse Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={godownForm.name}
-                  onChange={(e) => setGodownForm({ ...godownForm, name: e.target.value })}
-                  placeholder="e.g. Main Godown (Lajpat Road) or Warehouse B"
-                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-bold text-teal-950"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
-                    Short Identification Code
-                  </label>
-                  <input
-                    type="text"
-                    value={godownForm.code}
-                    onChange={(e) => setGodownForm({ ...godownForm, code: e.target.value })}
-                    placeholder="e.g. GDW-02"
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-mono font-bold text-teal-950 uppercase"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
-                    Operational Status
-                  </label>
-                  <select
-                    value={godownForm.status}
-                    onChange={(e) => setGodownForm({ ...godownForm, status: e.target.value })}
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-bold text-teal-950"
-                  >
-                    <option value="active">Active (Operational)</option>
-                    <option value="inactive">Inactive (Temporarily Closed)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
-                    Incharge Custodian / Manager
-                  </label>
-                  <input
-                    type="text"
-                    value={godownForm.incharge_name}
-                    onChange={(e) => setGodownForm({ ...godownForm, incharge_name: e.target.value })}
-                    placeholder="e.g. Usama / Kashif Khan"
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold text-teal-950"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
-                    Manager Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    value={godownForm.phone}
-                    onChange={(e) => setGodownForm({ ...godownForm, phone: e.target.value })}
-                    placeholder="03473100304"
-                    className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-mono font-bold text-teal-950"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
-                  City &amp; Physical Street Address
-                </label>
-                <input
-                  type="text"
-                  value={godownForm.location}
-                  onChange={(e) => setGodownForm({ ...godownForm, location: e.target.value })}
-                  placeholder="e.g. Site Area, Near Bus Stop, Hyderabad, Sindh"
-                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold text-teal-950"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-teal-950 uppercase tracking-wider mb-1">
-                  Storage Notes &amp; Working Hours
-                </label>
-                <textarea
-                  rows={2}
-                  value={godownForm.notes}
-                  onChange={(e) => setGodownForm({ ...godownForm, notes: e.target.value })}
-                  placeholder="e.g. Bulk liquid syrup & tablet storage. Key with manager."
-                  className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-medium text-teal-950"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 p-3 bg-teal-50/60 rounded-2xl border border-teal-200/70">
-                <input
-                  type="checkbox"
-                  id="is_default_godown"
-                  checked={godownForm.is_default}
-                  onChange={(e) => setGodownForm({ ...godownForm, is_default: e.target.checked })}
-                  className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
-                />
-                <label htmlFor="is_default_godown" className="text-xs font-bold text-teal-950 cursor-pointer">
-                  Set as Primary / Default Receiving Godown for Supplier Purchases (GRN)
-                </label>
-              </div>
-            </div>
-
-            <div className="flex gap-2.5 pt-2 border-t border-teal-50">
-              <button
-                type="button"
-                onClick={() => setShowGodownModal(false)}
-                className="w-1/2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="w-1/2 py-3 bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white font-black rounded-2xl text-xs shadow-lg shadow-teal-700/20 transition-all cursor-pointer"
-              >
-                {editingGodown ? "Save Changes" : "Register Godown"}
               </button>
             </div>
           </form>

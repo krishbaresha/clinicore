@@ -247,7 +247,7 @@ const SEED_DATA = {
       password: hashPassword("7860"),
       password_hash: hashPassword("7860"),
       is_owner: true,
-      is_principal_doctor: true,
+      is_principal_doctor: false,
       can_view_financials: true,
       can_give_discounts: true,
       max_discount_pct: 100,
@@ -315,6 +315,7 @@ export const KEYS = {
   ADMIN_TAB_PIN:         "cf_admin_tab_pin",
   ADMIN_TAB_SECURITY:    "cf_admin_tab_security",
   CATEGORIES:            "cf_medicine_categories_v1",
+  COMPANIES:             "cf_medicine_companies_v1",
 };
 
 // High-performance In-Memory Memoization Cache for Zero-Lag Operations
@@ -766,6 +767,9 @@ export const dbClinic = {
       if (!clinic.whatsapp_gateway_no) {
         clinic.whatsapp_gateway_no = localStorage.getItem("cf_whatsapp_gateway_no") || "03473100304";
       }
+      if (clinic.max_discount_limit_pct === undefined || clinic.max_discount_limit_pct === null) {
+        clinic.max_discount_limit_pct = Number(localStorage.getItem("cf_max_discount_limit_pct")) || 28;
+      }
     }
     return clinic;
   },
@@ -778,6 +782,7 @@ export const dbClinic = {
       if (updated.notification_email !== undefined) localStorage.setItem("cf_notification_email", updated.notification_email);
       if (updated.report_frequency !== undefined) localStorage.setItem("cf_report_frequency", updated.report_frequency);
       if (updated.whatsapp_gateway_no !== undefined) localStorage.setItem("cf_whatsapp_gateway_no", updated.whatsapp_gateway_no);
+      if (updated.max_discount_limit_pct !== undefined) localStorage.setItem("cf_max_discount_limit_pct", String(updated.max_discount_limit_pct));
     }
     try {
       window.dispatchEvent(new Event("clinicflow_status_update"));
@@ -794,6 +799,15 @@ export const dbClinic = {
     return dbClinic.update({ clinic_status: status, clinic_status_note: note || "" });
   },
 };
+
+export function getMaxDiscountLimit() {
+  try {
+    const c = dbClinic.get();
+    const val = Number(c?.max_discount_limit_pct);
+    if (!isNaN(val) && val >= 0) return val;
+  } catch {}
+  return 28;
+}
 
 // ---------- Clinic Services ----------
 export const dbClinicServices = {
@@ -828,17 +842,24 @@ export const dbUsers = {
       list = SEED_DATA.users;
       setCollection(KEYS.USERS, list);
     }
-    // Ensure primary admin account is always present
+    // Ensure primary admin account is always present and clean of doctor flags
     const hasAdmin = list.some((u) => u.id === "user_admin_001" || u.role === "admin" || u.role === "owner" || u.is_owner);
     if (!hasAdmin) {
       list = [...SEED_DATA.users, ...list];
       setCollection(KEYS.USERS, list);
+    } else {
+      // Auto-sanitize existing admin account in cache if previously saved with is_principal_doctor
+      const adminIdx = list.findIndex((u) => u.id === "user_admin_001" || u.name === "Clinic Administrator");
+      if (adminIdx !== -1 && list[adminIdx].is_principal_doctor) {
+        list[adminIdx] = { ...list[adminIdx], is_principal_doctor: false, role: "admin" };
+        setCollection(KEYS.USERS, list);
+      }
     }
     return list;
   },
   getById: (id) => getFromCollectionById(KEYS.USERS, id),
   getByEmail: (email) => dbUsers.getAll().find((u) => u.email?.toLowerCase() === email?.toLowerCase()) || null,
-  getDoctors: () => dbUsers.getAll().filter((u) => u.role === "doctor" && u.status !== "inactive" && u.status !== "deactivated"),
+  getDoctors: () => dbUsers.getAll().filter((u) => u.role === "doctor" && u.id !== "user_admin_001" && u.name !== "Clinic Administrator" && u.status !== "inactive" && u.status !== "deactivated"),
   getActiveStaff: (warehouseId = null) => {
     const all = dbUsers.getAll().filter((u) => u.status !== "inactive" && u.status !== "deactivated");
     if (!warehouseId) return all;
@@ -2002,18 +2023,20 @@ export const dbInventory = {
     purchases.forEach((p) => {
       (p.items || []).forEach((item) => {
         if (item.inventory_id === inv.id || (item.medicine_name && item.medicine_name.toLowerCase() === inv.medicine_name.toLowerCase())) {
+          const inQty = Number(item.qty_base_units || item.quantity_received || item.qty || item.quantity) || 0;
           ledger.push({
             date: p.purchase_date || p.created_at || new Date().toISOString(),
             type: "PURCHASE",
             type_label: "Company / Local Purchase",
             voucher_no: p.invoice_no || p.id,
-            party_name: p.supplier_name || "Supplier Consignment",
+            party_name: p.supplier_name || p.company_name || "Supplier Consignment",
             destination: p.destination || "Main Warehouse (Godown)",
-            qty_in: Number(item.qty_base_units || item.qty) || 0,
+            qty_in: inQty,
             qty_out: 0,
-            unit_price: Number(item.cost_price || item.unit_price) || 0,
-            total_amount: Number(item.total_cost || item.line_total) || 0,
-            notes: p.notes || `GRN from ${p.supplier_name}`,
+            quantity: inQty,
+            unit_price: Number(item.cost_price || item.purchase_price || item.unit_price) || 0,
+            total_amount: Number(item.total_cost || item.line_total || (inQty * Number(item.cost_price || 0))) || 0,
+            notes: p.notes || `GRN from ${p.supplier_name || 'Supplier'}`,
           });
         }
       });
@@ -2023,17 +2046,36 @@ export const dbInventory = {
     sales.forEach((s) => {
       (s.items || []).forEach((item) => {
         if (item.inventory_id === inv.id || (item.medicine_name && item.medicine_name.toLowerCase() === inv.medicine_name.toLowerCase())) {
+          let resolvedPartyName = s.account_name || s.patient_name || s.customer_name || s.buyer_name || s.party_name || s.patient?.full_name || s.patient?.name || "";
+          if (!resolvedPartyName && s.patient_id) {
+            const pat = dbPatients.getById(s.patient_id);
+            if (pat) resolvedPartyName = pat.full_name || pat.name || "";
+          }
+          if (!resolvedPartyName && s.visit_id) {
+            const vis = dbVisits.getById(s.visit_id);
+            if (vis) resolvedPartyName = vis.patient_name || (vis.patient_id ? dbPatients.getById(vis.patient_id)?.full_name : "") || "";
+          }
+          if (!resolvedPartyName || resolvedPartyName === "Walk-in Patient") {
+            if (s.token_no || s.token_number) {
+              resolvedPartyName = `OPD Token #${s.token_no || s.token_number}`;
+            } else if (!resolvedPartyName) {
+              resolvedPartyName = "Walk-in Customer";
+            }
+          }
+
+          const outQty = Number(item.qty_base_units || item.base_units || item.quantity || item.qty) || 0;
           ledger.push({
             date: s.sale_date || s.created_at || new Date().toISOString(),
             type: "RETAIL_SALE",
             type_label: "Retail POS Counter Sale",
-            voucher_no: s.receipt_no || s.id,
-            party_name: s.patient_name || "Walk-in Patient",
+            voucher_no: s.voucher_no || s.receipt_no || s.invoice_no || s.id,
+            party_name: resolvedPartyName,
             destination: "Store Counter",
             qty_in: 0,
-            qty_out: Number(item.base_units || item.quantity || item.qty) || 0,
-            unit_price: Number(item.unit_price) || 0,
-            total_amount: Number(item.line_total) || 0,
+            qty_out: outQty,
+            quantity: -outQty,
+            unit_price: Number(item.unit_price || item.unit_sale_price || item.box_sale_price) || 0,
+            total_amount: Number(item.line_total || item.total_amount || (outQty * Number(item.unit_price || 0))) || 0,
             notes: "Dispensed at Retail Medical Store",
           });
         }
@@ -2044,21 +2086,23 @@ export const dbInventory = {
     b2b.forEach((b) => {
       (b.items || []).forEach((item) => {
         if (item.inventory_id === inv.id || (item.medicine_name && item.medicine_name.toLowerCase() === inv.medicine_name.toLowerCase())) {
+          const outQty = Number(item.qty_base_units || item.base_units || item.qty || item.quantity) || 0;
           ledger.push({
             date: b.sale_date || b.created_at || new Date().toISOString(),
             type: "WHOLESALE_B2B",
             type_label: "Wholesale B2B Supply",
-            voucher_no: b.invoice_no || b.id,
-            party_name: b.buyer_name || "Interior Sindh Party",
+            voucher_no: b.invoice_no || b.voucher_no || b.id,
+            party_name: b.buyer_name || b.party_name || b.account_name || "Interior Sindh Party",
             city: b.city || b.buyer_city || "",
             salesman: b.salesman || "",
             bilty_no: b.bilty_no || "",
             transport: b.transport || "",
-            destination: `${b.buyer_name} (${b.city || 'Interior Sindh'})`,
+            destination: `${b.buyer_name || b.party_name || 'Party'} (${b.city || 'Interior Sindh'})`,
             qty_in: 0,
-            qty_out: Number(item.qty_base_units || item.qty || item.quantity) || 0,
-            unit_price: Number(item.unit_price) || 0,
-            total_amount: Number(item.line_total) || 0,
+            qty_out: outQty,
+            quantity: -outQty,
+            unit_price: Number(item.unit_price || item.box_sale_price) || 0,
+            total_amount: Number(item.line_total || (outQty * Number(item.unit_price || 0))) || 0,
             notes: `Bilty: ${b.bilty_no || 'Direct'}, Tr: ${b.transport || 'Local'}, Man: ${b.salesman || 'Staff'}`,
           });
         }
@@ -2069,6 +2113,7 @@ export const dbInventory = {
     transfers.forEach((t) => {
       if (t.inventory_id === inv.id || (t.medicine_name && t.medicine_name.toLowerCase() === inv.medicine_name.toLowerCase())) {
         const isToStore = t.to_loc?.includes("Counter") || t.to_loc?.includes("POS") || t.to_loc?.includes("Store");
+        const tQty = Number(t.qty || t.quantity) || 0;
         ledger.push({
           date: t.transfer_date || t.created_at || new Date().toISOString(),
           type: "INTERNAL_TRANSFER",
@@ -2077,10 +2122,11 @@ export const dbInventory = {
           party_name: `Internal Shift (${t.transferred_by || 'Staff'})`,
           handler: t.transferred_by || "Staff",
           destination: `${t.from_loc} ➔ ${t.to_loc}`,
-          qty_in: isToStore ? 0 : Number(t.qty) || 0,
-          qty_out: isToStore ? Number(t.qty) || 0 : 0,
-          unit_price: inv.unit_sale_price || 0,
-          total_amount: (Number(t.qty) || 0) * (inv.unit_sale_price || 0),
+          qty_in: isToStore ? 0 : tQty,
+          qty_out: isToStore ? tQty : 0,
+          quantity: isToStore ? -tQty : tQty,
+          unit_price: inv.unit_sale_price || inv.box_sale_price || 0,
+          total_amount: tQty * (inv.unit_sale_price || inv.box_sale_price || 0),
           notes: t.notes || `Stock shifted by ${t.transferred_by || 'Staff'}`,
         });
       }
@@ -2110,7 +2156,6 @@ export const dbInventory = {
       return [];
     }
   },
-
   /**
    * Bulk Ingestion Engine for CSV/Excel & Custom Lists
    * Efficiently batches array normalization and executes a single disk write pass.
@@ -2122,9 +2167,9 @@ export const dbInventory = {
       return { success: false, count: 0, total: 0, message: "No items provided" };
     }
 
-    const current = mode === "replace" ? [] : getCollection(KEYS.INVENTORY);
-    const existingNameSet = new Set(current.map((i) => (i.medicine_name || "").toLowerCase().trim()));
-    const newItems = [];
+    let current = mode === "replace" ? [] : (getCollection(KEYS.INVENTORY) || []);
+    let addedCount = 0;
+    let updatedCount = 0;
 
     for (const raw of rawList) {
       if (!raw || !raw.medicine_name || !raw.medicine_name.trim()) continue;
@@ -2132,47 +2177,104 @@ export const dbInventory = {
       
       const company = raw.company_name || dbInventory.resolveCompanyCode(raw.item_code) || "BM Pvt LTD";
       const code = raw.item_code || company.slice(0, 3).toUpperCase();
+      
+      // Auto-register company in dbSuppliers if not already registered (deduplicated)
+      if (company && company.trim()) {
+        const compClean = company.trim();
+        const existingSuppliers = dbSuppliers.getAll() || [];
+        const supplierExists = existingSuppliers.some(
+          (s) => (s.name || "").toLowerCase().trim() === compClean.toLowerCase() ||
+                 (s.supplier_code || "").toLowerCase().trim() === code.toLowerCase()
+        );
+        if (!supplierExists) {
+          dbSuppliers.add({
+            name: compClean,
+            supplier_code: code || `SUP-${Math.floor(100 + Math.random() * 900)}`,
+            phone: "",
+            city: "Hyderabad",
+            address: "Pharma Market",
+            current_balance: 0,
+            status: "active",
+          });
+        }
+      }
+
       const salePrice = Number(raw.unit_sale_price || raw.box_sale_price || raw.sale_price) || 0;
-      const costPrice = Number(raw.cost_price_per_box || raw.purchase_price) || (salePrice * 0.7);
-      const storeStock = Number(raw.store_stock || raw.stock_qty) || 0;
-      const godownStock = Number(raw.warehouse_stock) || 0;
+      const costPrice = Number(raw.cost_price_per_box || raw.purchase_price || raw.cost_price) || 0;
+      const storeStock = Number(raw.store_stock ?? raw.stock_qty ?? 0);
+      const godownStock = Number(raw.warehouse_stock ?? 0);
       const totalBase = storeStock + godownStock;
+      const packing = raw.packing || raw.unit_label || "20ml Drop";
+      const desc = raw.product_description || raw.generic_name || raw.description || "";
+      const category = raw.category || "Homeopathic Drops";
+      const minAlert = Number(raw.low_stock_threshold) || 6;
 
-      const item = {
-        id: raw.id || generateId("inv"),
-        clinic_id: "clinic_001",
-        medicine_name: cleanName,
-        company_name: company,
-        item_code: code,
-        generic_name: raw.generic_name || "Homeopathic Dilution / Mother Tincture",
-        category: raw.category || "Homeopathic Drops",
-        has_multi_unit: Boolean(raw.has_multi_unit),
-        strips_per_box: Number(raw.strips_per_box) || 1,
-        units_per_strip: Number(raw.units_per_strip) || 1,
-        box_label: raw.box_label || "Pack",
-        strip_label: raw.strip_label || "Bottle",
-        unit_label: raw.unit_label || "Bottle",
-        cost_price_per_box: costPrice,
-        box_sale_price: salePrice,
-        strip_sale_price: salePrice,
-        unit_sale_price: salePrice,
-        unit_price: salePrice,
-        total_base_stock: totalBase,
-        stock_qty: storeStock,
-        store_stock: storeStock,
-        warehouse_stock: godownStock,
-        location_stocks: raw.location_stocks || { wh_001: godownStock, wh_str: storeStock },
-        low_stock_threshold: Number(raw.low_stock_threshold) || 6,
-        expiry_date: raw.expiry_date || "2028-12-31"
-      };
+      const existingIdx = current.findIndex(
+        (i) => (i.medicine_name || "").toLowerCase().trim() === cleanName.toLowerCase() &&
+               ((i.company_name || "").toLowerCase().trim() === company.toLowerCase() || !i.company_name)
+      );
 
-      newItems.push(item);
-      existingNameSet.add(cleanName.toLowerCase());
+      if (existingIdx !== -1 && mode !== "replace") {
+        current[existingIdx] = {
+          ...current[existingIdx],
+          medicine_name: cleanName,
+          company_name: company,
+          item_code: code || current[existingIdx].item_code,
+          product_description: desc || current[existingIdx].product_description,
+          generic_name: desc || current[existingIdx].generic_name,
+          category: category || current[existingIdx].category,
+          unit_label: packing || current[existingIdx].unit_label,
+          cost_price_per_box: costPrice || current[existingIdx].cost_price_per_box,
+          box_sale_price: salePrice || current[existingIdx].box_sale_price,
+          strip_sale_price: salePrice || current[existingIdx].strip_sale_price,
+          unit_sale_price: salePrice || current[existingIdx].unit_sale_price,
+          unit_price: salePrice || current[existingIdx].unit_price,
+          store_stock: storeStock,
+          stock_qty: storeStock,
+          warehouse_stock: godownStock,
+          total_base_stock: totalBase,
+          location_stocks: { wh_str: storeStock, ...(godownStock > 0 ? { wh_001: godownStock } : {}) },
+          low_stock_threshold: minAlert,
+        };
+        updatedCount++;
+      } else {
+        const newItem = {
+          id: raw.id || generateId("inv"),
+          clinic_id: "clinic_001",
+          medicine_name: cleanName,
+          company_name: company,
+          item_code: code,
+          product_description: desc,
+          generic_name: desc || "Homeopathic Dilution / Mother Tincture",
+          naration: desc,
+          category: category,
+          has_multi_unit: Boolean(raw.has_multi_unit),
+          strips_per_box: Number(raw.strips_per_box) || 1,
+          units_per_strip: Number(raw.units_per_strip) || 1,
+          box_label: "Pack",
+          strip_label: packing,
+          unit_label: packing,
+          cost_price_per_box: costPrice,
+          box_sale_price: salePrice,
+          strip_sale_price: salePrice,
+          unit_sale_price: salePrice,
+          unit_price: salePrice,
+          total_base_stock: totalBase,
+          stock_qty: storeStock,
+          store_stock: storeStock,
+          warehouse_stock: godownStock,
+          location_stocks: { wh_str: storeStock, ...(godownStock > 0 ? { wh_001: godownStock } : {}) },
+          low_stock_threshold: minAlert,
+          expiry_date: raw.expiry_date || "2028-12-31"
+        };
+        current.push(newItem);
+        addedCount++;
+      }
     }
 
-    const updated = mode === "replace" ? newItems : [...current, ...newItems];
-    setCollection(KEYS.INVENTORY, updated);
-    return { success: true, count: newItems.length, total: updated.length };
+    setCollection(KEYS.INVENTORY, current);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
+    return { success: true, count: addedCount + updatedCount, added: addedCount, updated: updatedCount, total: current.length };
   },
 
   /**
@@ -2254,18 +2356,28 @@ export const dbInventory = {
     setCollection(KEYS.INVENTORY, updated);
     return { success: true, count: itemsToImport.length, total: updated.length };
   },
+
+  /** Direct synchronous catalog loader for lightning-fast autocomplete */
+  getAccessCatalog: async () => {
+    try {
+      const module = await import("../assets/legacy_access_inventory.json");
+      return Array.isArray(module.default) ? module.default : (Array.isArray(module) ? module : []);
+    } catch {
+      return [];
+    }
+  },
 };
 
 /** Generate Sample CSV Template for Bulk Inventory Upload */
 export function exportInventoryTemplateCSV() {
   const headers = "S/R No,Medicine Name,Description,Packing,Company Name,Item Code,Cost Price,Retail Price,Medical Store Stock,Stock Level Alert,Category";
   const rows = [
-    '1,"15 Ghr 20Ml","Homeopathic Drops 20ml","20ml Drop","BM Pvt LTD","BM-15",420,595,25,6,"Homeopathic Medicine"',
-    '2,"Paul Brooks Drop No. 1","Homeopathic Drops 30ml","30ml Drop","Paul Brooks Homoeo Lab","PB-01",450,650,20,6,"Homeopathic Medicine"',
-    '3,"Dr. Reckeweg R1 Drops","Specialized German Drops","22ml Drop","Schwabe / German","SCH-R01",1100,1450,15,4,"Specialized Drops"',
-    '4,"Mektum No. 3 Drops","Homeopathic Drops","20ml Drop","MEKTUM Pvt Ltd","MKT-03",340,480,20,6,"Homeopathic Drops"',
-    '5,"Blossom No. 4 Drops","Homeopathic Drops","20ml Drop","BLOSSOM Homoeo Pharma","BLS-04",360,520,20,6,"Homeopathic Drops"',
-    '6,"Panadol 500mg Tablets","Allopathic OTC Tablets","Pack 200s","Local Pharma Market","LPM-PAN",460,550,400,50,"Allopathic OTC"'
+    '1,"AMPHOSCA (FEMALE)","Homeopathic Tablets 60s","60 TABS","LEHNING FRANCE","LEH-01",1400,1990,20,5,"Tablets"',
+    '2,"BIOCARDE DROPS","Cardiac Drops 30ml","30 ML","LEHNING FRANCE","LEH-02",950,1340,25,5,"Drops"',
+    '3,"DIACURE CAPSULES","Diabetes Support 60s","60 CAPS","LEHNING FRANCE","LEH-03",1550,2190,15,5,"Capsules"',
+    '4,"TONIC VEGETAL SYRUP","Herbal Restorative Syrup 250ml","250 ML","LEHNING FRANCE","LEH-04",1450,2040,15,5,"Syrup"',
+    '5,"L-COMPLEXES","Drops & Tabs Combo Set","30 ML / 60 TABS","LEHNING FRANCE","LEH-05",900,1290,20,5,"Combination"',
+    '6,"MOTHER TINCTURES","Homeopathic Dilution 1000ml","1000 ML","LEHNING FRANCE","LEH-06",12800,18000,5,2,"Mother Tinctures"'
   ];
   return `${headers}\n${rows.join("\n")}`;
 }
@@ -2276,16 +2388,29 @@ export function parseInventoryCSV(csvText) {
   const lines = csvText.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/['"]/g, ""));
-  const nameIdx = headers.findIndex((h) => h.includes("name") || h.includes("medicine") || h.includes("item"));
-  const compIdx = headers.findIndex((h) => h.includes("company") || h.includes("brand") || h.includes("mfg"));
-  const codeIdx = headers.findIndex((h) => h.includes("code") || h.includes("barcode"));
-  const costIdx = headers.findIndex((h) => h.includes("purchase") || h.includes("cost") || h.includes("buy"));
-  const saleIdx = headers.findIndex((h) => h.includes("sale") || h.includes("price") || h.includes("retail"));
-  const storeStockIdx = headers.findIndex((h) => h.includes("store") || (h.includes("stock") && !h.includes("godown") && !h.includes("warehouse")));
-  const whStockIdx = headers.findIndex((h) => h.includes("godown") || h.includes("warehouse") || h.includes("wh"));
-  const catIdx = headers.findIndex((h) => h.includes("category") || h.includes("type") || h.includes("form"));
-  const alertIdx = headers.findIndex((h) => h.includes("min") || h.includes("threshold") || h.includes("alert"));
+  const rawHeaders = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/['"]/g, ""));
+  
+  // Robust Column Header Resolution
+  const nameIdx = rawHeaders.findIndex((h) => h === "medicine name" || h === "item name" || h === "product name" || (h.includes("name") && !h.includes("company") && !h.includes("incharge")));
+  const descIdx = rawHeaders.findIndex((h) => h.includes("description") || h.includes("generic") || h.includes("formula") || h.includes("naration"));
+  const packIdx = rawHeaders.findIndex((h) => h.includes("packing") || h.includes("pack") || h.includes("unit label") || h.includes("size") || h.includes("volume"));
+  const compIdx = rawHeaders.findIndex((h) => h.includes("company") || h.includes("brand") || h.includes("mfg") || h.includes("manufacturer"));
+  const codeIdx = rawHeaders.findIndex((h) => h === "item code" || h === "code" || h.includes("item code") || h.includes("barcode") || h.includes("sku"));
+  
+  // Cost Index (must be distinct from Retail / Sale)
+  const costIdx = rawHeaders.findIndex((h) => h.includes("cost") || h.includes("purchase") || h.includes("buy") || h === "cp");
+  
+  // Sale / Retail Index (prioritize retail or sale over generic price)
+  let saleIdx = rawHeaders.findIndex((h) => h.includes("retail") || h.includes("sale") || h.includes("mrp") || h === "sp");
+  if (saleIdx === -1) {
+    saleIdx = rawHeaders.findIndex((h, idx) => h.includes("price") && idx !== costIdx);
+  }
+  
+  // Stock Indexes
+  const storeStockIdx = rawHeaders.findIndex((h) => h.includes("medical store stock") || h.includes("store stock") || h.includes("store") || (h.includes("stock") && !h.includes("godown") && !h.includes("warehouse") && !h.includes("alert") && !h.includes("level")));
+  const whStockIdx = rawHeaders.findIndex((h) => h.includes("godown") || h.includes("warehouse") || h.includes("wh stock"));
+  const alertIdx = rawHeaders.findIndex((h) => h.includes("alert") || h.includes("min") || h.includes("threshold") || h.includes("level"));
+  const catIdx = rawHeaders.findIndex((h) => h.includes("category") || h.includes("group") || h.includes("type"));
 
   const parsed = [];
   for (let i = 1; i < lines.length; i++) {
@@ -2303,23 +2428,39 @@ export function parseInventoryCSV(csvText) {
     }
     cells.push(cur.trim());
 
-    const name = nameIdx !== -1 ? cells[nameIdx] : cells[0];
-    if (!name) continue;
+    // If S/R No is column 0, name is column 1
+    const name = nameIdx !== -1 ? cells[nameIdx] : (cells[1] || cells[0]);
+    if (!name || name.toLowerCase() === "medicine name" || name.toLowerCase() === "null") continue;
 
+    const description = descIdx !== -1 && cells[descIdx] ? cells[descIdx] : "";
+    const packing = packIdx !== -1 && cells[packIdx] ? cells[packIdx] : "";
     const company = compIdx !== -1 && cells[compIdx] ? cells[compIdx] : "BM Pvt LTD";
     const code = codeIdx !== -1 && cells[codeIdx] ? cells[codeIdx] : (company.slice(0, 3).toUpperCase() || "GEN");
-    const purchasePrice = costIdx !== -1 ? parseFloat(cells[costIdx]) || 0 : 0;
-    const salePrice = saleIdx !== -1 ? parseFloat(cells[saleIdx]) || 0 : (purchasePrice > 0 ? purchasePrice * 1.3 : 0);
-    const storeStock = storeStockIdx !== -1 ? parseInt(cells[storeStockIdx]) || 0 : 15;
-    const godownStock = whStockIdx !== -1 ? parseInt(cells[whStockIdx]) || 0 : 35;
-    const category = catIdx !== -1 && cells[catIdx] ? cells[catIdx] : "Homeopathic Drops";
-    const minAlert = alertIdx !== -1 ? parseInt(cells[alertIdx]) || 6 : 6;
+    
+    const purchasePrice = costIdx !== -1 && cells[costIdx] ? (parseFloat(cells[costIdx]) || 0) : 0;
+    const salePrice = saleIdx !== -1 && cells[saleIdx] ? (parseFloat(cells[saleIdx]) || 0) : (purchasePrice > 0 ? purchasePrice : 0);
+    
+    const storeStock = storeStockIdx !== -1 && cells[storeStockIdx] ? (parseInt(cells[storeStockIdx]) || 0) : 0;
+    const godownStock = whStockIdx !== -1 && cells[whStockIdx] ? (parseInt(cells[whStockIdx]) || 0) : 0;
+    const totalBase = storeStock + godownStock;
+    
+    const category = catIdx !== -1 && cells[catIdx] ? cells[catIdx] : "";
+    const minAlert = alertIdx !== -1 && cells[alertIdx] ? (parseInt(cells[alertIdx]) || 6) : 6;
 
     parsed.push({
       medicine_name: name,
+      product_description: description,
+      generic_name: description || "Homeopathic Dilution / Mother Tincture",
+      naration: description,
+      packing: packing,
+      unit_label: packing,
+      strip_label: packing,
+      box_label: "Pack",
       company_name: company,
       item_code: code,
+      cost_price: purchasePrice,
       cost_price_per_box: purchasePrice,
+      purchase_price: purchasePrice,
       box_sale_price: salePrice,
       strip_sale_price: salePrice,
       unit_sale_price: salePrice,
@@ -2327,16 +2468,13 @@ export function parseInventoryCSV(csvText) {
       store_stock: storeStock,
       stock_qty: storeStock,
       warehouse_stock: godownStock,
-      total_base_stock: storeStock + godownStock,
+      total_base_stock: totalBase,
       category,
       has_multi_unit: false,
-      box_label: "Pack",
-      strip_label: "Bottle",
-      unit_label: "Bottle",
       strips_per_box: 1,
       units_per_strip: 1,
       low_stock_threshold: minAlert,
-      location_stocks: { wh_001: godownStock, wh_str: storeStock },
+      location_stocks: { wh_str: storeStock, ...(godownStock > 0 ? { wh_001: godownStock } : {}) },
       expiry_date: "2028-12-31"
     });
   }
@@ -2567,18 +2705,8 @@ export const dbAccounts = {
 };
 
 // ---------- Medicine Categories Engine ----------
-export const DEFAULT_STANDARD_CATEGORIES = [
-  "Homeopathic Drops",
-  "Syrup / Suspension",
-  "Specialized Drops",
-  "Tablet",
-  "Capsule",
-  "Allopathic OTC",
-  "Ointment / Cream",
-  "Injection / IV",
-  "Eye / Ear Drops",
-  "General Item",
-];
+// By default empty: categories are user-defined and dynamically discovered from active inventory
+export const DEFAULT_STANDARD_CATEGORIES = [];
 
 export const dbCategories = {
   getAll: () => {
@@ -2595,8 +2723,8 @@ export const dbCategories = {
       }
     });
 
-    // 2. Add standard categories
-    DEFAULT_STANDARD_CATEGORIES.forEach((name) => {
+    // 2. Add standard categories (if configured)
+    (DEFAULT_STANDARD_CATEGORIES || []).forEach((name) => {
       if (!seen.has(name.toLowerCase())) {
         seen.add(name.toLowerCase());
         result.push(name);
@@ -2628,6 +2756,121 @@ export const dbCategories = {
       notifyStatusUpdate();
     }
     return clean;
+  },
+  reset: () => {
+    setCollection(KEYS.CATEGORIES, []);
+    notifyStatusUpdate();
+    return true;
+  },
+};
+
+// ---------- Medicine Companies Engine ----------
+export const dbCompanies = {
+  getAll: () => {
+    const saved = getCollection(KEYS.COMPANIES);
+    const seen = new Set();
+    const result = [];
+
+    // 1. Add custom saved companies
+    (saved || []).forEach((c) => {
+      const name = typeof c === "string" ? c.trim() : (c?.name || "").trim();
+      const code = typeof c === "object" ? (c?.code || "").trim().toUpperCase() : "";
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        result.push({
+          id: c?.id || generateId("cmp"),
+          name,
+          code: code || name.substring(0, 3).toUpperCase(),
+        });
+      }
+    });
+
+    // 2. Add companies from dbSuppliers
+    const suppliers = getCollection(KEYS.SUPPLIERS) || [];
+    suppliers.forEach((s) => {
+      const name = (s.name || "").trim();
+      const code = (s.supplier_code || s.code || "").trim().toUpperCase();
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        result.push({
+          id: s.id || generateId("sup"),
+          name,
+          code: code || name.substring(0, 3).toUpperCase(),
+        });
+      }
+    });
+
+    // 3. Add any companies from active inventory
+    const inv = getCollection(KEYS.INVENTORY) || [];
+    inv.forEach((item) => {
+      const comp = (item.company_name || "").trim();
+      const code = (item.item_code || "").trim().toUpperCase();
+      if (comp && !seen.has(comp.toLowerCase())) {
+        seen.add(comp.toLowerCase());
+        result.push({
+          id: `cmp_inv_${seen.size}`,
+          name: comp,
+          code: code || comp.substring(0, 3).toUpperCase(),
+        });
+      }
+    });
+
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  },
+  add: (companyName, companyCode = "") => {
+    if (!companyName || !companyName.trim()) return null;
+    const cleanName = companyName.trim();
+    const cleanCode = (companyCode || "").trim().toUpperCase() || cleanName.substring(0, 3).toUpperCase();
+    const current = getCollection(KEYS.COMPANIES) || [];
+    const existing = current.find((c) => {
+      const n = typeof c === "string" ? c : c?.name;
+      return (n || "").toLowerCase().trim() === cleanName.toLowerCase();
+    });
+    if (!existing) {
+      const newCompany = {
+        id: generateId("cmp"),
+        name: cleanName,
+        code: cleanCode,
+        created_at: new Date().toISOString(),
+      };
+      setCollection(KEYS.COMPANIES, [...current, newCompany]);
+
+      // Also ensure it is registered in dbSuppliers so it shows up in Supplier Directory & Purchases
+      try {
+        const supList = getCollection(KEYS.SUPPLIERS) || [];
+        const hasSup = supList.some((s) => (s.name || "").toLowerCase().trim() === cleanName.toLowerCase());
+        if (!hasSup) {
+          const newSup = {
+            id: generateId("sup"),
+            name: cleanName,
+            supplier_code: cleanCode,
+            company_name: cleanName,
+            contact_person: `${cleanName} Rep`,
+            phone: "",
+            address: "",
+            city: "Hyderabad",
+            current_balance: 0,
+            balance_due: 0,
+            created_at: new Date().toISOString(),
+          };
+          setCollection(KEYS.SUPPLIERS, [...supList, newSup]);
+        }
+      } catch {}
+
+      notifyStatusUpdate();
+      return newCompany;
+    }
+    return typeof existing === "object" ? existing : { name: cleanName, code: cleanCode };
+  },
+  delete: (idOrName) => {
+    const current = getCollection(KEYS.COMPANIES) || [];
+    const filtered = current.filter((c) => {
+      if (typeof c === "string") return c.toLowerCase() !== String(idOrName).toLowerCase();
+      return c.id !== idOrName && c.name?.toLowerCase() !== String(idOrName).toLowerCase();
+    });
+    setCollection(KEYS.COMPANIES, filtered);
+    notifyStatusUpdate();
+    return true;
   },
 };
 
@@ -5077,7 +5320,13 @@ export const dbCashBook = {
     const list = getCollection(KEYS.CASHBOOK) || [];
     const voucherNo = entryData.voucher_no || dbCashBook.getNextVoucherNo();
     const amount = Math.max(0, Number(entryData.amount) || 0);
-    const term = entryData.term === "Paid" ? "Paid" : "Receive";
+    const actionType = entryData.action_type || (entryData.term === "Paid" ? "supplier_payment" : "party_wasooli");
+    const paymentMode = entryData.payment_mode || (actionType.includes("credit") ? "Credit" : "Cash");
+    const term = (actionType === "party_credit_sale" || actionType === "supplier_credit_purchase" || entryData.term === "Credit")
+      ? "Credit"
+      : (entryData.term === "Paid" || actionType === "supplier_payment" || actionType === "supplier_cash_purchase" || actionType === "shop_expense")
+        ? "Paid"
+        : "Receive";
     const date = entryData.date ? entryData.date.split("T")[0] : new Date().toISOString().split("T")[0];
     const accountName = (entryData.account_name || "Cash In Hand").trim();
     const naration = (entryData.naration || entryData.description || "").trim();
@@ -5087,7 +5336,22 @@ export const dbCashBook = {
       voucher_no: voucherNo,
       term,
       type: term,
+      action_type: actionType,
+      payment_mode: paymentMode,
+      bank_name: entryData.bank_name || undefined,
+      cheque_no: entryData.cheque_no || undefined,
       account_name: accountName,
+      party_id: entryData.party_id || undefined,
+      supplier_id: entryData.supplier_id || undefined,
+      category: entryData.category || (
+        actionType === "party_wasooli" ? "Party Wasooli" :
+        actionType === "party_credit_sale" ? "Party Credit Sale" :
+        actionType === "party_cash_sale" ? "Party Cash Sale" :
+        actionType === "supplier_payment" ? "Supplier Payment" :
+        actionType === "supplier_credit_purchase" ? "Company Credit Purchase" :
+        actionType === "supplier_cash_purchase" ? "Company Cash Purchase" :
+        "Shop Expense"
+      ),
       naration,
       description: naration,
       amount,
@@ -5098,14 +5362,134 @@ export const dbCashBook = {
     // 1. Sync Double-Entry accounting into General Ledger (MainAc)
     const mainAcList = getCollection(KEYS.MAIN_AC) || [];
     const mainAcEntries = [];
-    if (term === "Receive") {
-      // Cash Received: Debit Cash in Hand, Credit Party/Account
+
+    if (actionType === "party_credit_sale") {
+      // Party took stock on credit: Debit Party Account, Credit Sales
       mainAcEntries.push({
         id: generateId("mac"),
         voucher_no: voucherNo,
         date,
         transaction_type: "Debit Note",
-        account_name: "Cash In Hand",
+        account_name: accountName,
+        debit: amount,
+        credit: 0,
+        description: naration || `Stock given on credit to ${accountName}`,
+        created_at: new Date().toISOString()
+      });
+      mainAcEntries.push({
+        id: generateId("mac"),
+        voucher_no: voucherNo,
+        date,
+        transaction_type: "Credit Note",
+        account_name: "Sales Account",
+        debit: 0,
+        credit: amount,
+        description: naration || `Credit sale`,
+        created_at: new Date().toISOString()
+      });
+
+      // Increase Party Udhaar Balance
+      const parties = dbParties.getAll();
+      const matchedParty = parties.find(
+        (p) => (p.name || "").toLowerCase() === accountName.toLowerCase() || p.id === entryData.party_id
+      );
+      if (matchedParty) {
+        dbParties.updateBalance(matchedParty.id, amount);
+      }
+    } else if (actionType === "supplier_credit_purchase") {
+      // Bought stock on credit from Company: Debit Purchases, Credit Supplier
+      mainAcEntries.push({
+        id: generateId("mac"),
+        voucher_no: voucherNo,
+        date,
+        transaction_type: "Debit Note",
+        account_name: "Inventory Purchases",
+        debit: amount,
+        credit: 0,
+        description: naration || `Stock received on credit from ${accountName}`,
+        created_at: new Date().toISOString()
+      });
+      mainAcEntries.push({
+        id: generateId("mac"),
+        voucher_no: voucherNo,
+        date,
+        transaction_type: "Credit Note",
+        account_name: accountName,
+        debit: 0,
+        credit: amount,
+        description: naration || `Supplier payable credit accrued`,
+        created_at: new Date().toISOString()
+      });
+
+      // Increase Supplier Payable Balance
+      const suppliers = dbSuppliers.getAll();
+      const matchedSup = suppliers.find(
+        (s) => (s.name || "").toLowerCase() === accountName.toLowerCase() || s.id === entryData.supplier_id
+      );
+      if (matchedSup) {
+        dbSuppliers.updateBalance(matchedSup.id, amount);
+      }
+    } else if (actionType === "supplier_cash_purchase") {
+      // Bought stock on spot Cash: Debit Purchases, Credit Cash in Hand
+      const cashAc = paymentMode.includes("Bank") ? "Bank Account" : "Cash In Hand";
+      mainAcEntries.push({
+        id: generateId("mac"),
+        voucher_no: voucherNo,
+        date,
+        transaction_type: "Debit Note",
+        account_name: "Inventory Purchases",
+        debit: amount,
+        credit: 0,
+        description: naration || `Stock purchased on cash from ${accountName}`,
+        created_at: new Date().toISOString()
+      });
+      mainAcEntries.push({
+        id: generateId("mac"),
+        voucher_no: voucherNo,
+        date,
+        transaction_type: "Paid",
+        account_name: cashAc,
+        debit: 0,
+        credit: amount,
+        description: naration || `Cash paid for stock`,
+        created_at: new Date().toISOString()
+      });
+      // Supplier credit balance is unchanged because cash was paid on the spot
+    } else if (actionType === "party_cash_sale") {
+      // Sold stock for spot cash: Debit Cash in Hand, Credit Sales
+      const cashAc = paymentMode.includes("Bank") ? "Bank Account" : "Cash In Hand";
+      mainAcEntries.push({
+        id: generateId("mac"),
+        voucher_no: voucherNo,
+        date,
+        transaction_type: "Receive",
+        account_name: cashAc,
+        debit: amount,
+        credit: 0,
+        description: naration || `Cash sale to ${accountName}`,
+        created_at: new Date().toISOString()
+      });
+      mainAcEntries.push({
+        id: generateId("mac"),
+        voucher_no: voucherNo,
+        date,
+        transaction_type: "Credit Note",
+        account_name: "Sales Account",
+        debit: 0,
+        credit: amount,
+        description: naration || `Cash sale revenue`,
+        created_at: new Date().toISOString()
+      });
+      // Party balance is unchanged because cash was received on the spot
+    } else if (term === "Receive") {
+      // Party Udhaar Wasooli: Debit Cash in Hand, Credit Party Account
+      const cashAc = paymentMode.includes("Bank") ? "Bank Account" : "Cash In Hand";
+      mainAcEntries.push({
+        id: generateId("mac"),
+        voucher_no: voucherNo,
+        date,
+        transaction_type: "Receive",
+        account_name: cashAc,
         debit: amount,
         credit: 0,
         description: naration || `Cash received from ${accountName}`,
@@ -5115,30 +5499,30 @@ export const dbCashBook = {
         id: generateId("mac"),
         voucher_no: voucherNo,
         date,
-        transaction_type: "Receive",
+        transaction_type: "Credit Note",
         account_name: accountName,
         debit: 0,
         credit: amount,
-        description: naration || `Cash received`,
+        description: naration || `Udhaar wasooli received`,
         created_at: new Date().toISOString()
       });
 
-      // Reduce party Udhaar balance if it's a known wholesale party
+      // Reduce party Udhaar balance if it's a known wholesale party wasooli
       const parties = dbParties.getAll();
       const matchedParty = parties.find(
-        (p) => p.name.toLowerCase() === accountName.toLowerCase() || p.id === entryData.party_id
+        (p) => (p.name || "").toLowerCase() === accountName.toLowerCase() || p.id === entryData.party_id
       );
-      const partyBal = Number(matchedParty?.current_balance ?? matchedParty?.balance_due ?? 0);
-      if (matchedParty && partyBal > 0) {
-        dbParties.recordPayment(matchedParty.id, amount);
+      if (matchedParty) {
+        dbParties.recordPayment(matchedParty.id, amount, paymentMode, naration, entryData.cashier);
       }
     } else {
-      // Cash Paid: Debit Party/Expense Account, Credit Cash in Hand
+      // Paid (Supplier Debt Payment / Shop Expense)
+      const cashAc = paymentMode.includes("Bank") ? "Bank Account" : "Cash In Hand";
       mainAcEntries.push({
         id: generateId("mac"),
         voucher_no: voucherNo,
         date,
-        transaction_type: "Paid",
+        transaction_type: "Debit Note",
         account_name: accountName,
         debit: amount,
         credit: 0,
@@ -5149,21 +5533,21 @@ export const dbCashBook = {
         id: generateId("mac"),
         voucher_no: voucherNo,
         date,
-        transaction_type: "Credit Note",
-        account_name: "Cash In Hand",
+        transaction_type: "Paid",
+        account_name: cashAc,
         debit: 0,
         credit: amount,
         description: naration || `Payment disbursed`,
         created_at: new Date().toISOString()
       });
 
-      // If supplier, record payment in Supplier ledger
+      // If supplier, reduce Supplier payable balance
       const suppliers = dbSuppliers.getAll();
       const matchedSup = suppliers.find(
-        (s) => s.name.toLowerCase() === accountName.toLowerCase() || s.id === entryData.supplier_id
+        (s) => (s.name || "").toLowerCase() === accountName.toLowerCase() || s.id === entryData.supplier_id
       );
       if (matchedSup) {
-        dbSupplierLedger.recordPayment(matchedSup.id, amount, "cash", naration, voucherNo);
+        dbSuppliers.recordPayment(matchedSup.id, amount);
       }
     }
 

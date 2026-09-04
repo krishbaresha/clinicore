@@ -1,5 +1,5 @@
 import { usePWAUpdate } from "../hooks/usePWAUpdate.js";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 /**
  * PWAUpdateBanner — Prominent Auto-Updating Modal & Notification Deck

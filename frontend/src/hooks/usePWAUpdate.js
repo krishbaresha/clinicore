@@ -15,7 +15,7 @@ export function usePWAUpdate() {
   const [isUpdating, setIsUpdating] = useState(false);
   const registrationRef = useRef(null);
   // Read app version stamped at build time by Vite, with safe fallbacks
-  const currentVersion = (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || (typeof localStorage !== "undefined" && localStorage.getItem("cf_applied_version")) || "2.5.3";
+  const currentVersion = (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || (typeof localStorage !== "undefined" && localStorage.getItem("cf_applied_version")) || "2.5.9";
   const currentBuildId = (typeof globalThis !== "undefined" && globalThis.__APP_BUILD_ID__) || "";
   const currentVersionRef = useRef(currentVersion);
 

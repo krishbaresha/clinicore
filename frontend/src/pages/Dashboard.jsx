@@ -1,36 +1,25 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbVisits, dbInventory, dbSales, dbExpenses, dbUsers, dbPatients, dbStockTransfers, dbWarehouses, dbPurchases, dbB2BSales, dbParties } from "../api/db.js";
-import { formatCurrency, formatTodayLong, getGreeting } from "../utils/formatters.js";
+import {
+  dbVisits,
+  dbInventory,
+  dbSales,
+  dbExpenses,
+  dbUsers,
+  dbPatients,
+  dbStockTransfers,
+  dbWarehouses,
+  dbPurchases,
+  dbB2BSales,
+  dbParties,
+} from "../api/db.js";
+import { formatCurrency, formatTodayLong } from "../utils/formatters.js";
 import { useTranslation } from "react-i18next";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
-
-function StatCard({ label, value, icon, subline, iconBg, labelColor, valueColor, children }) {
-  return (
-    <div className="glass-card p-md flex flex-col gap-4 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 h-full">
-      <div className="absolute -right-4 -top-4 w-24 h-24 bg-secondary-container/30 rounded-full blur-xl group-hover:bg-secondary-container/50 transition-colors" />
-      <div className="flex justify-between items-start z-10">
-        <div>
-          <p className={`font-label-md text-label-md mb-1 uppercase tracking-wider ${labelColor || "text-outline"}`}>
-            {label}
-          </p>
-          <h3 className={`font-display-lg text-display-lg font-bold ${valueColor || "text-on-surface"}`}>
-            {value}
-          </h3>
-        </div>
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${iconBg || "bg-secondary-container/50"}`}>
-          <span className="material-symbols-outlined text-2xl text-primary-container">{icon}</span>
-        </div>
-      </div>
-      {subline && <div className="z-10 flex items-center gap-2 text-primary font-body-sm text-body-sm">{subline}</div>}
-      {children}
-    </div>
-  );
-}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -39,7 +28,10 @@ export default function Dashboard() {
 
   // Doctor ke liye strict data isolation: sirf apna OPD data dikhe
   const isDoctor = user?.role === "doctor";
-  const isWarehouseUser = user?.role === "warehouse" || user?.role === "warehouse_incharge" || user?.role === "warehouse_manager";
+  const isWarehouseUser =
+    user?.role === "warehouse" ||
+    user?.role === "warehouse_incharge" ||
+    user?.role === "warehouse_manager";
   const [syncTick, setSyncTick] = useState(0);
 
   // Statement Date Range Preset State (Admin / Owner & Authorized Financial Access Only)
@@ -48,16 +40,45 @@ export default function Dashboard() {
   const [endDateInput, setEndDateInput] = useState(() => new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
-    const handleSync = () => setSyncTick((t) => t + 1);
+    const handleSync = () => setSyncTick((prev) => prev + 1);
     window.addEventListener("clinicflow_status_update", handleSync);
     return () => window.removeEventListener("clinicflow_status_update", handleSync);
   }, []);
 
   const isPrimaryDoctorOrOwner = Boolean(user?.is_owner || user?.role === "admin");
-  const canViewFinancials = Boolean(
-    isPrimaryDoctorOrOwner ||
-    user?.can_view_financials === true
-  );
+  const canViewFinancials = Boolean(isPrimaryDoctorOrOwner || user?.can_view_financials === true);
+
+  // Dynamic Greeting based on time of day with matching SVG icon
+  const greetingInfo = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        en: "Good Morning",
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        ),
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        en: "Good Afternoon",
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        ),
+      };
+    }
+    return {
+      en: "Good Evening",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      ),
+    };
+  }, []);
 
   // Compute live stats efficiently in single-pass O(N) memoized block
   const {
@@ -154,9 +175,9 @@ export default function Dashboard() {
 
     const netRevToday = fToday + pRevToday - expToday;
 
-    // Doctor breakdown
+    // Doctor breakdown (Excludes non-doctor administrative accounts)
     const allUsers = dbUsers.getAll() || [];
-    const doctors = allUsers.filter((u) => u.role === "doctor" || u.is_principal_doctor);
+    const doctors = allUsers.filter((u) => u.role === "doctor" && u.id !== "user_admin_001" && u.name !== "Clinic Administrator");
     const docBreakdown = doctors.map((doc) => {
       const docVisits = tVisits.filter((v) => v.doctor_id === doc.id || v.doctor_id === doc.userId);
       const docFees = docVisits.reduce((sum, v) => sum + (v.fee_amount || 0), 0);
@@ -263,206 +284,254 @@ export default function Dashboard() {
     };
   }, [syncTick, user, datePreset, startDateInput, endDateInput]);
 
+  // Selected date preset description
+  const selectedDateLabel = useMemo(() => {
+    switch (datePreset) {
+      case "today":
+        return "Today (Aaj)";
+      case "yesterday":
+        return "Yesterday (Kal)";
+      case "last7":
+        return "Last 7 Days (Pichlay 7 Din)";
+      case "this_month":
+        return "This Month (Iss Mahine)";
+      case "last_month":
+        return "Last Month (Pichla Mahina)";
+      case "custom":
+        return `Custom: ${startDateInput} to ${endDateInput}`;
+      default:
+        return "Today (Aaj)";
+    }
+  }, [datePreset, startDateInput, endDateInput]);
 
   if (isWarehouseUser) {
     return (
       <div className="space-y-6 pb-12 animate-in fade-in duration-300">
         {/* Header Greeting Banner */}
-        <header className="glass-card p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 border border-teal-200/60 bg-gradient-to-r from-teal-900 via-teal-800 to-slate-900 text-white shadow-xl">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs text-amber-300 font-bold uppercase tracking-wider">
-              <span className="material-symbols-outlined text-base">warehouse</span>
-              <span>Central Warehouse Operations • Location: {activeWhObj?.name || "Primary Godown"} ({activeWhId})</span>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-teal-100/70 text-teal-800 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                {greetingInfo.en} <span className="font-normal text-slate-600 font-serif" dir="rtl">({greetingInfo.ur})</span>, {user?.name || user?.full_name || "Warehouse Manager"}
+              </h1>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              {getGreeting()}, {user?.name || user?.full_name || "Warehouse Manager"}!
-            </h1>
-            <p className="text-xs text-teal-200">
-              {formatTodayLong()} — Real-time Stock, B2B Inward/Outward &amp; Parties Udhaar Summary
+            <p className="text-sm text-slate-500 mt-1 pl-10.5 font-medium flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-slate-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {formatTodayLong()} • Location: {activeWhObj?.name || "Primary Godown"} ({activeWhId})
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <button
               onClick={() => navigate("/store/purchases")}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm rounded-xl shadow-xs transition duration-150 ease-in-out cursor-pointer"
+              type="button"
             >
-              <span className="material-symbols-outlined text-base">add_business</span>
-              + Inward Purchase (GRN)
+              <svg className="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20" />
+              </svg>
+              <span>+ Inward Purchase (GRN)</span>
             </button>
             <button
               onClick={() => navigate("/store/warehouse")}
-              className="bg-teal-600 hover:bg-teal-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm rounded-xl shadow-xs transition duration-150 ease-in-out cursor-pointer"
+              type="button"
             >
-              <span className="material-symbols-outlined text-base">point_of_sale</span>
-              + B2B Wholesale Sale
+              <svg className="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <span>+ B2B Wholesale Sale</span>
             </button>
           </div>
-        </header>
+        </div>
 
         {/* 4 Core Warehouse KPI Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="glass-card p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Godown Stock Valuation</p>
-                <h3 className="text-2xl font-black text-teal-900 mt-1">Rs. {godownValue.toLocaleString()}</h3>
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">inventory_2</span>
-              </div>
-            </div>
-            <div className="text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg w-fit">
-              📦 {godownUnits.toLocaleString()} total units in stock
-            </div>
-          </div>
-
-          <div className="glass-card p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today&apos;s Stock Inward (GRN)</p>
-                <h3 className="text-2xl font-black text-cyan-900 mt-1">Rs. {todayWhPurchasesVal.toLocaleString()}</h3>
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-cyan-100 text-cyan-800 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">local_shipping</span>
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Godown Stock Valuation</span>
+              <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
               </div>
             </div>
-            <div className="text-xs font-semibold text-cyan-700 bg-cyan-50 px-2.5 py-1 rounded-lg w-fit">
-              🚚 {todayWhPurchases.length} supplier inward bill(s)
+            <div className="mt-2">
+              <div className="text-3xl font-extrabold text-slate-900 tracking-tight">Rs. {godownValue.toLocaleString()}</div>
+              <div className="mt-2 text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{godownUnits.toLocaleString()} total units in stock</span>
+              </div>
             </div>
           </div>
 
-          <div className="glass-card p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today&apos;s B2B Wholesale Outward</p>
-                <h3 className="text-2xl font-black text-amber-900 mt-1">Rs. {todayWhSalesVal.toLocaleString()}</h3>
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">point_of_sale</span>
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Stock Inward (GRN)</span>
+              <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8" />
+                </svg>
               </div>
             </div>
-            <div className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg w-fit">
-              📜 {todayWhSales.length} B2B bill(s) issued today
+            <div className="mt-2">
+              <div className="text-3xl font-extrabold text-slate-900 tracking-tight">Rs. {todayWhPurchasesVal.toLocaleString()}</div>
+              <div className="mt-2 text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>{todayWhPurchases.length} inward purchases</span>
+              </div>
             </div>
           </div>
 
-          <div className="glass-card p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Parties Credit (Udhaar)</p>
-                <h3 className="text-2xl font-black text-rose-900 mt-1">Rs. {totalPartyUdhaar.toLocaleString()}</h3>
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">B2B Wholesale Outward</span>
+              <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
+                </svg>
               </div>
             </div>
-            <div className="text-xs font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg w-fit">
-              👥 {partiesWithUdhaarCount} party account(s) pending
+            <div className="mt-2">
+              <div className="text-3xl font-extrabold text-slate-900 tracking-tight">Rs. {todayWhSalesVal.toLocaleString()}</div>
+              <div className="mt-2 text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{todayWhSales.length} wholesale bills issued</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-600">Parties Credit (Udhaar)</span>
+              <div className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-3xl font-extrabold text-rose-600 tracking-tight">Rs. {totalPartyUdhaar.toLocaleString()}</div>
+              <div className="mt-2 text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{partiesWithUdhaarCount} party account(s) pending</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Specific Warehouse Revenue Breakdown */}
-        <section className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white rounded-3xl p-6 shadow-lg border border-teal-800/60 space-y-4">
-          <div className="flex items-center justify-between border-b border-teal-800/80 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-amber-400 text-2xl">analytics</span>
+        {/* Warehouse Revenue Breakdown Bento */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-200/90">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shadow-xs">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
               <div>
-                <h3 className="font-bold text-lg leading-tight">Warehouse Net Revenue &amp; Expense Summary</h3>
-                <p className="text-xs text-teal-200">Daily financial operating metrics for {activeWhObj?.name || "Assigned Location"}</p>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Warehouse Net Revenue &amp; Expense Summary</h2>
+                <p className="text-xs text-slate-500 font-medium">Daily operating metrics for {activeWhObj?.name || "Primary Godown"}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate("/store/warehouse")}
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-xl transition shadow-xs cursor-pointer"
+              type="button"
+            >
+              <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+              <span>Manage Godown &amp; Transfers</span>
+              <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 hover:border-teal-200 transition shadow-xs">
+              <div className="flex items-center justify-between text-slate-600 text-xs font-bold uppercase tracking-wider">
+                <span>Today's B2B Revenue</span>
+                <div className="h-7 w-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-extrabold tracking-tight text-slate-900">Rs. {todayWhSalesVal.toLocaleString()}</div>
+                <div className="text-[11px] text-slate-500 mt-1 font-medium">From {todayWhSales.length} wholesale bills</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 hover:border-rose-100 transition shadow-xs">
+              <div className="flex items-center justify-between text-rose-600 text-xs font-bold uppercase tracking-wider">
+                <span>Warehouse Expenses</span>
+                <div className="h-7 w-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-extrabold tracking-tight text-rose-600">Rs. {todayWhExpensesVal.toLocaleString()}</div>
+                <div className="text-[11px] text-slate-500 mt-1 font-medium">From {todayWhExpenses.length} expense vouchers</div>
+              </div>
+            </div>
+
+            <div className="bg-teal-700 text-white rounded-xl p-4 border border-teal-800 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between text-teal-100 text-xs font-bold uppercase tracking-wider">
+                <span>Warehouse Net Balance</span>
+                <div className="h-7 w-7 rounded-lg bg-teal-800/80 text-teal-200 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-extrabold tracking-tight text-white">Rs. {(todayWhSalesVal - todayWhExpensesVal).toLocaleString()}</div>
+                <div className="text-[11px] text-teal-100/90 mt-1 font-medium">B2B Revenue − Expenses</div>
               </div>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">Today&apos;s B2B Revenue</div>
-              <div className="text-2xl font-black text-cyan-300">Rs. {todayWhSalesVal.toLocaleString()}</div>
-              <div className="text-[11px] text-teal-200/80 mt-1">From {todayWhSales.length} wholesale bills</div>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">Today&apos;s Warehouse Expenses</div>
-              <div className="text-2xl font-black text-rose-300">Rs. {todayWhExpensesVal.toLocaleString()}</div>
-              <div className="text-[11px] text-teal-200/80 mt-1">From {todayWhExpenses.length} expense voucher(s)</div>
-            </div>
-
-            <div className="bg-amber-500/20 backdrop-blur-md rounded-2xl p-4 border border-amber-400/40">
-              <div className="text-xs text-amber-200 font-bold uppercase tracking-wider mb-1">Warehouse Net Balance</div>
-              <div className="text-2xl font-black text-amber-300">Rs. {(todayWhSalesVal - todayWhExpensesVal).toLocaleString()}</div>
-              <div className="text-[11px] text-amber-100/90 font-medium mt-1">B2B Revenue - Warehouse Expenses</div>
-            </div>
-          </div>
-        </section>
-
-        {/* Warehouse Operational CRM Quick Desk Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div
-            onClick={() => navigate("/store/warehouse")}
-            className="glass-card p-5 rounded-3xl bg-white border border-slate-200 hover:border-teal-400 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined text-2xl">warehouse</span>
-            </div>
-            <h4 className="font-extrabold text-base text-slate-900 group-hover:text-teal-700">Godown &amp; B2B Distribution Hub</h4>
-            <p className="text-xs text-slate-500 mt-1">Issue wholesale bills, internal stock transfers, and view godowns ledger.</p>
-          </div>
-
-          <div
-            onClick={() => navigate("/store/purchases")}
-            className="glass-card p-5 rounded-3xl bg-white border border-slate-200 hover:border-cyan-400 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-cyan-100 text-cyan-800 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined text-2xl">add_business</span>
-            </div>
-            <h4 className="font-extrabold text-base text-slate-900 group-hover:text-cyan-700">Company Purchases (GRN)</h4>
-            <p className="text-xs text-slate-500 mt-1">Receive inward stock from pharmaceutical companies and distributors.</p>
-          </div>
-
-          <div
-            onClick={() => navigate("/store/warehouse")}
-            className="glass-card p-5 rounded-3xl bg-white border border-slate-200 hover:border-amber-400 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined text-2xl">group</span>
-            </div>
-            <h4 className="font-extrabold text-base text-slate-900 group-hover:text-amber-700">B2B Wholesale Parties</h4>
-            <p className="text-xs text-slate-500 mt-1">Manage party accounts, credit limits, city/salesman mappings &amp; Udhaar balance.</p>
-          </div>
-
-          <div
-            onClick={() => navigate("/store")}
-            className="glass-card p-5 rounded-3xl bg-white border border-slate-200 hover:border-emerald-400 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined text-2xl">inventory_2</span>
-            </div>
-            <h4 className="font-extrabold text-base text-slate-900 group-hover:text-emerald-700">Store Catalogue &amp; Stock</h4>
-            <p className="text-xs text-slate-500 mt-1">View inventory list, manufacturing company tags, unit prices, and batches.</p>
-          </div>
         </div>
 
-        {/* Low Stock Items Table for Warehouse */}
-        <section className="glass-card p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+        {/* Low Stock Items in Warehouse */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-200/90">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-rose-600">warning</span>
-              <h3 className="font-bold text-base text-slate-900">
+              <span className="h-2 w-2 rounded-full bg-rose-500"></span>
+              <h3 className="font-bold text-sm text-slate-900">
                 Low Stock Alerts in {activeWhObj?.name || "Assigned Warehouse"}
               </h3>
             </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800">
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
               {whLowStockItems.length} Low Items
             </span>
           </div>
 
           {whLowStockItems.length === 0 ? (
-            <div className="p-6 text-center text-slate-500 text-xs bg-slate-50 rounded-2xl">
+            <div className="p-6 text-center text-slate-500 text-xs bg-slate-50 rounded-xl mt-4">
               ✅ All stock levels in {activeWhObj?.name || "assigned godown"} are healthy and above reorder thresholds.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mt-3">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider bg-slate-50">
@@ -477,7 +546,7 @@ export default function Dashboard() {
                   {whLowStockItems.slice(0, 8).map((item) => {
                     const locQty = dbInventory.getLocationStock ? dbInventory.getLocationStock(item, activeWhId) : (item.stock_qty || 0);
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50/80">
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-2.5 px-3 font-bold text-slate-900">{item.medicine_name}</td>
                         <td className="py-2.5 px-3 text-slate-600">{item.company_name || item.brand_name || "Generic"}</td>
                         <td className="py-2.5 px-3 text-right font-black text-rose-600">{locQty} units</td>
@@ -485,7 +554,7 @@ export default function Dashboard() {
                         <td className="py-2.5 px-3 text-center">
                           <button
                             onClick={() => navigate("/store/purchases")}
-                            className="px-2.5 py-1 rounded-lg bg-teal-100 text-teal-800 font-bold text-[11px] hover:bg-teal-200 transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 font-bold text-[11px] hover:bg-teal-100 transition-colors cursor-pointer"
                           >
                             + Order Stock
                           </button>
@@ -497,148 +566,192 @@ export default function Dashboard() {
               </table>
             </div>
           )}
-        </section>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-full min-w-0 overflow-x-hidden">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+    <div className="space-y-6 pb-8 animate-in fade-in duration-200 w-full max-w-full">
+      {/* ── 1. Welcome Banner & Primary Action Header ── */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-on-surface">
-            {getGreeting()}, {user?.name || "Doctor"}
-          </h2>
-          <p className="text-xs sm:text-sm text-outline mt-0.5">{formatTodayLong()}</p>
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-teal-100/70 text-teal-800 flex items-center justify-center shrink-0 shadow-2xs">
+              {greetingInfo.icon}
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              {greetingInfo.en}, {user?.name || user?.full_name || "Clinic Administrator"}
+            </h1>
+          </div>
+          <p className="text-sm text-slate-500 mt-1 pl-10.5 font-medium flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-slate-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {formatTodayLong()}
+          </p>
         </div>
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {user?.role === "doctor" ? (
+
+        {/* Primary Action Button */}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {isDoctor ? (
             <>
               <button
                 onClick={() => navigate("/doctor/queue")}
-                className="btn-primary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/20"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm rounded-xl shadow-xs transition duration-150 ease-in-out cursor-pointer"
+                type="button"
               >
-                <span className="material-symbols-outlined text-base">queue</span>
-                Open My OPD Queue
+                <svg className="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span>Open My OPD Queue</span>
               </button>
               <button
                 onClick={() => navigate("/patients")}
-                className="btn-secondary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-xl border border-slate-200 transition duration-150 ease-in-out cursor-pointer"
+                type="button"
               >
-                <span className="material-symbols-outlined text-base">group</span>
-                Patients &amp; EMR
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Patients &amp; EMR</span>
               </button>
             </>
-          ) : user?.role === "warehouse" ? (
-            <button
-              onClick={() => navigate("/store/warehouse")}
-              className="btn-primary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/20"
-            >
-              <span className="material-symbols-outlined text-base">warehouse</span>
-              Open Warehouse Dashboard
-            </button>
           ) : (
             <button
               id="dashboard-add-patient-btn"
               onClick={() => navigate("/reception/register")}
-              className="btn-primary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-primary/20"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm rounded-xl shadow-xs transition duration-150 ease-in-out cursor-pointer"
+              type="button"
             >
-              <span className="material-symbols-outlined text-base">how_to_reg</span>
-              Register Patient Token
+              <svg className="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              <span>Register Patient Token</span>
             </button>
           )}
         </div>
-      </header>
+      </div>
 
-      {/* Financial Statement & Historical Date Range Filter Bar (Admin / Owner & Financial Access Authorized Only) */}
+      {/* ── 2. Filter Bar: Financial Statement Period (Admin / Owner Secured) ── */}
       {canViewFinancials && (
-        <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white rounded-2xl p-3.5 sm:p-4 border border-teal-800/80 shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
-              <span className="material-symbols-outlined text-xl">calendar_month</span>
-            </div>
-            <div>
-              <div className="text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                <span>Financial Statement Period Filter</span>
-                <span className="bg-teal-800 text-teal-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  🔒 Admin / Owner Secured
-                </span>
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            {/* Left Info & Security Badge */}
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0 shadow-xs">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </div>
-              <p className="text-[11.5px] text-slate-300 mt-0.5">
-                Showing data for: <strong className="text-white font-mono font-bold">
-                  {datePreset === "today" && "📅 Today (Aaj)"}
-                  {datePreset === "yesterday" && "📅 Yesterday (Kal)"}
-                  {datePreset === "last7" && "📊 Last 7 Days (Pichlay 7 Din)"}
-                  {datePreset === "this_month" && "📆 This Month (Iss Mahine)"}
-                  {datePreset === "last_month" && "📆 Last Month (Pichla Mahina)"}
-                  {datePreset === "custom" && `⚙️ Custom: ${startDateInput} to ${endDateInput}`}
-                </strong>
-              </p>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-700">Financial Statement Period Filter</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 uppercase tracking-wider">
+                    <svg className="w-2.5 h-2.5 text-teal-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path clipRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" fillRule="evenodd" />
+                    </svg>
+                    Admin / Owner Secured
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium flex items-center gap-1">
+                  <span>Showing data for:</span>
+                  <span className="font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200/80">
+                    {selectedDateLabel}
+                  </span>
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
-            <div className="flex bg-slate-950/80 p-1 rounded-xl border border-teal-800/60 text-xs font-bold gap-1 flex-wrap w-full sm:w-auto">
+            {/* Right: Filter Pill Selector Buttons */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200 overflow-x-auto max-w-full" data-purpose="period-selector">
               <button
                 type="button"
                 onClick={() => setDatePreset("today")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "today" ? "bg-teal-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  datePreset === "today"
+                    ? "font-semibold bg-teal-700 text-white shadow-xs"
+                    : "font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                }`}
               >
                 Today (Aaj)
               </button>
               <button
                 type="button"
                 onClick={() => setDatePreset("yesterday")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "yesterday" ? "bg-teal-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  datePreset === "yesterday"
+                    ? "font-semibold bg-teal-700 text-white shadow-xs"
+                    : "font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                }`}
               >
                 Yesterday (Kal)
               </button>
               <button
                 type="button"
                 onClick={() => setDatePreset("last7")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "last7" ? "bg-teal-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  datePreset === "last7"
+                    ? "font-semibold bg-teal-700 text-white shadow-xs"
+                    : "font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                }`}
               >
                 Last 7 Days
               </button>
               <button
                 type="button"
                 onClick={() => setDatePreset("this_month")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "this_month" ? "bg-teal-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  datePreset === "this_month"
+                    ? "font-semibold bg-teal-700 text-white shadow-xs"
+                    : "font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                }`}
               >
                 This Month
               </button>
               <button
                 type="button"
                 onClick={() => setDatePreset("custom")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${datePreset === "custom" ? "bg-amber-600 text-white shadow-xs font-black" : "text-slate-300 hover:bg-slate-800"}`}
+                className={`whitespace-nowrap inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  datePreset === "custom"
+                    ? "font-semibold bg-teal-700 text-white shadow-xs"
+                    : "font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                }`}
               >
+                <svg className="w-3.5 h-3.5 fill-none stroke-current" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
                 Custom Range
               </button>
             </div>
+          </div>
 
-            {datePreset === "custom" && (
-              <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-teal-800/80 text-xs">
+          {/* Custom Date Range Picker Subbar */}
+          {datePreset === "custom" && (
+            <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3">
+              <span className="text-xs font-semibold text-slate-600">Select Range:</span>
+              <div className="flex items-center gap-2">
                 <input
                   type="date"
                   value={startDateInput}
                   onChange={(e) => setStartDateInput(e.target.value)}
-                  className="bg-slate-900 border border-slate-700 text-white rounded-lg px-2 py-1 font-mono text-xs outline-none focus:border-teal-500"
+                  className="bg-slate-50 border border-slate-300 text-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono outline-none focus:border-teal-600 focus:bg-white"
                 />
-                <span className="text-slate-400 font-bold">to</span>
+                <span className="text-xs font-bold text-slate-400">to</span>
                 <input
                   type="date"
                   value={endDateInput}
                   onChange={(e) => setEndDateInput(e.target.value)}
-                  className="bg-slate-900 border border-slate-700 text-white rounded-lg px-2 py-1 font-mono text-xs outline-none focus:border-teal-500"
+                  className="bg-slate-50 border border-slate-300 text-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono outline-none focus:border-teal-600 focus:bg-white"
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Stats Bento Grid (Desktop Grid / Mobile Swiper Slider) */}
+      {/* ── 3. Key Metric Cards Row ── */}
+      {/* Mobile Slider */}
       <div className="block md:hidden">
         <Swiper
           modules={[Pagination]}
@@ -647,555 +760,531 @@ export default function Dashboard() {
           slidesPerView={1.15}
           className="pb-8"
         >
+          {/* Slide 1: Patients Today */}
           <SwiperSlide className="h-auto">
-            <StatCard
-              label={canViewFinancials ? t("dashboard.todayPatients") : "My Patients Today"}
-              value={canViewFinancials ? todayVisits.length : myTodayVisits.length}
-              icon="group"
-              iconBg="bg-secondary-container/50"
-              subline={
-                <>
-                  <span className="material-symbols-outlined text-sm">calendar_today</span>
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs h-full flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  {canViewFinancials ? "Patients Today" : "My Patients Today"}
+                </span>
+                <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  {canViewFinancials ? todayVisits.length : myTodayVisits.length}
+                </div>
+                <div className="mt-2 text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>
+                    {canViewFinancials
+                      ? `${todayVisits.length} total OPD visits`
+                      : `${myTodayVisits.length} visit${myTodayVisits.length === 1 ? "" : "s"} in my chamber`}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </SwiperSlide>
+
+          {/* Slide 2: Fees Collected */}
+          <SwiperSlide className="h-auto">
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs h-full flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  {canViewFinancials ? (isDoctor ? "My Fees Today" : "Fees Collected") : "Consultations Done"}
+                </span>
+                <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
                   {canViewFinancials
-                    ? `${todayVisits.length} total OPD visit${todayVisits.length === 1 ? "" : "s"}`
-                    : `${myTodayVisits.length} visit${myTodayVisits.length === 1 ? "" : "s"} in my chamber`}
-                </>
-              }
-            />
+                    ? formatCurrency(isDoctor ? myFeesToday : feesToday)
+                    : isDoctor
+                    ? `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Done`
+                    : "🔒 Confidential"}
+                </div>
+                <div className="mt-2 text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>{canViewFinancials ? "Direct cash & card counter" : isDoctor ? "Chamber consultations done" : "Owner / Admin Role Required"}</span>
+                </div>
+              </div>
+            </div>
           </SwiperSlide>
 
+          {/* Slide 3: New vs Repeat (or Chamber Queue for Doctor) */}
           <SwiperSlide className="h-auto">
-            <StatCard
-              label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : (isDoctor ? "Completed Consultations" : "Revenue Status")}
-              value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : (isDoctor ? `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Done` : "🔒 Confidential")}
-              icon={canViewFinancials ? "payments" : (isDoctor ? "task_alt" : "lock")}
-              iconBg={canViewFinancials ? "bg-primary-container/10" : (isDoctor ? "bg-emerald-500/10 text-emerald-700" : "bg-primary-container/10")}
-              subline={canViewFinancials ? null : (isDoctor ? "Chamber Consultations Done" : "Owner / Admin Role Required")}
-            />
-          </SwiperSlide>
-
-          <SwiperSlide className="h-auto">
-            {user?.role === "doctor" ? (
-              <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden h-full border border-teal-200/60 bg-teal-50/40">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-label-md text-label-md text-teal-800 mb-1 uppercase tracking-wider font-bold">
-                      Waiting Queue
-                    </p>
-                    <h3 className="text-3xl font-black text-teal-950">
-                      {myWaitingVisits.length} <span className="text-sm font-semibold text-gray-500">Patients</span>
-                    </h3>
-                  </div>
-                  <div className="w-11 h-11 rounded-2xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
-                    <span className="material-symbols-outlined text-2xl">hourglass_top</span>
+            {isDoctor ? (
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs h-full flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Chamber Queue</span>
+                  <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-teal-100 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-teal-800">
-                    {myWaitingVisits.length > 0 ? `Next: #${myWaitingVisits[0].token_number}` : "Clear"}
-                  </span>
-                  <button onClick={() => navigate("/doctor/queue")} className="text-xs font-extrabold text-teal-700 underline">
-                    Call →
-                  </button>
+                <div className="mt-3">
+                  <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                    {myWaitingVisits.length} <span className="text-sm font-semibold text-slate-500">Patients</span>
+                  </div>
+                  <div className="mt-2 text-xs font-semibold text-teal-700 flex items-center justify-between">
+                    <span>{myWaitingVisits.length > 0 ? `Next: #${myWaitingVisits[0].token_number}` : "Queue is Clear"}</span>
+                    <button onClick={() => navigate("/doctor/queue")} className="underline font-bold">
+                      Call →
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden h-full">
-                <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">{t("dashboard.newVsRepeat")}</p>
-                <div>
-                  <div className="flex items-end gap-2 mb-1">
-                    <span className="text-2xl font-black text-primary">{newRatio}%</span>
-                    <span className="text-xs text-outline pb-0.5">New</span>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
-                    <span className="text-xs text-outline pb-0.5">Repeat</span>
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs h-full flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{t("dashboard.newVsRepeat", "New vs Repeat")}</span>
+                  <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                   </div>
                 </div>
-                <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
-                  <div className="bg-primary" style={{ width: `${newRatio}%` }} />
-                  <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
+                <div className="mt-3">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-extrabold text-teal-700 tracking-tight">{newRatio}%</span>
+                    <span className="text-xs font-semibold text-slate-500">New</span>
+                    <span className="text-slate-300">|</span>
+                    <span className="text-lg font-bold text-slate-700">{repeatRatio}%</span>
+                    <span className="text-xs text-slate-400">Repeat</span>
+                  </div>
+                  <div className="mt-3 w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+                    <div className="bg-teal-600 h-full rounded-full" style={{ width: `${newRatio}%` }}></div>
+                    <div className="bg-slate-300 h-full" style={{ width: `${repeatRatio}%` }}></div>
+                  </div>
                 </div>
               </div>
             )}
           </SwiperSlide>
 
-          {/* Low Stock Slide — sirf staff/owner ke liye */}
+          {/* Slide 4: Low Stock Alerts */}
           {!isDoctor && (
-          <SwiperSlide className="h-auto">
-            <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden h-full border border-error-container/50 bg-error-container/10">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">{t("dashboard.lowStockAlerts")}</p>
-                  <h3 className="text-3xl font-black text-error">{lowStockItems.length}</h3>
+            <SwiperSlide className="h-auto">
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs h-full flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-600">{t("dashboard.lowStockAlerts", "Low Stock Alerts")}</span>
+                  <div className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="w-11 h-11 rounded-2xl bg-error-container flex items-center justify-center text-error">
-                  <span className="material-symbols-outlined text-2xl">warning</span>
+                <div className="mt-3">
+                  <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{lowStockItems.length}</div>
+                  <div className="mt-2 text-xs font-medium flex items-center gap-1.5">
+                    {lowStockItems.length === 0 ? (
+                      <span className="text-emerald-600 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        {t("dashboard.allStockOk", "All pharmacy stock levels OK")}
+                      </span>
+                    ) : (
+                      <span className="text-rose-600 font-semibold">{lowStockItems.length} item(s) need reordering</span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-outline">{lowStockItems.length === 0 ? t("dashboard.allStockOk") : `${lowStockItems.length} items low`}</p>
-            </div>
-          </SwiperSlide>
+            </SwiperSlide>
           )}
         </Swiper>
       </div>
 
-      {/* Desktop Grid — doctor ke liye sirf 3 card: My Patients, My Fees, My Queue */}
-      {user?.role !== "warehouse" && (
-        <section
-          className={
-            isDoctor
-              ? "hidden md:grid md:grid-cols-3 gap-4"
-              : "hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4"
-          }
-          aria-label="Key metrics"
-        >
-          {/* Patients Today */}
-          <StatCard
-            label={canViewFinancials ? t("dashboard.todayPatients") : "My Patients Today"}
-            value={canViewFinancials ? todayVisits.length : myTodayVisits.length}
-            icon="group"
-            iconBg="bg-secondary-container/50"
-            subline={
-              <>
-                <span className="material-symbols-outlined text-sm">calendar_today</span>
+      {/* Desktop Grid Layout */}
+      <div
+        className={
+          isDoctor
+            ? "hidden md:grid md:grid-cols-3 gap-4"
+            : "hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4"
+        }
+        data-purpose="quick-metrics-row"
+      >
+        {/* Card 1: Patients Today */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {canViewFinancials ? t("dashboard.todayPatients", "Patients Today") : "My Patients Today"}
+            </span>
+            <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              {canViewFinancials ? todayVisits.length : myTodayVisits.length}
+            </div>
+            <div className="mt-2 text-xs font-medium text-slate-500 flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
                 {canViewFinancials
-                  ? `${todayVisits.length} total OPD visit${todayVisits.length === 1 ? "" : "s"}`
+                  ? `${todayVisits.length} total OPD visits`
                   : `${myTodayVisits.length} visit${myTodayVisits.length === 1 ? "" : "s"} in my OPD chamber`}
-              </>
-            }
-          />
+              </span>
+            </div>
+          </div>
+        </div>
 
-          {/* Fees Collected Today / Consultations Completed */}
-          <StatCard
-            label={canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected")) : (isDoctor ? "Completed Consultations" : "Revenue Status")}
-            value={canViewFinancials ? formatCurrency(isDoctor ? myFeesToday : feesToday) : (isDoctor ? `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Done` : "🔒 Confidential")}
-            icon={canViewFinancials ? "payments" : (isDoctor ? "task_alt" : "lock")}
-            iconBg={canViewFinancials ? "bg-primary-container/10" : (isDoctor ? "bg-emerald-500/10 text-emerald-700" : "bg-primary-container/10")}
-            subline={canViewFinancials ? null : (isDoctor ? "Chamber Consultations Done" : "Owner / Admin Role Required")}
-          />
+        {/* Card 2: Fees Collected */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {canViewFinancials ? (isDoctor ? "My Fees Today" : t("dashboard.feesCollected", "Fees Collected")) : "Completed Consultations"}
+            </span>
+            <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              {canViewFinancials
+                ? formatCurrency(isDoctor ? myFeesToday : feesToday)
+                : isDoctor
+                ? `${myTodayVisits.filter((v) => v.status === "completed" || v.status === "completed_reports_pending").length} Done`
+                : "🔒 Confidential"}
+            </div>
+            <div className="mt-2 text-xs font-medium text-slate-500 flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>{canViewFinancials ? "Direct cash & card counter" : isDoctor ? "Chamber Consultations Done" : "Owner / Admin Role Required"}</span>
+            </div>
+          </div>
+        </div>
 
-          {/* 3rd Card */}
-          {isDoctor ? (
-            <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-teal-200/60 bg-teal-50/40">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-label-md text-label-md text-teal-800 mb-1 uppercase tracking-wider font-bold">
-                    Waiting In Chamber Queue
-                  </p>
-                  <h3 className="text-3xl sm:text-4xl font-black text-teal-950">
-                    {myWaitingVisits.length} <span className="text-sm font-semibold text-gray-500">Patients</span>
-                  </h3>
-                </div>
-                <div className="w-11 h-11 rounded-2xl bg-teal-700 text-white flex items-center justify-center shadow-md shadow-teal-700/20">
-                  <span className="material-symbols-outlined text-2xl">hourglass_top</span>
-                </div>
+        {/* Card 3: New vs Repeat (or Doctor Chamber Queue) */}
+        {isDoctor ? (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-teal-800">Waiting Queue</span>
+              <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-              <div className="pt-2 border-t border-teal-100 flex items-center justify-between">
-                <span className="text-xs font-semibold text-teal-800">
+            </div>
+            <div className="mt-2">
+              <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                {myWaitingVisits.length} <span className="text-sm font-semibold text-slate-500">Patients</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-teal-800">
+                <span>
                   {myInRoomVisit
-                    ? `In Room: #${myInRoomVisit.token_number} (${myInRoomVisit.patient_name || dbPatients.getById(myInRoomVisit.patient_id)?.full_name || "Patient"})`
+                    ? `In Room: #${myInRoomVisit.token_number}`
                     : myWaitingVisits.length > 0
-                    ? `Next: Token #${myWaitingVisits[0].token_number}`
-                    : "Queue is Clear"}
+                    ? `Next: #${myWaitingVisits[0].token_number}`
+                    : "Clear"}
                 </span>
                 <button
                   onClick={() => navigate("/doctor/queue")}
-                  className="text-xs font-extrabold text-teal-700 hover:text-teal-900 underline flex items-center gap-0.5"
+                  className="font-bold text-teal-700 hover:text-teal-900 underline cursor-pointer"
                 >
                   Call Next →
                 </button>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="glass-card p-4 sm:p-5 flex flex-col justify-between gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
-                <p className="font-label-md text-label-md text-outline mb-1 uppercase tracking-wider">{t("dashboard.newVsRepeat")}</p>
-                <div>
-                  <div className="flex items-end gap-2 mb-1">
-                    <span className="text-2xl font-black text-primary">{newRatio}%</span>
-                    <span className="text-xs text-outline pb-0.5">New</span>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <span className="text-lg font-bold text-tertiary">{repeatRatio}%</span>
-                    <span className="text-xs text-outline pb-0.5">Repeat</span>
-                  </div>
-                </div>
-                <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
-                  <div className="bg-primary" style={{ width: `${newRatio}%` }} />
-                  <div className="bg-surface-variant" style={{ width: `${repeatRatio}%` }} />
-                </div>
-              </div>
-
-              {/* 4th Card: Low Stock — sirf staff/owner dekhega */}
-              <div className="glass-card p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300 border border-error-container/50 bg-error-container/10">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-label-md text-label-md text-error mb-1 uppercase tracking-wider">{t("dashboard.lowStockAlerts")}</p>
-                    <h3 className="text-3xl font-black text-error">{lowStockItems.length}</h3>
-                  </div>
-                  <div className="w-11 h-11 rounded-2xl bg-error-container flex items-center justify-center text-error">
-                    <span className="material-symbols-outlined text-2xl">warning</span>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  {lowStockItems.slice(0, 2).map((item) => (
-                    <div key={item.id} className="flex items-center justify-between text-xs">
-                      <span className="text-on-surface truncate max-w-[120px]">{item.medicine_name}</span>
-                      <span className="text-error font-semibold">{item.stock_qty} left</span>
-                    </div>
-                  ))}
-                  {lowStockItems.length === 0 && (
-                    <p className="text-xs text-outline">{t("dashboard.allStockOk")}</p>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </section>
-      )}
-
-      {/* Executive Financial Revenue Breakdown — Available for Staff and Owner */}
-      {canViewFinancials ? (
-        <section className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white rounded-3xl p-6 shadow-xl border border-teal-700/50 space-y-4">
-          <div className="flex items-center justify-between border-b border-teal-700/60 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-amber-400 text-2xl">account_balance_wallet</span>
-              <div>
-                <h3 className="font-bold text-lg leading-tight">Clinic Financial Revenue Breakdown</h3>
-                <p className="text-xs text-teal-200">Real-time daily earnings summary for Principal Doctor &amp; Owner</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{t("dashboard.newVsRepeat", "New vs Repeat")}</span>
+              <div className="h-9 w-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </div>
             </div>
+            <div className="mt-2">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold text-teal-700 tracking-tight">{newRatio}%</span>
+                <span className="text-xs font-semibold text-slate-500">New</span>
+                <span className="text-slate-300">|</span>
+                <span className="text-lg font-bold text-slate-700">{repeatRatio}%</span>
+                <span className="text-xs text-slate-400">Repeat</span>
+              </div>
+              <div className="mt-3 w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+                <div className="bg-teal-600 h-full rounded-full" style={{ width: `${newRatio}%` }}></div>
+                <div className="bg-slate-300 h-full" style={{ width: `${repeatRatio}%` }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Card 4: Low Stock Alerts */}
+        {!isDoctor && (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-sm transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-600">{t("dashboard.lowStockAlerts", "Low Stock Alerts")}</span>
+              <div className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{lowStockItems.length}</div>
+              <div className="mt-2 text-xs font-medium flex items-center gap-1.5">
+                {lowStockItems.length === 0 ? (
+                  <span className="text-emerald-600 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {t("dashboard.allStockOk", "All pharmacy stock levels OK")}
+                  </span>
+                ) : (
+                  <span className="text-rose-600 font-semibold">{lowStockItems.length} item(s) need reordering</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── 4. Bento Financial Breakdown Section ── */}
+      {canViewFinancials && (
+        <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-200/90" data-purpose="revenue-breakdown-bento">
+          {/* Section Header with Ledger Action */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shadow-xs">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Clinic Financial Revenue Breakdown</h2>
+                <p className="text-xs text-slate-500 font-medium">Real-time daily earnings summary for Principal Doctor &amp; Owner</p>
+              </div>
+            </div>
+
+            {/* View Ledger Analytics Button */}
             <button
               onClick={() => navigate("/fees")}
-              className="text-xs font-bold bg-teal-600/80 hover:bg-teal-500 text-white px-3.5 py-2 rounded-xl transition-colors border border-teal-400/40 flex items-center gap-1"
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-xl transition shadow-xs cursor-pointer"
+              type="button"
             >
-              <span className="material-symbols-outlined text-base">analytics</span>
-              View Ledger Analytics →
+              <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+              <span>View Ledger Analytics</span>
+              <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">OPD Doctor Fees</div>
-              <div className="text-2xl font-black text-emerald-300">Rs. {feesToday.toLocaleString()}</div>
-              <div className="text-[11px] text-teal-200/80 mt-1">From {todayVisits.length} consultation tokens</div>
+          {/* Revenue 4-Column Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+            {/* Item 1: OPD Doctor Fees */}
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 hover:border-teal-200 transition shadow-xs">
+              <div className="flex items-center justify-between text-slate-600 text-xs font-bold uppercase tracking-wider">
+                <span>OPD Doctor Fees</span>
+                <div className="h-7 w-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-extrabold tracking-tight text-slate-900">Rs. {feesToday.toLocaleString()}</div>
+                <div className="text-[11px] text-slate-500 mt-1 font-medium">From {todayVisits.length} consultation tokens</div>
+              </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">Pharmacy Store Sales</div>
-              <div className="text-2xl font-black text-cyan-300">Rs. {pharmacyRevenueToday.toLocaleString()}</div>
-              <div className="text-[11px] text-teal-200/80 mt-1">From {todaySales.length} store sales receipts</div>
+            {/* Item 2: Pharmacy Store Sales */}
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 hover:border-teal-200 transition shadow-xs">
+              <div className="flex items-center justify-between text-slate-600 text-xs font-bold uppercase tracking-wider">
+                <span>Pharmacy Store Sales</span>
+                <div className="h-7 w-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-extrabold tracking-tight text-slate-900">Rs. {pharmacyRevenueToday.toLocaleString()}</div>
+                <div className="text-[11px] text-slate-500 mt-1 font-medium">From {todaySales.length} store sales receipts</div>
+              </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-              <div className="text-xs text-teal-200 font-semibold uppercase tracking-wider mb-1">Daily Expenses</div>
-              <div className="text-2xl font-black text-rose-300">Rs. {expensesToday.toLocaleString()}</div>
-              <div className="text-[11px] text-teal-200/80 mt-1">From {todayExpenses.length} expense vouchers</div>
+            {/* Item 3: Daily Expenses */}
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 hover:border-rose-100 transition shadow-xs">
+              <div className="flex items-center justify-between text-rose-600 text-xs font-bold uppercase tracking-wider">
+                <span>Daily Expenses</span>
+                <div className="h-7 w-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-extrabold tracking-tight text-rose-600">Rs. {expensesToday.toLocaleString()}</div>
+                <div className="text-[11px] text-slate-500 mt-1 font-medium">From {todayExpenses.length} expense vouchers</div>
+              </div>
             </div>
 
-            <div className="bg-amber-500/20 backdrop-blur-md rounded-2xl p-4 border border-amber-400/40">
-              <div className="text-xs text-amber-200 font-bold uppercase tracking-wider mb-1">Net Overall Revenue</div>
-              <div className="text-2xl font-black text-amber-300">Rs. {netRevenueToday.toLocaleString()}</div>
-              <div className="text-[11px] text-amber-100/90 font-medium mt-1">Fees + Store Sales - Expenses</div>
+            {/* Item 4: Net Overall Revenue (Highlighted Deep Teal Accent) */}
+            <div className="bg-teal-700 text-white rounded-xl p-4 border border-teal-800 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between text-teal-100 text-xs font-bold uppercase tracking-wider">
+                <span>Net Overall Revenue</span>
+                <div className="h-7 w-7 rounded-lg bg-teal-800/80 text-teal-200 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-extrabold tracking-tight text-white">Rs. {netRevenueToday.toLocaleString()}</div>
+                <div className="text-[11px] text-teal-100/90 mt-1 font-medium">Fees + Store Sales − Expenses</div>
+              </div>
             </div>
           </div>
 
-          {/* Doctor-by-Doctor OPD Revenue Breakdown Table */}
-          <div className="border-t border-teal-700/60 pt-4 mt-2">
-            <h4 className="text-xs font-bold text-teal-200 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-base text-amber-400">stethoscope</span>
-              Today&apos;s Doctor-by-Doctor OPD Revenue Breakdown
-            </h4>
+          {/* Doctor-By-Doctor Breakdown Subsection */}
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-6 w-6 rounded-md bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
+                </svg>
+              </div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Today's Doctor-by-Doctor OPD Revenue Breakdown</h3>
+            </div>
+
             {doctorBreakdown.length === 0 ? (
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
-                <p className="text-xs text-teal-200">No doctors registered yet.</p>
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
+                <p className="text-xs text-slate-500">No doctors registered yet.</p>
                 <button
                   type="button"
                   onClick={() => navigate("/settings")}
-                  className="mt-2 text-xs font-black text-amber-300 hover:text-amber-200 underline cursor-pointer inline-flex items-center gap-1"
+                  className="mt-2 text-xs font-bold text-teal-700 hover:text-teal-900 underline cursor-pointer inline-flex items-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-sm">add_circle</span>
                   Manage Doctors in Clinic Settings (/settings)
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {doctorBreakdown.map((doc) => (
-                  <div key={doc.id} className="bg-white/10 p-3.5 rounded-2xl border border-white/10 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                        <span className="material-symbols-outlined text-xs text-teal-300">person</span>
-                        <span>{doc.name}</span>
-                        {doc.is_owner && <span className="text-[9px] bg-amber-400 text-teal-950 font-black px-1.5 py-0.2 rounded shrink-0">OWNER</span>}
+                  <div
+                    key={doc.id}
+                    className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between hover:border-teal-200 transition shadow-xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0 shadow-xs">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
                       </div>
-                      <div className="text-[11px] text-teal-200 truncate">{doc.specialization || "General Physician"}</div>
-                      <div className="text-[10px] text-teal-300/80 mt-0.5">{doc.visitsCount ?? doc.today_patient_count ?? 0} Patients Today</div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-slate-900 leading-tight truncate">{doc.name}</span>
+                          {doc.is_owner && (
+                            <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-amber-500 text-slate-950 rounded uppercase tracking-wide">
+                              Owner
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500 font-medium truncate">{doc.specialization || "General Physician"}</div>
+                        <div className="text-[11px] text-teal-700 font-semibold mt-0.5">
+                          {doc.visitsCount ?? doc.today_patient_count ?? 0} Patients Today
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-black text-amber-300">
+
+                    <div className="text-right pl-3 border-l border-slate-200 shrink-0">
+                      <div className="text-sm font-bold text-teal-800 font-mono">
                         Rs. {(Number(doc.feesCollected ?? doc.today_fees) || 0).toLocaleString()}
                       </div>
-                      <div className="text-[9px] text-teal-200 uppercase">OPD Collection</div>
+                      <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">OPD Collection</div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </section>
-      ) : isDoctor ? (
-        /* Doctor Personal Live OPD Queue & Consultation Desk */
-        <section className="glass-card p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">hourglass_top</span>
-              </div>
-              <div>
-                <h3 className="font-extrabold text-base text-slate-900">Live Chamber Queue &amp; Waiting Patients</h3>
-                <p className="text-xs text-slate-500">Real-time OPD patient waiting list for your consultation chamber</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-teal-100 text-teal-800 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-teal-600 animate-pulse" />
-                {myWaitingVisits.length} Waiting
-              </span>
-              <button
-                onClick={() => navigate("/doctor/queue")}
-                className="btn-primary text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-base">queue</span>
-                Open Chamber Queue Portal →
-              </button>
-            </div>
-          </div>
-
-          {myWaitingVisits.length === 0 ? (
-            <div className="p-8 text-center bg-slate-50/80 rounded-2xl border border-slate-100 space-y-2">
-              <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
-                <span className="material-symbols-outlined text-2xl">task_alt</span>
-              </div>
-              <h4 className="font-bold text-sm text-slate-800">Chamber Queue is Clear</h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                All assigned OPD consultation tokens have been completed. New waiting patients will appear here automatically.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider bg-slate-50">
-                    <th className="py-2.5 px-3">Token #</th>
-                    <th className="py-2.5 px-3">Patient Name</th>
-                    <th className="py-2.5 px-3">Age / Gender</th>
-                    <th className="py-2.5 px-3">Chief Complaint</th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
-                    <th className="py-2.5 px-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {myWaitingVisits.map((visit) => {
-                    const patient = dbPatients.getById(visit.patient_id) || {};
-                    return (
-                      <tr key={visit.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-3 font-black text-teal-800">
-                          <span className="px-2.5 py-1 rounded-lg bg-teal-100 text-teal-900 text-xs">
-                            #{visit.token_number}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-bold text-slate-900">
-                          {visit.patient_name || patient.full_name || "Patient"}
-                          {patient.mr_number && (
-                            <span className="block text-[10px] font-mono text-slate-400">{patient.mr_number}</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3 text-slate-600">
-                          {patient.age ? `${patient.age} yrs` : "N/A"} • {patient.gender || "N/A"}
-                        </td>
-                        <td className="py-3 px-3 text-slate-600 max-w-[200px] truncate">
-                          {visit.symptoms || visit.chief_complaint || "General Consultation"}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                            Waiting
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <button
-                            onClick={() => navigate(`/doctor/consultation?visit_id=${visit.id}`)}
-                            className="px-3 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] shadow-sm transition-colors inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-sm">stethoscope</span>
-                            Start Consultation
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      ) : (
-        /* Front Desk / Receptionist / Operational Counter Summary */
-        user?.role === "warehouse" ? (
-          <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-600 text-2xl">warehouse</span>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-base">Warehouse Status Overview</h3>
-                  <p className="text-xs text-gray-400">Logged in as {user?.name || "Staff"} • {user?.assigned_warehouse_id ? `Warehouse ID: ${user.assigned_warehouse_id.toUpperCase()}` : "Global Inventory Incharge"}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => navigate("/store/warehouse")}
-                className="text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-sm">swap_horiz</span>
-                Manage Stock &amp; Transfers
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-center">
-                <div className="text-xs text-teal-700 font-bold uppercase mb-1">My Godown Stock Valuation</div>
-                <div className="text-2xl font-black text-teal-900">
-                  {(() => {
-                    const whId = user?.assigned_warehouse_id || "wh_001";
-                    const value = (dbInventory.getAll() || []).reduce((sum, item) => {
-                      const qty = Number(item.location_quantities?.[whId] || (whId === "wh_001" ? item.warehouse_stock || 0 : 0));
-                      return sum + (qty * Number(item.sale_price || item.unit_sale_price || 0));
-                    }, 0);
-                    return formatCurrency(value);
-                  })()}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Valued at local store retail price</div>
-              </div>
-              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
-                <div className="text-xs text-amber-700 font-bold uppercase mb-1">Low Stock SKUs in Godown</div>
-                <div className="text-2xl font-black text-amber-900">
-                  {(() => {
-                    const whId = user?.assigned_warehouse_id || "wh_001";
-                    return (dbInventory.getAll() || []).filter((item) => {
-                      const qty = Number(item.location_quantities?.[whId] || (whId === "wh_001" ? item.warehouse_stock || 0 : 0));
-                      return qty > 0 && qty <= (item.low_stock_threshold || 6);
-                    }).length;
-                  })()}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Threshold level alerts</div>
-              </div>
-              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center">
-                <div className="text-xs text-blue-700 font-bold uppercase mb-1">Pending Stock Transfers</div>
-                <div className="text-2xl font-black text-blue-900">
-                  {(() => {
-                    const whId = user?.assigned_warehouse_id || "wh_001";
-                    return (dbStockTransfers.getAll() || []).filter((t) => 
-                      t.status === "in_transit" && (t.from_warehouse_id === whId || t.to_warehouse_id === whId)
-                    ).length;
-                  })()}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">In Transit transfers</div>
-              </div>
-            </div>
-          </section>
-        ) : (
-          /* Front Desk / Receptionist / Operational Counter Summary */
-          <section className="bg-white rounded-3xl p-6 shadow-sm border border-teal-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3 flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-600 text-2xl">badge</span>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-base">Operational Counter Desk</h3>
-                  <p className="text-xs text-gray-400">Logged in as {user?.name || "Staff"} • {user?.role ? user.role.toUpperCase() : "COUNTER"}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => navigate("/reception/register")}
-                className="text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-sm">person_add</span>
-                + New Patient Token
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div className="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-center">
-                <div className="text-xs text-teal-700 font-bold uppercase mb-1">Today&apos;s Total Patients</div>
-                <div className="text-3xl font-black text-teal-900">{todayVisits.length}</div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Tokens issued today</div>
-              </div>
-              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
-                <div className="text-xs text-amber-700 font-bold uppercase mb-1">Waiting in Queue</div>
-                <div className="text-3xl font-black text-amber-900">{waitingVisits.length}</div>
-                <div className="text-[11px] text-gray-400 mt-0.5">OPD waiting room</div>
-              </div>
-              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center sm:col-span-1 col-span-2">
-                <div className="text-xs text-blue-700 font-bold uppercase mb-1">Completed Consultations</div>
-                <div className="text-3xl font-black text-blue-900">{completedVisits.length}</div>
-                <div className="text-[11px] text-gray-400 mt-0.5">Visits completed</div>
-              </div>
-            </div>
-          </section>
-        )
+        </div>
       )}
 
-      {/* Quick Actions — Only for Non-Doctor Staff */}
+      {/* ── 5. Direct Counter Shortcuts (for non-doctor staff) ── */}
       {!isDoctor && (
-        <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4" aria-label="Quick actions">
-          {user?.role === "warehouse" ? (
-          <>
+        <div className="pt-2" data-purpose="quick-action-launchers">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+            Direct Counter Shortcuts
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Quick Action 1: Register Patient Token */}
             <button
-              onClick={() => navigate("/store/warehouse")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-            >
-              <span className="material-symbols-outlined">warehouse</span>
-              <span className="font-label-md text-label-md font-bold">Godown &amp; Wholesale</span>
-            </button>
-            <button
-              onClick={() => navigate("/store/purchases")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-            >
-              <span className="material-symbols-outlined">add_business</span>
-              <span className="font-label-md text-label-md font-bold">Company Purchases (GRN)</span>
-            </button>
-            <button
-              onClick={() => navigate("/store")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
-            >
-              <span className="material-symbols-outlined">inventory_2</span>
-              <span className="font-label-md text-label-md font-bold">Store Counter Inventory</span>
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              id="quick-register-patient"
               onClick={() => navigate("/reception/register")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+              className="group flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200/90 hover:border-teal-500 hover:shadow-md transition text-left cursor-pointer"
+              type="button"
             >
-              <span className="material-symbols-outlined">how_to_reg</span>
-              <span className="font-label-md text-label-md font-bold">Register Patient Token</span>
+              <div className="h-11 w-11 rounded-xl bg-teal-50 group-hover:bg-teal-600 text-teal-700 group-hover:text-white flex items-center justify-center transition shrink-0 border border-teal-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-800 group-hover:text-teal-700 transition">Register Patient Token</p>
+                <p className="text-xs text-slate-500 truncate">Create OPD slip &amp; queue entry</p>
+              </div>
             </button>
+
+            {/* Quick Action 2: POS Store & Pharmacy */}
             <button
               onClick={() => navigate("/store/pos")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+              className="group flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200/90 hover:border-teal-500 hover:shadow-md transition text-left cursor-pointer"
+              type="button"
             >
-              <span className="material-symbols-outlined">point_of_sale</span>
-              <span className="font-label-md text-label-md font-bold">POS Store &amp; Pharmacy</span>
+              <div className="h-11 w-11 rounded-xl bg-teal-50 group-hover:bg-teal-600 text-teal-700 group-hover:text-white flex items-center justify-center transition shrink-0 border border-teal-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-800 group-hover:text-teal-700 transition">POS Store &amp; Pharmacy</p>
+                <p className="text-xs text-slate-500 truncate">Dispense medicines &amp; OTC sales</p>
+              </div>
             </button>
+
+            {/* Quick Action 3: Daily Cash & Reports */}
             <button
-              id="quick-view-reports"
               onClick={() => navigate("/fees")}
-              className="glass-card px-5 py-4 flex items-center justify-center sm:justify-start gap-3 hover:bg-white/90 transition-colors active:scale-95 text-primary"
+              className="group flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200/90 hover:border-teal-500 hover:shadow-md transition text-left cursor-pointer"
+              type="button"
             >
-              <span className="material-symbols-outlined">assessment</span>
-              <span className="font-label-md text-label-md font-bold">Daily Cash &amp; Reports</span>
+              <div className="h-11 w-11 rounded-xl bg-teal-50 group-hover:bg-teal-600 text-teal-700 group-hover:text-white flex items-center justify-center transition shrink-0 border border-teal-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-800 group-hover:text-teal-700 transition">Daily Cash &amp; Reports</p>
+                <p className="text-xs text-slate-500 truncate">Day-end tally &amp; audit statements</p>
+              </div>
             </button>
-          </>
-        )}
-      </section>
+          </div>
+        </div>
       )}
     </div>
   );

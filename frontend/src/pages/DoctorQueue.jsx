@@ -5,9 +5,6 @@ import {
   Stethoscope,
   RefreshCw,
   DoorOpen,
-  Coffee,
-  Moon,
-  Edit3,
   PhoneCall,
   Clock,
   UserPlus,
@@ -73,9 +70,6 @@ export default function DoctorQueue() {
   const [queue, setQueue] = useState([]);
   const [patients, setPatients] = useState({});
   const [now, setNow] = useState(new Date());
-  const [docProfile, setDocProfile] = useState(null);
-  const [showNoteInput, setShowNoteInput] = useState(false);
-  const [customNote, setCustomNote] = useState("");
 
   const doctors = useMemo(() => dbUsers.getAll().filter((u) => u.role === "doctor"), []);
   const isDoctorUser = user?.role === "doctor";
@@ -84,6 +78,9 @@ export default function DoctorQueue() {
     return doctors[0]?.id || "user_owner";
   });
   const doctorId = isDoctorUser ? (user?.userId || user?.id || "user_owner") : selectedDoctorId;
+  const currentDoctor = useMemo(() => {
+    return doctors.find((d) => d.id === doctorId || d.userId === doctorId) || dbUsers.getById(doctorId) || user;
+  }, [doctors, doctorId, user]);
   const [selectedQueueIndex, setSelectedQueueIndex] = useState(0);
 
   const loadQueue = useCallback(() => {
@@ -96,27 +93,7 @@ export default function DoctorQueue() {
       if (!pMap[v.patient_id]) pMap[v.patient_id] = dbPatients.getById(v.patient_id);
     });
     setPatients(pMap);
-
-    // Load doctor profile
-    if (doctorId) {
-      const p = dbUsers.getById(doctorId);
-      setDocProfile(p);
-      if (p?.status_note) setCustomNote(p.status_note);
-    }
   }, [doctorId]);
-
-  function handleSetAvailability(status, defaultNote = "") {
-    const note = status === "available" ? "" : (defaultNote || docProfile?.status_note || "");
-    dbUsers.updateDoctorStatus(doctorId, status, note);
-    setDocProfile(dbUsers.getById(doctorId));
-  }
-
-  function handleSaveCustomNote(e) {
-    e.preventDefault();
-    dbUsers.updateDoctorStatus(doctorId, docProfile?.availability_status || "break", customNote.trim());
-    setDocProfile(dbUsers.getById(doctorId));
-    setShowNoteInput(false);
-  }
 
   const callNext = useCallback(() => {
     const { queue: curQueue } = navStateRef.current;
@@ -137,7 +114,6 @@ export default function DoctorQueue() {
 
   const inConsultation = queue.filter((v) => v.status === "in_consultation");
   const waiting = queue.filter((v) => v.status === "waiting");
-  const currentStatus = docProfile?.availability_status || "available";
 
   useEffect(() => {
     loadQueue();
@@ -196,10 +172,10 @@ export default function DoctorQueue() {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <Stethoscope className="w-6 h-6 sm:w-7 sm:h-7 text-teal-600" />
-            <span>{docProfile?.name ? `${docProfile.name}'s OPD Chamber` : "Doctor's Live Queue"}</span>
+            <span>{currentDoctor?.name ? `${currentDoctor.name}'s OPD Chamber` : "Doctor's Live Queue"}</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            {now.toLocaleString("en-US", { weekday: "long", hour: "2-digit", minute: "2-digit", second: "2-digit" })} • {docProfile?.room_number || "OPD Chamber 1"}
+            {now.toLocaleString("en-US", { weekday: "long", hour: "2-digit", minute: "2-digit", second: "2-digit" })} • {currentDoctor?.room_number || "OPD Chamber 1"}
           </p>
         </div>
 
@@ -235,91 +211,7 @@ export default function DoctorQueue() {
         </div>
       </div>
 
-      {/* ── Doctor Live Chamber Availability Control Bar ── */}
-      <div className="glass-card p-4 sm:p-5 space-y-3.5">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-600">Live Chamber Broadcast:</span>
-            <span className="text-xs text-slate-400 font-medium hidden sm:inline">(Syncs to Waiting TV & Patient PWA)</span>
-          </div>
-          {docProfile?.status_note && (
-            <span className="text-xs bg-amber-50 text-amber-900 font-bold px-3 py-1 rounded-xl border border-amber-200/80 shadow-xs">
-              Notice: {docProfile.status_note}
-            </span>
-          )}
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          {/* Option 1: Available */}
-          <button
-            onClick={() => handleSetAvailability("available")}
-            className={`min-h-[44px] py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border cursor-pointer active:scale-97 ${
-              currentStatus === "available"
-                ? "bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-600/20"
-                : "bg-emerald-50/80 text-emerald-900 border-emerald-200/80 hover:bg-emerald-100"
-            }`}
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping" />
-            <span>🟢 Available (In Chamber)</span>
-          </button>
-
-          {/* Option 2: 15-Min Short Break */}
-          <button
-            onClick={() => handleSetAvailability("break", "15-Min Break — Back soon")}
-            className={`min-h-[44px] py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border cursor-pointer active:scale-97 ${
-              currentStatus === "break"
-                ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20"
-                : "bg-amber-50/80 text-amber-900 border-amber-200/80 hover:bg-amber-100"
-            }`}
-          >
-            <Coffee className="w-4 h-4 text-amber-700" />
-            <span>🟡 Short Break (15m)</span>
-          </button>
-
-          {/* Option 3: Unavailable / Shift Ended */}
-          <button
-            onClick={() => handleSetAvailability("unavailable", "Shift Ended for Today")}
-            className={`min-h-[44px] py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border cursor-pointer active:scale-97 ${
-              currentStatus === "unavailable"
-                ? "bg-slate-800 text-white border-slate-900 shadow-md shadow-slate-800/20"
-                : "bg-slate-100/80 text-slate-700 border-slate-200/80 hover:bg-slate-200/80"
-            }`}
-          >
-            <Moon className="w-4 h-4 text-slate-500" />
-            <span>Shift Ended / Away</span>
-          </button>
-        </div>
-
-        {/* Custom Status Note Toggle */}
-        <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
-          <button
-            type="button"
-            onClick={() => setShowNoteInput(!showNoteInput)}
-            className="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1.5 cursor-pointer py-1"
-          >
-            <Edit3 className="w-4 h-4" />
-            <span>{showNoteInput ? "Hide Custom Note" : "Add / Edit Custom Status Note (e.g. Back at 6:30 PM)"}</span>
-          </button>
-        </div>
-
-        {showNoteInput && (
-          <form onSubmit={handleSaveCustomNote} className="flex gap-2 pt-1">
-            <input
-              type="text"
-              value={customNote}
-              onChange={(e) => setCustomNote(e.target.value)}
-              placeholder="e.g. Tea Break • Resuming at 5:30 PM"
-              className="flex-1 text-xs border border-slate-300/80 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-            />
-            <button
-              type="submit"
-              className="min-h-[44px] bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-            >
-              Save Note
-            </button>
-          </form>
-        )}
-      </div>
 
       {/* ── Telemetry KPI Summary Bento Grid ── */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4">

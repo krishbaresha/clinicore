@@ -1305,10 +1305,10 @@ async function runTests() {
     assert(content.includes('name === "item_code"') && content.includes("findCompanyByCode(value)"), "Typing product code triggers instant company_name auto-fill");
     assert(content.includes('name === "company_name"') && content.includes("next.item_code = found.code"), "Selecting company name triggers instant item_code auto-fill");
 
-    // 3. Covers all 28+ companies including HFP, GHR, BM, PB, SCH, MKT, KL, EGL
-    assert(content.includes("HFP Pvt Ltd") || content.includes('"HFP"'), "HFP Pvt Ltd supported in company options");
-    assert(content.includes("GHR HOMOEO") || content.includes('"GHR"'), "GHR HOMOEO supported in company options");
-    assert(content.includes("Eagle Homoeo") || content.includes('"EGL"'), "Eagle Homoeo supported in company options");
+    // 3. Dynamic Companies engine with custom addition and Enter key navigation
+    assert(content.includes("dbCompanies"), "MedicalStoreInventory integrates dbCompanies dynamic engine");
+    assert(content.includes("showAddCompanyInput") || content.includes("customCompanyInput"), "New Company on-the-fly addition supported");
+    assert(content.includes("handleFormKeyDown"), "Smooth Enter key form navigation without premature submission");
   });
 
   // ====================================================
@@ -1338,23 +1338,12 @@ async function runTests() {
     const adminCode = fs.readFileSync(adminPath, "utf8");
     const settingsCode = fs.readFileSync(settingsPath, "utf8");
 
-    // 1. NAV_ITEMS contains godowns tab
-    assert(adminCode.includes('id: "godowns"'), "DeveloperAdminPanel has godowns navigation tab");
-    assert(adminCode.includes("Godowns & Multi-Warehouse Portal"), "DeveloperAdminPanel displays proper Godown Portal label");
-
-    // 2. Godown statistics and master modal
-    assert(adminCode.includes("godownStats"), "DeveloperAdminPanel calculates multi-warehouse stock valuations & SKU totals");
-    assert(adminCode.includes("handleSaveGodown"), "DeveloperAdminPanel has handleSaveGodown registration engine");
-    assert(adminCode.includes("handleDeleteGodown"), "DeveloperAdminPanel has protected handleDeleteGodown function");
-    assert(adminCode.includes("handleSetDefaultGodown"), "DeveloperAdminPanel supports setting primary receiving godown");
-    assert(adminCode.includes("showGodownModal"), "DeveloperAdminPanel renders full Godown registration/edit modal");
-
-    // 3. Live Stock Inspector
-    assert(adminCode.includes("selectedGodownForStock"), "DeveloperAdminPanel supports drill-down live stock inspection per godown");
-    assert(adminCode.includes("currentGodownStockItems"), "DeveloperAdminPanel filters and calculates item valuation per location");
-
-    // 4. Dynamic Warehouses in Clinic Settings
-    assert(settingsCode.includes("dbWarehouses") || settingsCode.includes("Navigate"), "ClinicSettings dynamically handles godowns or deprecation redirect");
+    // 1. NAV_ITEMS cleanly removed godowns and licensing tabs per explicit user directive
+    assert(!adminCode.includes('id: "godowns"'), "DeveloperAdminPanel permanently removed godowns navigation tab");
+    assert(!adminCode.includes('id: "licensing"'), "DeveloperAdminPanel permanently removed licensing navigation tab");
+    assert(adminCode.includes('id: "god_audit"'), "DeveloperAdminPanel maintains God-Level Stream tab");
+    assert(adminCode.includes('id: "audits"'), "DeveloperAdminPanel maintains Clinic Audits tab");
+    assert(adminCode.includes('id: "staff"'), "DeveloperAdminPanel maintains Doctors & Staff Master tab");
   });
 
   // ====================================================

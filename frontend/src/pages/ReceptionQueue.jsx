@@ -20,9 +20,6 @@ export default function ReceptionQueue() {
   const [clinicData, setClinicData] = useState(null);
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("active"); // 'active' | 'completed' | 'skipped' | 'all'
-  const [isEditingNotice, setIsEditingNotice] = useState(false);
-  const [noticeText, setNoticeText] = useState("");
-  const [showDoctorManager, setShowDoctorManager] = useState(false);
   const [selectedQueueIndex, setSelectedQueueIndex] = useState(0);
 
   const load = useCallback(() => {
@@ -37,25 +34,7 @@ export default function ReceptionQueue() {
 
     const c = dbClinic.get() || {};
     setClinicData(c);
-    setNoticeText(c.public_notice || "");
   }, []);
-
-  function handleSetClinicStatus(status) {
-    dbClinic.updateClinicStatus(status, clinicData?.public_notice || "");
-    load();
-  }
-
-  function handleSaveNotice(e) {
-    e.preventDefault();
-    dbClinic.updateClinicStatus(clinicData?.clinic_status || "open", noticeText.trim());
-    setIsEditingNotice(false);
-    load();
-  }
-
-  function handleUpdateDoctorAvailability(doctorId, status, note = "") {
-    dbUsers.updateDoctorStatus(doctorId, status, note);
-    load();
-  }
 
   const filteredVisitsByDoc = selectedDoctorFilter === "all"
     ? visits
@@ -68,7 +47,6 @@ export default function ReceptionQueue() {
 
   const currentToken = inRoomList[0]?.token_number ?? "—";
   const nextToken    = waitingList[0]?.token_number ?? "—";
-  const clinicStatus = clinicData?.clinic_status || "open";
 
   // Tab Filtering
   let displayedVisits = [];
@@ -175,150 +153,6 @@ export default function ReceptionQueue() {
             New Token
           </button>
         </div>
-      </div>
-
-      {/* ─── MASTER CLINIC & DOCTOR AVAILABILITY CONTROLS ──────── */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-4">
-        {/* Clinic Status Row */}
-        <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-600">Master Clinic Live Status:</span>
-            <span className="text-xs text-gray-400">(Broadcasts to Waiting Room TV)</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              onClick={() => handleSetClinicStatus("open")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                clinicStatus === "open"
-                  ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
-                  : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-              }`}
-            >
-              Open (OPD Active)
-            </button>
-            <button
-              onClick={() => handleSetClinicStatus("break")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                clinicStatus === "break"
-                  ? "bg-amber-500 text-white border-amber-600 shadow-sm"
-                  : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
-              }`}
-            >
-              Midday / Prayer Break
-            </button>
-            <button
-              onClick={() => handleSetClinicStatus("closed")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                clinicStatus === "closed"
-                  ? "bg-rose-600 text-white border-rose-700 shadow-sm"
-                  : "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100"
-              }`}
-            >
-              Closed for Today
-            </button>
-          </div>
-        </div>
-
-        {/* Doctor Live Status Overrides List */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm text-teal-600">stethoscope</span>
-              Doctor Chambers Live Availability (Counter Overrides):
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowDoctorManager(!showDoctorManager)}
-              className="text-xs text-teal-700 hover:text-teal-800 font-semibold"
-            >
-              {showDoctorManager ? "Collapse" : "Manage Doctor Statuses"}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {doctors.map((doc) => {
-              const status = doc.availability_status || "available";
-              return (
-                <div key={doc.id} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col justify-between gap-2">
-                  <div className="flex items-start justify-between gap-1">
-                    <div>
-                      <div className="font-bold text-xs text-gray-900">{doc.name}</div>
-                      <div className="text-[11px] text-gray-500">{doc.room_number || "Chamber"}</div>
-                    </div>
-                    {status === "available" && <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Available</span>}
-                    {status === "break" && <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">On Break</span>}
-                    {status === "unavailable" && <span className="text-[10px] font-bold bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Not In Today</span>}
-                  </div>
-
-                  {showDoctorManager && (
-                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-gray-200">
-                      <button
-                        onClick={() => handleUpdateDoctorAvailability(doc.id, "available")}
-                        className={`text-[10px] font-bold py-1 rounded-lg border ${
-                          status === "available" ? "bg-emerald-600 text-white border-emerald-700" : "bg-white text-emerald-800 border-gray-200 hover:bg-emerald-50"
-                        }`}
-                      >
-                        Available
-                      </button>
-                      <button
-                        onClick={() => handleUpdateDoctorAvailability(doc.id, "break", "15m Break")}
-                        className={`text-[10px] font-bold py-1 rounded-lg border ${
-                          status === "break" ? "bg-amber-500 text-white border-amber-600" : "bg-white text-amber-800 border-gray-200 hover:bg-amber-50"
-                        }`}
-                      >
-                        Break
-                      </button>
-                      <button
-                        onClick={() => handleUpdateDoctorAvailability(doc.id, "unavailable", "Shift Ended")}
-                        className={`text-[10px] font-bold py-1 rounded-lg border ${
-                          status === "unavailable" ? "bg-slate-700 text-white border-slate-800" : "bg-white text-slate-700 border-gray-200 hover:bg-slate-50"
-                        }`}
-                      >
-                        Away
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Public Announcement Notice Bar */}
-        <div className="pt-2 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2 text-xs">
-          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-            <span className="material-symbols-outlined text-base text-amber-600">campaign</span>
-            <span className="font-semibold text-gray-700">Public TV Banner Notice:</span>
-            <span className="text-gray-500 truncate max-w-md italic">"{clinicData?.public_notice || "Welcome to Clinic"}"</span>
-          </div>
-
-          <button
-            onClick={() => setIsEditingNotice(!isEditingNotice)}
-            className="text-xs text-teal-700 hover:text-teal-800 font-bold flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-sm">edit</span>
-            {isEditingNotice ? "Cancel Edit" : "Change Notice Banner"}
-          </button>
-        </div>
-
-        {isEditingNotice && (
-          <form onSubmit={handleSaveNotice} className="flex gap-2 pt-2">
-            <input
-              type="text"
-              value={noticeText}
-              onChange={(e) => setNoticeText(e.target.value)}
-              placeholder="e.g. Note: Dr. Asif is currently seeing emergency patients. Next general turn in 10 mins."
-              className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-            <button
-              type="submit"
-              className="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors"
-            >
-              Update TV Notice
-            </button>
-          </form>
-        )}
       </div>
 
       {/* Call Banner */}
