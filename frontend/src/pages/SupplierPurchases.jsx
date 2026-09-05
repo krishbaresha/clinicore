@@ -2115,28 +2115,27 @@ export default function SupplierPurchases() {
             </div>
           </div>
 
-          {/* VIEW MODE 1: Neat Table Row List View (Default) */}
+          {/* VIEW MODE 1: Neat Clean Accounting Table View (Default) */}
           {supplierViewMode === "table" ? (
-            <div className="bg-white rounded-2xl border border-slate-300 shadow-2xs overflow-hidden">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-emerald-800 text-white font-black uppercase tracking-wider text-[11px]">
+                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
                     <tr>
-                      <th className="px-3.5 py-3 text-center">Code</th>
-                      <th className="px-4 py-3">Company / Distributor Name</th>
-                      <th className="px-3.5 py-3">Sales Representative</th>
-                      <th className="px-3.5 py-3">Phone</th>
-                      <th className="px-4 py-3">Address / City</th>
-                      <th className="px-3.5 py-3 text-center">Bills</th>
-                      <th className="px-4 py-3 text-right">Balance Due (Udhaar)</th>
-                      <th className="px-4 py-3 text-center">Actions</th>
+                      <th className="px-3.5 py-2.5 text-center w-24">Code</th>
+                      <th className="px-4 py-2.5">Company / Distributor Name</th>
+                      <th className="px-3.5 py-2.5">Sales Rep</th>
+                      <th className="px-3.5 py-2.5">Phone</th>
+                      <th className="px-4 py-2.5">City / Address</th>
+                      <th className="px-3 py-2.5 text-center w-20">Bills</th>
+                      <th className="px-4 py-2.5 text-right w-36">Udhaar Balance</th>
+                      <th className="px-4 py-2.5 text-center w-56">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-bold text-slate-900">
+                  <tbody className="divide-y divide-slate-100 text-slate-800">
                     {filteredSuppliersList.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="text-center py-12 text-slate-400 font-semibold">
-                          <span className="material-symbols-outlined text-4xl block mb-1 text-slate-300">domain_disabled</span>
+                        <td colSpan="8" className="text-center py-10 text-slate-400 font-medium">
                           No companies match your search "{supplierSearchText}".
                         </td>
                       </tr>
@@ -2146,47 +2145,38 @@ export default function SupplierPurchases() {
                         const balance = Number(sup.current_balance ?? sup.balance_due ?? sup.balance ?? 0);
 
                         return (
-                          <tr key={sup.id} className={`hover:bg-emerald-50/50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}>
-                            <td className="px-3.5 py-3 text-center">
-                              <span className="font-mono bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-300 text-[10.5px] font-black tracking-wider">
-                                #{sup.supplier_code || sup.id}
-                              </span>
+                          <tr key={sup.id} className={`hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
+                            <td className="px-3.5 py-2.5 text-center font-mono font-bold text-slate-600 text-xs">
+                              {sup.supplier_code || sup.id}
                             </td>
-                            <td className="px-4 py-3 font-black text-slate-950 text-sm">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-900 font-black text-xs flex items-center justify-center shrink-0">
-                                  {sup.name.charAt(0)}
-                                </div>
-                                <span>{sup.name}</span>
-                              </div>
+                            <td className="px-4 py-2.5 font-bold text-slate-900 text-xs">
+                              {sup.name}
                             </td>
-                            <td className="px-3.5 py-3 text-slate-700 font-bold">
+                            <td className="px-3.5 py-2.5 text-slate-600">
                               {sup.contact_person || "—"}
                             </td>
-                            <td className="px-3.5 py-3 text-slate-800 font-mono text-[11px]">
+                            <td className="px-3.5 py-2.5 text-slate-600 font-mono text-xs">
                               {sup.phone || "—"}
                             </td>
-                            <td className="px-4 py-3 text-slate-700 font-medium truncate max-w-[200px]">
+                            <td className="px-4 py-2.5 text-slate-600 truncate max-w-[200px]">
                               {sup.address || "Main City"}
                             </td>
-                            <td className="px-3.5 py-3 text-center">
-                              <span className="bg-teal-100 text-teal-900 px-2 py-0.5 rounded-md text-[10.5px] font-black">
-                                {supBills.length} Bills
-                              </span>
+                            <td className="px-3 py-2.5 text-center font-semibold text-slate-600">
+                              {supBills.length}
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-2.5 text-right font-bold">
                               {balance > 0 ? (
-                                <span className="bg-rose-100 text-rose-950 border border-rose-300 px-2.5 py-1 rounded-lg text-xs font-black">
+                                <span className="text-rose-700 font-bold">
                                   Rs. {balance.toLocaleString()}
                                 </span>
                               ) : (
-                                <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-md text-[10.5px] font-black">
-                                  ✓ Clear (Paid)
+                                <span className="text-emerald-700 font-semibold text-[11px]">
+                                  Rs. 0 (Paid)
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            <td className="px-4 py-2.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2198,20 +2188,18 @@ export default function SupplierPurchases() {
                                     }));
                                     setGrnSupplierCode(sup.supplier_code || sup.id);
                                   }}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg font-black text-[10.5px] transition-colors flex items-center gap-0.5 shadow-2xs"
+                                  className="bg-emerald-700 hover:bg-emerald-800 text-white px-2 py-1 rounded text-xs font-semibold transition-colors"
                                   title="New GRN Bill"
                                 >
-                                  <span className="material-symbols-outlined text-xs">add</span>
-                                  GRN
+                                  + GRN
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleRequestEditSupplier(sup)}
-                                  className="bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200 px-1.5 py-1 rounded-lg font-black text-[10.5px] transition-colors flex items-center gap-0.5"
+                                  className="border border-slate-300 text-slate-700 hover:bg-slate-100 px-2 py-1 rounded text-xs font-medium transition-colors"
                                   title="Edit Supplier"
                                 >
-                                  <span className="material-symbols-outlined text-xs">edit</span>
                                   Edit
                                 </button>
 
@@ -2221,10 +2209,9 @@ export default function SupplierPurchases() {
                                     setSelectedSupplierDrawer(sup);
                                     setSupplierDrawerSearch("");
                                   }}
-                                  className="bg-teal-50 text-teal-900 border border-teal-300 hover:bg-teal-100 px-2 py-1 rounded-lg font-black text-[10.5px] transition-colors flex items-center gap-0.5"
+                                  className="border border-slate-300 text-slate-700 hover:bg-slate-100 px-2 py-1 rounded text-xs font-medium transition-colors"
                                   title="View Invoices"
                                 >
-                                  <span className="material-symbols-outlined text-xs">receipt_long</span>
                                   Invoices ({supBills.length})
                                 </button>
 
@@ -2241,10 +2228,9 @@ export default function SupplierPurchases() {
                                       setSupplierLedgerTxns([]);
                                     }
                                   }}
-                                  className="bg-purple-50 text-purple-900 border border-purple-300 hover:bg-purple-100 px-2 py-1 rounded-lg font-black text-[10.5px] transition-colors flex items-center gap-0.5 cursor-pointer"
+                                  className="border border-slate-300 text-slate-700 hover:bg-slate-100 px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
                                   title="View Account Ledger"
                                 >
-                                  <span className="material-symbols-outlined text-xs">account_balance</span>
                                   Ledger
                                 </button>
 
@@ -2258,7 +2244,7 @@ export default function SupplierPurchases() {
                                       setPaymentRef("");
                                       setPaymentNote("");
                                     }}
-                                    className="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded-lg font-black text-[10.5px] transition-colors shadow-2xs"
+                                    className="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-xs font-semibold transition-colors"
                                   >
                                     Pay
                                   </button>
