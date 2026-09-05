@@ -228,18 +228,21 @@ function parseDiscPct(raw) {
 }
 
 function normalizeReceiptLineItem(item) {
-  const qty = Number(item.qty || item.quantity || 1);
-  const rate = Number(item.rate || item.unit_price || item.sale_price || 0);
+  const qty = Number(item.qty || item.quantity || item.quantity_received || item.qty_base_units || 1);
+  const bonusQty = Number(item.bonus_qty || 0);
+  const rate = Number(item.rate || item.unit_price || item.sale_price || item.cost_price || 0);
   const discPct = parseDiscPct(item.disc_pct_num ?? item.disc_pct ?? item.discount_pct ?? item.disc_percent ?? 0);
   const discFlat = Number(item.disc_flat || item.discount_flat || 0);
   const gross = qty * rate;
-  const net = Number(item.net || item.line_total || item.net_amount || Math.max(0, gross - gross * (discPct / 100) - discFlat)) || 0;
+  const net = Number(item.net || item.line_total || item.total_cost || item.net_amount || Math.max(0, gross - gross * (discPct / 100) - discFlat)) || 0;
   const name = item.medicine_name || item.item_name || "Item";
   const companyName = item.company_name || item.manufacturer || item.brand || "";
   const category = String(item.category || item.medicine_category || item.product_category || "General").trim() || "General";
-  const productCode = item.product_code || item.item_code || item.batch_no || "";
-  const unitLabel = item.unit_label || item.packing || "";
-  return { qty, rate, discPct, discFlat, net, name, companyName, category, productCode, unitLabel };
+  const productCode = item.product_code || item.item_code || "";
+  const unitLabel = item.unit_label || item.packing || item.received_unit_type || "";
+  const batchNo = (item.batch_no && String(item.batch_no).trim() && String(item.batch_no).trim() !== "0" && String(item.batch_no).trim() !== "-") ? String(item.batch_no).trim() : "";
+  const expiryDate = item.expiry_date || item.exp_date || "";
+  return { qty, bonusQty, rate, discPct, discFlat, net, name, companyName, category, productCode, unitLabel, batchNo, expiryDate };
 }
 
 function groupItemsByCategory(items) {
@@ -261,21 +264,28 @@ function groupItemsByCategory(items) {
  */
 export function buildBorderedReceiptItemsTableHtml(items = []) {
   if (!Array.isArray(items) || items.length === 0) {
-    return `<div class="items-box" style="padding:10px;text-align:center;font-size:13.5px;font-weight:800;color:#444;border:1.5px dashed #666;border-radius:6px;margin:6px 0;">— No items in cart —</div>`;
+    return `<div class="items-box" style="padding:10px;text-align:center;font-size:13.5px;font-weight:800;color:#444;border:1.5px dashed #666;border-radius:6px;margin:6px 0;">— No items in bill —</div>`;
   }
 
   const normalized = items.map(normalizeReceiptLineItem);
 
   const itemRows = normalized.map((it, idx) => {
     const discLabel = it.discPct > 0 ? `${it.discPct}%` : (it.discFlat > 0 ? `Rs.${it.discFlat}` : "-");
-    const subLine = [it.companyName ? `[${it.companyName}]` : "", it.unitLabel].filter(Boolean).join(" · ");
+    const metaParts = [];
+    if (it.companyName) metaParts.push(`[${it.companyName}]`);
+    if (it.unitLabel) metaParts.push(`${it.unitLabel}`);
+    if (it.batchNo) metaParts.push(`B:${it.batchNo}`);
+    if (it.expiryDate) metaParts.push(`Exp:${String(it.expiryDate).split("T")[0]}`);
+    if (it.bonusQty > 0) metaParts.push(`+${it.bonusQty} Bonus`);
+
+    const subLine = metaParts.join(" · ");
     return `
     <tr>
       <td class="col-sr">${idx + 1}</td>
-      <td class="col-qty">${it.qty}</td>
+      <td class="col-qty">${it.qty}${it.bonusQty > 0 ? `<span style="font-size:9.5px;display:block;color:#166534;font-weight:900;">+${it.bonusQty}B</span>` : ""}</td>
       <td class="col-item">
-        ${escapeHtml(it.name)}
-        ${subLine ? `<span class="item-sub">${escapeHtml(subLine)}</span>` : ""}
+        <span style="font-weight:700;color:#000;">${escapeHtml(it.name)}</span>
+        ${subLine ? `<span class="item-sub" style="color:#333;font-size:10px;font-weight:600;display:block;margin-top:1px;">${escapeHtml(subLine)}</span>` : ""}
       </td>
       <td class="col-rate">${it.rate.toLocaleString("en-US", { maximumFractionDigits: 2 })}</td>
       <td class="col-disc">${discLabel}</td>
@@ -807,133 +817,11 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
 /** Print Company / Supplier Stock Purchase Thermal Invoice */
 export function printSupplierPurchaseReceipt(purchase, supplier = null, clinicData = null) {
   if (!purchase) return;
-
-  // Read block visibility saved by Receipt Studio for GRN mode
-  const _blocks    = getBlocksConfig("grn");
-  const showLogo   = isBlockEnabled(_blocks, "header_logo");
-  const showTagline= isBlockEnabled(_blocks, "tagline");
-  const showContact= isBlockEnabled(_blocks, "contact_info");
-  const showMeta   = isBlockEnabled(_blocks, "meta_info");
-  const showItems  = isBlockEnabled(_blocks, "items_table");
-  const showTotals = isBlockEnabled(_blocks, "financial_totals");
-
-  const clinicName = escapeHtml(clinicData?.name || "H/Dr.Asif Ashraf Khan Clinic");
-  const supplierName = escapeHtml(supplier?.company_name || purchase.supplier_name || "Company Distributor");
-  const totalAmount = Number(purchase.total_amount) || 0;
-  const paidAmount = Number(purchase.paid_amount) || 0;
-  const balanceDue = Number(purchase.balance_due) || Math.max(0, totalAmount - paidAmount);
-
-  const rawDate = purchase.purchase_date ? new Date(purchase.purchase_date) : new Date();
-  const dateTimeStr = rawDate.toLocaleString("en-US", {
-    timeZone: "Asia/Karachi",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: true
-  });
-
-  const invoiceId = escapeHtml(purchase.invoice_no || purchase.id || `INV_${Math.floor(1000 + Math.random() * 9000)}`);
-  const cashierName = escapeHtml(purchase.entered_by || "Store Manager");
-
-  const itemsHtml = (purchase.items || []).map((item) => `
-    <div style="margin-bottom: 6px;">
-      <div style="font-weight: 700; font-size: 13px; color: #111;">${escapeHtml(item.medicine_name)}</div>
-      <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #444; margin-top: 1px;">
-        <span>${Number(item.quantity_received || item.qty || 1).toFixed(2)} ${escapeHtml(item.received_unit_type || item.unit_label || "Pack")} X ${Number(item.cost_price || 0).toFixed(2)}</span>
-        <span style="font-weight: 800; color: #000;">Rs. ${Number(item.line_cost || (item.qty * item.cost_price) || 0).toFixed(2)}</span>
-      </div>
-    </div>
-  `).join("");
-
-  const receiptHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Purchase_${invoiceId}</title>
-        <style>
-          @page { size: 80mm auto; margin: 0mm !important; }
-          * {
-            box-sizing: border-box;
-            -webkit-print-color-adjust: exact;
-          }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            width: 76mm;
-            margin: 0 auto;
-            padding: 4px 4px;
-            color: #222;
-            background: #fff;
-            font-size: 11px;
-            line-height: 1.2;
-          }
-          .clinic-header { text-align: center; margin-bottom: 2px; }
-          .dotted-line { border-top: 1px dotted #999; margin: 3px 0; }
-          .meta-text { font-size: 10px; font-weight: 600; color: #222; line-height: 1.3; }
-          .summary-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: #333; margin-bottom: 2px; }
-          .grand-total-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; color: #000; margin-top: 2px; }
-          .payment-table { width: 100%; border-collapse: collapse; margin: 3px 0; }
-          .payment-table th { background: #f3f4f6; font-size: 10px; font-weight: 700; color: #374151; padding: 2px 4px; text-align: left; }
-          .payment-table td { font-size: 10px; font-weight: 700; color: #111827; padding: 2px 4px; }
-          @media print { body { width: 76mm; padding: 2px; } .no-print { display: none !important; } }
-        </style>
-      </head>
-      <body>
-        <!-- Clinic Header (blocks: header_logo, tagline, contact_info) -->
-        ${getLogoHeaderHtml("Stock Purchase Voucher", { showLogo, showTagline, showContact })}
-
-        <div class="dotted-line"></div>
-
-        <!-- Meta Info (meta_info block) -->
-        ${showMeta ? `
-        <div class="meta-text">
-          <div><strong style="color: #4b5563;">Date &amp; Time :</strong> ${dateTimeStr}</div>
-          <div><strong style="color: #4b5563;">Entered By :</strong> ${cashierName}</div>
-          <div><strong style="color: #4b5563;">Supplier :</strong> ${supplierName}</div>
-          <div><strong style="color: #4b5563;">Invoice # :</strong> ${invoiceId}</div>
-        </div>
-        <div class="dotted-line"></div>` : ""}
-
-        <!-- Purchased Stock List (items_table block) -->
-        ${showItems ? `<div style="margin: 6px 0;">${itemsHtml}</div><div class="dotted-line"></div>` : ""}
-
-        <!-- Summary Totals (financial_totals block) -->
-        ${showTotals ? `
-        <div style="margin: 6px 0;">
-          <div class="grand-total-row">
-            <span>Bill Total</span>
-            <span>Rs. ${totalAmount.toFixed(2)}</span>
-          </div>
-        </div>
-        <div class="dotted-line"></div>
-
-        <!-- Supplier Payment Table -->
-        <table class="payment-table">
-          <thead>
-            <tr>
-              <th style="width: 50%;">Paid Now:</th>
-              <th style="width: 50%; text-align: right;">Balance Due:</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="font-weight: 800; color: #0f766e;">Rs. ${paidAmount.toFixed(2)}</td>
-              <td style="text-align: right; font-weight: 800; color: #b91c1c;">Rs. ${balanceDue.toFixed(2)}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="dotted-line"></div>` : ""}
-
-        <div style="text-align: center; margin: 4px 0 3px 0;">
-          <div style="font-size: 11px; font-weight: 800; color: #111;">Stock Received &amp; Verified</div>
-        </div>
-
-        <div class="dotted-line"></div>
-
-        ${getWatermarkFooterHtml()}
-      </body>
-    </html>
-  `;
-
-  executeThermalPrint(receiptHtml, `Purchase_${invoiceId}`);
+  const mergedPurchase = {
+    ...purchase,
+    supplier_name: supplier?.company_name || supplier?.name || purchase.supplier_name || "Company Distributor",
+  };
+  return printPurchaseGRNReceipt(mergedPurchase, clinicData);
 }
 
 /** Print DrCreate & Access CashBook Thermal Voucher (80mm ESC/POS) */
@@ -1447,6 +1335,113 @@ export function printProductPricingListReceipt(items = [], categoryName = "All C
 }
 
 /**
+ * 80mm ESC/POS Thermal & Standard Print: Zero-Pilferage Blind Stock Physical Count Sheet
+ */
+export function printBlindStockAuditSheet(items = [], companyFilter = "All", clinic = null) {
+  const dateStr = new Date().toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
+  const companyLabel = !companyFilter || companyFilter.toLowerCase() === "all" ? "All Companies" : companyFilter;
+
+  const rowsHtml = (items || []).map((item, idx) => {
+    const packing = item.packing || item.unit_label || "";
+    const comp = item.company_name || "General";
+    return `
+      <tr>
+        <td style="font-weight: 800; font-size: 9px; text-align: center; border: 0.5px solid #000; padding: 3px 2px;">${idx + 1}</td>
+        <td style="padding: 3px 4px; font-weight: bold; font-size: 9.5px; line-height: 1.2; border: 0.5px solid #000;">
+          <div style="font-size: 10px; font-weight: 900; color: #000;">${escapeHtml(item.medicine_name)}</div>
+          <div style="font-size: 8px; font-weight: 600; color: #333; margin-top: 1px;">
+            ${escapeHtml(comp)}${packing ? ` · ${escapeHtml(packing)}` : ""}${item.item_code ? ` · [${escapeHtml(item.item_code)}]` : ""}
+          </div>
+        </td>
+        <td style="border: 1.5px solid #000; width: 22mm; text-align: center; height: 18px; background: #fff;">
+          <!-- Blank Physical Count write-in box -->
+        </td>
+        <td style="border: 0.5px solid #000; width: 8mm; text-align: center; font-size: 9px; font-weight: bold;">
+          [ ]
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  const receiptHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Physical Stock Count Sheet — ${escapeHtml(companyLabel)}</title>
+        <style>
+          @page { size: 80mm auto; margin: 0mm !important; }
+          body {
+            font-family: 'Courier New', Courier, monospace, system-ui;
+            font-size: 9.5px;
+            line-height: 1.2;
+            width: 72mm;
+            margin: 0 auto;
+            padding: 4px;
+            color: #000;
+            background: #fff;
+          }
+          .divider-dashed { border-top: 1px dashed #000; margin: 4px 0; }
+          .divider-single { border-top: 1px solid #000; margin: 4px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 3px; }
+          th { border: 1px solid #000; padding: 3px 2px; text-align: left; font-size: 8.5px; text-transform: uppercase; font-weight: 900; background: #e2e8f0; color: #000; }
+          td { vertical-align: middle; }
+        </style>
+      </head>
+      <body>
+        ${getLogoHeaderHtml("PHYSICAL STOCK COUNT SHEET")}
+        <div style="font-size: 8.5px; text-align: center; margin-top: 2px; line-height: 1.3; color: #000;">
+          <div style="font-weight: 900; font-size: 9px; text-transform: uppercase;">Zero-Pilferage Blind Shelf Audit</div>
+          <div><strong>Company / Filter:</strong> ${escapeHtml(companyLabel)}</div>
+          <div><strong>Print Date:</strong> ${dateStr} · <strong>Total SKUs:</strong> ${items.length}</div>
+        </div>
+
+        <div class="divider-dashed"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 8%; text-align: center;">#</th>
+              <th style="width: 60%;">Medicine Particulars</th>
+              <th style="width: 24%; text-align: center;">Physical Qty</th>
+              <th style="width: 8%; text-align: center;">OK</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="4" style="text-align:center; padding: 10px; font-weight: bold; border: 1px solid #000;">No medicines found for this company</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="divider-single"></div>
+
+        <div style="margin-top: 6px; font-size: 8px; line-height: 1.3; color: #000;">
+          <div><strong>Instructions:</strong> Count physical bottles/strips on shelf. Enter exact count in boxes.</div>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 8.5px; color: #000;">
+          <table style="width: 100%; border: none;">
+            <tr style="border: none;">
+              <td style="border: none; width: 50%; padding: 0;">
+                <div>Auditor Sign:</div>
+                <div style="margin-top: 14px; border-top: 1px dashed #000; width: 85%;"></div>
+              </td>
+              <td style="border: none; width: 50%; padding: 0; text-align: right;">
+                <div>Supervisor Sign:</div>
+                <div style="margin-top: 14px; border-top: 1px dashed #000; width: 85%; margin-left: auto;"></div>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        ${getWatermarkFooterHtml()}
+      </body>
+    </html>
+  `;
+
+  executeThermalPrint(receiptHtml, `Audit_Count_Sheet_${escapeHtml(companyLabel)}`);
+}
+
+/**
  * 80mm ESC/POS Thermal Print for Chart Of Accounts (DrCreate & Access Form Format)
  */
 export function printChartOfAccountsReceipt(accounts = [], filterType = "All", clinic = null) {
@@ -1524,85 +1519,179 @@ export function printChartOfAccountsReceipt(accounts = [], filterType = "All", c
 }
 
 /**
- * 80mm ESC/POS Thermal Print for Stock Movement Ledger (DrCreate Format)
+ * 80mm ESC/POS Thermal Print for Stock Movement Ledger (DrCreate High-Definition Table Format)
  */
 export function printStockLedgerReceipt(medicineName, timeline = [], clinic = null) {
-  const dateStr = new Date().toLocaleDateString("en-GB");
+  const printDateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   const totalIn = timeline.reduce((s, r) => s + (Number(r.total_in) || 0), 0);
   const totalOut = timeline.reduce((s, r) => s + (Number(r.total_out) || 0), 0);
   const netBalance = totalIn - totalOut;
 
+  // Running balance tracker
+  let runningBal = 0;
   const rowsHtml = timeline
-    .map(
-      (r) => `
-        <tr>
-          <td style="font-weight: 700; font-family: monospace;">${escapeHtml(r.date)}</td>
-          <td style="text-align: center; color: #047857; font-weight: 700;">+${r.total_in || 0}</td>
-          <td style="text-align: center; color: #b91c1c; font-weight: 700;">-${r.total_out || 0}</td>
-          <td style="text-align: right; font-weight: 800;">${(r.total_in || 0) - (r.total_out || 0)}</td>
+    .map((r, idx) => {
+      const dayIn = Number(r.total_in) || 0;
+      const dayOut = Number(r.total_out) || 0;
+      runningBal += (dayIn - dayOut);
+      return `
+        <tr style="border-bottom: 1px solid #000;">
+          <td style="padding: 4px 2px; text-align: center; font-weight: 700; border-right: 1px solid #000; font-family: monospace;">${idx + 1}</td>
+          <td style="padding: 4px 3px; font-weight: 700; border-right: 1px solid #000; font-family: monospace; white-space: nowrap;">${escapeHtml(r.date)}</td>
+          <td style="padding: 4px 2px; text-align: center; color: #000; font-weight: 900; border-right: 1px solid #000;">${dayIn > 0 ? `+${dayIn}` : "-"}</td>
+          <td style="padding: 4px 2px; text-align: center; color: #000; font-weight: 900; border-right: 1px solid #000;">${dayOut > 0 ? `-${dayOut}` : "-"}</td>
+          <td style="padding: 4px 3px; text-align: right; font-weight: 900; font-family: monospace;">${runningBal}</td>
         </tr>
-      `
-    )
+      `;
+    })
     .join("");
+
+  // Collect all individual vouchers across all dates
+  const allVouchers = [];
+  timeline.forEach((r) => {
+    (r.vouchers || []).forEach((v) => {
+      allVouchers.push({ ...v, date: r.date });
+    });
+  });
+
+  const vouchersTableHtml = allVouchers.length > 0 ? `
+    <div style="margin-top: 8px; font-size: 11px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px;">
+      TRANSACTION VOUCHERS AUDIT TRAIL (${allVouchers.length})
+    </div>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 3px; border: 1.5px solid #000; font-size: 10.5px;">
+      <thead>
+        <tr style="background-color: #f0f0f0; border-bottom: 1.5px solid #000;">
+          <th style="width: 8%; padding: 3px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">#</th>
+          <th style="width: 22%; padding: 3px 2px; text-align: left; border-right: 1px solid #000; font-weight: 900;">Date</th>
+          <th style="width: 24%; padding: 3px 2px; text-align: left; border-right: 1px solid #000; font-weight: 900;">Voucher</th>
+          <th style="width: 16%; padding: 3px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">Type</th>
+          <th style="width: 15%; padding: 3px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">In</th>
+          <th style="width: 15%; padding: 3px 2px; text-align: center; font-weight: 900;">Out</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${allVouchers.map((v, i) => `
+          <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 3px 2px; text-align: center; border-right: 1px solid #000; font-family: monospace;">${i + 1}</td>
+            <td style="padding: 3px 2px; border-right: 1px solid #000; font-family: monospace;">${escapeHtml(v.date || "")}</td>
+            <td style="padding: 3px 2px; border-right: 1px solid #000; font-weight: 700; font-family: monospace;">${escapeHtml(v.voucher_no || "-")}</td>
+            <td style="padding: 3px 2px; text-align: center; border-right: 1px solid #000; font-weight: 700;">${escapeHtml(v.type || "-")}</td>
+            <td style="padding: 3px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">${v.in_qty || "-"}</td>
+            <td style="padding: 3px 2px; text-align: center; font-weight: 900;">${v.out_qty || "-"}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  ` : "";
 
   const receiptHtml = `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>Stock Movement Ledger</title>
+        <title>Stock_Ledger_${escapeHtml(medicineName)}</title>
         <style>
           @page { size: 80mm auto; margin: 0mm !important; }
+          @media print {
+            @page { size: 80mm auto; margin: 0mm !important; }
+            html, body { width: 78mm !important; max-width: 78mm !important; margin: 0 auto !important; padding: 0 1.5mm 2mm 1.5mm !important; }
+            .no-print { display: none !important; }
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           body {
-            font-family: 'Courier New', Courier, monospace, system-ui;
-            font-size: 9.5px;
-            line-height: 1.2;
-            width: 72mm;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 11.5px;
+            line-height: 1.35;
+            width: 78mm;
             margin: 0 auto;
-            padding: 4px;
+            padding: 0 2mm 2mm 2mm;
             color: #000;
             background: #fff;
+            font-weight: 500;
           }
-          .divider-dashed { border-top: 1px dashed #000; margin: 4px 0; }
-          .divider-single { border-top: 1px solid #000; margin: 4px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 3px; }
-          th { border-bottom: 1px solid #000; padding: 2px 0; text-align: left; font-size: 8.5px; text-transform: uppercase; font-weight: 900; }
-          td { padding: 2px 0; border-bottom: 0.5px dotted #ddd; vertical-align: top; }
+          table { width: 100%; border-collapse: collapse; }
+          .meta-box {
+            border: 1.5px solid #000;
+            padding: 5px;
+            margin: 4px 0;
+            background: #fafafa;
+          }
+          .summary-card {
+            border: 2px solid #000;
+            padding: 6px;
+            margin-top: 6px;
+            background: #fdfdfd;
+          }
         </style>
       </head>
       <body>
         ${getLogoHeaderHtml("STOCK MOVEMENT LEDGER")}
-        <div style="font-size: 9.5px; text-align: center; margin-top: 2px; font-weight: bold;">
-          ${escapeHtml(medicineName)}
-        </div>
-        <div style="font-size: 8.5px; text-align: center; color: #444; margin-top: 1px;">
-          <strong>Date:</strong> ${dateStr}
+        
+        <!-- Product Metadata Card -->
+        <div class="meta-box">
+          <div style="font-size: 13.5px; font-weight: 900; text-transform: uppercase; color: #000;">
+            ${escapeHtml(medicineName)}
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 2px; color: #333;">
+            <span>Printed: ${printDateStr}</span>
+            <span>Total Dates: ${timeline.length}</span>
+          </div>
         </div>
 
-        <div class="divider-dashed"></div>
-
-        <table>
+        <!-- Daily Reconciled Movements Table -->
+        <div style="margin-top: 5px; font-size: 11px; font-weight: 900; text-transform: uppercase;">
+          DAILY RECONCILED LEDGER
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 2px; border: 1.5px solid #000; font-size: 11px;">
           <thead>
-            <tr>
-              <th style="width: 34%;">Date</th>
-              <th style="width: 22%; text-align: center;">In</th>
-              <th style="width: 22%; text-align: center;">Out</th>
-              <th style="width: 22%; text-align: right;">Net</th>
+            <tr style="background-color: #eaeaea; border-bottom: 1.5px solid #000;">
+              <th style="width: 8%; padding: 4px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">Sr</th>
+              <th style="width: 32%; padding: 4px 3px; text-align: left; border-right: 1px solid #000; font-weight: 900;">Date</th>
+              <th style="width: 20%; padding: 4px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">In (+)</th>
+              <th style="width: 20%; padding: 4px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">Out (-)</th>
+              <th style="width: 20%; padding: 4px 3px; text-align: right; font-weight: 900;">Bal</th>
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml || '<tr><td colspan="4" style="text-align:center; padding: 8px;">No transaction records</td></tr>'}
+            ${rowsHtml || '<tr><td colspan="5" style="text-align:center; padding: 10px; font-weight: 700;">No movement records found</td></tr>'}
           </tbody>
         </table>
 
-        <div class="divider-single"></div>
-        <div style="font-size: 9px; font-weight: bold; margin-top: 3px; display: flex; justify-content: space-between;">
-          <span>Total In: +${totalIn}</span>
-          <span>Total Out: -${totalOut}</span>
+        <!-- Optional Detailed Vouchers Breakdown -->
+        ${vouchersTableHtml}
+
+        <!-- Comprehensive Stock Balance Summary -->
+        <div class="summary-card">
+          <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700; border-bottom: 1px dashed #000; padding-bottom: 3px;">
+            <span>Total Lifetime Inward:</span>
+            <span style="font-family: monospace; font-weight: 900;">+${totalIn} Units</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700; border-bottom: 1px dashed #000; padding: 3px 0;">
+            <span>Total Lifetime Outward:</span>
+            <span style="font-family: monospace; font-weight: 900;">-${totalOut} Units</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 900; padding-top: 4px; color: #000;">
+            <span>CURRENT NET STOCK:</span>
+            <span style="font-family: monospace; font-size: 14px;">${netBalance} Units</span>
+          </div>
         </div>
-        <div style="font-size: 10px; font-weight: 900; text-align: center; margin-top: 3px; border-top: 1px solid #000; padding-top: 2px;">
-          Current Net Stock: ${netBalance} Units
+
+        <!-- Verification Signatures -->
+        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dotted #999; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700;">
+          <div style="text-align: center; width: 45%;">
+            <div style="border-bottom: 1px solid #000; height: 16px;"></div>
+            <span style="margin-top: 2px; display: block;">Prepared By</span>
+          </div>
+          <div style="text-align: center; width: 45%;">
+            <div style="border-bottom: 1px solid #000; height: 16px;"></div>
+            <span style="margin-top: 2px; display: block;">Store Incharge</span>
+          </div>
         </div>
+
         ${getWatermarkFooterHtml()}
       </body>
     </html>
@@ -1612,116 +1701,287 @@ export function printStockLedgerReceipt(medicineName, timeline = [], clinic = nu
 }
 
 /**
- * 80mm ESC/POS Thermal Print: Purchase GRN Voucher (DrCreate Format)
+ * 80mm ESC/POS Thermal Print for Item Date History & Detailed Vouchers Breakdown
  */
-export function printPurchaseGRNReceipt(purchase, clinic = null) {
-  if (!purchase) return;
+export function printItemDateHistoryReceipt(medicineName, dateRow, clinic = null) {
+  if (!dateRow) return;
+  const printDateStr = new Date().toLocaleDateString("en-GB") + " " + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const vouchers = dateRow.vouchers || [];
+  const totalIn = vouchers.reduce((s, v) => s + (Number(v.in_qty) || 0), 0);
+  const totalOut = vouchers.reduce((s, v) => s + (Number(v.out_qty) || 0), 0);
+  const totalGross = vouchers.reduce((s, v) => s + (Number(v.gross) || (Number(v.rate || 0) * Number(v.in_qty || v.out_qty || 0))), 0);
+  const totalNet = vouchers.reduce((s, v) => s + (Number(v.net) || 0), 0);
 
-  const dateStr = purchase.purchase_date
-    ? new Date(purchase.purchase_date).toLocaleDateString("en-GB")
-    : new Date().toLocaleDateString("en-GB");
-
-  const voucherNo = escapeHtml(purchase.invoice_no || purchase.voucher_no || "P-GRN");
-  const supplierName = escapeHtml(purchase.supplier_name || purchase.account_name || "Supplier");
-  const grnNo = escapeHtml(purchase.grn_no || "0");
-  const transport = escapeHtml(purchase.transport || "By Hand");
-  const biltyNo = escapeHtml(purchase.bilty_no || "-");
-  const reference = escapeHtml(purchase.reference || "-");
-  const paymentMode = escapeHtml(purchase.payment_mode || (purchase.balance_due > 0 ? "Credit (Udhaar)" : "Cash In Hand"));
-
-  const rowsHtml = (purchase.items || []).map((it) => {
-    const qty = Number(it.qty || it.quantity || it.qty_base_units || 1);
-    const rate = Number(it.rate || it.cost_price || 0);
-    const gross = Number(it.gross || (qty * rate));
-    const discPct = it.disc_pct || "-";
-    const net = Number(it.net || it.total_cost || (gross - (gross * (Number(it.disc_pct || 0) / 100)) - (Number(it.disc_flat || 0))));
-
-    return `
-      <tr>
-        <td style="font-weight: bold; max-width: 32mm; word-break: break-word;">${escapeHtml(it.medicine_name || "Item")}</td>
-        <td style="text-align: center; font-mono: true;">${qty}</td>
-        <td style="text-align: center;">${rate}</td>
-        <td style="text-align: center; font-size: 8.5px;">${discPct}</td>
-        <td style="text-align: right; font-weight: 800;">${net.toLocaleString()}</td>
-      </tr>
-    `;
-  }).join("");
-
-  const totalBill = Number(purchase.total_amount || purchase.net_total || 0);
-  const paidAmount = Number(purchase.paid_amount || 0);
-  const balanceDue = Number(purchase.balance_due || (totalBill - paidAmount));
+  const rowsHtml = vouchers.map((v, idx) => `
+    <tr style="border-bottom: 1px solid #000;">
+      <td style="padding: 4px 2px; text-align: center; font-weight: 700; border-right: 1px solid #000; font-family: monospace;">${idx + 1}</td>
+      <td style="padding: 4px 2px; font-weight: 900; border-right: 1px solid #000; font-family: monospace;">
+        <div>${escapeHtml(v.voucher_no || "-")}</div>
+        <div style="font-size: 9.5px; font-weight: 700; color: #444;">[${escapeHtml(v.type || "-")}]</div>
+      </td>
+      <td style="padding: 4px 3px; border-right: 1px solid #000; font-size: 10px; font-weight: 600;">
+        ${escapeHtml(v.description || "-")}
+      </td>
+      <td style="padding: 4px 2px; text-align: center; font-weight: 900; border-right: 1px solid #000;">${v.in_qty || "-"}</td>
+      <td style="padding: 4px 2px; text-align: center; font-weight: 900; border-right: 1px solid #000;">${v.out_qty || "-"}</td>
+      <td style="padding: 4px 3px; text-align: right; font-weight: 900; font-family: monospace;">${Number(v.net || 0).toLocaleString()}</td>
+    </tr>
+  `).join("");
 
   const receiptHtml = `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>Purchase_GRN_${voucherNo}</title>
+        <title>Date_History_${escapeHtml(dateRow.date || "History")}</title>
         <style>
           @page { size: 80mm auto; margin: 0mm !important; }
+          @media print {
+            @page { size: 80mm auto; margin: 0mm !important; }
+            html, body { width: 78mm !important; max-width: 78mm !important; margin: 0 auto !important; padding: 0 1.5mm 2mm 1.5mm !important; }
+            .no-print { display: none !important; }
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           body {
-            font-family: 'Courier New', Courier, monospace, system-ui;
-            font-size: 9.5px;
-            line-height: 1.2;
-            width: 72mm;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 11.5px;
+            line-height: 1.35;
+            width: 78mm;
             margin: 0 auto;
-            padding: 4px;
+            padding: 0 2mm 2mm 2mm;
             color: #000;
             background: #fff;
+            font-weight: 500;
           }
-          .divider-dashed { border-top: 1px dashed #000; margin: 4px 0; }
-          .divider-single { border-top: 1px solid #000; margin: 4px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 3px; }
-          th { border-bottom: 1px solid #000; padding: 2px 0; text-align: left; font-size: 8.5px; text-transform: uppercase; font-weight: 900; }
-          td { padding: 2px 0; border-bottom: 0.5px dotted #ddd; vertical-align: top; }
+          table { width: 100%; border-collapse: collapse; }
+          .meta-box {
+            border: 1.5px solid #000;
+            padding: 5px;
+            margin: 4px 0;
+            background: #fafafa;
+          }
+          .summary-card {
+            border: 2px solid #000;
+            padding: 6px;
+            margin-top: 6px;
+            background: #fdfdfd;
+          }
         </style>
       </head>
       <body>
-        ${getLogoHeaderHtml("PURCHASE GRN VOUCHER")}
-        <div style="font-size: 9px; margin-top: 2px;">
-          <div><strong>Voucher #:</strong> ${voucherNo} · <strong>Date:</strong> ${dateStr}</div>
-          <div><strong>Supplier:</strong> ${supplierName}</div>
-          <div><strong>GRN / Challan #:</strong> ${grnNo} · <strong>Ref:</strong> ${reference}</div>
-          <div><strong>Transport:</strong> ${transport} · <strong>Bilty:</strong> ${biltyNo}</div>
-          <div><strong>Mode:</strong> ${paymentMode}</div>
+        ${getLogoHeaderHtml("ITEM DATE HISTORY & VOUCHERS")}
+        
+        <div class="meta-box">
+          <div style="font-size: 13.5px; font-weight: 900; text-transform: uppercase;">
+            ${escapeHtml(medicineName || "Medicine Audit")}
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-top: 3px;">
+            <span style="font-weight: 800;">Target Date: ${escapeHtml(dateRow.date || "-")}</span>
+            <span>Vouchers: ${vouchers.length}</span>
+          </div>
+          <div style="font-size: 10px; color: #444; margin-top: 2px;">
+            Printed on: ${printDateStr}
+          </div>
         </div>
 
-        <div class="divider-dashed"></div>
-
-        <table>
+        <div style="margin-top: 5px; font-size: 11px; font-weight: 900; text-transform: uppercase;">
+          VOUCHER TRANSACTIONS TABLE
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 2px; border: 1.5px solid #000; font-size: 10.5px;">
           <thead>
-            <tr>
-              <th style="width: 44%;">Item Name</th>
-              <th style="width: 12%; text-align: center;">Qty</th>
-              <th style="width: 14%; text-align: center;">Rate</th>
-              <th style="width: 14%; text-align: center;">Disc</th>
-              <th style="width: 16%; text-align: right;">Net</th>
+            <tr style="background-color: #eaeaea; border-bottom: 1.5px solid #000;">
+              <th style="width: 7%; padding: 4px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">#</th>
+              <th style="width: 26%; padding: 4px 2px; text-align: left; border-right: 1px solid #000; font-weight: 900;">Voucher</th>
+              <th style="width: 29%; padding: 4px 2px; text-align: left; border-right: 1px solid #000; font-weight: 900;">Particulars</th>
+              <th style="width: 11%; padding: 4px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">In</th>
+              <th style="width: 11%; padding: 4px 2px; text-align: center; border-right: 1px solid #000; font-weight: 900;">Out</th>
+              <th style="width: 16%; padding: 4px 2px; text-align: right; font-weight: 900;">Net (Rs)</th>
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml}
+            ${rowsHtml || '<tr><td colspan="6" style="text-align:center; padding: 10px; font-weight: 700;">No voucher details</td></tr>'}
           </tbody>
         </table>
 
-        <div class="divider-single"></div>
-        <div style="font-size: 10px; font-weight: 900; display: flex; justify-content: space-between; margin-top: 2px;">
-          <span>TOTAL BILL:</span>
-          <span>Rs. ${totalBill.toLocaleString()}</span>
+        <!-- Daily Financial & Unit Summary -->
+        <div class="summary-card">
+          <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700; border-bottom: 1px dashed #000; padding-bottom: 3px;">
+            <span>Daily Inward Units:</span>
+            <span style="font-family: monospace; font-weight: 900;">+${totalIn}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700; border-bottom: 1px dashed #000; padding: 3px 0;">
+            <span>Daily Outward Units:</span>
+            <span style="font-family: monospace; font-weight: 900;">-${totalOut}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; border-bottom: 1px dashed #000; padding: 3px 0;">
+            <span>Daily Gross Total:</span>
+            <span style="font-family: monospace; font-weight: 900;">Rs. ${totalGross.toLocaleString()}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 900; padding-top: 4px; color: #000;">
+            <span>DAILY NET VALUE:</span>
+            <span style="font-family: monospace; font-size: 14px;">Rs. ${totalNet.toLocaleString()}</span>
+          </div>
         </div>
-        ${paidAmount > 0 ? `
-          <div style="font-size: 9px; font-weight: bold; display: flex; justify-content: space-between; margin-top: 1px;">
-            <span>Paid Amount:</span>
-            <span>Rs. ${paidAmount.toLocaleString()}</span>
-          </div>
-        ` : ""}
-        ${balanceDue > 0 ? `
-          <div style="font-size: 9px; font-weight: bold; color: #b91c1c; display: flex; justify-content: space-between; margin-top: 1px;">
-            <span>Payable Udhaar Balance:</span>
-            <span>Rs. ${balanceDue.toLocaleString()}</span>
-          </div>
-        ` : ""}
 
-        <div class="divider-dashed"></div>
+        <!-- Verification Signatures -->
+        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dotted #999; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700;">
+          <div style="text-align: center; width: 45%;">
+            <div style="border-bottom: 1px solid #000; height: 16px;"></div>
+            <span style="margin-top: 2px; display: block;">Prepared By</span>
+          </div>
+          <div style="text-align: center; width: 45%;">
+            <div style="border-bottom: 1px solid #000; height: 16px;"></div>
+            <span style="margin-top: 2px; display: block;">Authorized Incharge</span>
+          </div>
+        </div>
+
+        ${getWatermarkFooterHtml()}
+      </body>
+    </html>
+  `;
+
+  executeThermalPrint(receiptHtml, `Date_History_${escapeHtml(dateRow.date || "History")}`);
+}
+
+export function printPurchaseGRNReceipt(purchase, clinic = null) {
+  if (!purchase) return;
+
+  const voucherNo = escapeHtml(purchase.invoice_no || purchase.voucher_no || "P-GRN");
+  const dateStr = escapeHtml((purchase.purchase_date || purchase.created_at || new Date().toISOString()).split("T")[0]);
+  const supplierName = escapeHtml(toTitleCase(purchase.supplier_name || purchase.account_name || "Company Distributor"));
+  const grnNo = escapeHtml(purchase.grn_no || purchase.company_bill_no || "0");
+  const transport = escapeHtml(purchase.transport || "By Hand");
+  const biltyNo = escapeHtml(purchase.bilty_no || "-");
+  const reference = escapeHtml(purchase.reference || (clinic?.user_name || "Store Incharge"));
+  const paymentMode = escapeHtml(purchase.payment_mode || (Number(purchase.balance_due) > 0 ? "Credit (Udhaar)" : "Cash In Hand"));
+
+  const items = purchase.items || [];
+  const itemsGross = items.reduce((sum, it) => sum + (Number(it.gross) || (Number(it.qty || it.quantity || 1) * Number(it.rate || it.cost_price || 0))), 0);
+  const itemsSubtotal = items.reduce((sum, it) => sum + (Number(it.net) || Number(it.total_cost) || (Number(it.qty || it.quantity || 1) * Number(it.rate || it.cost_price || 0))), 0) || itemsGross;
+  const itemsDiscount = Math.max(0, itemsGross - itemsSubtotal);
+  const extraDiscount = Number(purchase.extra_discount || purchase.extra_bill_discount || 0);
+  const freightCharges = Number(purchase.freight_charges || purchase.freight || 0);
+
+  const totalBill = Number(purchase.total_amount || purchase.net_total || Math.max(0, itemsSubtotal - extraDiscount + freightCharges));
+  const paidAmount = Number(purchase.paid_amount || (paymentMode === "Cash" ? totalBill : 0));
+  const balanceDue = Number(purchase.balance_due ?? Math.max(0, totalBill - paidAmount));
+
+  const itemsTableHtml = buildBorderedReceiptItemsTableHtml(items);
+
+  const receiptHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8"/>
+        <title>Purchase_GRN_${voucherNo}</title>
+        <style>
+          @page { size: 80mm auto; margin: 0mm !important; }
+          @media print {
+            @page { size: 80mm auto; margin: 0mm !important; }
+            html, body { width: 78mm !important; max-width: 78mm !important; margin: 0 auto !important; padding: 0 1.5mm 2mm 1.5mm !important; }
+            .no-print { display: none !important; }
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 13.5px;
+            line-height: 1.35;
+            width: 78mm;
+            margin: 0 auto;
+            padding: 0 2mm 2mm 2mm;
+            color: #000;
+            background: #fff;
+            font-weight: 500;
+          }
+          table { width: 100%; border-collapse: collapse; }
+          ${getThermalItemsTableCss()}
+        </style>
+      </head>
+      <body>
+        <!-- Header Banner -->
+        ${getLogoHeaderHtml("STOCK PURCHASE INVOICE / GRN")}
+
+        <!-- Meta Information -->
+        <div style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 4px; font-size: 13px; line-height: 1.35; color: #000;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 700; font-size: 14px;">Voucher #: ${voucherNo}</span>
+            <span>Date: ${dateStr}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 2px; gap: 4px;">
+            <span style="font-weight: 700; font-size: 14.5px;">Supplier: ${supplierName}</span>
+            <span style="text-align: right; white-space: nowrap; flex-shrink: 0;">Co. Bill #: ${grnNo}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+            <span>Mode: <strong>${paymentMode}</strong></span>
+            <span>Incharge: ${reference}</span>
+          </div>
+          ${((transport && transport !== "0" && transport !== "-") || (biltyNo && biltyNo !== "0" && biltyNo !== "-")) ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; font-size: 12px; color: #333;">
+              <span>Transport: ${transport || "By Hand"}</span>
+              <span>Bilty #: ${biltyNo || "-"}</span>
+            </div>
+          ` : ""}
+        </div>
+
+        <!-- Items Table -->
+        ${itemsTableHtml}
+
+        <!-- Financial Totals -->
+        <div style="margin-top: 6px; font-size: 13px; line-height: 1.4; color: #000;">
+          <div style="display: flex; justify-content: space-between; padding: 1px 0;">
+            <span>Items Gross Total:</span>
+            <span style="font-family: monospace; font-weight: 600;">Rs. ${itemsGross.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          ${itemsDiscount > 0 ? `
+            <div style="display: flex; justify-content: space-between; padding: 1px 0; color: #166534; font-weight: 700;">
+              <span>Trade Discount:</span>
+              <span style="font-family: monospace;">- Rs. ${itemsDiscount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          ` : ""}
+          ${extraDiscount > 0 ? `
+            <div style="display: flex; justify-content: space-between; padding: 1px 0; color: #166534; font-weight: 700;">
+              <span>Extra Bill Discount:</span>
+              <span style="font-family: monospace;">- Rs. ${extraDiscount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          ` : ""}
+          ${freightCharges > 0 ? `
+            <div style="display: flex; justify-content: space-between; padding: 1px 0;">
+              <span>Freight / Delivery:</span>
+              <span style="font-family: monospace; font-weight: 600;">+ Rs. ${freightCharges.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          ` : ""}
+          <div style="border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 4px 0; margin-top: 3px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 900;">
+            <span>TOTAL BILL:</span>
+            <span style="font-family: monospace; font-size: 16px;">Rs. ${totalBill.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          ${paidAmount > 0 ? `
+            <div style="display: flex; justify-content: space-between; padding: 2px 0; font-weight: 700; font-size: 13.5px;">
+              <span>Cash Paid:</span>
+              <span style="font-family: monospace;">Rs. ${paidAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          ` : ""}
+          ${balanceDue > 0 ? `
+            <div style="display: flex; justify-content: space-between; padding: 2px 0; font-weight: 900; font-size: 14px; color: #b91c1c; border-top: 1px dashed #b91c1c; margin-top: 2px;">
+              <span>Payable Balance (Udhaar):</span>
+              <span style="font-family: monospace;">Rs. ${balanceDue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          ` : ""}
+        </div>
+
+        <!-- Verification & Signatures -->
+        <div style="display: flex; justify-content: space-between; margin-top: 16px; padding-top: 4px; font-size: 11px; font-weight: 700; color: #444;">
+          <span style="border-top: 1px solid #000; padding-top: 2px; width: 32mm; text-align: center;">Stock Inward Incharge</span>
+          <span style="border-top: 1px solid #000; padding-top: 2px; width: 32mm; text-align: center;">Authorized Signature</span>
+        </div>
+
         ${getWatermarkFooterHtml()}
       </body>
     </html>
@@ -2494,12 +2754,25 @@ export function printPartyPaymentReceipt(payment, clinic) {
           </div>
         </div>
 
-        ${remarks ? `<div style="font-size: 9px; font-style: italic; color: #111; margin-bottom: 6px;">Note: ${remarks}</div>` : ""}
+        ${remarks ? `<div style="font-size: 10px; font-style: italic; color: #333; margin: 4px 0;">Note: ${remarks}</div>` : ""}
 
-        <div class="footer">
-          <div>Thank you for your business!</div>
-          <div style="border-top: 2px dashed #000; margin-top: 14px; padding-top: 8px; font-size: 23px; font-weight: 900; line-height: 1.45; direction: rtl; font-family: 'Noto Nastaleeq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif; color: #000;">خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔</div>
+        <div style="text-align: center; font-size: 10.5px; font-weight: 700; color: #000; margin-top: 6px; padding: 4px 2px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 4px;">
+          Thank you for your payment! Please keep this receipt for accounts record.
         </div>
+
+        <!-- Verification Signatures -->
+        <div style="margin-top: 20px; padding-top: 6px; border-top: 1px dotted #999; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700;">
+          <div style="text-align: center; width: 45%;">
+            <div style="border-bottom: 1px solid #000; height: 16px;"></div>
+            <span style="margin-top: 2px; display: block;">Receiver's Signature</span>
+          </div>
+          <div style="text-align: center; width: 45%;">
+            <div style="border-bottom: 1px solid #000; height: 16px;"></div>
+            <span style="margin-top: 2px; display: block;">Party Signature</span>
+          </div>
+        </div>
+
+        ${getWatermarkFooterHtml()}
       </body>
     </html>
   `;

@@ -5,7 +5,7 @@ import { verifyAdminPasscode } from "../api/auth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
 import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, dbCategories, dbCompanies, dbAuditLogs, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
 import { formatCurrency, downloadCSV } from "../utils/formatters.js";
-import { printInventoryListReceipt, printProductPricingListReceipt } from "../utils/thermalPrinter.js";
+import { printInventoryListReceipt, printProductPricingListReceipt, printBlindStockAuditSheet } from "../utils/thermalPrinter.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
 import StockLedgerModal from "../components/StockLedgerModal.jsx";
 
@@ -142,6 +142,7 @@ export default function MedicalStoreInventory() {
   const [showBlindAuditModal, setShowBlindAuditModal] = useState(false);
   const [auditCounts, setAuditCounts] = useState({});
   const [auditSearchQuery, setAuditSearchQuery] = useState("");
+  const [auditCompanyFilter, setAuditCompanyFilter] = useState("All");
 
   // Edit Medicine Modal State
   const [editingItem, setEditingItem] = useState(null);
@@ -964,43 +965,59 @@ export default function MedicalStoreInventory() {
     };
   }, [inventory, effectiveLocationId]);
 
-  // Unique Category / Company Codes for Filter Dropdowns
+  // Unique Company Names for Filter Dropdowns
   const uniqueCompanyNames = useMemo(() => {
     const set = new Set();
-    inventory.forEach((i) => {
-      if (i.company_name) set.add(i.company_name);
+    // 1. All companies from dbCompanies & allCompanyOptions
+    (allCompanyOptions || []).forEach((c) => {
+      if (c.name && c.name.trim()) set.add(c.name.trim());
     });
-    return ["all", ...Array.from(set).sort()];
-  }, [inventory]);
-
-  const uniqueCategoryCodes = useMemo(() => {
-    const set = new Set();
+    // 2. Inventory companies
     inventory.forEach((i) => {
-      if (i.item_code) set.add(i.item_code);
-      if (i.company_name) set.add(i.company_name);
+      if (i.company_name && i.company_name.trim()) set.add(i.company_name.trim());
     });
-    return ["All", ...Array.from(set).sort()];
-  }, [inventory]);
+    return ["All", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [allCompanyOptions, inventory]);
 
-  // Filtered List for Modal Popups
+  // Filtered List for Modal Popups (Stock Inventory Sheet & Product Pricing List)
   const modalFilteredItems = useMemo(() => {
     return inventory.filter((item) => {
-      if (modalCategoryFilter !== "All") {
-        const matchesCode = (item.item_code || "").toLowerCase() === modalCategoryFilter.toLowerCase();
+      if (modalCategoryFilter !== "All" && modalCategoryFilter !== "all") {
         const matchesCompany = (item.company_name || "").toLowerCase() === modalCategoryFilter.toLowerCase();
-        if (!matchesCode && !matchesCompany) return false;
+        if (!matchesCompany) return false;
       }
       if (modalSearchQuery.trim()) {
-        const q = modalSearchQuery.toLowerCase();
+        const q = modalSearchQuery.toLowerCase().trim();
         const mName = (item.medicine_name || "").toLowerCase().includes(q);
         const mCode = (item.item_code || "").toLowerCase().includes(q);
         const mCat = (item.category || "").toLowerCase().includes(q);
-        const mNar = (item.generic_name || "").toLowerCase().includes(q);
-        if (!mName && !mCode && !mCat && !mNar) return false;
+        const mNar = (item.generic_name || item.product_description || item.naration || "").toLowerCase().includes(q);
+        const mComp = (item.company_name || "").toLowerCase().includes(q);
+        if (!mName && !mCode && !mCat && !mNar && !mComp) return false;
       }
       return true;
     });
   }, [inventory, modalCategoryFilter, modalSearchQuery]);
+
+  // Filtered List for Blind Physical Stock Audit Modal
+  const auditFilteredItems = useMemo(() => {
+    return inventory.filter((item) => {
+      if (auditCompanyFilter !== "All" && auditCompanyFilter !== "all") {
+        if ((item.company_name || "").toLowerCase() !== auditCompanyFilter.toLowerCase()) {
+          return false;
+        }
+      }
+      if (auditSearchQuery.trim()) {
+        const q = auditSearchQuery.toLowerCase().trim();
+        const mName = (item.medicine_name || "").toLowerCase().includes(q);
+        const mComp = (item.company_name || "").toLowerCase().includes(q);
+        const mCode = (item.item_code || "").toLowerCase().includes(q);
+        const mNar = (item.generic_name || item.product_description || item.naration || "").toLowerCase().includes(q);
+        if (!mName && !mComp && !mCode && !mNar) return false;
+      }
+      return true;
+    });
+  }, [inventory, auditCompanyFilter, auditSearchQuery]);
 
   const [pageSize, setPageSize] = useState("all");
 
@@ -1217,6 +1234,7 @@ export default function MedicalStoreInventory() {
             onClick={() => {
               setAuditCounts({});
               setAuditSearchQuery("");
+              setAuditCompanyFilter("All");
               setShowBlindAuditModal(true);
             }}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-teal-950/40 hover:bg-teal-950/70 text-teal-100 font-medium border border-teal-700/30 transition cursor-pointer"
@@ -2184,7 +2202,7 @@ export default function MedicalStoreInventory() {
                       const out = isOutOfStock(item);
                       const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || item.sale_price || 0);
                       const cost = Number(item.cost_price_per_box || item.purchase_price || item.cost_price || (sale * 0.7));
-                      const totalStock = item.store_stock ?? (item.quantity ?? item.stock_qty ?? 0);
+                      const totalStock = getItemLocationStock(item);
                       const isSelected = selectedItems.has(item.id);
 
                       return (
@@ -2524,13 +2542,13 @@ export default function MedicalStoreInventory() {
       {/* ========================================================================= */}
       {showInventoryListModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[999] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowInventoryListModal(false);
           }}
         >
           <div
-            className="bg-white max-w-2xl w-full rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[85vh] max-h-[700px] animate-in zoom-in-95 duration-200"
+            className="bg-white max-w-3xl w-full rounded-3xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col h-[85vh] max-h-[700px] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-emerald-950 p-4 text-white flex items-center justify-between shrink-0">
@@ -2539,66 +2557,83 @@ export default function MedicalStoreInventory() {
                   <span className="material-symbols-outlined text-xl">inventory_2</span>
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold uppercase tracking-wide">Stock Inventory Sheet</h3>
-                  <p className="text-xs text-emerald-200/80">Showing {modalFilteredItems.length} Products</p>
+                  <h3 className="text-base font-black uppercase tracking-wide text-white">Stock Inventory Sheet</h3>
+                  <p className="text-xs text-emerald-200/90 font-medium">Showing {modalFilteredItems.length} Products</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowInventoryListModal(false)}
-                className="text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/10"
+                className="text-slate-300 hover:text-white p-1.5 rounded-full hover:bg-white/10 cursor-pointer"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             {/* Filter Bar */}
-            <div className="p-3 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center shrink-0">
-              <div className="sm:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                Filter Category:
+            <div className="p-3 bg-slate-100 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center shrink-0">
+              <div className="sm:col-span-3 text-xs font-black text-slate-900 uppercase tracking-wider">
+                Filter Company:
               </div>
               <div className="sm:col-span-9 flex items-center gap-2">
                 <select
                   value={modalCategoryFilter}
                   onChange={(e) => setModalCategoryFilter(e.target.value)}
-                  className="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold bg-white text-slate-900 w-1/2 focus:outline-none focus:border-teal-600"
+                  className="border-2 border-slate-300 rounded-xl px-3 py-1.5 text-xs font-black bg-white text-slate-900 w-1/2 focus:outline-none focus:border-teal-600 shadow-xs"
                 >
-                  {uniqueCategoryCodes.map((code) => (
-                    <option key={code} value={code}>{code}</option>
+                  {uniqueCompanyNames.map((comp) => (
+                    <option key={comp} value={comp} className="text-slate-900 font-bold">
+                      {comp === "All" || comp === "all" ? "🏢 All Companies" : `🏢 ${comp}`}
+                    </option>
                   ))}
                 </select>
-                <input
-                  type="text"
-                  placeholder="Filter name..."
-                  value={modalSearchQuery}
-                  onChange={(e) => setModalSearchQuery(e.target.value)}
-                  className="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-semibold bg-white w-1/2 focus:outline-none focus:border-teal-600"
-                />
+                <div className="relative w-1/2">
+                  <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+                  <input
+                    type="text"
+                    placeholder="Search medicine name, code..."
+                    value={modalSearchQuery}
+                    onChange={(e) => setModalSearchQuery(e.target.value)}
+                    className="w-full border-2 border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs font-bold bg-white text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-teal-600 shadow-xs"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Table */}
-            <div className="overflow-y-auto flex-1 p-3 min-h-0">
+            <div className="overflow-y-auto flex-1 p-3 min-h-0 bg-white">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100 text-slate-800 font-black uppercase text-[11px] sticky top-0 shadow-xs">
+                <thead className="bg-slate-900 text-white font-black uppercase text-[11px] sticky top-0 shadow-md">
                   <tr>
-                    <th className="p-3 border-b border-slate-200">Item Name</th>
-                    <th className="p-3 border-b border-slate-200 text-center">Item Code</th>
-                    <th className="p-3 border-b border-slate-200 text-right">Stock Level</th>
+                    <th className="p-3 border-b border-slate-700">Item Particulars</th>
+                    <th className="p-3 border-b border-slate-700 text-center">Company / Code</th>
+                    <th className="p-3 border-b border-slate-700 text-right">Live Stock Level</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-semibold">
+                <tbody className="divide-y divide-slate-200 font-semibold bg-white text-slate-900">
                   {modalFilteredItems.length === 0 ? (
                     <tr>
-                      <td colSpan="3" className="text-center py-10 text-slate-400">
+                      <td colSpan="3" className="text-center py-12 text-slate-700 font-bold">
                         No products found under &quot;{modalCategoryFilter}&quot;.
                       </td>
                     </tr>
                   ) : (
                     modalFilteredItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-teal-50/50">
-                        <td className="p-2.5 font-bold text-slate-900">{item.medicine_name}</td>
-                        <td className="p-2.5 text-center font-mono text-emerald-800 font-bold">{item.item_code || "-"}</td>
-                        <td className="p-2.5 text-right font-black text-slate-900">{item.total_base_stock ?? item.stock_qty ?? 0}</td>
+                      <tr key={item.id} className="hover:bg-teal-50/60 transition-colors">
+                        <td className="p-3 font-black text-slate-900 text-xs">
+                          {item.medicine_name}
+                          {item.packing && (
+                            <span className="block text-[11px] font-bold text-slate-700">{item.packing}</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="font-bold text-slate-900">{item.company_name || "General"}</span>
+                          {item.item_code && (
+                            <span className="block font-mono text-teal-950 font-black text-[10.5px]">[{item.item_code}]</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right font-black text-slate-950 text-sm">
+                          {item.total_base_stock ?? item.stock_qty ?? 0}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -2607,11 +2642,11 @@ export default function MedicalStoreInventory() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3 shrink-0">
+            <div className="p-4 bg-slate-100 border-t border-slate-300 flex justify-between items-center gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => printInventoryListReceipt(modalFilteredItems, modalCategoryFilter, dbClinic.get())}
-                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-sm flex items-center gap-2 transition-all active:scale-95"
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-xs shadow-md flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">print</span>
                 <span>Print Stock Receipt</span>
@@ -2620,7 +2655,7 @@ export default function MedicalStoreInventory() {
               <button
                 type="button"
                 onClick={() => handleExportModalList(modalFilteredItems, `inventory_list_${modalCategoryFilter}.csv`)}
-                className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-600 text-white font-bold text-xs shadow-sm flex items-center gap-2 transition-all active:scale-95"
+                className="px-5 py-2.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-black text-xs shadow-md flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">download</span>
                 <span>Export CSV</span>
@@ -2636,13 +2671,13 @@ export default function MedicalStoreInventory() {
       {/* ========================================================================= */}
       {showPricingListModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[999] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowPricingListModal(false);
           }}
         >
           <div
-            className="bg-white max-w-4xl w-full rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[85vh] max-h-[720px] animate-in zoom-in-95 duration-200"
+            className="bg-white max-w-4xl w-full rounded-3xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col h-[85vh] max-h-[720px] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-emerald-950 p-4 text-white flex items-center justify-between shrink-0">
@@ -2651,60 +2686,65 @@ export default function MedicalStoreInventory() {
                   <span className="material-symbols-outlined text-xl">sell</span>
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold uppercase tracking-wide">Product Pricing &amp; Margin Sheet</h3>
-                  <p className="text-xs text-teal-200/80">Showing {modalFilteredItems.length} Products with Sale &amp; Cost Rates</p>
+                  <h3 className="text-base font-black uppercase tracking-wide text-white">Product Pricing &amp; Margin Sheet</h3>
+                  <p className="text-xs text-teal-200/90 font-medium">Showing {modalFilteredItems.length} Products with Sale &amp; Cost Rates</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowPricingListModal(false)}
-                className="text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/10"
+                className="text-slate-300 hover:text-white p-1.5 rounded-full hover:bg-white/10 cursor-pointer"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             {/* Filter Bar */}
-            <div className="p-3 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center shrink-0">
-              <div className="sm:col-span-3 text-xs font-black text-slate-800 uppercase tracking-wider">
-                Filter Category:
+            <div className="p-3 bg-slate-100 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center shrink-0">
+              <div className="sm:col-span-3 text-xs font-black text-slate-900 uppercase tracking-wider">
+                Filter Company:
               </div>
               <div className="sm:col-span-9 flex items-center gap-2">
                 <select
                   value={modalCategoryFilter}
                   onChange={(e) => setModalCategoryFilter(e.target.value)}
-                  className="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold bg-white text-slate-900 w-1/2 focus:outline-none focus:border-teal-600"
+                  className="border-2 border-slate-300 rounded-xl px-3 py-1.5 text-xs font-black bg-white text-slate-900 w-1/2 focus:outline-none focus:border-teal-600 shadow-xs"
                 >
-                  {uniqueCategoryCodes.map((code) => (
-                    <option key={code} value={code}>{code}</option>
+                  {uniqueCompanyNames.map((comp) => (
+                    <option key={comp} value={comp} className="text-slate-900 font-bold">
+                      {comp === "All" || comp === "all" ? "🏢 All Companies" : `🏢 ${comp}`}
+                    </option>
                   ))}
                 </select>
-                <input
-                  type="text"
-                  placeholder="Search product or naration..."
-                  value={modalSearchQuery}
-                  onChange={(e) => setModalSearchQuery(e.target.value)}
-                  className="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-semibold bg-white w-1/2 focus:outline-none focus:border-teal-600"
-                />
+                <div className="relative w-1/2">
+                  <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+                  <input
+                    type="text"
+                    placeholder="Search product, naration, code..."
+                    value={modalSearchQuery}
+                    onChange={(e) => setModalSearchQuery(e.target.value)}
+                    className="w-full border-2 border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs font-bold bg-white text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-teal-600 shadow-xs"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Table */}
-            <div className="overflow-y-auto flex-1 p-3 min-h-0">
+            <div className="overflow-y-auto flex-1 p-3 min-h-0 bg-white">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100 text-slate-800 font-black uppercase text-[11px] sticky top-0 shadow-xs">
+                <thead className="bg-slate-900 text-white font-black uppercase text-[11px] sticky top-0 shadow-md">
                   <tr>
-                    <th className="p-3 border-b border-slate-200">Product Name</th>
-                    <th className="p-3 border-b border-slate-200 text-center">Code</th>
-                    <th className="p-3 border-b border-slate-200">Naration / Form</th>
-                    <th className="p-3 border-b border-slate-200 text-center">Level</th>
-                    <th className="p-3 border-b border-slate-200 text-right">Sale Price</th>
-                    <th className="p-3 border-b border-slate-200 text-right">Purchase Price</th>
+                    <th className="p-3 border-b border-slate-700">Product Particulars</th>
+                    <th className="p-3 border-b border-slate-700 text-center">Company / Code</th>
+                    <th className="p-3 border-b border-slate-700">Naration / Form</th>
+                    <th className="p-3 border-b border-slate-700 text-center">Stock</th>
+                    <th className="p-3 border-b border-slate-700 text-right">Retail Price</th>
+                    <th className="p-3 border-b border-slate-700 text-right">Purchase Cost</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-semibold">
+                <tbody className="divide-y divide-slate-200 font-semibold bg-white text-slate-900">
                   {modalFilteredItems.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-10 text-slate-400">
+                      <td colSpan="6" className="text-center py-12 text-slate-700 font-bold">
                         No pricing records found under this filter.
                       </td>
                     </tr>
@@ -2713,13 +2753,18 @@ export default function MedicalStoreInventory() {
                       const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || 0);
                       const cost = Number(item.cost_price_per_box || item.purchase_price || (sale * 0.7));
                       return (
-                        <tr key={item.id} className="hover:bg-teal-50/50">
-                          <td className="p-2.5 font-bold text-slate-900">{item.medicine_name}</td>
-                          <td className="p-2.5 text-center font-mono text-emerald-800 font-bold">{item.item_code || "-"}</td>
-                          <td className="p-2.5 text-slate-600 text-[11px]">{item.generic_name || item.category || "-"}</td>
-                          <td className="p-2.5 text-center font-black text-slate-800">{item.total_base_stock ?? item.stock_qty ?? 0}</td>
-                          <td className="p-2.5 text-right font-black text-emerald-900">Rs. {sale.toLocaleString()}</td>
-                          <td className="p-2.5 text-right font-bold text-slate-600">Rs. {cost.toLocaleString()}</td>
+                        <tr key={item.id} className="hover:bg-teal-50/60 transition-colors">
+                          <td className="p-3 font-black text-slate-900 text-xs">{item.medicine_name}</td>
+                          <td className="p-3 text-center">
+                            <span className="font-bold text-slate-900">{item.company_name || "General"}</span>
+                            {item.item_code && (
+                              <span className="block font-mono text-teal-950 font-black text-[10.5px]">[{item.item_code}]</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-slate-800 font-bold text-[11px]">{item.generic_name || item.packing || item.category || "-"}</td>
+                          <td className="p-3 text-center font-black text-slate-900">{item.total_base_stock ?? item.stock_qty ?? 0}</td>
+                          <td className="p-3 text-right font-black text-emerald-950 text-xs">Rs. {sale.toLocaleString()}</td>
+                          <td className="p-3 text-right font-black text-slate-900 text-xs">Rs. {cost.toLocaleString()}</td>
                         </tr>
                       );
                     })
@@ -2729,11 +2774,11 @@ export default function MedicalStoreInventory() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3 shrink-0">
+            <div className="p-4 bg-slate-100 border-t border-slate-300 flex justify-between items-center gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => printProductPricingListReceipt(modalFilteredItems, modalCategoryFilter, dbClinic.get())}
-                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-sm flex items-center gap-2 transition-all active:scale-95"
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-xs shadow-md flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">print</span>
                 <span>Print Pricing List</span>
@@ -2742,7 +2787,7 @@ export default function MedicalStoreInventory() {
               <button
                 type="button"
                 onClick={() => handleExportModalList(modalFilteredItems, `pricing_list_${modalCategoryFilter}.csv`)}
-                className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-600 text-white font-bold text-xs shadow-sm flex items-center gap-2 transition-all active:scale-95"
+                className="px-5 py-2.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-black text-xs shadow-md flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">download</span>
                 <span>Export Pricing CSV</span>
@@ -2999,20 +3044,20 @@ export default function MedicalStoreInventory() {
 
       {/* Zero-Pilferage Blind Physical Stock Audit Modal */}
       {showBlindAuditModal && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-teal-200 overflow-hidden font-sans">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-300 overflow-hidden font-sans">
             {/* Header */}
-            <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 p-5 text-white flex items-center justify-between">
+            <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 p-5 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
+                <div className="w-11 h-11 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300">
                   <span className="material-symbols-outlined text-2xl">fact_check</span>
                 </div>
                 <div>
-                  <h2 className="text-base font-black flex items-center gap-2">
+                  <h2 className="text-base font-black flex items-center gap-2 text-white">
                     <span>Zero-Pilferage Blind Physical Stock Audit</span>
-                    <span className="text-[10px] bg-teal-500/30 text-teal-200 px-2 py-0.5 rounded-full font-bold border border-teal-400/30">Anti-Theft Protocol</span>
+                    <span className="text-[10px] bg-teal-500/30 text-teal-200 px-2.5 py-0.5 rounded-full font-black border border-teal-400/30">Anti-Theft Protocol</span>
                   </h2>
-                  <p className="text-xs text-teal-200/70 mt-0.5">
+                  <p className="text-xs text-teal-200/90 mt-0.5 font-medium">
                     Count physical units on shelves without bias. The system compares physical counts against live software balances.
                   </p>
                 </div>
@@ -3020,61 +3065,77 @@ export default function MedicalStoreInventory() {
               <button
                 type="button"
                 onClick={() => setShowBlindAuditModal(false)}
-                className="text-teal-300 hover:text-white p-1 rounded-lg cursor-pointer"
+                className="text-slate-300 hover:text-white p-1.5 rounded-full hover:bg-white/10 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-2xl">close</span>
               </button>
             </div>
 
             {/* Filter / Search Bar */}
-            <div className="p-4 bg-teal-50/40 border-b border-teal-100 flex flex-wrap items-center justify-between gap-3">
-              <div className="relative flex-1 min-w-[240px]">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base">search</span>
-                <input
-                  type="text"
-                  placeholder="Search medicine by name or code for physical audit..."
-                  value={auditSearchQuery}
-                  onChange={(e) => setAuditSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-teal-200 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
+            <div className="p-4 bg-slate-100 border-b border-slate-300 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2.5 flex-1 min-w-[280px]">
+                {/* Company Filter Dropdown */}
+                <div className="w-1/3 min-w-[180px]">
+                  <select
+                    value={auditCompanyFilter}
+                    onChange={(e) => setAuditCompanyFilter(e.target.value)}
+                    className="w-full border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-black bg-white text-slate-900 focus:outline-none focus:border-teal-600 shadow-xs cursor-pointer"
+                  >
+                    {uniqueCompanyNames.map((comp) => (
+                      <option key={comp} value={comp} className="text-slate-900 font-bold">
+                        {comp === "All" || comp === "all" ? "🏢 All Companies" : `🏢 ${comp}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Search Box */}
+                <div className="relative flex-1">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">search</span>
+                  <input
+                    type="text"
+                    placeholder="Search medicine by name or code..."
+                    value={auditSearchQuery}
+                    onChange={(e) => setAuditSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-teal-600 shadow-xs"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-2 bg-white hover:bg-teal-50 border border-teal-200 text-teal-900 rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                  onClick={() => printBlindStockAuditSheet(auditFilteredItems, auditCompanyFilter, dbClinic.get())}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">print</span>
-                  Print Count Sheet
+                  <span>Print Count Sheet</span>
                 </button>
               </div>
             </div>
 
             {/* Audit Table */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            <div className="flex-1 overflow-y-auto p-4 min-h-0 bg-white">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 bg-teal-100/90 backdrop-blur-xs text-teal-950 font-black text-[11px] uppercase border-b border-teal-200">
+                <thead className="sticky top-0 bg-slate-900 text-white font-black text-xs uppercase border-b border-slate-700 shadow-md">
                   <tr>
-                    <th className="p-2.5">Medicine Name</th>
-                    <th className="p-2.5">Company</th>
-                    <th className="p-2.5 text-center">Physical Count (Shelf)</th>
-                    <th className="p-2.5 text-right">System Stock</th>
-                    <th className="p-2.5 text-right">Variance / Audit Diff</th>
+                    <th className="p-3 w-12 text-center">#</th>
+                    <th className="p-3">Medicine Particulars</th>
+                    <th className="p-3">Company</th>
+                    <th className="p-3 text-center w-36">Physical Count (Shelf)</th>
+                    <th className="p-3 text-right w-28">System Stock</th>
+                    <th className="p-3 text-right">Variance / Audit Diff</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-teal-50">
-                  {inventory
-                    .filter((item) => {
-                      if (!auditSearchQuery.trim()) return true;
-                      const q = auditSearchQuery.toLowerCase();
-                      return (
-                        (item.medicine_name || "").toLowerCase().includes(q) ||
-                        (item.company_name || "").toLowerCase().includes(q) ||
-                        (item.item_code || "").toLowerCase().includes(q)
-                      );
-                    })
-                    .map((item) => {
+                <tbody className="divide-y divide-slate-200 bg-white text-slate-900 font-semibold">
+                  {auditFilteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="text-center py-12 text-slate-700 font-bold">
+                        No medicines found under company &quot;{auditCompanyFilter}&quot;.
+                      </td>
+                    </tr>
+                  ) : (
+                    auditFilteredItems.map((item, index) => {
                       const sysStock = Number(item.store_stock ?? item.total_base_stock ?? 0);
                       const physicalEntered = auditCounts[item.id] !== undefined && auditCounts[item.id] !== ""
                         ? Number(auditCounts[item.id])
@@ -3082,51 +3143,56 @@ export default function MedicalStoreInventory() {
                       const diff = physicalEntered !== null ? physicalEntered - sysStock : null;
 
                       return (
-                        <tr key={item.id} className="hover:bg-teal-50/50 transition-colors">
-                          <td className="p-2.5 font-bold text-gray-900">
+                        <tr key={item.id} className="hover:bg-teal-50/60 transition-colors">
+                          <td className="p-3 text-center font-mono font-black text-slate-900">{index + 1}</td>
+                          <td className="p-3 font-black text-slate-900 text-xs">
                             {item.medicine_name}
-                            <span className="ml-1 text-[10px] text-gray-400 font-normal">({item.item_code || "GEN"})</span>
+                            <span className="ml-1 text-[11px] text-slate-700 font-bold">({item.item_code || "GEN"})</span>
+                            {item.packing && (
+                              <span className="block text-[11px] font-bold text-slate-600">{item.packing}</span>
+                            )}
                           </td>
-                          <td className="p-2.5 text-gray-600 font-medium">{item.company_name || "BM"}</td>
-                          <td className="p-2.5 text-center">
+                          <td className="p-3 text-slate-900 font-bold">{item.company_name || "General"}</td>
+                          <td className="p-3 text-center">
                             <input
                               type="number"
                               min="0"
-                              placeholder="Enter count..."
+                              placeholder="Count..."
                               value={auditCounts[item.id] ?? ""}
                               onChange={(e) => setAuditCounts({ ...auditCounts, [item.id]: e.target.value })}
-                              className="w-24 px-2 py-1 text-center font-black rounded-lg border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                              className="w-28 px-2 py-1.5 text-center font-black text-sm text-slate-950 rounded-xl border-2 border-slate-300 focus:border-teal-600 focus:outline-none bg-white shadow-xs"
                             />
                           </td>
-                          <td className="p-2.5 text-right font-bold text-gray-700">{sysStock}</td>
-                          <td className="p-2.5 text-right font-black">
+                          <td className="p-3 text-right font-black text-slate-950 text-sm">{sysStock}</td>
+                          <td className="p-3 text-right font-black">
                             {diff === null ? (
-                              <span className="text-gray-300 text-[10px] italic">Not Counted</span>
+                              <span className="text-slate-600 text-xs font-bold italic">Not Counted</span>
                             ) : diff === 0 ? (
-                              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] font-black">
+                              <span className="text-emerald-950 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg text-xs font-black">
                                 Match (0) ✅
                               </span>
                             ) : diff < 0 ? (
-                              <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full text-[10px] font-black border border-rose-200">
+                              <span className="text-rose-950 bg-rose-100 border border-rose-300 px-2.5 py-1 rounded-lg text-xs font-black">
                                 Shortage: {diff} (Loss: Rs. {Math.abs(diff * (item.unit_sale_price || item.sale_price || 0)).toLocaleString()}) 🚨
                               </span>
                             ) : (
-                              <span className="text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full text-[10px] font-black border border-sky-200">
+                              <span className="text-sky-950 bg-sky-100 border border-sky-300 px-2.5 py-1 rounded-lg text-xs font-black">
                                 Surplus: +{diff} 📦
                               </span>
                             )}
                           </td>
                         </tr>
                       );
-                    })}
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* Footer Summary */}
-            <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-xs text-gray-600 font-medium">
-                Audited items: <strong>{Object.keys(auditCounts).filter((k) => auditCounts[k] !== "").length}</strong> of {inventory.length}
+            <div className="p-4 bg-slate-100 border-t border-slate-300 flex items-center justify-between shrink-0">
+              <div className="text-xs text-slate-900 font-black">
+                Audited items: <strong className="text-teal-900 text-sm">{Object.keys(auditCounts).filter((k) => auditCounts[k] !== "").length}</strong> of {auditFilteredItems.length}
               </div>
               <button
                 type="button"
@@ -3134,7 +3200,7 @@ export default function MedicalStoreInventory() {
                   alert("Physical count verified and logged in cyclic audit register.");
                   setShowBlindAuditModal(false);
                 }}
-                className="px-5 py-2.5 bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                className="px-6 py-2.5 bg-teal-800 hover:bg-teal-900 text-white font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
               >
                 Close &amp; Save Audit Progress
               </button>

@@ -277,8 +277,12 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
   const registeredDoctors = useMemo(() => {
     try {
+      if (dbUsers.getDoctors) {
+        const docs = dbUsers.getDoctors();
+        if (docs && docs.length > 0) return docs;
+      }
       const users = dbUsers.getAll ? dbUsers.getAll() : [];
-      const docs = users.filter((u) => u.role === "doctor" || u.is_doctor || u.role === "admin");
+      const docs = users.filter((u) => (u.role === "doctor" || u.is_doctor) && u.role !== "admin" && u.id !== "user_admin_001" && u.name !== "Clinic Administrator" && u.status !== "inactive" && u.status !== "deactivated");
       if (docs.length > 0) return docs;
     } catch { }
     const clinic = dbClinic.get();

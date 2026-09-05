@@ -388,7 +388,12 @@ async function runOpdTestSuite() {
   await suite("MODULE 4: Doctor Queue Isolation & Status Lifecycle", async () => {
     resetDatabaseToDemoData();
 
-    const docs = dbUsers.getDoctors();
+    let docs = dbUsers.getDoctors();
+    if (docs.length < 2) {
+      dbUsers.add({ name: "Dr. Asif", role: "doctor" });
+      dbUsers.add({ name: "Dr. Kashif", role: "doctor" });
+      docs = dbUsers.getDoctors();
+    }
     const doc1Id = docs[0]?.id || "user_owner";
     const doc2Id = docs[1]?.id || "user_kashif";
 
@@ -549,7 +554,7 @@ async function runOpdTestSuite() {
 
     const watermark = getWatermarkFooterHtml();
     assert(watermark.includes("Powered by CliniCore Software"), "CliniCore watermark present in thermal receipts");
-    assert(watermark.includes("0314-2291356"), "Developer support contact verified in watermark");
+    assert(watermark.includes("03142291356") || watermark.includes("0314-2291356"), "Developer support contact verified in watermark");
 
     // 6.3 Day-End Closing Z-Report Thermal Receipt Verification
     const closingData = {

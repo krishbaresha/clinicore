@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-/// Get the ClinicFlow data directory: %APPDATA%/ClinicFlow/data/
+/// Get the CliniCore data directory: %APPDATA%/CliniCore/data/
 fn get_data_dir() -> PathBuf {
     let base = dirs_next().unwrap_or_else(|| std::env::current_dir().unwrap());
     let data_dir = base.join("data");
@@ -16,25 +16,25 @@ fn get_data_dir() -> PathBuf {
 
 /// Platform-aware AppData directory resolver
 fn dirs_next() -> Option<PathBuf> {
-    // Windows: C:\Users\<User>\AppData\Roaming\ClinicFlow
-    // Linux:   ~/.local/share/ClinicFlow
-    // macOS:   ~/Library/Application Support/ClinicFlow
+    // Windows: C:\Users\<User>\AppData\Roaming\CliniCore
+    // Linux:   ~/.local/share/CliniCore
+    // macOS:   ~/Library/Application Support/CliniCore
     #[cfg(target_os = "windows")]
     {
         if let Ok(appdata) = std::env::var("APPDATA") {
-            return Some(PathBuf::from(appdata).join("ClinicFlow"));
+            return Some(PathBuf::from(appdata).join("CliniCore"));
         }
     }
     #[cfg(target_os = "linux")]
     {
         if let Ok(home) = std::env::var("HOME") {
-            return Some(PathBuf::from(home).join(".local").join("share").join("ClinicFlow"));
+            return Some(PathBuf::from(home).join(".local").join("share").join("CliniCore"));
         }
     }
     #[cfg(target_os = "macos")]
     {
         if let Ok(home) = std::env::var("HOME") {
-            return Some(PathBuf::from(home).join("Library").join("Application Support").join("ClinicFlow"));
+            return Some(PathBuf::from(home).join("Library").join("Application Support").join("CliniCore"));
         }
     }
     None

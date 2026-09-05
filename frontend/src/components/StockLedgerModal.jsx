@@ -15,7 +15,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { dbStockLedger, dbClinic } from "../api/db";
-import { printStockLedgerReceipt } from "../utils/thermalPrinter";
+import { printStockLedgerReceipt, printItemDateHistoryReceipt } from "../utils/thermalPrinter";
 
 export default function StockLedgerModal({ isOpen, onClose, initialItem = null }) {
   const [categories, setCategories] = useState([]);
@@ -84,18 +84,32 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
     setShowDateHistoryModal(true);
   };
 
-  // Filtered categories
+  // Filtered categories with Natural Alphanumeric Sorting (GHR-1 -> GHR-2 -> GHR-10)
   const filteredCategories = useMemo(() => {
-    if (!categorySearch.trim()) return categories;
-    const q = categorySearch.toLowerCase().trim();
-    return categories.filter((c) => c.category.toLowerCase().includes(q) || (c.company_name && c.company_name.toLowerCase().includes(q)));
+    let list = categories;
+    if (categorySearch.trim()) {
+      const q = categorySearch.toLowerCase().trim();
+      list = categories.filter((c) => (c.category || "").toLowerCase().includes(q) || (c.company_name && c.company_name.toLowerCase().includes(q)));
+    }
+    return [...list].sort((a, b) =>
+      (a.category || "").localeCompare(b.category || "", undefined, { numeric: true, sensitivity: "base" })
+    );
   }, [categories, categorySearch]);
 
-  // Filtered SKU list
+  // Filtered SKU list with Natural Alphanumeric Sorting
   const filteredSkus = useMemo(() => {
-    if (!skuSearch.trim()) return skuList;
-    const q = skuSearch.toLowerCase().trim();
-    return skuList.filter((s) => s.item_name.toLowerCase().includes(q) || (s.item_code && s.item_code.toLowerCase().includes(q)));
+    let list = skuList;
+    if (skuSearch.trim()) {
+      const q = skuSearch.toLowerCase().trim();
+      list = skuList.filter((s) => (s.item_name || "").toLowerCase().includes(q) || (s.item_code && s.item_code.toLowerCase().includes(q)));
+    }
+    return [...list].sort((a, b) => {
+      if (a.item_code && b.item_code && a.item_code !== b.item_code) {
+        const codeCmp = a.item_code.localeCompare(b.item_code, undefined, { numeric: true, sensitivity: "base" });
+        if (codeCmp !== 0) return codeCmp;
+      }
+      return (a.item_name || "").localeCompare(b.item_name || "", undefined, { numeric: true, sensitivity: "base" });
+    });
   }, [skuList, skuSearch]);
 
   const totalIn = timeline.reduce((s, r) => s + (Number(r.total_in) || 0), 0);
@@ -121,17 +135,17 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: "spring", stiffness: 350, damping: 28 }}
-            className="glass-modal w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col max-h-[92vh] overflow-hidden my-auto relative z-10"
+            className="bg-white text-slate-900 w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-300 flex flex-col max-h-[92vh] overflow-hidden my-auto relative z-10 font-sans"
           >
             {/* Top Header matching DrCreate Stock Ledger Style */}
-            <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-teal-800 p-4 sm:p-5 text-white flex items-center justify-between shadow-md">
+            <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 p-4 sm:p-5 text-white flex items-center justify-between shadow-md shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center font-bold text-white shadow-inner">
-                  <BookOpen className="w-6 h-6" />
+                  <BookOpen className="w-6 h-6 text-teal-300" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg sm:text-xl font-black tracking-tight flex items-center gap-2">
+                    <h2 className="text-lg sm:text-xl font-black tracking-tight flex items-center gap-2 text-white">
                       Stock Ledger &amp; Inventory Movement
                     </h2>
                     <span className="bg-emerald-400 text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full font-mono">
@@ -158,41 +172,42 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden min-h-[500px]">
               
               {/* Left Column: Pane 1 & Pane 2 (Category & SKU Summaries) */}
-              <div className="lg:col-span-5 border-r border-slate-200 flex flex-col divide-y divide-slate-200 bg-slate-50/50">
+              <div className="lg:col-span-5 border-r border-slate-300 flex flex-col divide-y divide-slate-300 bg-slate-50">
                 
                 {/* PANE 1: Category Summary (Top Left) */}
                 <div className="flex-1 flex flex-col min-h-[240px] max-h-[280px] p-3.5">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-1.5">
+                    <h3 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-teal-700" />
                       <span>Category Summary</span>
                     </h3>
-                    <span className="text-[11px] font-mono text-slate-500 font-bold">
+                    <span className="text-[11px] font-mono text-slate-700 font-black">
                       {filteredCategories.length} Brands
                     </span>
                   </div>
 
                   <div className="relative mb-2">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                     <input
                       type="text"
-                      placeholder="Search Category / Brand..."
+                      placeholder="Search Category / Brand (e.g. GHR-1, BM)..."
                       value={categorySearch}
                       onChange={(e) => setCategorySearch(e.target.value)}
-                      className="w-full min-h-[38px] pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-teal-500 outline-none bg-white shadow-2xs"
+                      className="w-full min-h-[38px] pl-8 pr-3 py-1.5 rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500 focus:border-teal-600 outline-none bg-white shadow-xs"
                     />
                   </div>
 
-                  <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-inner custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto rounded-xl border border-slate-300 bg-white shadow-inner custom-scrollbar">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead className="sticky top-0 bg-slate-100 border-b border-slate-200 text-[10px] font-black text-slate-800 uppercase">
+                      <thead className="sticky top-0 bg-slate-900 border-b border-slate-700 text-[10px] font-black text-white uppercase shadow-sm">
                         <tr>
-                          <th className="py-2 px-3">Category</th>
-                          <th className="py-2 px-3 text-right">Qty</th>
+                          <th className="py-2.5 px-2.5 text-center w-10">Sr.</th>
+                          <th className="py-2.5 px-3">Category / Brand Code</th>
+                          <th className="py-2.5 px-3 text-right">Qty</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium">
-                        {filteredCategories.map((c) => {
+                      <tbody className="divide-y divide-slate-200 font-semibold bg-white text-slate-900">
+                        {filteredCategories.map((c, idx) => {
                           const isSelected = selectedCategory.toLowerCase() === c.category.toLowerCase();
                           return (
                             <tr
@@ -200,19 +215,29 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                               onClick={() => handleSelectCategory(c.category)}
                               className={`cursor-pointer transition-colors ${
                                 isSelected
-                                  ? "bg-teal-700 text-white font-bold"
-                                  : "hover:bg-slate-100 text-slate-800"
+                                  ? "bg-teal-800 text-white font-black"
+                                  : "hover:bg-teal-50 text-slate-900 even:bg-slate-50/50"
                               }`}
                             >
-                              <td className="py-2 px-3 flex items-center justify-between">
-                                <span>{c.category}</span>
-                                {c.item_count > 0 && (
-                                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? "bg-white/20 text-white" : "text-slate-400"}`}>
-                                    {c.item_count} items
-                                  </span>
+                              <td className={`py-2 px-2.5 text-center font-mono text-[11px] font-bold ${isSelected ? "text-teal-200" : "text-slate-600"}`}>
+                                {idx + 1}
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className={`font-mono font-black ${isSelected ? "text-white" : "text-slate-950"}`}>{c.category}</span>
+                                  {c.item_count > 0 && (
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-slate-200/80 text-slate-800"}`}>
+                                      {c.item_count} items
+                                    </span>
+                                  )}
+                                </div>
+                                {c.company_name && c.company_name.toLowerCase() !== c.category.toLowerCase() && (
+                                  <div className={`text-[10px] font-medium truncate ${isSelected ? "text-teal-100" : "text-slate-600"}`}>
+                                    {c.company_name}
+                                  </div>
                                 )}
                               </td>
-                              <td className="py-2 px-3 text-right font-mono font-black">
+                              <td className={`py-2 px-3 text-right font-mono font-black ${isSelected ? "text-white" : "text-slate-950"}`}>
                                 {c.total_qty}
                               </td>
                             </tr>
@@ -226,37 +251,38 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                 {/* PANE 2: SKU Summary (Bottom Left) */}
                 <div className="flex-1 flex flex-col min-h-[260px] p-3.5">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-black uppercase text-teal-900 tracking-wider flex items-center gap-1.5">
+                    <h3 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5">
                       <Boxes className="w-4 h-4 text-teal-700" />
                       <span>SKU Summary ({selectedCategory})</span>
                     </h3>
-                    <span className="text-[11px] font-mono text-slate-500 font-bold">
+                    <span className="text-[11px] font-mono text-slate-700 font-black">
                       {filteredSkus.length} SKUs
                     </span>
                   </div>
 
                   <div className="relative mb-2">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                     <input
                       type="text"
-                      placeholder="Search Medicine SKU..."
+                      placeholder="Search Medicine SKU (e.g. GHR-1, Drops)..."
                       value={skuSearch}
                       onChange={(e) => setSkuSearch(e.target.value)}
-                      className="w-full min-h-[38px] pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-teal-500 outline-none bg-white shadow-2xs"
+                      className="w-full min-h-[38px] pl-8 pr-3 py-1.5 rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500 focus:border-teal-600 outline-none bg-white shadow-xs"
                     />
                   </div>
 
-                  <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-inner max-h-[220px] custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto rounded-xl border border-slate-300 bg-white shadow-inner max-h-[220px] custom-scrollbar">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead className="sticky top-0 bg-teal-50 border-b border-teal-100 text-[10px] font-black text-teal-900 uppercase">
+                      <thead className="sticky top-0 bg-slate-900 border-b border-slate-700 text-[10px] font-black text-white uppercase shadow-sm">
                         <tr>
-                          <th className="py-2 px-3">Item Name</th>
-                          <th className="py-2 px-3 text-right">Qty</th>
+                          <th className="py-2.5 px-2.5 text-center w-10">Sr.</th>
+                          <th className="py-2.5 px-3">Item Code &amp; Name</th>
+                          <th className="py-2.5 px-3 text-right">Qty</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium">
+                      <tbody className="divide-y divide-slate-200 font-semibold bg-white text-slate-900">
                         {filteredSkus.length > 0 ? (
-                          filteredSkus.map((s) => {
+                          filteredSkus.map((s, idx) => {
                             const isSelected = selectedSku && selectedSku.item_name === s.item_name;
                             return (
                               <tr
@@ -264,14 +290,28 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                                 onClick={() => handleSelectSku(s)}
                                 className={`cursor-pointer transition-colors ${
                                   isSelected
-                                    ? "bg-teal-700 text-white font-bold"
-                                    : "hover:bg-teal-50 text-slate-800"
+                                    ? "bg-teal-800 text-white font-black"
+                                    : "hover:bg-teal-50 text-slate-900 even:bg-slate-50/50"
                                 }`}
                               >
-                                <td className="py-2 px-3 truncate max-w-[200px]" title={s.item_name}>
-                                  {s.item_name}
+                                <td className={`py-2 px-2.5 text-center font-mono text-[11px] font-bold ${isSelected ? "text-teal-200" : "text-slate-600"}`}>
+                                  {idx + 1}
                                 </td>
-                                <td className="py-2 px-3 text-right font-mono font-black">
+                                <td className="py-2 px-3">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {s.item_code && s.item_code !== "General" && (
+                                      <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-black shrink-0 ${
+                                        isSelected ? "bg-white/25 text-white" : "bg-teal-100 text-teal-950 border border-teal-300"
+                                      }`}>
+                                        {s.item_code}
+                                      </span>
+                                    )}
+                                    <span className={`truncate max-w-[180px] ${isSelected ? "text-white font-black" : "text-slate-950 font-bold"}`} title={s.item_name}>
+                                      {s.item_name}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className={`py-2 px-3 text-right font-mono font-black ${isSelected ? "text-white" : "text-slate-950"}`}>
                                   {s.qty}
                                 </td>
                               </tr>
@@ -279,7 +319,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                           })
                         ) : (
                           <tr>
-                            <td colSpan={2} className="py-6 text-center text-slate-400 font-medium">
+                            <td colSpan={3} className="py-6 text-center text-slate-600 font-bold">
                               No SKUs found for category.
                             </td>
                           </tr>
@@ -293,20 +333,20 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
 
               {/* Right Column: PANE 3 (Transactional Ledger) */}
               <div className="lg:col-span-7 flex flex-col p-4 bg-white">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-200">
                   <div>
-                    <h3 className="text-sm font-black uppercase text-teal-900 tracking-wider flex items-center gap-1.5">
+                    <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5">
                       <Receipt className="w-4 h-4 text-teal-700" />
                       <span>Transactional Ledger</span>
                     </h3>
-                    <p className="text-xs text-slate-500 font-bold mt-0.5">
+                    <p className="text-xs text-slate-600 font-bold mt-0.5">
                       Medicine: <span className="text-teal-950 font-black">{selectedSku ? selectedSku.item_name : "Select an item"}</span>
                     </p>
                   </div>
 
                   {selectedSku && (
-                    <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl shadow-2xs">
-                      <span className="text-[11px] font-bold text-emerald-800">Current Balance:</span>
+                    <div className="flex items-center gap-2 bg-emerald-50 border-2 border-emerald-300 px-3 py-1.5 rounded-xl shadow-xs">
+                      <span className="text-[11px] font-bold text-emerald-950">Current Balance:</span>
                       <span className="text-xs font-mono font-black text-emerald-950">
                         {netStock} Units
                       </span>
@@ -315,32 +355,36 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                 </div>
 
                 {/* Daily Timeline Table with Sticky Header */}
-                <div className="flex-1 overflow-y-auto mt-3 rounded-2xl border border-slate-200 shadow-inner max-h-[420px] custom-scrollbar">
+                <div className="flex-1 overflow-y-auto mt-3 rounded-2xl border border-slate-300 shadow-inner max-h-[420px] custom-scrollbar bg-white">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-[11px] font-black text-slate-800 uppercase">
+                    <thead className="sticky top-0 bg-slate-900 border-b border-slate-700 text-[11px] font-black text-white uppercase shadow-sm">
                       <tr>
+                        <th className="py-2.5 px-2.5 text-center w-10">Sr.</th>
                         <th className="py-2.5 px-4">Date</th>
-                        <th className="py-2.5 px-4 text-center text-emerald-700">Total In</th>
-                        <th className="py-2.5 px-4 text-center text-rose-700">Total Out</th>
+                        <th className="py-2.5 px-4 text-center text-emerald-300">Total In</th>
+                        <th className="py-2.5 px-4 text-center text-rose-300">Total Out</th>
                         <th className="py-2.5 px-4 text-right">Daily Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
+                    <tbody className="divide-y divide-slate-200 font-semibold bg-white text-slate-900">
                       {timeline.length > 0 ? (
-                        timeline.map((row) => (
+                        timeline.map((row, idx) => (
                           <tr
                             key={row.date}
                             onClick={() => handleSelectDateRow(row)}
-                            className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
+                            className="hover:bg-teal-50/60 cursor-pointer transition-colors group even:bg-slate-50/40"
                             title="Click to view full invoice & voucher details for this date"
                           >
-                            <td className="py-2.5 px-4 font-mono font-bold text-slate-800 group-hover:text-teal-900">
+                            <td className="py-2.5 px-2.5 text-center font-mono font-bold text-slate-600">
+                              {idx + 1}
+                            </td>
+                            <td className="py-2.5 px-4 font-mono font-black text-slate-900 group-hover:text-teal-950">
                               {row.date}
                             </td>
-                            <td className="py-2.5 px-4 text-center font-mono font-black text-emerald-700 bg-emerald-50/40">
+                            <td className="py-2.5 px-4 text-center font-mono font-black text-emerald-950 bg-emerald-50">
                               {row.total_in > 0 ? `+${row.total_in}` : "0"}
                             </td>
-                            <td className="py-2.5 px-4 text-center font-mono font-black text-rose-700 bg-rose-50/40">
+                            <td className="py-2.5 px-4 text-center font-mono font-black text-rose-950 bg-rose-50">
                               {row.total_out > 0 ? `-${row.total_out}` : "0"}
                             </td>
                             <td className="py-2.5 px-4 text-right">
@@ -350,7 +394,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                                   e.stopPropagation();
                                   handleSelectDateRow(row);
                                 }}
-                                className="min-h-[34px] px-3 py-1 rounded-xl bg-slate-100 group-hover:bg-teal-700 group-hover:text-white text-slate-700 text-[11px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                                className="min-h-[34px] px-3.5 py-1.5 rounded-xl bg-slate-900 group-hover:bg-teal-800 text-white text-xs font-black inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                                 <span>Vouchers</span>
@@ -360,8 +404,8 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={4} className="py-16 text-center text-slate-400 font-semibold">
-                            <History className="w-8 h-8 block mx-auto mb-1 text-slate-300" />
+                          <td colSpan={5} className="py-16 text-center text-slate-600 font-bold">
+                            <History className="w-8 h-8 block mx-auto mb-1 text-slate-400" />
                             No transaction movement recorded for this medicine.
                           </td>
                         </tr>
@@ -372,9 +416,9 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
 
                 {/* Bottom Summary Pill */}
                 {timeline.length > 0 && (
-                  <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between text-xs font-bold text-slate-700 gap-2">
-                    <div>Total Lifetime Inward: <span className="text-emerald-700 font-mono font-black">+{totalIn}</span></div>
-                    <div>Total Lifetime Outward: <span className="text-rose-700 font-mono font-black">-{totalOut}</span></div>
+                  <div className="mt-3 p-3 bg-slate-100 rounded-xl border border-slate-300 flex flex-wrap items-center justify-between text-xs font-black text-slate-900 gap-2">
+                    <div>Total Lifetime Inward: <span className="text-emerald-900 font-mono font-black">+{totalIn}</span></div>
+                    <div>Total Lifetime Outward: <span className="text-rose-900 font-mono font-black">-{totalOut}</span></div>
                     <div>Net Reconciled Balance: <span className="text-teal-950 font-mono font-black">{netStock}</span></div>
                   </div>
                 )}
@@ -384,8 +428,8 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
             </div>
 
             {/* Modal Bottom Footer Actions */}
-            <div className="p-4 bg-slate-100 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-slate-500 font-medium">
+            <div className="p-4 bg-slate-100 border-t border-slate-300 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="text-xs text-slate-700 font-bold">
                 💡 Tip: Click on any Date row in the Transactional Ledger to view invoice &amp; voucher history.
               </div>
 
@@ -395,7 +439,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                     <button
                       type="button"
                       onClick={() => printStockLedgerReceipt(selectedSku.item_name, timeline, dbClinic.get())}
-                      className="touch-target-44 min-h-[44px] px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                      className="touch-target-44 min-h-[44px] px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
                     >
                       <Printer className="w-4 h-4" />
                       <span>Print 80mm Ledger</span>
@@ -404,7 +448,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                     <button
                       type="button"
                       onClick={() => dbStockLedger.exportCSV(selectedSku.item_name, timeline)}
-                      className="touch-target-44 min-h-[44px] px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                      className="touch-target-44 min-h-[44px] px-4 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
                     >
                       <Download className="w-4 h-4" />
                       <span>Export CSV</span>
@@ -415,7 +459,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                 <button
                   type="button"
                   onClick={onClose}
-                  className="touch-target-44 min-h-[44px] px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-black transition-all cursor-pointer"
+                  className="touch-target-44 min-h-[44px] px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-900 text-xs font-black transition-all cursor-pointer"
                 >
                   Close
                 </button>
@@ -433,23 +477,23 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setShowDateHistoryModal(false)}
-                  className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+                  className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
                 />
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  className="glass-modal w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh] relative z-10"
+                  className="bg-white text-slate-900 w-full max-w-5xl rounded-3xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col max-h-[85vh] relative z-10 font-sans"
                 >
                   {/* Popup Header */}
-                  <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white p-4 flex items-center justify-between shrink-0">
                     <div>
-                      <h4 className="text-base font-black flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-teal-400" />
-                        <span>Item Date History</span>
+                      <h4 className="text-base font-black flex items-center gap-2 text-white">
+                        <Calendar className="w-4 h-4 text-teal-300" />
+                        <span>Item Date History &amp; Vouchers Breakdown</span>
                       </h4>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-teal-200/90 font-medium">
                         {selectedSku?.item_name} · Date: <span className="font-mono text-emerald-300 font-bold">{selectedDateRow.date}</span>
                       </p>
                     </div>
@@ -464,53 +508,55 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                   </div>
 
                   {/* Vouchers Table */}
-                  <div className="flex-1 overflow-y-auto p-4 custom-scrollbar max-h-[60vh]">
-                    <table className="w-full text-left text-xs border-collapse min-w-[600px]">
-                      <thead className="sticky top-0 bg-slate-100 border-b border-slate-200 text-[10px] font-black text-slate-700 uppercase tracking-wider">
+                  <div className="flex-1 overflow-y-auto p-4 custom-scrollbar max-h-[60vh] bg-white">
+                    <table className="w-full text-left text-xs border-collapse min-w-[750px]">
+                      <thead className="sticky top-0 bg-slate-900 border-b border-slate-700 text-[11px] font-black text-white uppercase tracking-wider shadow-sm">
                         <tr>
-                          <th className="py-2 px-3">Date</th>
-                          <th className="py-2 px-3">Voucher</th>
-                          <th className="py-2 px-3">Type</th>
-                          <th className="py-2 px-3">Description</th>
-                          <th className="py-2 px-3 text-center">In</th>
-                          <th className="py-2 px-3 text-center">Out</th>
-                          <th className="py-2 px-3 text-right">Rate</th>
-                          <th className="py-2 px-3 text-right">Gross</th>
-                          <th className="py-2 px-3 text-center">Disc%</th>
-                          <th className="py-2 px-3 text-right">Disc0</th>
-                          <th className="py-2 px-3 text-right">Net</th>
+                          <th className="py-3 px-2.5 text-center w-10">Sr.</th>
+                          <th className="py-3 px-3">Date</th>
+                          <th className="py-3 px-3">Voucher #</th>
+                          <th className="py-3 px-3">Type</th>
+                          <th className="py-3 px-3">Description</th>
+                          <th className="py-3 px-3 text-center">In Qty</th>
+                          <th className="py-3 px-3 text-center">Out Qty</th>
+                          <th className="py-3 px-3 text-right">Rate (Rs)</th>
+                          <th className="py-3 px-3 text-right">Gross (Rs)</th>
+                          <th className="py-3 px-3 text-center">Disc %</th>
+                          <th className="py-3 px-3 text-right">Disc Flat</th>
+                          <th className="py-3 px-3 text-right">Net Amount</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 text-xs">
+                      <tbody className="divide-y divide-slate-200 text-xs bg-white text-slate-900 font-semibold">
                         {(selectedDateRow.vouchers && selectedDateRow.vouchers.length > 0) ? (
                           selectedDateRow.vouchers.map((v, idx) => (
-                            <tr key={idx} className="hover:bg-teal-50/50 transition-colors">
-                              <td className="py-2 px-3 font-mono text-slate-600 whitespace-nowrap">{selectedDateRow.date}</td>
-                              <td className="py-2 px-3 font-mono font-bold text-teal-800">{v.voucher_no}</td>
-                              <td className="py-2 px-3">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            <tr key={idx} className="hover:bg-teal-50/60 transition-colors even:bg-slate-50/40">
+                              <td className="py-3 px-2.5 text-center font-mono font-bold text-slate-600">{idx + 1}</td>
+                              <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">{selectedDateRow.date}</td>
+                              <td className="py-3 px-3 font-mono font-black text-teal-950">{v.voucher_no}</td>
+                              <td className="py-3 px-3">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black border ${
                                   v.type === "Sale"
-                                    ? "bg-rose-100 text-rose-800"
-                                    : "bg-emerald-100 text-emerald-800"
+                                    ? "bg-rose-100 text-rose-950 border-rose-300"
+                                    : "bg-emerald-100 text-emerald-950 border-emerald-300"
                                 }`}>
                                   {v.type}
                                 </span>
                               </td>
-                              <td className="py-2 px-3 text-slate-700 max-w-xs truncate" title={v.description}>
+                              <td className="py-3 px-3 text-slate-900 font-bold max-w-xs truncate" title={v.description}>
                                 {v.description}
                               </td>
-                              <td className="py-2 px-3 text-center font-mono font-bold text-emerald-700">{v.in_qty || 0}</td>
-                              <td className="py-2 px-3 text-center font-mono font-bold text-rose-700">{v.out_qty || 0}</td>
-                              <td className="py-2 px-3 text-right font-mono">{v.rate || 0}</td>
-                              <td className="py-2 px-3 text-right font-mono">{v.gross || 0}</td>
-                              <td className="py-2 px-3 text-center font-mono text-slate-500">{v.disc_pct || "-"}</td>
-                              <td className="py-2 px-3 text-right font-mono text-slate-500">{v.disc_flat || 0}</td>
-                              <td className="py-2 px-3 text-right font-mono font-black text-slate-900">{v.net || 0}</td>
+                              <td className="py-3 px-3 text-center font-mono font-black text-emerald-950 bg-emerald-50/70">{v.in_qty || 0}</td>
+                              <td className="py-3 px-3 text-center font-mono font-black text-rose-950 bg-rose-50/70">{v.out_qty || 0}</td>
+                              <td className="py-3 px-3 text-right font-mono font-black text-slate-900">Rs. {Number(v.rate || 0).toLocaleString()}</td>
+                              <td className="py-3 px-3 text-right font-mono font-black text-slate-900">Rs. {Number(v.gross || 0).toLocaleString()}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-slate-900">{v.disc_pct || "-"}</td>
+                              <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">{v.disc_flat ? `Rs. ${Number(v.disc_flat).toLocaleString()}` : "0"}</td>
+                              <td className="py-3 px-3 text-right font-mono font-black text-slate-950 text-sm">Rs. {Number(v.net || 0).toLocaleString()}</td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={11} className="py-10 text-center text-slate-400 font-medium">
+                            <td colSpan={12} className="py-12 text-center text-slate-700 font-bold">
                               No voucher details available for this entry.
                             </td>
                           </tr>
@@ -520,11 +566,20 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                   </div>
 
                   {/* Popup Bottom */}
-                  <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+                  <div className="p-4 bg-slate-100 border-t border-slate-300 flex items-center justify-between gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => printItemDateHistoryReceipt(selectedSku?.item_name, selectedDateRow, dbClinic.get())}
+                      className="touch-target-44 min-h-[40px] px-4 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Print Date Vouchers</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setShowDateHistoryModal(false)}
-                      className="touch-target-44 min-h-[40px] px-5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition-all cursor-pointer"
+                      className="touch-target-44 min-h-[40px] px-6 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black transition-all cursor-pointer shadow-md active:scale-95"
                     >
                       Close History
                     </button>

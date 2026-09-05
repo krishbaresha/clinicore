@@ -54,14 +54,159 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
-- **Phase:** Milestone 197 — CashBook & Ledger Form Streamlining (Completed)
+- **Phase:** Milestone 213 — Interactive Software Updates & Release Center: 1-Click Update Button, Version Comparator, Progress Dialog & Cache Purge Engine (Completed)
 - **Last worked on:**
-  1. **Removed Redundant Text & Secondary Subtitles:** Eliminated long explanations under buttons and headers in `frontend/src/pages/MedicalStoreSalesLog.jsx` (e.g., removed *"Manage Udhaar Collections, Credit Sales..."*, *"Cash Collections (Wasooli), Credit Sales, Spot Cash Sales"*, *"Increases Party Udhaar • Drawer Unaffected"*, etc.).
-  2. **Shortened Step Headers & Tabs:** Streamlined top sub-tabs to `Party & Supplier Khata` and `Daily Expenses`. Simplified step headers to `1. Account Type` and `2. Transaction Type`.
-  3. **One-Word / Minimal-Word Action Cards:** Transformed the transaction choices into sleek horizontal pill tiles: `Payment Received (Wasooli)`, `Credit Sale (Udhaar)`, `Cash Sale` (for Party) and `Payment Made (Payable)`, `Credit Purchase`, `Cash Purchase` (for Supplier).
-  4. **Clean Input Labels & Term Badges:** Changed labels to concise terms: `Party Name`, `Supplier Name`, `Note (Optional)`, `Save Entry`, and simplified Khata Entry badge to `Credit Entry (No Cash Movement)`.
+  1. **Top Header "Check Updates" Button & Interactive Version Badge:** Added prominent `Check Updates` (with spinning refresh indicator) button in the Super Admin top navigation bar and linked the `v2.5.9` version pill badge directly to the software release modal.
+  2. **Software Updates & OTA Release Channel Card:** Built dedicated control hub in [DeveloperAdminPanel.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/DeveloperAdminPanel.jsx) (`apis` tab) displaying Installed Version, Server Release Channel, Live Status, `Check for Updates Now`, `Install & Apply Update`, and `Force Refresh Cache` buttons.
+  3. **Interactive Software Update Modal:** Created comprehensive release modal displaying Version Comparison (`Current` -> `Target Server Release`), connection to GitHub/VPS release channels, animated installation progress bar (0% -> 100%), changelog highlights, and graceful client reload.
+  4. **Cache Invalidation & Emergency Reset:** Integrated service worker cache flusher (`caches.delete()`) and `sessionStorage.clear()` so any manual or automatic GitHub/VPS code push can be pulled immediately without stale cache locks.
+  5. **Master Verification & QA:** Passed 638/638 tests, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
+- **Phase:** Milestone 212 — Google Drive & Email Backup Verification Engine: Live Test Buttons, Schedule Selector & Cold Start Cross-Device Audit (Completed)
+- **Last worked on:**
+  1. **Live Test Buttons for Drive & Email:** Added interactive `Test Google Drive Connection` (tests folder resolution, permissions, and upload readiness) and `Test Email Dispatch` (sends a real-time verification email to `drasifhosting@gmail.com`) buttons in [DeveloperAdminPanel.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/DeveloperAdminPanel.jsx).
+  2. **Backup Schedule Time & Frequency Selector:** Added dynamic schedule selector dropdown (`Daily Midnight 12:00 AM PKT`, `Daily 11:00 PM PKT`, `Daily 01:00 AM PKT`, `Every 6 Hours`, `Every 12 Hours`) with persistent settings sync.
+  3. **Multi-PC Cold Start & Cross-Device Disaster Recovery Audit:** Verified 100% end-to-end functionality of `.cfbak` encrypted database export/import, fresh PC migration (0 records cold start hydration), schema version 4 validation, and tamper protection.
+  4. **Master Verification & QA:** Passed 638/638 tests, 27/27 page module syntax audits, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
+- **Phase:** Milestone 211 — Clinic SKU Valuation & Quantity Matrix: Separated Stock Qty & Packing Columns + Company Filter Dropdown (Completed)
+- **Last worked on:**
+  1. **Separated Stock Qty & Packing Columns:** Upgraded "Clinic SKU Valuation & Quantity Matrix" table in [DeveloperAdminPanel.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/DeveloperAdminPanel.jsx) to split the combined stock/packing cell into dedicated `Stock Qty` (bold high-contrast integer) and `Packing / Unit` (badge pill indicator e.g. `Packs`, `Bottles`, `Drops`) columns.
+  2. **Company / Brand Filter Dropdown:** Added a dynamic Manufacturer Brand / Company filter dropdown (`🏢 All Companies`, `BM Pvt LTD`, `Paul Brooks`, `Schwabe`, `MEKTUM`, `BLOSSOM`, etc.) to view and audit stock valuation company-wise.
+  3. **CSV Export Synchronization:** Updated the Export CSV engine to include separate `Stock Qty` and `Packing / Unit` columns along with company brand metadata.
+  4. **Master Verification & QA:** Passed 638/638 tests, 27/27 page module syntax audits, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
+- **Phase:** Milestone 210 — Party Udhaar Payment Recovery Receipt Isolation: Removed Sale Urdu Disclaimer & Added Developer Watermark (Completed)
+- **Last worked on:**
+  1. **Urdu Disclaimer Isolation:** Removed the retail sale medicine return policy disclaimer (`خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔`) from `printPartyPaymentReceipt` in [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) so it only appears on Sale Invoices.
+  2. **Payment Acknowledgment & Signatures:** Added clean accounts note ("Thank you for your payment! Please keep this receipt for accounts record.") and dual signature verification lines (`Receiver's Signature` and `Party Signature`).
+  3. **Developer Watermark Integration:** Embedded `${getWatermarkFooterHtml()}` (`*** Powered by CliniCore Software ***` / `K.B Developer 03142291356`) on all 80mm Party Payment Receipts.
+  4. **Master Verification & QA:** Passed 638/638 tests, 27/27 page module syntax audits, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
+- **Phase:** Milestone 209 — High-Definition Bordered Table Thermal Print Engine for Stock Movement Ledger & Item Date History (Completed)
+- **Last worked on:**
+  1. **Bordered Table Stock Ledger Thermal Print Engine:** Completely overhauled `printStockLedgerReceipt` in [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) with standard 80mm ESC/POS layout (78mm width, high-definition typography, no text mugging up or cramped lines).
+  2. **Daily Ledger & Running Balances:** Prints a clean bordered table with `Sr | Date | In (+) | Out (-) | Bal` with a running balance tracker per transaction day.
+  3. **Audit Trail & Vouchers Breakdown:** Automatically renders a complete individual vouchers audit trail (`Sr | Date | Voucher # | Type | In | Out`) with lifetime totals and net stock reconciliation.
+  4. **Item Date History Dedicated Print Engine:** Added and exported `printItemDateHistoryReceipt` in [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) and wired the "Print Date Vouchers" button into the [StockLedgerModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/StockLedgerModal.jsx) popup modal.
+  5. **Master Verification & QA:** Passed 638/638 tests, 27/27 page module syntax audits, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
+- **Phase:** Milestone 208 — Stock Ledger Natural Alphanumeric Sorting (GHR-1, GHR-2... GHR-10), Sr.# Numbering & Deep Contrast Visibility (Completed)
+- **Last worked on:**
+  1. **Natural Alphanumeric Sorting Engine:** Updated `dbStockLedger.getCategorySummary` and `dbStockLedger.getSKUSummary` in [db.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/api/db.js) using `localeCompare(..., undefined, { numeric: true, sensitivity: 'base' })` so codes and categories like `GHR-1`, `GHR-2`, `GHR-3`, ... `GHR-9`, `GHR-10`, `GHR-11` sort in proper numerical sequence instead of ASCII string order (`GHR-1`, `GHR-10`, `GHR-2`).
+  2. **Serial Number (Sr. #) Columns Added:** Added dedicated `Sr.` columns across all 4 Stock Ledger levels in [StockLedgerModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/StockLedgerModal.jsx):
+     - Level 1: Category Summary Table (`Sr. | Category / Brand Code | Qty`).
+     - Level 2: SKU Summary Table (`Sr. | Item Code & Name | Qty`).
+     - Level 3: Transactional Ledger Table (`Sr. | Date | Total In | Total Out | Action`).
+     - Level 4: Item Date History Popup Modal Table (`Sr. | Date | Voucher # | Type | Description | In | Out | Rate | Gross | Disc% | Disc Flat | Net Amount`).
+  3. **High-Contrast Typography & Item Code Badges:** Cleaned up Category & SKU cells with deep contrast black text (`text-slate-950 font-bold`, `text-slate-900`), solid white backgrounds, and clear teal item-code tags.
+  4. **Master Verification & QA:** Passed 638/638 tests, 27/27 page module syntax audits, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
+- **Phase:** Milestone 207 — Zero-Duplicate Sequential Voucher Increment Engine Across Retail POS, Wholesale & Purchases (Completed)
+- **Last worked on:**
+  1. **Strict Maximum Existing Sequence Scanner:** Upgraded `generateSequentialInvoiceNo(prefix)` in [db.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/api/db.js) to scan active database collections (`KEYS.SALES`, `KEYS.B2B_SALES`, `KEYS.PURCHASES`, `KEYS.CASHBOOK`, `KEYS.SUPPLIER_LEDGER`, `KEYS.STOCK_TRANSFERS`) to extract the absolute maximum numeric index (`maxExisting`) and return `Math.max(currentSeq, maxExisting) + 1` with persistent sequence updating.
+  2. **Voucher Collision Prevention Guard:** Hardened `dbSales.getNextVoucherNo`, `dbSales.addSaleInvoice`, `dbSales.checkout`, `dbB2BSales.checkout`, and `dbPurchases.add` so that any collision or duplicate voucher is detected and automatically re-incremented to a guaranteed unique sequential number.
+  3. **Multi-Channel Sequential Integrity:** Retail POS receipts (`POS-1001`, `POS-1002`, ...), Wholesale bills (`WS-1001`, `WS-1002`, ...), and Purchase GRNs (`PUR-1001`, `PUR-1002`, ...) strictly increment on every single transaction with zero duplicate risk.
+  4. **Master Verification & QA:** Verified with 638/638 passing tests, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
+- **Phase:** Milestone 206 — Stock Ledger 4-Pane & Item Date History Vouchers High-Contrast Visibility Upgrade (Completed)
+- **Last worked on:**
+  1. **Item Date History Modal Text Colors:** Upgraded [StockLedgerModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/StockLedgerModal.jsx#L430-L536) to render solid `bg-white` container with dark sticky table header (`bg-slate-900 text-white`) and deep black font (`text-slate-900 font-bold`, `text-slate-950 font-black`) across Date, Voucher #, Type badges, Description, In/Out Qty, Rate, Gross, Disc%, Disc Flat, and Net Amount.
+  2. **Stock Ledger 3-Pane Drilldown Contrast:** Cleaned up Category Summary, SKU Summary, and Transactional Ledger panes with high-contrast text, borders, and badge styling.
+  3. **Pre-Push Validation:** 638/638 unit tests passing, 0 AST errors, 0 secret leaks, 0 oxlint errors, clean Vite production bundle compilation.
+
+- **Phase:** Milestone 205 — High-Contrast Text Visibility, Company-Wise Blind Stock Audit, Dedicated 80mm Count Sheet & Clean Company Dropdowns (Completed)
+- **Last worked on:**
+  1. **Blind Stock Audit Visibility & Company Filter:** Upgraded Blind Stock Audit modal in [MedicalStoreInventory.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/MedicalStoreInventory.jsx) with high-contrast text (`text-slate-900 font-bold`), company filter dropdown (`auditCompanyFilter`), and dedicated count input styling.
+  2. **Dedicated 80mm & A4 Thermal Count Sheet:** Added `printBlindStockAuditSheet` in [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) producing a professional physical count sheet with blank write-in boxes, company filter, SKU count, and Auditor/Supervisor signature lines.
+  3. **Company-Only Dropdowns for Stock & Pricing Sheets:** Refactored `uniqueCompanyNames` and dropdowns across Stock Inventory Sheet and Product Pricing & Margin Sheet to display strictly distinct pharmaceutical companies rather than individual item codes.
+  4. **Pre-Push Validation:** 638/638 unit tests passing, 0 AST errors, 0 secret leaks, 0 oxlint errors, clean Vite production bundle compilation.
+
+- **Phase:** Milestone 204 — Stock Inward GRN Purchase Synchronization & Auto-Registration Engine (Completed)
+- **Last worked on:**
+  1. **Stock Inward GRN Auto-Registration:** Upgraded `dbPurchases.add` to auto-register new medicines into inventory and increment live stock levels upon GRN creation.
+  2. **Thermal Purchase Receipt & Modal Preview:** Implemented bordered table formatting matching Sale Invoice layout.
+
+- **Phase:** Milestone 203 — Supplier GRN Payment Settlement & Running Balance Synchronization (Completed)
+  3. **Multi-View Supplier Balance Reader:** Updated [SupplierPurchases.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/SupplierPurchases.jsx#L2140) table view, cards view, settlement modal, and quick-pay ledger button to consistently calculate `Number(sup.current_balance ?? sup.balance_due ?? sup.balance ?? 0)`.
+  4. **Verification & Testing:** Verified 638/638 unit tests pass, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
 - **Current status:** Production Build Clean, 638/638 Unit Tests Passed (0 Failures), 0 AST/oxlint Errors, 0 Secret Leaks.
 - **Currently blocked on:** None. Ready for next user instructions.
+
+- **Phase:** Milestone 202 — 100% Offline Asset Bundling, CliniCore Directory Isolation & Multi-Device Sync Architecture (Completed)
+- **Last worked on:**
+  1. **100% Offline Typography & Icon Bundling:** Installed `material-symbols` and `@fontsource` packages (`@fontsource/inter`, `@fontsource/hanken-grotesk`, `@fontsource/noto-nastaliq-urdu`). Embedded all WOFF2 fonts and Material Symbols locally in `index.css` and removed external Google CDN links from `index.html` to guarantee zero missing/broken icons on offline PCs.
+  2. **CliniCore AppData Directory Isolation:** Updated Rust backend `dirs_next` in [main.rs](file:///e:/Soft/DrCreate/Clinicore/frontend/src-tauri/src/main.rs#L19) to target `%APPDATA%\CliniCore\data\` across Windows, Linux, and macOS.
+  3. **Simplified Clinic & Medical Store Operational Architecture:** Mapped the real-world clinic hardware roles (Single Counter Cashier POS + GRN + Tokens, Minimal Doctor 1-click waiting screen, Owner Mobile PWA live telemetry).
+  4. **Verification & Testing:** Verified 638/638 unit tests pass, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+- **Current status:** Production Build Clean, 638/638 Unit Tests Passed (0 Failures), 0 AST/oxlint Errors, 0 Secret Leaks.
+- **Currently blocked on:** None. Ready for next user instructions.
+
+- **Phase:** Milestone 201 — Fast Line Item Entry Strategy & Pharma Company vs Supplier Badge Resolution (Completed)
+- **Last worked on:**
+  1. **Fast Entry Speed Architectural Proposal:** Documented 5 high-speed billing enhancements (Enter auto-add, `10*BM` multiplier syntax, Company flat discount inheritance, in-table cell editing, direct barcode/code hit).
+  2. **Pharma Company vs Supplier Badge Correction:** Updated `partySupplierOptions` in [MedicalStoreSalesLog.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/MedicalStoreSalesLog.jsx#L368) so registered manufacturing companies (like `GHR HOMEO PHARMA`) display as `Company` with `Company Code:` instead of generic `Supplier`.
+  3. **Unregistered Dummy Company Purge:** Updated `dbCompanies.getAll()` in [db.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/api/db.js#L2807) to omit unregistered dummy fallback entries (like `"BM Pvt LTD"`) unless explicitly registered by the user.
+  4. **Verification:** Deep AST Scanner passed (0 errors), `oxlint` clean (0 errors), Master Test Suite passed (638/638).
+- **Current status:** Production Build Clean, 638/638 Unit Tests Passed (0 Failures), 0 AST/oxlint Errors, 0 Secret Leaks.
+- **Currently blocked on:** None. Ready for next user instructions.
+
+- **Phase:** Milestone 200 — Attending Doctor Dropdown Filtering Fix (Completed)
+- **Last worked on:**
+  1. **Eliminated Non-Doctor Admin from Attending Doctor List:** Updated `registeredDoctors` memo in [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx#L281) to strictly filter doctors via `dbUsers.getDoctors()` and exclude non-doctor accounts (such as `Clinic Administrator` or `role === "admin"`).
+  2. **Verification:** Deep AST Scanner passed (0 errors), `oxlint` clean (0 errors), Master Test Suite passed (638/638).
+- **Current status:** Production Build Clean, 638/638 Unit Tests Passed (0 Failures), 0 AST/oxlint Errors, 0 Secret Leaks.
+- **Currently blocked on:** None. Ready for next user instructions.
+
+- **Phase:** Milestone 199 — LoginScreen Viewport Height & PIN Keypad Layout Compact Optimization (Completed)
+- **Last worked on:**
+  1. **Eliminated Vertical Overflow & Scrollbar Shift:** Optimized [LoginScreen.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/LoginScreen.jsx) to prevent vertical overflow when switching to PIN entry mode (`view === "PIN_ENTRY"`).
+  2. **Proportional Dimension Adjustments:**
+     - Reduced header logo from `w-24 h-24` (96px) to compact `w-14 h-14` (56px).
+     - Reduced side module container padding from `p-6 sm:p-12` to `p-4 sm:p-6 lg:p-8`.
+     - Compacted PIN keypad buttons from `w-16 h-16` (64px) with `gap-3` to `w-13 h-13 sm:w-14 sm:h-14` with `gap-2` (saving ~60px height).
+     - Standardized outer layout container to `h-screen max-h-screen w-screen overflow-hidden select-none` with smooth `custom-scrollbar` overflow handling.
+  3. **Verification:** Deep AST Scanner passed (0 errors), `oxlint` clean (0 errors), Master Test Suite passed (638/638).
+- **Current status:** Production Build Clean, 638/638 Unit Tests Passed (0 Failures), 0 AST/oxlint Errors, 0 Secret Leaks.
+- **Currently blocked on:** None. Ready for next user instructions.
+
+- **Phase:** Milestone 198 — MedicalStorePOS.jsx JSX Syntax Error Resolution & Audit (Completed)
+- **Last worked on:**
+  1. **Fixed JSX Syntax Error:** Resolved `Unexpected token. Did you mean {'}'} or &rbrace;?` error in [MedicalStorePOS.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/MedicalStorePOS.jsx#L1530) by removing redundant `)}` token inside the stock-out replenishment modal JSX structure.
+  2. **Automated Verification:** Verified via deep AST scanner (`node scripts/scan_imports_and_hooks.mjs`), `npx oxlint` (0 errors), full test suite (`npm test` - 638/638 passing tests), and clean Vite bundle compilation.
+- **Current status:** Production Build Clean, 638/638 Unit Tests Passed (0 Failures), 0 AST/oxlint Errors, 0 Secret Leaks.
+- **Currently blocked on:** None. Ready for next user instructions.
+
+- **Phase:** Milestone 204 — Stock Inward GRN Purchase Synchronization & Auto-Registration Engine (Completed)
+- **Last worked on:**
+  1. **Stock Purchase Inward & Store Stock Synchronization (`frontend/src/api/db.js` & `SupplierPurchases.jsx`)**:
+     - Fixed `destination_type` defaulting to `"store"` instead of hiding purchased stock inside `"warehouse_stock"`.
+     - In `dbInventory.addStock`, ensured `store_stock`, `stock_qty`, and `total_base_stock` increment synchronously and dispatch `clinicflow_status_update`.
+  2. **GRN Auto-Registration for New Medicines (`dbPurchases.add`)**:
+     - If a purchased medicine does not exist in inventory, it auto-registers with complete fields (`company_name`, `category`, `cost_price_per_box`, `unit_sale_price`, `packing`, `expiry_date`) and immediately adds the purchased quantity to store stock.
+     - Case-insensitive lookup prevents duplicate items if name is typed manually.
+  3. **Real-Time UI Hydration**:
+     - `dbInventory.add`, `update`, `addStock`, and `dbPurchases.add` now dispatch `clinicflow_status_update` so the inventory table and POS reflect new stock and new items instantly without requiring a page reload.
+     - Updated `MedicalStoreInventory.jsx` table row stock calculation to use `getItemLocationStock(item)` for 100% accurate count matching across filters.
+- **Current status:** Production Build Clean, 638/638 Unit Tests Passed (0 Failures), 0 AST/oxlint Errors, 0 Secret Leaks.
+- **Currently blocked on:** None. Ready for next user instructions.
+
+---
+
+### Session: 2026-09-05 (Part 204) — Stock Inward GRN Purchase Synchronization & Auto-Registration Engine
+**Task worked on:**
+1. **Stock Purchase GRN Inward Sync (`db.js` & `SupplierPurchases.jsx`)**:
+   - Fixed destination routing: Purchases default to store inventory (`destination_type: "store"`), ensuring `store_stock` and `total_base_stock` update instantly.
+   - Auto-registered typed medicines in GRN into `dbInventory` with proper company, category, unit labels, and cost/sale rates.
+   - Dispatched `clinicflow_status_update` across all inventory and purchase mutation endpoints.
+
+---
+
+### Session: 2026-09-05 (Part 203) — Supplier GRN Payment Settlement & Running Balance Synchronization
+**Task worked on:**
+1. **Supplier Payment Settlement & Balance Sync (`db.js` & `SupplierPurchases.jsx`)**:
+   - Synchronized `current_balance`, `balance_due`, and `balance` in `dbSuppliers.recordPayment` and `dbSuppliers.updateBalance`.
+   - Implemented FIFO automatic invoice debt settlement so paid amounts clear outstanding purchase bills in the ledger.
 
 ---
 

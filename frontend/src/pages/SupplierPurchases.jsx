@@ -151,7 +151,7 @@ function ExpandableCombobox({
 
       {/* Expandable Tall Dropdown Popup (10-15 rows visible with scroll) */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-emerald-300 shadow-2xl z-50 overflow-hidden animate-fade-in flex flex-col max-h-72">
+        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-emerald-300 shadow-2xl z-[9999] overflow-hidden animate-fade-in flex flex-col max-h-72">
           {/* Search Header */}
           <div className="p-2 border-b border-gray-100 bg-gray-50 flex items-center gap-1.5 sticky top-0 z-10">
             <span className="material-symbols-outlined text-base text-emerald-700">search</span>
@@ -329,7 +329,7 @@ export default function SupplierPurchases() {
     payment_mode: "Cash",
     transport: "By Hand",
     bilty_no: "",
-    destination_type: "warehouse",
+    destination_type: "store",
     extra_bill_discount: "0",
     freight_charges: "0",
   });
@@ -590,6 +590,36 @@ export default function SupplierPurchases() {
     return () => window.removeEventListener("clinicflow_status_update", refreshData);
   }, []);
 
+  // Quick Code Lookup Handler for Purchase GRN Fast Line Entry
+  const handleLookupGRNByCode = (codeQuery) => {
+    if (!codeQuery || !codeQuery.trim()) return;
+    const cleanCode = codeQuery.trim().toLowerCase();
+
+    // 1. Search in current company filtered inventory first
+    let matched = filteredGrnInventory.filter(
+      (inv) => (inv.item_code || "").toLowerCase() === cleanCode || (inv.id || "").toLowerCase() === cleanCode
+    );
+
+    // 2. Fallback to all inventory items if not found in current company
+    if (matched.length === 0) {
+      matched = inventoryList.filter(
+        (inv) => (inv.item_code || "").toLowerCase() === cleanCode || (inv.id || "").toLowerCase() === cleanCode
+      );
+    }
+
+    if (matched.length === 1) {
+      handleSelectGRNMedicine(matched[0].id);
+      batchNoRef.current?.focus();
+    } else if (matched.length > 1) {
+      // Multiple items with same code across different companies -> auto select first & show notification or switch filter
+      setGrnShowAllCompanies(true);
+      handleSelectGRNMedicine(matched[0].id);
+      batchNoRef.current?.focus();
+    } else {
+      alert(`Item code "${codeQuery}" not found in inventory.`);
+    }
+  };
+
   // DrCreate Purchase GRN Form Handlers
   const handleSelectGRNMedicine = (invId) => {
     if (!invId) {
@@ -684,6 +714,7 @@ export default function SupplierPurchases() {
       inventory_id: grnCart.inventory_id || "",
       product_code: grnCart.product_code,
       medicine_name: grnCart.medicine_name.trim(),
+      company_name: grnCart.company_name || grnForm.account_name || "",
       category: grnCart.category || "Medicine",
       packing: grnCart.packing || "pack",
       batch_no: grnCart.batch_no.trim() || `BT-${Date.now().toString().slice(-4)}`,
@@ -693,6 +724,7 @@ export default function SupplierPurchases() {
       qty_base_units: q + bonusQ, // Paid Qty + Bonus Qty added to Stock!
       rate: r,
       cost_price: r,
+      sale_price: Number(grnCart.sale_price) || (r > 0 ? r * 1.2 : 0),
       gross: gross,
       disc_pct: dPct > 0 ? `${dPct}%` : "0%",
       disc_pct_num: dPct,
@@ -787,7 +819,7 @@ export default function SupplierPurchases() {
       transport: grnForm.transport || "By Hand",
       bilty_no: grnForm.bilty_no || "",
       payment_mode: grnForm.payment_mode,
-      destination_type: grnForm.destination_type || "warehouse",
+      destination_type: grnForm.destination_type || "store",
       purchase_date: grnForm.date || new Date().toISOString(),
       items: grnItems,
       subtotal: itemsSubtotal,
@@ -828,7 +860,11 @@ export default function SupplierPurchases() {
       freight_charges: "0",
     }));
     refreshData();
-    alert(`Purchase Invoice ${savedPur.invoice_no} (Co Bill #${savedPur.grn_no}) saved successfully & stock updated in Godown!`);
+    setInventoryList(dbInventory.getAll());
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+    }
+    alert(`✅ Purchase Invoice ${savedPur.invoice_no} (Co Bill #${savedPur.grn_no}) saved successfully & stock added to Medical Store Inventory!`);
   };
 
   const handleAddItemRow = () => {
@@ -1614,14 +1650,20 @@ export default function SupplierPurchases() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-11 gap-2.5 sm:gap-3 items-end">
               {/* Product Code */}
               <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1" htmlFor="item-code">Code</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1" htmlFor="item-code">Item Code</label>
                 <input
                   id="item-code"
                   type="text"
                   value={grnCart.product_code}
-                  readOnly
-                  placeholder="Code"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-teal-600 focus:border-teal-600 font-mono text-center"
+                  onChange={(e) => setGrnCart({ ...grnCart, product_code: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleLookupGRNByCode(grnCart.product_code);
+                    }
+                  }}
+                  placeholder="Code + Enter"
+                  className="w-full bg-amber-50/40 border border-amber-300 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-center uppercase"
                 />
               </div>
 
@@ -2101,7 +2143,7 @@ export default function SupplierPurchases() {
                     ) : (
                       filteredSuppliersList.map((sup, idx) => {
                         const supBills = purchases.filter((p) => p.supplier_id === sup.id);
-                        const balance = sup.balance_due || 0;
+                        const balance = Number(sup.current_balance ?? sup.balance_due ?? sup.balance ?? 0);
 
                         return (
                           <tr key={sup.id} className={`hover:bg-emerald-50/50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}>
@@ -2242,7 +2284,7 @@ export default function SupplierPurchases() {
               ) : (
                 filteredSuppliersList.map((sup) => {
                   const supBills = purchases.filter((p) => p.supplier_id === sup.id);
-                  const balance = sup.balance_due || 0;
+                  const balance = Number(sup.current_balance ?? sup.balance_due ?? sup.balance ?? 0);
 
                   return (
                     <div
@@ -2956,77 +2998,135 @@ export default function SupplierPurchases() {
 
       {/* MODAL: View Invoice Detail */}
       {selectedInvoiceModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white max-w-lg w-full rounded-3xl shadow-2xl p-6 border border-gray-200 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white max-w-2xl w-full rounded-3xl shadow-2xl p-6 border border-emerald-300 space-y-4 max-h-[92vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="font-bold text-gray-900 text-base">Purchase Voucher #{selectedInvoiceModal.invoice_no}</h3>
-                <p className="text-xs text-gray-500">Company Bill #: {selectedInvoiceModal.company_bill_no || "N/A"}</p>
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">
+                  <span className="material-symbols-outlined text-xl">receipt_long</span>
+                </div>
+                <div>
+                  <h3 className="font-black text-gray-900 text-base">Purchase Voucher #{selectedInvoiceModal.invoice_no || selectedInvoiceModal.voucher_no}</h3>
+                  <p className="text-xs text-gray-500 font-semibold">
+                    Company Bill / GRN #: <span className="font-bold text-gray-800">{selectedInvoiceModal.grn_no || selectedInvoiceModal.company_bill_no || "0"}</span>
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setSelectedInvoiceModal(null)} className="text-gray-400 hover:text-gray-600">
-                <span className="material-symbols-outlined">close</span>
+              <button onClick={() => setSelectedInvoiceModal(null)} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors">
+                <span className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
 
-            <div className="space-y-2 text-xs font-semibold">
-              <div className="flex justify-between text-gray-600">
-                <span>Supplier:</span>
-                <span className="font-bold text-gray-900">{selectedInvoiceModal.supplier_name}</span>
+            {/* Header Details Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-gray-50 border border-gray-200 text-xs font-semibold">
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Supplier</span>
+                <span className="font-bold text-gray-900 truncate block">{selectedInvoiceModal.supplier_name || "Supplier"}</span>
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Date:</span>
-                <span>{selectedInvoiceModal.purchase_date ? new Date(selectedInvoiceModal.purchase_date).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Purchase Date</span>
+                <span className="font-bold text-gray-800">{selectedInvoiceModal.purchase_date ? String(selectedInvoiceModal.purchase_date).split("T")[0] : "—"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Payment Mode</span>
+                <span className="font-bold text-emerald-800">{selectedInvoiceModal.payment_mode || "Cash"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Transport / Bilty</span>
+                <span className="font-bold text-gray-800 truncate block">{selectedInvoiceModal.transport || "By Hand"} {selectedInvoiceModal.bilty_no ? `· #${selectedInvoiceModal.bilty_no}` : ""}</span>
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gray-100 text-gray-700 font-bold">
+            {/* Items Table matching Sale Invoice */}
+            <div className="border border-gray-200 rounded-2xl overflow-hidden max-h-64 overflow-y-auto custom-scrollbar shadow-xs">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-900 text-white font-bold text-[11px] uppercase tracking-wider sticky top-0 z-10">
                   <tr>
-                    <th className="px-3 py-2">Item Name</th>
-                    <th className="px-3 py-2 text-center">Qty Recv</th>
-                    <th className="px-3 py-2 text-right">Cost Price</th>
+                    <th className="px-3 py-2.5 text-center w-10">S/r</th>
+                    <th className="px-3 py-2.5">Particulars</th>
+                    <th className="px-3 py-2.5 text-center">Qty</th>
+                    <th className="px-3 py-2.5 text-center">Rate</th>
+                    <th className="px-3 py-2.5 text-center">Disc</th>
+                    <th className="px-3 py-2.5 text-right">Net</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium">
-                  {(selectedInvoiceModal.items || []).map((i, index) => (
-                    <tr key={index}>
-                      <td className="px-3 py-2 font-bold text-gray-900">{i.medicine_name}</td>
-                      <td className="px-3 py-2 text-center">{i.qty} {i.received_unit_type || "pack"}s</td>
-                      <td className="px-3 py-2 text-right font-bold">Rs. {i.cost_price}</td>
-                    </tr>
-                  ))}
+                  {(selectedInvoiceModal.items || []).map((i, index) => {
+                    const q = Number(i.qty || i.quantity || i.qty_base_units || 1);
+                    const bq = Number(i.bonus_qty || 0);
+                    const r = Number(i.rate || i.cost_price || 0);
+                    const disc = i.disc_pct || (Number(i.disc_pct_num) > 0 ? `${i.disc_pct_num}%` : (Number(i.disc_flat) > 0 ? `Rs.${i.disc_flat}` : "-"));
+                    const net = Number(i.net || i.total_cost || (q * r));
+
+                    return (
+                      <tr key={index} className="hover:bg-emerald-50/40 transition-colors">
+                        <td className="px-3 py-2.5 text-center font-bold text-gray-400 text-[11px]">{index + 1}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="font-bold text-gray-900">{i.medicine_name}</div>
+                          <div className="text-[10px] text-gray-500 font-semibold flex items-center gap-1.5 flex-wrap mt-0.5">
+                            {i.company_name && <span className="bg-emerald-50 text-emerald-800 px-1 py-0.2 rounded font-bold border border-emerald-200">[{i.company_name}]</span>}
+                            {i.packing && <span>· {i.packing}</span>}
+                            {i.batch_no && i.batch_no !== "0" && i.batch_no !== "-" && <span className="font-mono font-bold text-gray-700">· Batch: {i.batch_no}</span>}
+                            {i.expiry_date && <span className="font-mono text-amber-800 font-bold">· Exp: {String(i.expiry_date).split("T")[0]}</span>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-bold text-gray-800">
+                          {q}
+                          {bq > 0 && <span className="block text-[9.5px] font-black text-emerald-700">+{bq} Bonus</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-mono font-semibold">Rs. {r.toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-center font-mono text-gray-600">{disc}</td>
+                        <td className="px-3 py-2.5 text-right font-mono font-black text-gray-900">Rs. {net.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
-            <div className="bg-gray-50 p-3 rounded-xl space-y-1 text-xs font-bold">
-              <div className="flex justify-between text-gray-700">
-                <span>Total Amount:</span>
-                <span>Rs. {(selectedInvoiceModal.total_amount || 0).toLocaleString()}</span>
+            {/* Financial Totals Breakdown */}
+            <div className="bg-emerald-50/60 border border-emerald-200 p-3.5 rounded-2xl space-y-1.5 text-xs font-bold">
+              {Number(selectedInvoiceModal.extra_discount || selectedInvoiceModal.extra_bill_discount || 0) > 0 && (
+                <div className="flex justify-between text-emerald-800 font-bold">
+                  <span>Extra Bill Discount:</span>
+                  <span className="font-mono">- Rs. {Number(selectedInvoiceModal.extra_discount || selectedInvoiceModal.extra_bill_discount).toLocaleString()}</span>
+                </div>
+              )}
+              {Number(selectedInvoiceModal.freight_charges || selectedInvoiceModal.freight || 0) > 0 && (
+                <div className="flex justify-between text-gray-700">
+                  <span>Freight Charges:</span>
+                  <span className="font-mono">+ Rs. {Number(selectedInvoiceModal.freight_charges || selectedInvoiceModal.freight).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-gray-900 text-sm font-black pt-1 border-t border-emerald-200">
+                <span>Total Bill Amount:</span>
+                <span className="font-mono text-base text-emerald-950">Rs. {(selectedInvoiceModal.total_amount || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-teal-800">
-                <span>Paid Amount:</span>
-                <span>Rs. {(selectedInvoiceModal.paid_amount || 0).toLocaleString()}</span>
+                <span>Paid Now (Cash):</span>
+                <span className="font-mono">Rs. {(selectedInvoiceModal.paid_amount || 0).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-rose-800">
-                <span>Balance Due:</span>
-                <span>Rs. {(selectedInvoiceModal.balance_due || 0).toLocaleString()}</span>
-              </div>
+              {Number(selectedInvoiceModal.balance_due || 0) > 0 && (
+                <div className="flex justify-between text-rose-800 font-black text-sm pt-1 border-t border-dashed border-rose-300">
+                  <span>Payable Udhaar (Balance):</span>
+                  <span className="font-mono">Rs. {(selectedInvoiceModal.balance_due || 0).toLocaleString()}</span>
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2.5 pt-1">
               <button
-                onClick={() => printSupplierPurchaseReceipt(selectedInvoiceModal, suppliers.find((s) => s.id === selectedInvoiceModal.supplier_id), dbClinic.get())}
-                className="flex-1 bg-teal-600 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-teal-700"
+                onClick={() => printPurchaseGRNReceipt(selectedInvoiceModal, dbClinic.get())}
+                className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-black py-3 rounded-2xl text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
-                Print 80mm Voucher
+                <span className="material-symbols-outlined text-sm">print</span>
+                Print 80mm ESC/POS Voucher
               </button>
               <button
                 onClick={() => handleDeletePurchaseInvoice(selectedInvoiceModal.id, selectedInvoiceModal.invoice_no)}
-                className="bg-rose-50 border border-rose-200 text-rose-700 font-bold px-4 py-2.5 rounded-xl text-xs hover:bg-rose-100"
+                className="bg-rose-50 border border-rose-200 text-rose-700 font-bold px-4 py-3 rounded-2xl text-xs hover:bg-rose-100 transition-colors"
               >
-                Delete Invoice
+                Delete
               </button>
             </div>
           </div>
@@ -3043,9 +3143,9 @@ export default function SupplierPurchases() {
                 Supplier Payment Settlement
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">Record payment to <strong>{paySupplierModal.name}</strong></p>
-              {(paySupplierModal.balance_due || 0) > 0 && (
+              {Number(paySupplierModal.current_balance ?? paySupplierModal.balance_due ?? paySupplierModal.balance ?? 0) > 0 && (
                 <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800">
-                  Outstanding Balance: Rs. {(paySupplierModal.balance_due || 0).toLocaleString()}
+                  Outstanding Balance: Rs. {Number(paySupplierModal.current_balance ?? paySupplierModal.balance_due ?? paySupplierModal.balance ?? 0).toLocaleString()}
                 </div>
               )}
             </div>
@@ -3532,26 +3632,29 @@ export default function SupplierPurchases() {
             </div>
 
             {/* Quick Pay Button */}
-            {(Number(ledgerDrawerSupplier.balance_due) > 0 || Number(ledgerDrawerSupplier.balance) > 0) && (
-              <div className="p-4 border-t border-gray-100 bg-white sticky bottom-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const due = Number(ledgerDrawerSupplier.balance_due || ledgerDrawerSupplier.balance || 0);
-                    setLedgerDrawerSupplier(null);
-                    setPaySupplierModal(ledgerDrawerSupplier);
-                    setPayAmountInput(String(due || ""));
-                    setPaymentMode("cash");
-                    setPaymentRef("");
-                    setPaymentNote("");
-                  }}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-2xl text-xs shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-base">payments</span>
-                  <span>Record New Payment (Rs. {Number(ledgerDrawerSupplier.balance_due || ledgerDrawerSupplier.balance || 0).toLocaleString()} due)</span>
-                </button>
-              </div>
-            )}
+            {(() => {
+              const due = Number(ledgerDrawerSupplier.current_balance ?? ledgerDrawerSupplier.balance_due ?? ledgerDrawerSupplier.balance ?? 0);
+              if (due <= 0) return null;
+              return (
+                <div className="p-4 border-t border-gray-100 bg-white sticky bottom-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLedgerDrawerSupplier(null);
+                      setPaySupplierModal(ledgerDrawerSupplier);
+                      setPayAmountInput(String(due || ""));
+                      setPaymentMode("cash");
+                      setPaymentRef("");
+                      setPaymentNote("");
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-2xl text-xs shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-base">payments</span>
+                    <span>Record New Payment (Rs. {due.toLocaleString()} due)</span>
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>,
         document.body

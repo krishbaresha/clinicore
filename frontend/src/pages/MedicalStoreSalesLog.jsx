@@ -361,17 +361,18 @@ export default function MedicalStoreSalesLog() {
       });
     });
 
-    // 2. Add Pharma Suppliers (Distributors)
+    // 2. Add Pharma Suppliers & Registered Companies
     suppliers.forEach((s) => {
       const bal = Number(s.current_balance ?? s.balance_due ?? 0);
       const nameKey = (s.name || "").toLowerCase().trim();
       if (!nameKey || addedNames.has(nameKey)) return;
       addedNames.add(nameKey);
+      const isCompany = Boolean(s.company_name || s.is_company || s.code?.startsWith("GHR") || s.supplier_code?.startsWith("GHR") || nameKey.includes("pharma") || nameKey.includes("homoeo") || nameKey.includes("lab"));
       options.push({
         id: s.id || s.name,
         label: s.name,
-        badge: "Supplier",
-        sublabel: `Code: ${s.supplier_code || s.code || s.id}`,
+        badge: isCompany ? "Company" : "Supplier",
+        sublabel: isCompany ? `Company Code: ${s.supplier_code || s.code || s.id}` : `Distributor Code: ${s.supplier_code || s.code || s.id}`,
         extra: bal > 0 ? `Payable Dues: Rs. ${bal.toLocaleString("en-US")}` : "Payable: Rs. 0",
         raw: s,
       });
@@ -380,7 +381,7 @@ export default function MedicalStoreSalesLog() {
     // 3. Add Registered Pharma Companies / Brands
     companies.forEach((c) => {
       const cName = typeof c === "string" ? c : c.name || "";
-      if (!cName) return;
+      if (!cName || cName === "BM Pvt LTD" || cName === "BM Pvt Ltd") return;
       const nameKey = cName.toLowerCase().trim();
       if (!addedNames.has(nameKey)) {
         addedNames.add(nameKey);
@@ -465,6 +466,24 @@ export default function MedicalStoreSalesLog() {
       (o) => o.label.toLowerCase() === cbPartyAccountName.toLowerCase() || o.id === cbPartyAccountName
     );
     const rawEntity = selectedOpt?.raw;
+
+    // 🛑 ZERO DUES GUARD: Prevent Wasooli if Party has Rs. 0 Udhaar Dues
+    if (cbPartyActionType === "party_wasooli") {
+      const currentDues = Number(rawEntity?.current_balance ?? rawEntity?.balance_due ?? 0);
+      if (currentDues <= 0) {
+        alert(`❌ Cannot receive payment: Party "${cbPartyAccountName}" has Rs. 0 Udhaar Dues! Wasooli is only allowed when party has outstanding credit dues.`);
+        return;
+      }
+    }
+
+    // 🛑 ZERO PAYABLE GUARD: Prevent Supplier Payment if Supplier has Rs. 0 Dues
+    if (cbPartyActionType === "supplier_payment") {
+      const currentPayable = Number(rawEntity?.current_balance ?? rawEntity?.balance_due ?? 0);
+      if (currentPayable <= 0) {
+        alert(`❌ Cannot pay supplier: Supplier "${cbPartyAccountName}" has Rs. 0 Payable Dues!`);
+        return;
+      }
+    }
 
     const isCreditTx = cbPartyActionType === "party_credit_sale" || cbPartyActionType === "supplier_credit_purchase";
     const term = isCreditTx

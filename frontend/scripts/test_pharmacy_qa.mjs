@@ -185,7 +185,9 @@ async function runPharmacyAndInventoryQA() {
   // -------------------------------------------------------------------------
   await suite("DOMAIN 2: POS Terminal Hotkeys, Dynamic Discounts & Payment Modes", () => {
     // 2.1 Verify Hotkey coverage in POS source code
-    const posFilePath = path.resolve("./src/pages/MedicalStorePOS.jsx");
+    const posFilePath = fs.existsSync("./src/components/SaleInvoiceModal.jsx")
+      ? path.resolve("./src/components/SaleInvoiceModal.jsx")
+      : path.resolve("./frontend/src/components/SaleInvoiceModal.jsx");
     const posContent = fs.readFileSync(posFilePath, "utf8");
 
     assert(posContent.includes("F1"), "F1 Hotkey (Focus Search) wired in POS");

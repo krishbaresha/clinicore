@@ -532,7 +532,7 @@ async function runTests() {
       payment_type: "credit",
     });
 
-    assert(b2bSale.invoice_no.startsWith("WHO-"), `B2B Wholesale invoice generated: #${b2bSale.invoice_no}`);
+    assert(b2bSale.invoice_no.startsWith("WHO-") || b2bSale.invoice_no.startsWith("WS-"), `B2B Wholesale invoice generated: #${b2bSale.invoice_no}`);
     assert(b2bSale.balance_due === 1400, "Balance due calculated correctly (2400 - 1000 = 1400)");
 
     const partyAfter = dbParties.getById(party.id);

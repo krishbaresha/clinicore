@@ -534,11 +534,45 @@ export function factoryResetAllData() {
 }
 
 export function generateSequentialInvoiceNo(prefix = "INV") {
-  const counterKey = `cf_seq_${prefix}`;
-  let current = parseInt(storageDriver.getItem(counterKey) || "1000", 10);
-  current += 1;
-  storageDriver.setItem(counterKey, current.toString());
-  return `${prefix}-${current}`;
+  const normPrefix = (prefix || "INV").toUpperCase();
+  const counterKey = `cf_seq_${normPrefix}`;
+  let currentSeq = parseInt(storageDriver.getItem(counterKey) || "1000", 10);
+  if (isNaN(currentSeq) || currentSeq < 1000) currentSeq = 1000;
+
+  // Scan all relevant database collections to find the absolute maximum numeric index already used
+  let maxExisting = 0;
+  const scanCollections = [];
+
+  if (["POS", "INV", "WS", "WHO", "B2B", "SAL", "S", "W"].includes(normPrefix)) {
+    scanCollections.push(getCollection(KEYS.SALES) || []);
+    scanCollections.push(getCollection(KEYS.B2B_SALES) || []);
+  } else if (["PUR", "GRN", "P"].includes(normPrefix)) {
+    scanCollections.push(getCollection(KEYS.PURCHASES) || []);
+  } else if (["REC", "PAY", "CBK"].includes(normPrefix)) {
+    scanCollections.push(getCollection(KEYS.CASHBOOK) || []);
+    scanCollections.push(getCollection(KEYS.SUPPLIER_LEDGER) || []);
+  } else if (["TRF"].includes(normPrefix)) {
+    scanCollections.push(getCollection(KEYS.STOCK_TRANSFERS) || []);
+  }
+
+  scanCollections.forEach((coll) => {
+    (coll || []).forEach((item) => {
+      const vNo = item.voucher_no || item.invoice_no || item.receipt_no || item.transfer_no || item.reference || "";
+      if (typeof vNo === "string" && vNo.trim()) {
+        const matches = vNo.match(/(\d+)/g);
+        if (matches && matches.length > 0) {
+          const num = parseInt(matches[matches.length - 1], 10);
+          if (Number.isFinite(num) && num > maxExisting && num < 100000000) {
+            maxExisting = num;
+          }
+        }
+      }
+    });
+  });
+
+  const nextVal = Math.max(currentSeq, maxExisting) + 1;
+  storageDriver.setItem(counterKey, nextVal.toString());
+  return `${normPrefix}-${nextVal}`;
 }
 
 export function formatStockBreakdown(item) {
@@ -1825,6 +1859,9 @@ export const dbInventory = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("inventory", newItem, "CREATE", newItem.id);
     }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+    }
     return newItem;
   },
 
@@ -1835,6 +1872,9 @@ export const dbInventory = {
     const updatedRecord = updated.find((i) => i.id === id);
     if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("inventory", updatedRecord, "UPDATE", id);
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
     }
     return updatedRecord || null;
   },
@@ -1931,35 +1971,45 @@ export const dbInventory = {
     setCollection(KEYS.INVENTORY, updated);
   },
 
-  addStock: (id, baseQty, destination = "warehouse") => {
+  addStock: (id, baseQty, destination = "store") => {
+    const qty = Number(baseQty) || 0;
     const inventory = getCollection(KEYS.INVENTORY);
     const updated = inventory.map((i) => {
       if (i.id !== id) return i;
-      const currentBase = i.total_base_stock ?? i.stock_qty ?? 0;
-      const newBase = currentBase + baseQty;
+      const currentBase = Number(i.total_base_stock ?? i.stock_qty ?? i.store_stock ?? 0);
+      const newBase = currentBase + qty;
+      const currentStore = Number(i.store_stock ?? i.stock_qty ?? currentBase);
+      const currentWarehouse = Number(i.warehouse_stock ?? 0);
       const locStocks = { ...(i.location_stocks || {}) };
-      if (destination === "store") {
-        const newStore = (i.store_stock ?? 0) + baseQty;
+
+      if (destination === "warehouse") {
+        const newWarehouse = currentWarehouse + qty;
+        if (locStocks.wh_001 !== undefined) locStocks.wh_001 = newWarehouse;
+        return {
+          ...i,
+          total_base_stock: newBase,
+          warehouse_stock: newWarehouse,
+          store_stock: currentStore,
+          stock_qty: currentStore,
+          ...(Object.keys(locStocks).length > 0 ? { location_stocks: locStocks } : {}),
+        };
+      } else {
+        const newStore = currentStore + qty;
         if (locStocks.wh_str !== undefined) locStocks.wh_str = newStore;
         return {
           ...i,
           total_base_stock: newBase,
           store_stock: newStore,
           stock_qty: newStore,
-          ...(Object.keys(locStocks).length > 0 ? { location_stocks: locStocks } : {}),
-        };
-      } else {
-        const newWarehouse = (i.warehouse_stock ?? 0) + baseQty;
-        if (locStocks.wh_001 !== undefined) locStocks.wh_001 = newWarehouse;
-        return {
-          ...i,
-          total_base_stock: newBase,
-          warehouse_stock: newWarehouse,
+          warehouse_stock: currentWarehouse,
           ...(Object.keys(locStocks).length > 0 ? { location_stocks: locStocks } : {}),
         };
       }
     });
     setCollection(KEYS.INVENTORY, updated);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+    }
   },
 
   transferWarehouseToStore: (id, qty, notes = "", transferred_by = "Store Staff") => {
@@ -2800,12 +2850,12 @@ export const dbCompanies = {
       }
     });
 
-    // 3. Add any companies from active inventory
+    // 3. Add any companies from active inventory (excluding dummy sample fallbacks)
     const inv = getCollection(KEYS.INVENTORY) || [];
     inv.forEach((item) => {
       const comp = (item.company_name || "").trim();
       const code = (item.item_code || "").trim().toUpperCase();
-      if (comp && !seen.has(comp.toLowerCase())) {
+      if (comp && comp !== "BM Pvt LTD" && comp !== "BM Pvt Ltd" && !seen.has(comp.toLowerCase())) {
         seen.add(comp.toLowerCase());
         result.push({
           id: `cmp_inv_${seen.size}`,
@@ -3857,14 +3907,17 @@ export const dbStockLedger = {
       entry.item_count += 1;
     });
 
-    return Array.from(map.values()).sort((a, b) => a.category.localeCompare(b.category));
+    return Array.from(map.values()).sort((a, b) =>
+      a.category.localeCompare(b.category, undefined, { numeric: true, sensitivity: "base" })
+    );
   },
 
   // Level 2: SKU Summary (All medicines under a specific Category / Item Code)
   getSKUSummary: (categoryCode = "") => {
     const inventory = dbInventory.getAll();
+    let items = [];
     if (!categoryCode || categoryCode === "All" || categoryCode === "all") {
-      return inventory.map((i) => ({
+      items = inventory.map((i) => ({
         id: i.id,
         item_name: i.medicine_name,
         item_code: i.item_code || "General",
@@ -3874,22 +3927,30 @@ export const dbStockLedger = {
         warehouse_stock: Number(i.warehouse_stock || 0),
         unit_price: i.box_sale_price || i.unit_sale_price || 0,
       }));
+    } else {
+      const normCat = categoryCode.toLowerCase().trim();
+      items = inventory
+        .filter((i) => (i.item_code || "").toLowerCase().trim() === normCat || (i.company_name || "").toLowerCase().trim() === normCat)
+        .map((i) => ({
+          id: i.id,
+          item_name: i.medicine_name,
+          item_code: i.item_code || "General",
+          company_name: i.company_name || "",
+          qty: Number(i.total_base_stock || i.stock_qty || 0),
+          store_stock: Number(i.store_stock || 0),
+          warehouse_stock: Number(i.warehouse_stock || 0),
+          unit_price: i.box_sale_price || i.unit_sale_price || 0,
+        }));
     }
 
-    const normCat = categoryCode.toLowerCase().trim();
-    return inventory
-      .filter((i) => (i.item_code || "").toLowerCase().trim() === normCat || (i.company_name || "").toLowerCase().trim() === normCat)
-      .map((i) => ({
-        id: i.id,
-        item_name: i.medicine_name,
-        item_code: i.item_code || "General",
-        company_name: i.company_name || "",
-        qty: Number(i.total_base_stock || i.stock_qty || 0),
-        store_stock: Number(i.store_stock || 0),
-        warehouse_stock: Number(i.warehouse_stock || 0),
-        unit_price: i.box_sale_price || i.unit_sale_price || 0,
-      }))
-      .sort((a, b) => a.item_name.localeCompare(b.item_name));
+    return items.sort((a, b) => {
+      // Natural sorting: compare item_code first if distinct, else item_name
+      if (a.item_code && b.item_code && a.item_code !== b.item_code) {
+        const codeCmp = a.item_code.localeCompare(b.item_code, undefined, { numeric: true, sensitivity: "base" });
+        if (codeCmp !== 0) return codeCmp;
+      }
+      return (a.item_name || "").localeCompare(b.item_name || "", undefined, { numeric: true, sensitivity: "base" });
+    });
   },
 
   // Level 3: Transactional Ledger (Chronological daily timeline for a medicine)
@@ -4270,15 +4331,61 @@ export const dbSuppliers = {
   },
   updateBalance: (supplierId, delta) => {
     const list = dbSuppliers.getAll();
-    const updated = list.map((s) =>
-      s.id === supplierId ? { ...s, current_balance: Math.max(0, (Number(s.current_balance) || 0) + Number(delta)) } : s
-    );
+    const cleanTarget = String(supplierId || "").toLowerCase().trim();
+    const updated = list.map((s) => {
+      const sId = String(s.id || "").toLowerCase().trim();
+      const sCode = String(s.supplier_code || s.code || "").toLowerCase().trim();
+      const sName = String(s.name || "").toLowerCase().trim();
+      if (sId === cleanTarget || sCode === cleanTarget || sName === cleanTarget) {
+        const cur = Number(s.current_balance ?? s.balance_due ?? s.balance ?? 0);
+        const newBal = Math.max(0, cur + Number(delta));
+        return { ...s, current_balance: newBal, balance_due: newBal, balance: newBal };
+      }
+      return s;
+    });
     setCollection(KEYS.SUPPLIERS, updated);
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   },
   recordPayment: (supplierId, amount) => {
     const list = dbSuppliers.getAll();
-    const updated = list.map((s) => (s.id === supplierId ? { ...s, current_balance: Math.max(0, (Number(s.current_balance) || 0) - Number(amount)) } : s));
+    const cleanTarget = String(supplierId || "").toLowerCase().trim();
+    const amt = Number(amount) || 0;
+    const updated = list.map((s) => {
+      const sId = String(s.id || "").toLowerCase().trim();
+      const sCode = String(s.supplier_code || s.code || "").toLowerCase().trim();
+      const sName = String(s.name || "").toLowerCase().trim();
+      if (sId === cleanTarget || sCode === cleanTarget || sName === cleanTarget) {
+        const cur = Number(s.current_balance ?? s.balance_due ?? s.balance ?? 0);
+        const newBal = Math.max(0, cur - amt);
+        return { ...s, current_balance: newBal, balance_due: newBal, balance: newBal };
+      }
+      return s;
+    });
     setCollection(KEYS.SUPPLIERS, updated);
+
+    // Also auto-settle FIFO on unpaid purchase invoices for this supplier
+    try {
+      const purchases = getCollection(KEYS.PURCHASES) || [];
+      let remAmt = amt;
+      const updatedPurchases = purchases.map((p) => {
+        const pSupId = String(p.supplier_id || "").toLowerCase().trim();
+        const pSupName = String(p.supplier_name || "").toLowerCase().trim();
+        if (remAmt > 0 && (pSupId === cleanTarget || pSupName === cleanTarget)) {
+          const invDue = Number(p.balance_due) || 0;
+          if (invDue > 0) {
+            const payThis = Math.min(remAmt, invDue);
+            remAmt -= payThis;
+            const newPaid = (Number(p.paid_amount) || 0) + payThis;
+            const newDue = Math.max(0, invDue - payThis);
+            return { ...p, paid_amount: newPaid, balance_due: newDue };
+          }
+        }
+        return p;
+      });
+      setCollection(KEYS.PURCHASES, updatedPurchases);
+    } catch {}
+
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   },
   delete: (id) => {
     const list = dbSuppliers.getAll();
@@ -4512,10 +4619,19 @@ export const dbSupplierLedger = {
     setCollection(KEYS.SUPPLIER_LEDGER, [...list, newTx]);
     return newTx;
   },
-  recordPayment: (supplierId, amount, paymentMode, notes = "", reference = "") => {
+  recordPayment: (supplierIdOrObj, amount, paymentMode, notes = "", reference = "") => {
     const typeMap = { cash: "CASH_PAYMENT", cheque: "CHEQUE_PAYMENT", bank: "BANK_PAYMENT" };
     const type = typeMap[paymentMode] || "CASH_PAYMENT";
-    // Update supplier running balance
+    let supplierId = typeof supplierIdOrObj === "object" ? (supplierIdOrObj.id || supplierIdOrObj.name) : supplierIdOrObj;
+    let supplierName = typeof supplierIdOrObj === "object" ? (supplierIdOrObj.name || "") : "";
+    if (!supplierName) {
+      const found = dbSuppliers.getById(supplierId) || dbSuppliers.getByCode(supplierId);
+      if (found) {
+        supplierId = found.id;
+        supplierName = found.name;
+      }
+    }
+    // Update supplier running balance & settle FIFO purchase invoice dues
     if (dbSuppliers && dbSuppliers.recordPayment) {
       dbSuppliers.recordPayment(supplierId, Number(amount));
     }
@@ -4525,7 +4641,8 @@ export const dbSupplierLedger = {
       0,
       Number(amount) || 0,
       notes || `${type.replace("_", " ")} — Ref: ${reference || "N/A"}`,
-      reference
+      reference,
+      supplierName
     );
   },
   recordReturnClaim: (supplierId, amount, notes = "") => {
@@ -4604,31 +4721,10 @@ export const dbSales = {
   getAll: () => getCollection(KEYS.SALES),
   getById: (id) => getScopedRecordById(KEYS.SALES, id),
   getNextVoucherNo: (billingType = "patient") => {
-    const sales = getCollection(KEYS.SALES) || [];
-    const b2b = getCollection(KEYS.B2B_SALES) || [];
-    const allSales = [...sales, ...b2b];
-
     if (billingType === "wholesale_party" || billingType === "b2b") {
-      let maxNum = 0;
-      allSales.forEach((s) => {
-        const vNo = s.voucher_no || s.receipt_no || s.invoice_no || "";
-        const match = vNo.match(/^(?:WS|B2B|W)-(\d+)$/i);
-        if (match) {
-          maxNum = Math.max(maxNum, parseInt(match[1], 10));
-        }
-      });
-      return `WS-${maxNum + 1}`;
-    } else {
-      let maxNum = 0;
-      allSales.forEach((s) => {
-        const vNo = s.voucher_no || s.receipt_no || s.invoice_no || "";
-        const match = vNo.match(/^(?:POS|RET|Inv|S)-(\d+)$/i);
-        if (match) {
-          maxNum = Math.max(maxNum, parseInt(match[1], 10));
-        }
-      });
-      return `POS-${maxNum + 1}`;
+      return generateSequentialInvoiceNo("WS");
     }
+    return generateSequentialInvoiceNo("POS");
   },
   exportCSV: (salesList, filename = "Sale_Invoice_List.csv") => {
     const list = salesList || getCollection(KEYS.SALES);
@@ -4659,8 +4755,20 @@ export const dbSales = {
     return csv;
   },
   addSaleInvoice: (saleData) => {
-    const sales = getCollection(KEYS.SALES);
-    const voucherNo = saleData.voucher_no || dbSales.getNextVoucherNo();
+    const sales = getCollection(KEYS.SALES) || [];
+    const b2b = getCollection(KEYS.B2B_SALES) || [];
+    const allSales = [...sales, ...b2b];
+
+    // Check if provided voucher_no is already taken by an existing sale
+    let voucherNo = (saleData.voucher_no || saleData.invoice_no || saleData.receipt_no || "").trim();
+    const isDuplicate = voucherNo && allSales.some((s) => {
+      const existing = (s.voucher_no || s.invoice_no || s.receipt_no || "").trim();
+      return existing && existing.toLowerCase() === voucherNo.toLowerCase();
+    });
+
+    if (!voucherNo || isDuplicate) {
+      voucherNo = dbSales.getNextVoucherNo(saleData.billing_type);
+    }
     const totalAmount = Number(saleData.total_amount) || 0;
     const isCredit = saleData.payment_mode === "Credit";
     const paidAmount = isCredit ? (Number(saleData.paid_amount) || 0) : totalAmount;
@@ -4711,8 +4819,19 @@ export const dbSales = {
     return newSale;
   },
   checkout: (sale) => {
-    const sales = getCollection(KEYS.SALES);
-    const invoiceNo = generateSequentialInvoiceNo("POS");
+    const sales = getCollection(KEYS.SALES) || [];
+    const b2b = getCollection(KEYS.B2B_SALES) || [];
+    const allSales = [...sales, ...b2b];
+
+    let invoiceNo = (sale.voucher_no || sale.invoice_no || sale.receipt_no || "").trim();
+    const isDuplicate = invoiceNo && allSales.some((s) => {
+      const existing = (s.voucher_no || s.invoice_no || s.receipt_no || "").trim();
+      return existing && existing.toLowerCase() === invoiceNo.toLowerCase();
+    });
+
+    if (!invoiceNo || isDuplicate) {
+      invoiceNo = generateSequentialInvoiceNo("POS");
+    }
     const subtotal = Number(sale.subtotal_amount) || Number(sale.total_amount) || 0;
     const discount = Number(sale.discount_amount) || 0;
     const total = Math.max(0, subtotal - discount);
@@ -4833,8 +4952,17 @@ export const dbPurchases = {
   getAll: () => getCollection(KEYS.PURCHASES),
   getById: (id) => getScopedRecordById(KEYS.PURCHASES, id),
   add: (purchase) => {
-    const purchases = getCollection(KEYS.PURCHASES);
-    const invoiceNo = purchase.invoice_no || generateSequentialInvoiceNo("PUR");
+    const purchases = getCollection(KEYS.PURCHASES) || [];
+
+    let invoiceNo = (purchase.invoice_no || purchase.voucher_no || purchase.receipt_no || "").trim();
+    const isDuplicate = invoiceNo && purchases.some((p) => {
+      const existing = (p.invoice_no || p.voucher_no || p.receipt_no || "").trim();
+      return existing && existing.toLowerCase() === invoiceNo.toLowerCase();
+    });
+
+    if (!invoiceNo || isDuplicate) {
+      invoiceNo = generateSequentialInvoiceNo("PUR");
+    }
     const totalAmount = Number(purchase.total_amount) || 0;
     const paidAmount = Number(purchase.paid_amount) || 0;
     const balanceDue = Math.max(0, totalAmount - paidAmount);
@@ -4850,35 +4978,47 @@ export const dbPurchases = {
       created_at: new Date().toISOString(),
     };
 
-    const dest = purchase.destination_type === "store" ? "store" : "warehouse";
+    // Default to 'store' if destination_type is 'store' or not explicitly 'warehouse'
+    const dest = purchase.destination_type === "warehouse" ? "warehouse" : "store";
 
     // Process each item: auto-create missing inventory + apply multi-unit base conversion
     (purchase.items || []).forEach((item) => {
       let inv = item.inventory_id ? dbInventory.getById(item.inventory_id) : null;
 
-      // Auto-register new medicine in inventory if not found
+      // If no inventory_id, look up existing item by name (case-insensitive)
       if (!inv && item.medicine_name && item.medicine_name.trim()) {
+        inv = dbInventory.findByName(item.medicine_name.trim());
+      }
+
+      // Auto-register new medicine in inventory if still not found
+      if (!inv && item.medicine_name && item.medicine_name.trim()) {
+        const initialCost = Number(item.cost_price || item.rate || item.tp_rate) || 0;
+        const initialSale = Number(item.sale_price || item.retail_price || item.box_sale_price) || (initialCost > 0 ? initialCost * 1.2 : 0);
         inv = dbInventory.add({
           medicine_name: item.medicine_name.trim(),
-          item_code: item.item_code || "",
-          generic_name: item.generic_name || "",
-          category: item.category || "General",
-          company_name: item.company_name || "",
+          item_code: item.item_code || item.product_code || "",
+          generic_name: item.generic_name || item.product_description || "",
+          product_description: item.product_description || item.generic_name || "",
+          category: item.category || "Medicine",
+          company_name: item.company_name || purchase.supplier_name || "General Pharma",
           has_multi_unit: Boolean(item.has_multi_unit),
           strips_per_box: Number(item.strips_per_box) || 1,
           units_per_strip: Number(item.units_per_strip) || 1,
-          box_label: item.box_label || "Pack",
+          box_label: item.box_label || item.packing || "Pack",
           strip_label: item.strip_label || "Strip",
-          unit_label: item.unit_label || "Unit",
-          cost_price_per_box: Number(item.cost_price) || 0,
-          box_sale_price: Number(item.sale_price) || 0,
-          strip_sale_price: Number(item.sale_price) || 0,
-          unit_sale_price: Number(item.sale_price) || 0,
+          unit_label: item.unit_label || item.packing || "Unit",
+          cost_price: initialCost,
+          cost_price_per_box: initialCost,
+          box_sale_price: initialSale,
+          strip_sale_price: initialSale,
+          unit_sale_price: initialSale,
+          sale_price: initialSale,
           total_base_stock: 0,
           store_stock: 0,
+          stock_qty: 0,
           warehouse_stock: 0,
           low_stock_threshold: 6,
-          expiry_date: item.expiry_date || "",
+          expiry_date: item.expiry_date || item.exp_date || "",
         });
         // Patch the item with the newly created inventory_id for invoice record
         item.inventory_id = inv ? inv.id : item.inventory_id;
@@ -4887,11 +5027,33 @@ export const dbPurchases = {
       if (inv) {
         // Correct multi-unit base conversion: boxes → base units or explicit qty_base_units
         const baseUnits = Number(item.qty_base_units) || convertUnitsToBase(
-          Number(item.qty) || 1,
+          Number(item.qty || item.paid_qty || 1) + Number(item.bonus_qty || 0),
           item.received_unit_type || "unit",
           inv
         );
         dbInventory.addStock(inv.id, baseUnits, dest);
+
+        // Auto-update inventory cost rates & retail prices if new rates are received in GRN
+        const newCostRate = Number(item.rate || item.cost_price || item.tp_rate) || 0;
+        const newSalePrice = Number(item.sale_price || item.retail_price) || 0;
+        const rateUpdates = {};
+
+        if (newCostRate > 0) {
+          rateUpdates.cost_price_per_box = newCostRate;
+          rateUpdates.cost_price = newCostRate;
+          rateUpdates.last_purchase_rate = newCostRate;
+        }
+        if (newSalePrice > 0) {
+          rateUpdates.unit_sale_price = newSalePrice;
+          rateUpdates.box_sale_price = newSalePrice;
+          rateUpdates.sale_price = newSalePrice;
+        }
+        if (item.expiry_date || item.exp_date) {
+          rateUpdates.expiry_date = item.expiry_date || item.exp_date;
+        }
+        if (Object.keys(rateUpdates).length > 0) {
+          dbInventory.update(inv.id, rateUpdates);
+        }
       }
 
     });
@@ -4916,8 +5078,12 @@ export const dbPurchases = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("purchases", newPurchase, "CREATE", newPurchase.id);
     }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+    }
     return newPurchase;
   },
+  create: (purchase) => dbPurchases.add(purchase),
   getNextVoucherNo: () => {
     const list = getCollection(KEYS.PURCHASES);
     if (!list.length) return "P-1001";
@@ -5053,8 +5219,19 @@ export const dbB2BSales = {
   getAll: () => getCollection(KEYS.B2B_SALES),
   getById: (id) => getScopedRecordById(KEYS.B2B_SALES, id),
   checkout: (saleData) => {
-    const sales = getCollection(KEYS.B2B_SALES);
-    const invoiceNo = generateSequentialInvoiceNo("WHO");
+    const sales = getCollection(KEYS.B2B_SALES) || [];
+    const posSales = getCollection(KEYS.SALES) || [];
+    const allSales = [...sales, ...posSales];
+
+    let invoiceNo = (saleData.invoice_no || saleData.voucher_no || saleData.receipt_no || "").trim();
+    const isDuplicate = invoiceNo && allSales.some((s) => {
+      const existing = (s.invoice_no || s.voucher_no || s.receipt_no || "").trim();
+      return existing && existing.toLowerCase() === invoiceNo.toLowerCase();
+    });
+
+    if (!invoiceNo || isDuplicate) {
+      invoiceNo = generateSequentialInvoiceNo("WS");
+    }
     const paidAmount = Number(saleData.paid_amount) || 0;
     const totalAmount = Number(saleData.total_amount) || 0;
     const balanceDue = Math.max(0, totalAmount - paidAmount);

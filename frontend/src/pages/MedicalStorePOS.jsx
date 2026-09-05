@@ -372,8 +372,34 @@ export default function MedicalStorePOS() {
       }
     } else if (e.key === "Enter") {
       e.preventDefault();
+      const query = (inventoryQuery || "").trim();
+
+      // Check for quantity multiplier syntax (e.g. "10*GHR-101" or "5*PANADOL")
+      let addQty = 1;
+      let targetQuery = query;
+      if (query.includes("*")) {
+        const parts = query.split("*");
+        const parsedQty = parseInt(parts[0].trim(), 10);
+        if (!isNaN(parsedQty) && parsedQty > 0 && parts[1].trim()) {
+          addQty = parsedQty;
+          targetQuery = parts[1].trim();
+        }
+      }
+
+      // Check direct hit item code or exact name match first
+      const exactCodeMatch = dbInventory.getAll().find(
+        (inv) => (inv.item_code || "").toLowerCase() === targetQuery.toLowerCase() || (inv.id || "").toLowerCase() === targetQuery.toLowerCase()
+      );
+
+      if (exactCodeMatch) {
+        addToCart(exactCodeMatch, addQty);
+        setInventoryQuery("");
+        return;
+      }
+
       if (visibleList.length > 0 && visibleList[selectedInventoryIndex]) {
-        addToCart(visibleList[selectedInventoryIndex], 1);
+        addToCart(visibleList[selectedInventoryIndex], addQty);
+        setInventoryQuery("");
       }
     }
   }
@@ -1527,7 +1553,6 @@ export default function MedicalStorePOS() {
                   Record Purchase &amp; Resume Billing
                 </button>
               </div>
-            )}
           </div>
         </div>
       )}

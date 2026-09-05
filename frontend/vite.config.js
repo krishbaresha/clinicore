@@ -149,6 +149,7 @@ export default defineConfig(({ command }) => ({
     sourcemap: false,
   },
   server: {
+    host: true,
     watch: {
       ignored: ['**/src-tauri/**', '**/target/**', '**/.git/**'],
     },
