@@ -2,10 +2,10 @@
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
   "version": "2.5.30-release",
-  "last_session_date": "2026-09-05T23:10:00+05:00",
-  "session_id": "part-216",
-  "active_milestone": 217,
-  "milestone_title": "Small Screen Adaptive UI & Responsive Cockpit Engine + Collapsible Bulk CSV Inventory Dropzone + v2.5.30 Desktop & Web Release",
+  "last_session_date": "2026-09-06T02:28:00+05:00",
+  "session_id": "part-217",
+  "active_milestone": 218,
+  "milestone_title": "Sale Invoice Urdu Disclaimer Sharp Typography Upgrade (Noto Nastaliq / Noto Sans Arabic / Urdu Typesetting Font Stack & Non-Bold 500 Crisp Rendering)",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -16,13 +16,14 @@
     "python_compile_passed": true
   },
   "current_status": {
-    "phase": "Milestone 216 — Small Screen Laptop UI Optimization & Collapsible Bulk CSV Upload (100%)",
+    "phase": "Milestone 217 — Sale Invoice Urdu Disclaimer Sharp Typography Upgrade (100%)",
     "test_suite_status": "634/634 Tests Passing, 0 AST Errors, 0 Secret Leaks, Clean Vite Production Build",
-    "build_status": "Clean Vite Production Bundle Compiled Successfully & Deployed to VPS + Desktop Installers Generated",
+    "build_status": "Clean Vite Production Bundle Compiled Successfully",
     "git_branch": "main",
     "last_commit": "38f3b1d"
   },
   "completed_milestones": [
+    "Milestone 217: Sale Invoice Urdu Disclaimer Sharp Typography Upgrade: Replaced heavy bold with crisp font-weight 500, antialiased rendering, and high-fidelity Noto Nastaliq / Noto Sans Arabic typography stack",
     "Milestone 215: Bulk Store Inventory CSV Intelligence Engine: Regex Smart Packing Extractor, Inverted Unit Normalizer, Title-Casing, Company Breakdown Analytics & Zero-Duplicate Merge Guard",
     "Milestone 214: Universal Multi-Device Real-Time Auto-Sync Engine, Fleet Heartbeat Telemetry & Live Connected Terminals Radar",
     "Milestone 213: Interactive Software Updates & Release Center: 1-Click Update Button, Version Comparator, Progress Dialog & Cache Purge Engine",

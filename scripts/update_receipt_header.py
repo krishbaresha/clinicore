@@ -6,10 +6,16 @@ dest_png = r"e:\Soft\DrCreate\Clinicore\frontend\src\assets\receipt-header.png"
 dest_js = r"e:\Soft\DrCreate\Clinicore\frontend\src\utils\receiptHeaderBase64.js"
 
 img = Image.open(src_img)
-print("Original size:", img.size, img.mode)
+print("Original size:", img.size)
+
+# Crop the top and bottom whitespace so there is ZERO vertical gap
+# Content top is around y=87, bottom is y=334
+# We crop to (0, 80, 1024, 340)
+cropped = img.crop((0, 80, img.size[0], 340))
+print("Cropped size:", cropped.size)
 
 # Save high quality PNG to assets
-img.save(dest_png, format="PNG", optimize=True)
+cropped.save(dest_png, format="PNG", optimize=True)
 
 # Generate Base64
 with open(dest_png, "rb") as f:
@@ -20,4 +26,4 @@ js_content = 'export const RECEIPT_HEADER_IMAGE_BASE64 = "data:image/png;base64,
 with open(dest_js, "w", encoding="utf-8") as f:
     f.write(js_content)
 
-print("Updated receipt-header.png and receiptHeaderBase64.js to M. Asif Ashraf Khan! Length:", len(b64_data))
+print("Successfully cropped receipt header and updated receiptHeaderBase64.js! Length:", len(b64_data))

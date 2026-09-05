@@ -102,6 +102,7 @@
   --font-body-md: "Inter", sans-serif;
   --font-body-sm: "Inter", sans-serif;
   --font-label-md: "Inter", sans-serif;
+  --font-urdu: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif;
 
   /* Text Size + Line Height + Letter Spacing mappings */
   --text-display-lg: 48px;

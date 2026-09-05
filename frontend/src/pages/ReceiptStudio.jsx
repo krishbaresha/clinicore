@@ -1383,7 +1383,7 @@ export default function ReceiptStudio() {
 
                     case "urdu_footer":
                       return clinicConfig.urdu_footer_text ? (
-                        <div key={block.id} className="mt-3 pt-2 border-t border-dashed border-slate-950 text-center font-urdu text-[14px] font-bold text-slate-950 leading-tight whitespace-nowrap overflow-hidden text-ellipsis" dir="rtl">
+                        <div key={block.id} className="mt-3 pt-2 border-t border-dashed border-slate-950 text-center font-urdu text-[13.5px] font-medium text-slate-950 leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis antialiased" dir="rtl">
                           {clinicConfig.urdu_footer_text}
                         </div>
                       ) : null;

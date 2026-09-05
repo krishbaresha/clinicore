@@ -54,6 +54,14 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
+- **Phase:** Milestone 217 — Sale Invoice Urdu Disclaimer Typography Refinement, Zero-Gap Header Crop & Receipt Spacing Cleanup (Completed)
+- **Last worked on:**
+  1. **Zero-Gap Header Image Crop:** Cropped top & bottom whitespace (`1024x458` ➔ `1024x260`) from `receipt-header.png` and regenerated `receiptHeaderBase64.js`, eliminating the empty white gap between the clinic logo header and the meta-info dotted divider.
+  2. **Removed Double Dotted Divider:** Removed extra `<div class="dotted-line"></div>` after *"Thank You. Please Visit Again."* and streamlined it with the Urdu disclaimer top border into a clean single line.
+  3. **Removed Unwanted "Payment: Credit / Udhaar" Display:** Fixed financial totals block to only show `"Payment: Credit / Udhaar"` when a sale is legitimately on credit/udhaar or has an unpaid balance due; regular cash sales with normal cash received or walk-in transactions no longer show any unwanted udhaar labels.
+  4. **High-Fidelity Urdu Font Stack:** Upgraded Urdu disclaimer typography across [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js), [ReceiptStudio.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/ReceiptStudio.jsx), and [index.css](file:///e:/Soft/DrCreate/Clinicore/frontend/src/index.css) to `'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif` at crisp `font-weight: 500`.
+  5. **Pre-Push Verification:** Successfully verified 634/634 unit test suite passing, 0 AST errors, 0 secret leaks, and clean Vite production compilation.
+
 - **Phase:** Milestone 216 — Production Fleet Telemetry, SSL Reverse Proxy on Hostinger VPS & Desktop App v2.5.29 Multi-Device Release (Completed)
 - **Last worked on:**
   1. **Canonical HTTPS API Reverse Proxy:** Configured Nginx `/api` reverse proxy on Port 443 with TLS certificates (`/etc/letsencrypt/live/api.clinicore.me/fullchain.pem`) routing all cloud sync traffic to the Node.js API process on port 5000.

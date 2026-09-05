@@ -571,19 +571,20 @@ export function printThermalReceipt(sale, clinicData = null) {
             <span>Grand Total</span>
             <span>Rs. ${Number(netTotal).toFixed(2)}</span>
           </div>
-          ${sale.payment_type === "cash" ? `
+          ${(sale.payment_type === "credit" || sale.balance_due > 0 || (sale.payment_mode && String(sale.payment_mode).toLowerCase().includes("credit"))) ? `
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #b45309; margin-top: 2px;">
+            <span>Payment</span>
+            <span>Credit / Udhaar</span>
+          </div>` : (cashTendered > 0 || changeDue > 0) ? `
           <div style="display: flex; justify-content: space-between; font-size: 11px; color: #4b5563; margin-top: 1px;">
             <span>Cash Paid</span>
             <span>Rs. ${Number(cashTendered).toFixed(2)}</span>
           </div>
+          ${changeDue > 0 ? `
           <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #0f766e;">
             <span>Change Return</span>
             <span>Rs. ${Number(changeDue).toFixed(2)}</span>
-          </div>` : `
-          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #b45309; margin-top: 2px;">
-            <span>Payment</span>
-            <span>Credit / Udhaar</span>
-          </div>`}
+          </div>` : ""}` : ""}
         </div>` : ""}
 
         <div class="dotted-line"></div>
@@ -592,13 +593,12 @@ export function printThermalReceipt(sale, clinicData = null) {
         ${showNote ? `
         <div style="text-align: center; margin: 4px 0 3px 0; font-size: 11px; font-weight: 600; color: #000; line-height: 1.35;">
           ${escapeHtml(cfg.custom_policy_note || "Thank You. Please Visit Again.")}
-        </div>
-        <div class="dotted-line"></div>` : ""}
+        </div>` : ""}
 
         <!-- Urdu Footer Disclaimer (1-Line Compact Professional Font) -->
         ${(showUrdu || cfg.show_urdu_footer || cfg.urdu_footer_text) ? `
-        <div style="border-top: 1px dashed #000; margin-top: 8px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif;">
-          <div style="font-size: 13.5px; line-height: 1.3; font-weight: 700; color: #000; letter-spacing: -0.2px;">
+        <div style="border-top: 1px dashed #000; margin-top: 4px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;">
+          <div style="font-size: 13.5px; line-height: 1.4; font-weight: 500; color: #000; letter-spacing: 0.1px;">
             ${escapeHtml(cfg.urdu_footer_text || "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔")}
           </div>
         </div>` : ""}
@@ -800,7 +800,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
 
         <!-- Urdu Footer (urdu_footer block) -->
         ${showUrdu && cfg.urdu_footer_text ? `
-        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif;"><div style="font-size: 13.5px; line-height: 1.3; font-weight: 700; color: #000; letter-spacing: -0.2px;">${escapeHtml(cfg.urdu_footer_text)}</div></div>
+        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;"><div style="font-size: 13.5px; line-height: 1.4; font-weight: 500; color: #000; letter-spacing: 0.1px;">${escapeHtml(cfg.urdu_footer_text)}</div></div>
         <div class="dotted"></div>` : ""}
 
         <!-- Custom Policy Note (custom_note block) -->
@@ -2201,8 +2201,8 @@ export function printSaleInvoiceReceipt(sale, clinic) {
         </div>
 
         <!-- Urdu Footer Disclaimer (Specifically for Sale Invoices - 1-Line Compact) -->
-        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif;">
-          <div style="font-size: 13.5px; line-height: 1.3; font-weight: 700; color: #000; letter-spacing: -0.2px;">
+        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;">
+          <div style="font-size: 13.5px; line-height: 1.4; font-weight: 500; color: #000; letter-spacing: 0.1px;">
             خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔
           </div>
         </div>
