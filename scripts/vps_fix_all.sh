@@ -164,8 +164,8 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
 
     # Route ALL /api/* requests to Node.js backend
-    location /api {
-        proxy_pass http://127.0.0.1:5000;
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000/api/;
         client_max_body_size 50M;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -176,6 +176,24 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 120;
+    }
+
+    location = /api {
+        proxy_pass http://127.0.0.1:5000/api/;
+        client_max_body_size 50M;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120;
+    }
+
+    location = /health {
+        proxy_pass http://127.0.0.1:5000/health;
     }
 
     # Frontend SPA Root
@@ -230,8 +248,8 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
 
     # Route ALL /api/* requests to Node.js backend
-    location /api {
-        proxy_pass http://127.0.0.1:5000;
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000/api/;
         client_max_body_size 50M;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -242,6 +260,24 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 120;
+    }
+
+    location = /api {
+        proxy_pass http://127.0.0.1:5000/api/;
+        client_max_body_size 50M;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120;
+    }
+
+    location = /health {
+        proxy_pass http://127.0.0.1:5000/health;
     }
 
     # Frontend SPA Root
@@ -300,6 +336,10 @@ chown -R www-data:www-data "$CLINICORE_DIR"
 chmod -R 755 "$CLINICORE_DIR"
 chmod -R 775 "$BACKEND_DIR/storage"
 chmod 640 "$BACKEND_DIR/.env"
+
+# Install Backend Node.js dependencies
+cd /var/www/clinicore/backend
+npm install --production --no-audit --no-fund || true
 
 # Register and start Pure Node.js API Service on Port 5000
 cat > /etc/systemd/system/clinicore-node-api.service <<NODE_SERVICE_EOF
@@ -366,11 +406,6 @@ systemctl daemon-reload
 systemctl enable clinicore-automation.service 2>/dev/null || true
 systemctl restart clinicore-automation.service 2>/dev/null || true
 echo "  Systemd service 'clinicore-automation' registered & running."
-
-# 2. Add Crontab as fallback redundancy
-CRON_ENTRY="* * * * * php /var/www/clinicore/backend/cron_daily_backup.php >> /var/log/clinicore_automation.log 2>&1"
-(crontab -u www-data -l 2>/dev/null | grep -v "cron_daily_backup.php"; echo "$CRON_ENTRY") | crontab -u www-data -
-echo "  Crontab installed for www-data."
 
 # ─────────────────────────────────────────────────────────
 # VERIFICATION
