@@ -54,6 +54,14 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
+- **Phase:** Milestone 216 — Production Fleet Telemetry, SSL Reverse Proxy on Hostinger VPS & Desktop App v2.5.29 Multi-Device Release (Completed)
+- **Last worked on:**
+  1. **Canonical HTTPS API Reverse Proxy:** Configured Nginx `/api` reverse proxy on Port 443 with TLS certificates (`/etc/letsencrypt/live/api.clinicore.me/fullchain.pem`) routing all cloud sync traffic to the Node.js API process on port 5000.
+  2. **Active Multi-Device Fleet Telemetry Verified:** Heartbeats from Desktop & Web terminals successfully register client public IP, staff username, app version (`v2.5.29`), and outbox backlog count to `/api/v1/telemetry/devices`.
+  3. **Removed Hardcoded 127.0.0.1 Fallback:** Updated [DeveloperAdminPanel.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/DeveloperAdminPanel.jsx) radar table to dynamically display real-time remote signals with auto-scan.
+  4. **Bumped SemVer to v2.5.29:** Updated [package.json](file:///e:/Soft/DrCreate/Clinicore/frontend/package.json), [tauri.conf.json](file:///e:/Soft/DrCreate/Clinicore/frontend/src-tauri/tauri.conf.json), [syncEngine.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/api/syncEngine.js), and deployed live to `https://clinicore.me` and `https://api.clinicore.me`.
+  5. **Automated Verification:** Verified 634/634 unit test suite passing, 0 AST errors, 0 credential leaks, and clean Vite bundle compilation.
+
 - **Phase:** Milestone 215 — Bulk Store Inventory CSV Intelligence Engine: Regex Smart Packing Extractor, Inverted Unit Normalizer, Title-Casing, Company Breakdown Analytics & Zero-Duplicate Merge Guard (Completed)
 - **Last worked on:**
   1. **Smart Regex Packing & Product Name Extractor:** Implemented `extractSmartPackingAndName()` and `normalizePackingUnit()` in `frontend/src/api/db.js` capable of extracting embedded quantities and dosages from names (e.g. `"hepakent sugarfree 120ml"` ➔ Name: `"Hepakent Sugarfree"`, Packing: `"120 ML"`; `"gastric plus with podina 75tabs"` ➔ Name: `"Gastric Plus With Podina"`, Packing: `"75 TABS"`).

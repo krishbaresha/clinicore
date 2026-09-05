@@ -1,11 +1,11 @@
 {
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
-  "version": "2.5.28-release",
-  "last_session_date": "2026-09-05T21:35:00+05:00",
-  "session_id": "part-214",
-  "active_milestone": 215,
-  "milestone_title": "Bulk Store Inventory CSV Intelligence Engine: Regex Smart Packing Extractor, Inverted Unit Normalizer, Title-Casing, Company Breakdown Analytics & Zero-Duplicate Merge Guard",
+  "version": "2.5.29-release",
+  "last_session_date": "2026-09-05T22:30:00+05:00",
+  "session_id": "part-215",
+  "active_milestone": 216,
+  "milestone_title": "Production Fleet Telemetry, SSL Reverse Proxy on Hostinger VPS & Desktop App v2.5.29 Multi-Device Release",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
