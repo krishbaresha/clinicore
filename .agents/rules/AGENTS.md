@@ -79,6 +79,9 @@ ClinicFlow/
     - Always read secrets from `process.env` / `import.meta.env` or dynamic runtime user settings (`system_settings` / `localStorage.getItem("cf_resend_api_key")`).
 14. **Rule 19 — Private Repository & Gated CI/CD Resilience:**
     - The repository is Private. In CI/CD pipelines (`.github/workflows/deploy.yml`), SSH deployments must be resilient against transient cloud firewall dropped packets (`continue-on-error: true` on non-blocking VPS steps) to ensure automated build artifacts, unit tests, and releases always succeed.
+15. **Rule 20 — 100% Mandatory Hinglish Communication Standard (Permanent):**
+    - The AI assistant MUST ALWAYS converse and communicate with the user in **Roman Urdu / Hinglish** (e.g. *"Aapka code push ho chuka hai"*, *"Yeh feature active kar diya gaya hai"*).
+    - NEVER respond in pure Arabic script Urdu unless explicitly asked for UI localization strings. All explanations, summaries, and conversational responses MUST remain strictly in clear, natural Hinglish.
 
 ---
 
@@ -95,5 +98,6 @@ ClinicFlow/
 - **Zero-Regression Rule:** Never break existing working code, thermal print engines, or database collections.
 - **Dual Persistence:** All licensing and system settings must sync both to local `localStorage` and MySQL backend (`system_settings`).
 - **Server-Side Background Autonomy:** Mission-critical automation must run via 24/7 Linux systemd daemons and crontab on the Hostinger VPS, not browser timers.
+- **Communication Language:** 100% Hinglish / Roman Urdu in all turns without exception.
 
 
