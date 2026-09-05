@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { dbSales, dbInventory, dbParties, dbAccounts, dbClinic, dbGrnMetadata, dbVisits, dbPatients, dbUsers, dbTransports, toTitleCase, getMaxDiscountLimit } from "../api/db.js";
+import { dbSales, dbInventory, dbParties, dbAccounts, dbClinic, dbGrnMetadata, dbVisits, dbPatients, dbUsers, dbTransports, dbSuppliers, toTitleCase, getMaxDiscountLimit } from "../api/db.js";
 import { printSaleInvoiceReceipt } from "../utils/thermalPrinter.js";
 import { CLINIC_LOGO_BASE64 } from "../utils/clinicLogoBase64.js";
 import { RECEIPT_HEADER_IMAGE_BASE64 } from "../utils/receiptHeaderBase64.js";
@@ -560,9 +560,27 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
     const list = [{ id: "All", label: "🏢 All Companies / Brands", code: "ALL" }];
     const seen = new Set(["all"]);
 
+    // 1. Add all suppliers / companies from dbSuppliers & dbCompanies
+    const sups = dbSuppliers.getAll() || [];
+    sups.forEach((s) => {
+      const name = (s.name || "").trim();
+      const code = (s.supplier_code || s.code || "").trim().toUpperCase();
+      const key = name.toLowerCase();
+      if (name && !seen.has(key)) {
+        seen.add(key);
+        list.push({
+          id: name,
+          label: `${code ? `[${code}] ` : ""}${name}`,
+          code: code || name.slice(0, 3).toUpperCase(),
+          name: name,
+        });
+      }
+    });
+
+    // 2. Add any additional companies from active inventory
     inventoryList.forEach((i) => {
       const comp = (i.company_name || "").trim();
-      const code = (i.item_code || "").trim().toUpperCase();
+      const code = (i.company_code || i.item_code || "").trim().toUpperCase();
       const key = comp.toLowerCase();
       if (comp && !seen.has(key)) {
         seen.add(key);

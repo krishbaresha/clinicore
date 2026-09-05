@@ -2227,9 +2227,10 @@ export const dbInventory = {
       const { name: cleanName, packing: extractedPacking } = extractSmartPackingAndName(raw.medicine_name, raw.packing || raw.unit_label);
       if (!cleanName) continue;
 
-      const rawComp = raw.company_name || dbInventory.resolveCompanyCode(raw.item_code) || "BM Pvt LTD";
+      const rawComp = raw.company_name || dbInventory.resolveCompanyCode(raw.company_code || raw.item_code) || "BM Pvt LTD";
       const company = toTitleCaseClean(rawComp) || "BM Pvt LTD";
-      const code = raw.item_code ? raw.item_code.toUpperCase().trim() : (company.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN");
+      const compCode = raw.company_code ? raw.company_code.toUpperCase().trim() : (raw.item_code ? raw.item_code.toUpperCase().trim() : (company.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN"));
+      const itemCode = raw.item_code ? raw.item_code.toUpperCase().trim() : compCode;
       
       // Auto-register company in dbSuppliers & dbCompanies if not already registered (deduplicated)
       if (company && company.trim()) {
@@ -2237,12 +2238,12 @@ export const dbInventory = {
         const existingSuppliers = dbSuppliers.getAll() || [];
         const supplierExists = existingSuppliers.some(
           (s) => (s.name || "").toLowerCase().trim() === compClean.toLowerCase() ||
-                 (s.supplier_code || "").toLowerCase().trim() === code.toLowerCase()
+                 (s.supplier_code || "").toLowerCase().trim() === compCode.toLowerCase()
         );
         if (!supplierExists) {
           dbSuppliers.add({
             name: compClean,
-            supplier_code: code || `SUP-${Math.floor(100 + Math.random() * 900)}`,
+            supplier_code: compCode || `SUP-${Math.floor(100 + Math.random() * 900)}`,
             phone: "",
             city: "Hyderabad",
             address: "Pharma Market",
@@ -2255,13 +2256,13 @@ export const dbInventory = {
           const existingComps = dbCompanies.getAll() || [];
           const compExists = existingComps.some(
             (c) => (c.name || "").toLowerCase().trim() === compClean.toLowerCase() ||
-                   (c.code || "").toLowerCase().trim() === code.toLowerCase()
+                   (c.code || "").toLowerCase().trim() === compCode.toLowerCase()
           );
           if (!compExists) {
             try {
               dbCompanies.add({
                 name: compClean,
-                code: code,
+                code: compCode,
                 category: "Allopathy / Homeopathy",
                 status: "active"
               });
@@ -2292,7 +2293,8 @@ export const dbInventory = {
           ...current[existingIdx],
           medicine_name: cleanName,
           company_name: company,
-          item_code: code || current[existingIdx].item_code,
+          company_code: compCode || current[existingIdx].company_code,
+          item_code: itemCode || current[existingIdx].item_code,
           product_description: desc || current[existingIdx].product_description,
           generic_name: desc || current[existingIdx].generic_name,
           category: category || current[existingIdx].category,
@@ -2319,7 +2321,8 @@ export const dbInventory = {
           clinic_id: "clinic_001",
           medicine_name: cleanName,
           company_name: company,
-          item_code: code,
+          company_code: compCode,
+          item_code: itemCode,
           product_description: desc,
           generic_name: desc || "Homeopathic Dilution / Mother Tincture",
           naration: desc,
@@ -2457,15 +2460,16 @@ export const dbInventory = {
 };
 
 /** Generate Sample CSV Template for Bulk Inventory Upload */
+/** Generate Sample CSV Template for Bulk Inventory Upload with Company Code & Item Code */
 export function exportInventoryTemplateCSV() {
-  const headers = "S/R No,Medicine Name,Description,Packing,Company Name,Item Code,Cost Price,Retail Price,Medical Store Stock,Stock Level Alert,Category";
+  const headers = "S/R No,Medicine Name,Description,Packing,Company Name,Company Code,Item Code,Cost Price,Retail Price,Medical Store Stock,Stock Level Alert,Category";
   const rows = [
-    '1,"AMPHOSCA (FEMALE)","Homeopathic Tablets 60s","60 TABS","LEHNING FRANCE","LEH-01",1400,1990,20,5,"Tablets"',
-    '2,"BIOCARDE DROPS","Cardiac Drops 30ml","30 ML","LEHNING FRANCE","LEH-02",950,1340,25,5,"Drops"',
-    '3,"DIACURE CAPSULES","Diabetes Support 60s","60 CAPS","LEHNING FRANCE","LEH-03",1550,2190,15,5,"Capsules"',
-    '4,"TONIC VEGETAL SYRUP","Herbal Restorative Syrup 250ml","250 ML","LEHNING FRANCE","LEH-04",1450,2040,15,5,"Syrup"',
-    '5,"L-COMPLEXES","Drops & Tabs Combo Set","30 ML / 60 TABS","LEHNING FRANCE","LEH-05",900,1290,20,5,"Combination"',
-    '6,"MOTHER TINCTURES","Homeopathic Dilution 1000ml","1000 ML","LEHNING FRANCE","LEH-06",12800,18000,5,2,"Mother Tinctures"'
+    '1,"AMPHOSCA (FEMALE)","Homeopathic Tablets 60s","60 TABS","LEHNING FRANCE","LEH","LEH-01",1400,1990,20,5,"Tablets"',
+    '2,"BIOCARDE DROPS","Cardiac Drops 30ml","30 ML","LEHNING FRANCE","LEH","LEH-02",950,1340,25,5,"Drops"',
+    '3,"DIACURE CAPSULES","Diabetes Support 60s","60 CAPS","LEHNING FRANCE","LEH","LEH-03",1550,2190,15,5,"Capsules"',
+    '4,"TONIC VEGETAL SYRUP","Herbal Restorative Syrup 250ml","250 ML","LEHNING FRANCE","LEH","LEH-04",1450,2040,15,5,"Syrup"',
+    '5,"L-COMPLEXES","Drops & Tabs Combo Set","30 ML / 60 TABS","LEHNING FRANCE","LEH","LEH-05",900,1290,20,5,"Combination"',
+    '6,"MOTHER TINCTURES","Homeopathic Dilution 1000ml","1000 ML","LEHNING FRANCE","LEH","LEH-06",12800,18000,5,2,"Mother Tinctures"'
   ];
   return `${headers}\n${rows.join("\n")}`;
 }
@@ -2610,8 +2614,12 @@ export function parseInventoryCSV(csvText) {
   const nameIdx = rawHeaders.findIndex((h) => h === "medicine name" || h === "item name" || h === "product name" || (h.includes("name") && !h.includes("company") && !h.includes("incharge")));
   const descIdx = rawHeaders.findIndex((h) => h.includes("description") || h.includes("generic") || h.includes("formula") || h.includes("naration"));
   const packIdx = rawHeaders.findIndex((h) => h.includes("packing") || h.includes("pack") || h.includes("unit label") || h.includes("size") || h.includes("volume"));
-  const compIdx = rawHeaders.findIndex((h) => h.includes("company") || h.includes("brand") || h.includes("mfg") || h.includes("manufacturer"));
-  const codeIdx = rawHeaders.findIndex((h) => h === "item code" || h === "code" || h.includes("item code") || h.includes("barcode") || h.includes("sku"));
+  
+  // Company & Code Indexes
+  const compIdx = rawHeaders.findIndex((h) => (h === "company name" || h === "company" || h.includes("brand") || h.includes("mfg") || h.includes("manufacturer")) && !h.includes("code"));
+  const compCodeIdx = rawHeaders.findIndex((h) => h === "company code" || h === "comp code" || h === "mfg code" || (h.includes("company") && h.includes("code")));
+  const itemCodeIdx = rawHeaders.findIndex((h) => h === "item code" || h === "sku" || h === "barcode" || (h.includes("item") && h.includes("code")) || (h === "code" && compCodeIdx !== -1));
+  const fallbackCodeIdx = rawHeaders.findIndex((h) => h === "item code" || h === "code" || h.includes("item code") || h.includes("barcode") || h.includes("sku"));
   
   // Cost Index (must be distinct from Retail / Sale)
   const costIdx = rawHeaders.findIndex((h) => h.includes("cost") || h.includes("purchase") || h.includes("buy") || h === "cp");
@@ -2651,6 +2659,8 @@ export function parseInventoryCSV(csvText) {
     const rawDesc = descIdx !== -1 && cells[descIdx] ? cells[descIdx] : "";
     const rawPacking = packIdx !== -1 && cells[packIdx] ? cells[packIdx] : "";
     const rawComp = compIdx !== -1 && cells[compIdx] ? cells[compIdx] : "BM Pvt LTD";
+    const rawCompCode = compCodeIdx !== -1 && cells[compCodeIdx] ? cells[compCodeIdx].toUpperCase().trim() : "";
+    const rawItemCode = itemCodeIdx !== -1 && cells[itemCodeIdx] ? cells[itemCodeIdx].toUpperCase().trim() : (fallbackCodeIdx !== -1 && cells[fallbackCodeIdx] ? cells[fallbackCodeIdx].toUpperCase().trim() : "");
 
     // Run Smart Extraction & Title Casing
     const { name: cleanName, packing: cleanPacking } = extractSmartPackingAndName(rawNameCell, rawPacking);
@@ -2658,7 +2668,8 @@ export function parseInventoryCSV(csvText) {
 
     const description = toTitleCaseClean(rawDesc);
     const company = toTitleCaseClean(rawComp) || "BM Pvt LTD";
-    const code = codeIdx !== -1 && cells[codeIdx] ? cells[codeIdx].toUpperCase().trim() : (company.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN");
+    const companyCode = rawCompCode || (company.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN");
+    const itemCode = rawItemCode || companyCode;
     
     const purchasePrice = costIdx !== -1 && cells[costIdx] ? (parseFloat(cells[costIdx]) || 0) : 0;
     const salePrice = saleIdx !== -1 && cells[saleIdx] ? (parseFloat(cells[saleIdx]) || 0) : (purchasePrice > 0 ? purchasePrice : 0);
@@ -2681,7 +2692,8 @@ export function parseInventoryCSV(csvText) {
       strip_label: cleanPacking,
       box_label: "Pack",
       company_name: company,
-      item_code: code,
+      company_code: companyCode,
+      item_code: itemCode,
       cost_price: purchasePrice,
       cost_price_per_box: purchasePrice,
       purchase_price: purchasePrice,
@@ -7718,7 +7730,21 @@ export function bulkImportInventoryWithGodowns(csvText) {
     let minAlert = 6;
     let category = "";
 
-    if (row.length >= 11 && !isNaN(Number(row[0]))) {
+    if (row.length >= 12 && !isNaN(Number(row[0]))) {
+      // 12-column format: S/R No, Medicine Name, Description, Packing, Company Name, Company Code, Item Code, Cost Price, Retail Price, Medical Store Stock, Stock Level Alert, Category
+      srNo = row[0];
+      name = row[1];
+      desc = row[2] || "";
+      packing = row[3] || "Pack";
+      company = row[4] || "BM Pvt LTD";
+      companyCode = row[5] || "";
+      const itemCodeVal = row[6] || "";
+      costPrice = Number(row[7]) || 0;
+      retailPrice = Number(row[8]) || 0;
+      storeStock = Number(row[9]) || 0;
+      minAlert = Number(row[10]) || 6;
+      category = row[11] || "General";
+    } else if (row.length >= 11 && !isNaN(Number(row[0]))) {
       // 11-column format: S/R No, Medicine Name, Description, Packing, Company Name, Item Code, Cost Price, Retail Price, Medical Store Stock, Stock Level Alert, Category
       srNo = row[0];
       name = row[1];

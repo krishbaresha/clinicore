@@ -917,11 +917,12 @@ export default function MedicalStoreInventory() {
 
   function handleExportModalList(itemsToExport, filename) {
     if (!itemsToExport || itemsToExport.length === 0) return;
-    const headers = ["Item Name", "Item Code", "Company", "Category / Naration", "Stock Level", "Sale Price (Rs)", "Purchase Price (Rs)"];
+    const headers = ["Item Name", "Item Code", "Company Name", "Company Code", "Category / Naration", "Stock Level", "Sale Price (Rs)", "Purchase Price (Rs)"];
     const rows = itemsToExport.map((item) => [
       `"${(item.medicine_name || '').replace(/"/g, '""')}"`,
       `"${item.item_code || ''}"`,
       `"${item.company_name || ''}"`,
+      `"${item.company_code || item.item_code || ''}"`,
       `"${item.generic_name || item.category || ''}"`,
       item.total_base_stock ?? item.stock_qty ?? 0,
       item.unit_sale_price || item.box_sale_price || item.unit_price || 0,
@@ -2979,17 +2980,19 @@ export default function MedicalStoreInventory() {
                 
                 {/* Clean Responsive Table with Live Inline Edit */}
                 <div className="overflow-x-auto overflow-y-auto border border-slate-200 rounded-2xl flex-1 text-xs">
-                  <table className="w-full text-left min-w-[950px]">
+                  <table className="w-full text-left min-w-[1100px]">
                     <thead className="bg-slate-100 font-black text-slate-700 sticky top-0 z-10 uppercase text-[10.5px]">
                       <tr>
                         <th className="p-3 w-12 text-center">#</th>
                         <th className="p-3">Medicine Name (Title Cased) *</th>
                         <th className="p-3">Description / Generic</th>
-                        <th className="p-3 w-36">Clean Packing *</th>
-                        <th className="p-3 w-40">Company / Brand *</th>
-                        <th className="p-3 w-28 text-right">Cost (Rs)</th>
-                        <th className="p-3 w-28 text-right">Retail Sale (Rs) *</th>
-                        <th className="p-3 w-24 text-right">Stock Qty *</th>
+                        <th className="p-3 w-32">Clean Packing *</th>
+                        <th className="p-3 w-36">Company / Brand *</th>
+                        <th className="p-3 w-24">Company Code</th>
+                        <th className="p-3 w-24">Item Code</th>
+                        <th className="p-3 w-24 text-right">Cost (Rs)</th>
+                        <th className="p-3 w-24 text-right">Retail Sale (Rs) *</th>
+                        <th className="p-3 w-20 text-right">Stock Qty *</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium">
@@ -3064,6 +3067,30 @@ export default function MedicalStoreInventory() {
                                   setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, company_name: val } : row));
                                 }}
                                 className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="text"
+                                value={r.company_code || ""}
+                                placeholder="e.g. LEH"
+                                onChange={(e) => {
+                                  const val = e.target.value.toUpperCase();
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, company_code: val } : row));
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-teal-950 uppercase"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="text"
+                                value={r.item_code || ""}
+                                placeholder="e.g. LEH-01"
+                                onChange={(e) => {
+                                  const val = e.target.value.toUpperCase();
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, item_code: val } : row));
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 uppercase"
                               />
                             </td>
                             <td className="p-2 text-right">
