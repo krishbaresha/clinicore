@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏥 ClinicFlow (CliniCore) Hybrid V2.5
+# 🏥 CliniCore Hybrid V2.5
 ### **Enterprise OPD Clinical Management, Multi-Warehouse Pharmacy POS & Wholesale Distribution Engine**
 *Designed & Engineered for Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Medical Store (Hyderabad & Interior Sindh)*
 
