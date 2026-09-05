@@ -214,18 +214,78 @@ server {
     access_log /var/log/nginx/clinicore_access.log;
     error_log  /var/log/nginx/clinicore_error.log warn;
 }
+
+# HTTPS SSL Server Block
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name api.clinicore.me clinicore.me www.clinicore.me _;
+
+    ssl_certificate /etc/letsencrypt/live/api.clinicore.me/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.clinicore.me/privkey.pem;
+
+    client_max_body_size 50M;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # Route ALL /api/* requests to Node.js backend
+    location /api {
+        proxy_pass http://127.0.0.1:5000;
+        client_max_body_size 50M;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120;
+    }
+
+    # Frontend SPA Root
+    location / {
+        root /var/www/clinicore/frontend/dist;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # PWA Service Worker, Manifest, Version & Entrypoint: NEVER CACHE
+    location ~* ^/(sw\.js|manifest\.json|version\.json|index\.html)$ {
+        root /var/www/clinicore/frontend/dist;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        expires 0;
+    }
+
+    # Content-Hashed Vite Assets: Aggressively Cache for 1 Year
+    location /assets/ {
+        root /var/www/clinicore/frontend/dist;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    # Static Media & Web Fonts
+    location ~* \.(png|jpg|jpeg|gif|svg|ico|woff|woff2)$ {
+        root /var/www/clinicore/frontend/dist;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+    }
+
+    # Block access to sensitive backend files
+    location ~ /\.(env|git) { deny all; return 403; }
+    location ~* ^/backend/src { deny all; return 403; }
+
+    access_log /var/log/nginx/clinicore_access.log;
+    error_log  /var/log/nginx/clinicore_error.log warn;
+}
 NGINX_EOF
 
 ln -sf /etc/nginx/sites-available/clinicore /etc/nginx/sites-enabled/clinicore
 [ -f /etc/nginx/sites-enabled/default ] && rm -f /etc/nginx/sites-enabled/default && echo "  Removed default site."
 
 nginx -t && echo "  Nginx config: VALID" || { echo "  ERROR: Nginx config invalid!"; nginx -t; }
-
-# Automatically provision or re-deploy Certbot SSL for clinicore.me & subdomains
-if command -v certbot &> /dev/null; then
-    certbot --nginx -d clinicore.me -d www.clinicore.me -d api.clinicore.me --non-interactive --agree-tos -m admin@clinicore.me --redirect 2>/dev/null || \
-    certbot --nginx -d clinicore.me -d www.clinicore.me --non-interactive --agree-tos -m admin@clinicore.me 2>/dev/null || true
-fi
 
 # ─────────────────────────────────────────────────────────
 # STEP 8: Permissions and service restart

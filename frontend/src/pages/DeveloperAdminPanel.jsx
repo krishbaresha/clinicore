@@ -33,7 +33,7 @@ const DEFAULT_API_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")
     ? window.location.origin
-    : "https://clinicore.me");
+    : "https://api.clinicore.me");
 
 export function getApiUrl() {
   return DEFAULT_API_URL;
@@ -2399,31 +2399,14 @@ export default function DeveloperAdminPanel() {
                               ))
                             ) : (
                               <tr className="hover:bg-blue-50/30">
-                                <td className="px-3.5 py-3">
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-800 border-emerald-300">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span>Online (This Device)</span>
-                                  </span>
-                                </td>
-                                <td className="px-3.5 py-3">
-                                  <span className="font-bold text-slate-900 block">Current Local Terminal</span>
-                                  <span className="text-[10px] text-slate-400 font-mono block">Windows Tauri / Web SPA • v{liveAdminVersion}</span>
-                                </td>
-                                <td className="px-3.5 py-3">
-                                  <span className="font-bold text-teal-900 block">Active Session</span>
-                                  <span className="text-[10px] text-slate-400 uppercase tracking-wider">Super Admin</span>
-                                </td>
-                                <td className="px-3.5 py-3">
-                                  <span className="font-mono text-indigo-900 font-bold block">127.0.0.1 (Local Node)</span>
-                                  <span className="text-[10px] text-slate-400 font-mono">dev_active</span>
-                                </td>
-                                <td className="px-3.5 py-3">
-                                  <span className="font-bold px-2 py-0.5 rounded-md text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                    ✅ 0 Synced
-                                  </span>
-                                </td>
-                                <td className="px-3.5 py-3 text-right text-slate-500 font-medium whitespace-nowrap">
-                                  Just now
+                                <td colSpan={6} className="px-3.5 py-6 text-center text-slate-500">
+                                  <div className="flex flex-col items-center justify-center gap-1.5 py-2">
+                                    <span className="material-symbols-outlined text-3xl text-blue-400 animate-pulse">radar</span>
+                                    <span className="font-bold text-slate-700 text-xs">Waiting for Remote Fleet Telemetry Signals...</span>
+                                    <span className="text-[10.5px] text-slate-400 max-w-sm">
+                                      Terminals connected to <span className="font-mono text-indigo-600 font-bold">api.clinicore.me</span> will automatically appear here with their live public IP, current staff user, and outbox sync status.
+                                    </span>
+                                  </div>
                                 </td>
                               </tr>
                             )}

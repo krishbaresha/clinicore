@@ -31,12 +31,13 @@ export function getActiveServerUrl() {
   if (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1") && !window.location.hostname.includes("tauri")) {
     return window.location.origin.replace(/\/$/, "");
   }
-  return "https://clinicore.me";
+  return "https://api.clinicore.me";
 }
 
 export const FALLBACK_ENDPOINTS = [
+  "https://api.clinicore.me",
   "https://clinicore.me",
-  "http://77.37.45.233:8000",
+  "http://77.37.45.233:5000",
   "http://127.0.0.1:5000"
 ];
 
