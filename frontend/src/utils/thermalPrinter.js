@@ -595,6 +595,14 @@ export function printThermalReceipt(sale, clinicData = null) {
         </div>
         <div class="dotted-line"></div>` : ""}
 
+        <!-- Urdu Footer Disclaimer (1-Line Compact Professional Font) -->
+        ${(showUrdu || cfg.show_urdu_footer || cfg.urdu_footer_text) ? `
+        <div style="border-top: 1px dashed #000; margin-top: 8px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif;">
+          <div style="font-size: 13.5px; line-height: 1.3; font-weight: 700; color: #000; letter-spacing: -0.2px;">
+            ${escapeHtml(cfg.urdu_footer_text || "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔")}
+          </div>
+        </div>` : ""}
+
         <!-- Doctor Signature Line -->
         ${getDoctorSignatureHtml()}
 
@@ -792,7 +800,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
 
         <!-- Urdu Footer (urdu_footer block) -->
         ${showUrdu && cfg.urdu_footer_text ? `
-        <div style="border-top: 2px dashed #000; margin-top: 14px; padding-top: 8px; text-align: center; direction: rtl; font-family: 'Noto Nastaleeq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif;"><div style="font-size: 26px; line-height: 1.5; font-weight: 900; color: #000;">${escapeHtml(cfg.urdu_footer_text)}</div></div>
+        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif;"><div style="font-size: 13.5px; line-height: 1.3; font-weight: 700; color: #000; letter-spacing: -0.2px;">${escapeHtml(cfg.urdu_footer_text)}</div></div>
         <div class="dotted"></div>` : ""}
 
         <!-- Custom Policy Note (custom_note block) -->
@@ -2192,9 +2200,9 @@ export function printSaleInvoiceReceipt(sale, clinic) {
           ` : ""}
         </div>
 
-        <!-- Urdu Footer Disclaimer (Specifically for Sale Invoices) -->
-        <div style="border-top: 1px dashed #000; margin-top: 12px; padding-top: 6px; text-align: center; direction: rtl; font-family: 'Noto Nastaleeq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif;">
-          <div style="font-size: 20px; line-height: 1.4; font-weight: 700; color: #000; letter-spacing: 0.5px;">
+        <!-- Urdu Footer Disclaimer (Specifically for Sale Invoices - 1-Line Compact) -->
+        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu', Tahoma, Arial, sans-serif;">
+          <div style="font-size: 13.5px; line-height: 1.3; font-weight: 700; color: #000; letter-spacing: -0.2px;">
             خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔
           </div>
         </div>
