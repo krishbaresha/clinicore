@@ -54,6 +54,16 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
+- **Phase:** Milestone 218 — Cloud Sync, Database Parity, Backend Auto-Healing & SPA Chunk Resilience (Completed)
+- **Last worked on:**
+  1. **Backend Entity & Keyword Parity:** Mapped `pos_sales` & `sales` to `cf_sales_v5` and aligned all 35 entities/aliases in [server.js](file:///e:/Soft/DrCreate/Clinicore/backend/server.js).
+  2. **Startup Auto-Healing Engine:** Unnested `.collections` / `.data` wrappers and merged legacy orphaned collections automatically.
+  3. **Sync Engine 31-Collection Expansion:** Upgraded [syncEngine.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/api/syncEngine.js) to pull and push all 31 collections with `setCollection()` reactivity.
+  4. **Database Relational Schema Parity:** Added `accounts` and `main_ac` tables in [production_schema.sql](file:///e:/Soft/DrCreate/Clinicore/database/production_schema.sql) and [schema.sql](file:///e:/Soft/DrCreate/Clinicore/database/schema.sql).
+  5. **SPA Infinite Loading Fix:** Configured `base: '/'` in [vite.config.js](file:///e:/Soft/DrCreate/Clinicore/frontend/vite.config.js) and bounded [lazyWithRetry.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/lazyWithRetry.js) fallback timeout to 2.5s.
+  6. **Node.js Automation Daemon:** Updated [automation_daemon.py](file:///e:/Soft/DrCreate/Clinicore/backend/automation_daemon.py) to trigger `/api/v1/system/trigger-vps-backup` and Google Drive uploads.
+  7. **Master Verification:** 634/634 tests passing, 0 AST errors, 0 secret leaks, clean Vite build.
+
 - **Phase:** Milestone 217 — Sale Invoice Urdu Disclaimer Typography Refinement, Zero-Gap Header Crop & Receipt Spacing Cleanup (Completed)
 - **Last worked on:**
   1. **Zero-Gap Header Image Crop:** Cropped top & bottom whitespace (`1024x458` ➔ `1024x260`) from `receipt-header.png` and regenerated `receiptHeaderBase64.js`, eliminating the empty white gap between the clinic logo header and the meta-info dotted divider.
@@ -4279,4 +4289,37 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
       - 0 AST import/hook errors (`node scripts/scan_imports_and_hooks.mjs`).
       - 0 secret leaks (`node scripts/scan_secrets.mjs`).
       - Clean production Vite bundle compiled in 1.66s.
+
+96. **Milestone 218: Cloud Sync, Database Parity & Backend Healing Engine**
+    - **Root Cause Forensics & Entity Alignment**:
+      - Mapped `pos_sales` and `sales` to `cf_sales_v5` in `backend/server.js` `ENTITY_TO_KEY` (eliminating orphaned `pos_sales` arrays).
+      - Added all aliases and keywords (`stock_movement`, `STOCK_MOVEMENT`, `audit_log`, `AUDIT_LOG`, `returns`, `sales_returns`, `cashbook`, `accounts`, `main_ac`, `shift_closings`, `patient_ledger`, `supplier_ledger`, `batches`, `categories`, `companies`).
+      - Added startup auto-healing in `server.js` to automatically flatten nested `.collections` and `.data` wrappers and merge orphaned `pos_sales` and `stock_movement` records into their canonical collections.
+      - Fixed `/api/v1/system/restore-backup-data` to unnest `collections` before persisting to `sync_state.json`.
+      - Removed dead duplicate `/api/v1/sync/push` endpoint in `server.js`.
+      - Enhanced `executeAutonomousBackup` email report to calculate and display non-zero metrics across POS Sales, B2B Sales, Inventory, Patients, Wholesale Parties, and Cashbook.
+    - **Client Sync Engine Hardening (`syncEngine.js`)**:
+      - Expanded `syncKeys` from 4 collections to all 31 collections (`cf_sales_v5`, `cf_b2b_sales_v5`, `cf_purchases_v5`, `cf_parties_v5`, `cf_accounts_v6`, `cf_cashbook_v6`, `cf_main_ac_v6`, `cf_returns_v5`, `cf_stock_transfers_v5`, `cf_stock_movements_v1`, `cf_shift_closings_v5`, `cf_patient_ledger_v5`, `cf_supplier_ledger_v6`, etc.).
+      - Fixed array hydration bug by saving `Array.from(localMap.values())` instead of unmutated local array.
+      - Integrated `setCollection()` into pull worker to update in-memory cache, $O(1)$ ID maps, localStorage, and trigger real-time UI re-renders and tab synchronization.
+    - **Frontend Outbox Enqueue Additions (`db.js`)**:
+      - Added outbox enqueues to `dbAccounts.add`, `dbCashBook.addEntry`, `dbCashBook.deleteEntry`, `dbReturns.processReturn`, `dbShiftClosings.add`, and `dbClinic.update`.
+      - Normalized outbox entity keywords (`STOCK_MOVEMENT` -> `stock_movements`, `AUDIT_LOG` -> `audit_logs`).
+    - **Relational Schema Parity (`production_schema.sql` & `schema.sql`)**:
+      - Created `accounts` and `main_ac` tables in MySQL schemas for 100% table parity.
+    - **Autonomous Automation Daemon (`backend/automation_daemon.py`)**:
+      - Replaced legacy PHP execution with native Node.js health checks, automated trigger to `/api/v1/system/trigger-vps-backup`, and Google Drive backup runner.
+    - **SPA Loading Screen & Dynamic Chunk Recovery (`vite.config.js` & `lazyWithRetry.js`)**:
+      - Set `base: '/'` in `vite.config.js` ensuring dynamic import chunks always resolve from root `/assets/...` across subroutes.
+      - Replaced forever-pending promise with a 2.5-second bounded timer in `lazyWithRetry.js` to eliminate infinite loading screen freezes.
+      - Added strict `no-cache, no-store, must-revalidate` headers to Nginx `location /` in `scripts/vps_fix_all.sh`.
+    - **Automated Verification Pipeline**:
+      - `node scripts/audit_sync_parity.cjs`: 100% entity and key parity verified.
+      - `node scripts/test_sync_parity_e2e.mjs`: All E2E sync and auto-healing tests passed.
+      - `node scripts/scan_secrets.mjs`: 0 secrets detected across 1045 files.
+      - `node scripts/scan_imports_and_hooks.mjs`: 0 AST/hook errors.
+      - `npx oxlint`: 0 errors.
+      - `npm test`: 634/634 master tests passing (100%).
+      - `npm run build`: Clean 11.75s Vite bundle compiled.
+
 

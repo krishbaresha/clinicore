@@ -694,6 +694,33 @@ CREATE TABLE shift_closings (
     INDEX idx_shift_audit (warehouse_id, shift_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS accounts (
+    id VARCHAR(36) PRIMARY KEY,
+    account_no INT NOT NULL,
+    account_name VARCHAR(255) NOT NULL,
+    account_type VARCHAR(100) NOT NULL DEFAULT 'Customer',
+    naration TEXT NULL,
+    opening_balance DECIMAL(12,2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_acc_type (account_type),
+    INDEX idx_acc_no (account_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS main_ac (
+    id VARCHAR(36) PRIMARY KEY,
+    voucher_no VARCHAR(50) NOT NULL,
+    date DATE NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL,
+    account_name VARCHAR(255) NOT NULL,
+    debit DECIMAL(12,2) DEFAULT 0.00,
+    credit DECIMAL(12,2) DEFAULT 0.00,
+    description TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_main_ac_voucher (voucher_no),
+    INDEX idx_main_ac_date (date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ----------------------------------------------------------------------------
 -- 9. CLOUD SYNCHRONIZATION & IDEMPOTENCY DOMAIN
 -- ----------------------------------------------------------------------------

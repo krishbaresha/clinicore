@@ -138,7 +138,7 @@ function viteEmailRelayPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? './' : '/',
+  base: '/',
   plugins: [
     tailwindcss(),
     react(),

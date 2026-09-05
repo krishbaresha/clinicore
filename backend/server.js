@@ -84,6 +84,62 @@ let users = loadJson(USERS_FILE, []);
 let syncStateData = loadJson(STATE_FILE, {});
 let connectedDevices = loadJson(DEVICES_FILE, {});
 
+// Auto-heal nested collections or data wrapper if saved previously from UI restore
+if (syncStateData && syncStateData.collections && typeof syncStateData.collections === "object") {
+  const colls = syncStateData.collections;
+  delete syncStateData.collections;
+  for (const [k, v] of Object.entries(colls)) {
+    if (!syncStateData[k] || (Array.isArray(v) && v.length > 0)) {
+      syncStateData[k] = v;
+    }
+  }
+}
+if (syncStateData && syncStateData.data && typeof syncStateData.data === "object" && !Array.isArray(syncStateData.data)) {
+  const innerData = syncStateData.data;
+  delete syncStateData.data;
+  for (const [k, v] of Object.entries(innerData)) {
+    if (!syncStateData[k] || (Array.isArray(v) && v.length > 0)) {
+      syncStateData[k] = v;
+    }
+  }
+}
+delete syncStateData.metadata;
+
+// Auto-heal orphaned pos_sales or sales into cf_sales_v5
+if (Array.isArray(syncStateData["pos_sales"]) && syncStateData["pos_sales"].length > 0) {
+  if (!Array.isArray(syncStateData["cf_sales_v5"])) syncStateData["cf_sales_v5"] = [];
+  const existingIds = new Set(syncStateData["cf_sales_v5"].map((s) => s && s.id).filter(Boolean));
+  for (const s of syncStateData["pos_sales"]) {
+    if (s && s.id && !existingIds.has(s.id)) {
+      syncStateData["cf_sales_v5"].push(s);
+      existingIds.add(s.id);
+    }
+  }
+  delete syncStateData["pos_sales"];
+}
+if (Array.isArray(syncStateData["sales"]) && syncStateData["sales"].length > 0) {
+  if (!Array.isArray(syncStateData["cf_sales_v5"])) syncStateData["cf_sales_v5"] = [];
+  const existingIds = new Set(syncStateData["cf_sales_v5"].map((s) => s && s.id).filter(Boolean));
+  for (const s of syncStateData["sales"]) {
+    if (s && s.id && !existingIds.has(s.id)) {
+      syncStateData["cf_sales_v5"].push(s);
+      existingIds.add(s.id);
+    }
+  }
+  delete syncStateData["sales"];
+}
+if (Array.isArray(syncStateData["stock_movement"]) && syncStateData["stock_movement"].length > 0) {
+  if (!Array.isArray(syncStateData["cf_stock_movements_v1"])) syncStateData["cf_stock_movements_v1"] = [];
+  const existingIds = new Set(syncStateData["cf_stock_movements_v1"].map((s) => s && s.id).filter(Boolean));
+  for (const s of syncStateData["stock_movement"]) {
+    if (s && s.id && !existingIds.has(s.id)) {
+      syncStateData["cf_stock_movements_v1"].push(s);
+      existingIds.add(s.id);
+    }
+  }
+  delete syncStateData["stock_movement"];
+}
+
 // Pre-seed backend syncStateData if empty so VPS serves the full catalog
 const MASTER_MEDS_FILE = path.join(DATA_DIR, "master_medicines_seed.json");
 const MASTER_PARTIES_FILE = path.join(DATA_DIR, "master_parties_seed.json");
@@ -302,6 +358,7 @@ const server = http.createServer((req, res) => {
         patients: "cf_patients_v5",
         visits: "cf_visits_v5",
         sales: "cf_sales_v5",
+        pos_sales: "cf_sales_v5",
         b2b_sales: "cf_b2b_sales_v5",
         inventory: "cf_inventory_v5",
         purchases: "cf_purchases_v5",
@@ -311,18 +368,29 @@ const server = http.createServer((req, res) => {
         warehouses: "cf_warehouses_v6",
         accounts: "cf_accounts_v6",
         cashbook: "cf_cashbook_v6",
+        main_ac: "cf_main_ac_v6",
         expenses: "cf_expenses_v5",
         returns: "cf_returns_v5",
+        sales_returns: "cf_returns_v5",
         stock_transfers: "cf_stock_transfers_v5",
         stock_movements: "cf_stock_movements_v1",
+        stock_movement: "cf_stock_movements_v1",
+        STOCK_MOVEMENT: "cf_stock_movements_v1",
         shift_closings: "cf_shift_closings_v5",
         patient_ledger: "cf_patient_ledger_v5",
         supplier_ledger: "cf_supplier_ledger_v6",
         documents: "cf_documents_v5",
         users: "cf_users_v5",
         audit_logs: "cf_audit_logs_v1",
+        audit_log: "cf_audit_logs_v1",
+        AUDIT_LOG: "cf_audit_logs_v1",
         clinic: "cf_clinic_v5",
         license: "cf_license_config_v1",
+        services: "cf_services_v5",
+        batches: "cf_medicine_batches_v1",
+        medicine_batches: "cf_medicine_batches_v1",
+        categories: "cf_medicine_categories_v1",
+        companies: "cf_medicine_companies_v1",
       };
 
       const mutations = Array.isArray(payload.mutations) ? payload.mutations : [];
@@ -423,10 +491,34 @@ const server = http.createServer((req, res) => {
 
     // Restore Backup Data
     if (url.pathname === "/api/v1/system/restore-backup-data" && req.method === "POST") {
-      syncStateData = payload;
+      let incomingData = payload;
+      if (payload && payload.collections && typeof payload.collections === "object") {
+        incomingData = payload.collections;
+      } else if (payload && payload.data && typeof payload.data === "object") {
+        incomingData = payload.data;
+      }
+
+      // Preserve flat domain collections
+      syncStateData = { ...(syncStateData || {}), ...(incomingData || {}) };
+      delete syncStateData.collections;
+      delete syncStateData.metadata;
+
+      // Merge orphaned pos_sales if present
+      if (Array.isArray(syncStateData["pos_sales"]) && syncStateData["pos_sales"].length > 0) {
+        if (!Array.isArray(syncStateData["cf_sales_v5"])) syncStateData["cf_sales_v5"] = [];
+        const existingIds = new Set(syncStateData["cf_sales_v5"].map((s) => s && s.id).filter(Boolean));
+        for (const s of syncStateData["pos_sales"]) {
+          if (s && s.id && !existingIds.has(s.id)) {
+            syncStateData["cf_sales_v5"].push(s);
+            existingIds.add(s.id);
+          }
+        }
+        delete syncStateData["pos_sales"];
+      }
+
       saveJson(STATE_FILE, syncStateData);
-      if (payload && Array.isArray(payload["cf_users_v5"])) {
-        users = payload["cf_users_v5"].filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
+      if (Array.isArray(syncStateData["cf_users_v5"])) {
+        users = syncStateData["cf_users_v5"].filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
         saveJson(USERS_FILE, users);
       }
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -493,44 +585,6 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Incremental Mutations Sync Push Gate (Fallback acknowledgment)
-    if (url.pathname === "/api/v1/sync/push" && req.method === "POST") {
-      // Process incremental user deletes or updates directly to local cache
-      const mutations = payload.mutations || [];
-      const results = [];
-      for (const mut of mutations) {
-        const { entity_type, action, payload: itemPayload, entity_id } = mut;
-        if (entity_type === "users") {
-          if (action === "DELETE") {
-            users = users.filter((u) => u.id !== entity_id);
-            saveJson(USERS_FILE, users);
-            if (syncStateData["cf_users_v5"]) {
-              syncStateData["cf_users_v5"] = syncStateData["cf_users_v5"].filter((u) => u.id !== entity_id);
-              saveJson(STATE_FILE, syncStateData);
-            }
-          } else if (action === "CREATE") {
-            const cleanUser = { ...itemPayload };
-            users = [...users.filter((u) => u.id !== cleanUser.id), cleanUser];
-            saveJson(USERS_FILE, users);
-            if (syncStateData["cf_users_v5"]) {
-              syncStateData["cf_users_v5"] = [...syncStateData["cf_users_v5"].filter((u) => u.id !== cleanUser.id), cleanUser];
-              saveJson(STATE_FILE, syncStateData);
-            }
-          } else if (action === "UPDATE") {
-            users = users.map((u) => (u.id === entity_id ? { ...u, ...itemPayload } : u));
-            saveJson(USERS_FILE, users);
-            if (syncStateData["cf_users_v5"]) {
-              syncStateData["cf_users_v5"] = syncStateData["cf_users_v5"].map((u) => (u.id === entity_id ? { ...u, ...itemPayload } : u));
-              saveJson(STATE_FILE, syncStateData);
-            }
-          }
-        }
-        results.push({ mutation_id: mut.mutation_id || mut.id, status: "confirmed" });
-      }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ success: true, data: { results } }));
-      return;
-    }
 
     // System Config GET/POST
     if (url.pathname === "/api/v1/system/config") {
@@ -812,7 +866,10 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
 
     const inventoryCount = Array.isArray(syncStateData["cf_inventory_v5"]) ? syncStateData["cf_inventory_v5"].length : 0;
     const patientsCount = Array.isArray(syncStateData["cf_patients_v5"]) ? syncStateData["cf_patients_v5"].length : 0;
-    const salesCount = Array.isArray(syncStateData["cf_sales_v5"]) ? syncStateData["cf_sales_v5"].length : 0;
+    const salesCount = Array.isArray(syncStateData["cf_sales_v5"]) ? syncStateData["cf_sales_v5"].length : (Array.isArray(syncStateData["pos_sales"]) ? syncStateData["pos_sales"].length : 0);
+    const b2bSalesCount = Array.isArray(syncStateData["cf_b2b_sales_v5"]) ? syncStateData["cf_b2b_sales_v5"].length : 0;
+    const partiesCount = Array.isArray(syncStateData["cf_parties_v5"]) ? syncStateData["cf_parties_v5"].length : 0;
+    const cashbookCount = Array.isArray(syncStateData["cf_cashbook_v6"]) ? syncStateData["cf_cashbook_v6"].length : 0;
 
     const emailHtml = `<!DOCTYPE html>
 <html>
@@ -832,17 +889,31 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#064e3b;border-radius:16px;border:1px solid #0f766e;margin-bottom:20px;">
             <tr>
-              <td style="padding:16px;text-align:center;border-right:1px solid #0f766e;">
+              <td style="padding:16px;text-align:center;border-right:1px solid #0f766e;border-bottom:1px solid #0f766e;">
                 <div style="font-size:11px;color:#a7f3d0;font-weight:700;text-transform:uppercase;">Inventory Items</div>
                 <div style="font-size:20px;font-weight:900;color:#ffffff;margin-top:4px;">${inventoryCount}</div>
               </td>
-              <td style="padding:16px;text-align:center;border-right:1px solid #0f766e;">
+              <td style="padding:16px;text-align:center;border-right:1px solid #0f766e;border-bottom:1px solid #0f766e;">
                 <div style="font-size:11px;color:#a7f3d0;font-weight:700;text-transform:uppercase;">Registered Patients</div>
                 <div style="font-size:20px;font-weight:900;color:#ffffff;margin-top:4px;">${patientsCount}</div>
               </td>
-              <td style="padding:16px;text-align:center;">
-                <div style="font-size:11px;color:#a7f3d0;font-weight:700;text-transform:uppercase;">Total POS Sales</div>
+              <td style="padding:16px;text-align:center;border-bottom:1px solid #0f766e;">
+                <div style="font-size:11px;color:#a7f3d0;font-weight:700;text-transform:uppercase;">POS Sales</div>
                 <div style="font-size:20px;font-weight:900;color:#ffffff;margin-top:4px;">${salesCount}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px;text-align:center;border-right:1px solid #0f766e;">
+                <div style="font-size:11px;color:#a7f3d0;font-weight:700;text-transform:uppercase;">B2B Invoices</div>
+                <div style="font-size:20px;font-weight:900;color:#ffffff;margin-top:4px;">${b2bSalesCount}</div>
+              </td>
+              <td style="padding:16px;text-align:center;border-right:1px solid #0f766e;">
+                <div style="font-size:11px;color:#a7f3d0;font-weight:700;text-transform:uppercase;">Wholesale Parties</div>
+                <div style="font-size:20px;font-weight:900;color:#ffffff;margin-top:4px;">${partiesCount}</div>
+              </td>
+              <td style="padding:16px;text-align:center;">
+                <div style="font-size:11px;color:#a7f3d0;font-weight:700;text-transform:uppercase;">CashBook Vouchers</div>
+                <div style="font-size:20px;font-weight:900;color:#ffffff;margin-top:4px;">${cashbookCount}</div>
               </td>
             </tr>
           </table>

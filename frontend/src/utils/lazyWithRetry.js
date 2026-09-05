@@ -39,7 +39,7 @@ export function lazyWithRetry(componentImport) {
         }
 
         window.location.reload();
-        return new Promise(() => {}); // Prevent React from unmounting before reload completes
+        return new Promise((resolve) => setTimeout(resolve, 2500));
       }
 
       // If it still fails after reload, throw so ErrorBoundary renders the user recovery card

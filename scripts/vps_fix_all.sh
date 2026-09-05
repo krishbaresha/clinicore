@@ -201,6 +201,9 @@ server {
         root /var/www/clinicore/frontend/dist;
         index index.html;
         try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        expires 0;
     }
 
     # PWA Service Worker, Manifest, Version & Entrypoint: NEVER CACHE
@@ -285,6 +288,9 @@ server {
         root /var/www/clinicore/frontend/dist;
         index index.html;
         try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        expires 0;
     }
 
     # PWA Service Worker, Manifest, Version & Entrypoint: NEVER CACHE

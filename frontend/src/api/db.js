@@ -826,6 +826,9 @@ export const dbClinic = {
         _collectionChangeHook(KEYS.CLINIC, updated);
       } catch {}
     }
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("clinic", updated, "UPDATE", "clinic_001");
+    }
     return updated;
   },
 
@@ -2794,6 +2797,9 @@ export const dbAccounts = {
     }
 
     setCollection(KEYS.ACCOUNTS, [newAccount, ...list]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("accounts", newAccount, "CREATE", newAccount.id);
+    }
     return newAccount;
   },
   bulkImportFromAccess: async () => {
@@ -3190,7 +3196,9 @@ export const dbStockMovements = {
     }
 
     try {
-      dbOutbox.enqueue("STOCK_MOVEMENT", event);
+      if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+        dbOutbox.enqueue("stock_movements", event, "CREATE", event.id);
+      }
     } catch {}
 
     return event;
@@ -5629,6 +5637,9 @@ export const dbReturns = {
       return_date: new Date().toISOString(),
     };
     setCollection(KEYS.RETURNS, [newRet, ...returns]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("returns", newRet, "CREATE", newRet.id);
+    }
     return newRet;
   },
 };
@@ -5648,6 +5659,9 @@ export const dbShiftClosings = {
       closed_at: new Date().toISOString(),
     };
     setCollection(KEYS.SHIFT_CLOSINGS, [newRecord, ...closings]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("shift_closings", newRecord, "CREATE", newRecord.id);
+    }
     return newRecord;
   },
   delete: (id) => {
@@ -5929,6 +5943,9 @@ export const dbCashBook = {
 
     setCollection(KEYS.MAIN_AC, [...mainAcEntries, ...mainAcList]);
     setCollection(KEYS.CASHBOOK, [newEntry, ...list]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("cashbook", newEntry, "CREATE", newEntry.id);
+    }
     return newEntry;
   },
 
@@ -5942,6 +5959,10 @@ export const dbCashBook = {
     // Also remove from MainAc
     const mainAcList = getCollection(KEYS.MAIN_AC) || [];
     setCollection(KEYS.MAIN_AC, mainAcList.filter((m) => m.voucher_no !== target.voucher_no));
+
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("cashbook", { id: target.id, voucher_no: target.voucher_no }, "DELETE", target.id);
+    }
 
     dbAuditLogs.logEvent({
       action: "DELETE_CASHBOOK_ENTRY",
@@ -6622,12 +6643,13 @@ export function importFullDatabase(backupInput, options = { skipCheckpoint: fals
     // CRITICAL: Transmit full restored backup to VPS MySQL database so relational tables (users, patients, inventory, visits, etc.) get populated on VPS!
     try {
       const API_BASE =
+        (typeof localStorage !== "undefined" && localStorage.getItem("cf_custom_api_url")) ||
         (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-        (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost")
+        (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1") && !window.location.hostname.includes("tauri")
           ? window.location.origin
           : typeof window !== "undefined" && window.location.hostname === "localhost"
           ? "http://127.0.0.1:5000"
-          : "https://clinicore.me");
+          : "https://api.clinicore.me");
 
       const collectionsSnapshot = getAllCollectionsSnapshot();
       fetch(`${API_BASE}/api/v1/system/restore-backup-data`, {
@@ -7087,7 +7109,7 @@ export const dbAuditLogs = {
     setCollection(KEYS.AUDIT_LOGS, [eventRecord, ...existingLogs]);
 
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
-      dbOutbox.enqueue("AUDIT_LOG", eventRecord);
+      dbOutbox.enqueue("audit_logs", eventRecord, "CREATE", eventRecord.id || eventRecord.hash);
     }
 
     return eventRecord;

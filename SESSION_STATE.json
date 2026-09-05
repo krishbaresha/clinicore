@@ -1,11 +1,11 @@
 {
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
-  "version": "2.5.30-release",
-  "last_session_date": "2026-09-06T02:28:00+05:00",
-  "session_id": "part-217",
-  "active_milestone": 218,
-  "milestone_title": "Sale Invoice Urdu Disclaimer Sharp Typography Upgrade (Noto Nastaliq / Noto Sans Arabic / Urdu Typesetting Font Stack & Non-Bold 500 Crisp Rendering)",
+  "version": "2.5.31-release",
+  "last_session_date": "2026-09-06T04:45:00+05:00",
+  "session_id": "part-218",
+  "active_milestone": 219,
+  "milestone_title": "Enterprise Cloud Sync Parity, Database Tables, Backend Auto-Healing & SPA Chunk Resilience",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -16,13 +16,14 @@
     "python_compile_passed": true
   },
   "current_status": {
-    "phase": "Milestone 217 — Sale Invoice Urdu Disclaimer Sharp Typography Upgrade (100%)",
+    "phase": "Milestone 218 — Enterprise Cloud Sync Parity, Database Tables, Backend Auto-Healing & SPA Chunk Resilience (100%)",
     "test_suite_status": "634/634 Tests Passing, 0 AST Errors, 0 Secret Leaks, Clean Vite Production Build",
     "build_status": "Clean Vite Production Bundle Compiled Successfully",
     "git_branch": "main",
     "last_commit": "38f3b1d"
   },
   "completed_milestones": [
+    "Milestone 218: Enterprise Cloud Sync Parity, Database Tables, Backend Auto-Healing & SPA Chunk Resilience: Aligned all 35 entity keywords between frontend outbox and backend, expanded syncKeys to all 31 collections, implemented startup unnesting auto-healing in server.js, added accounts and main_ac relational tables, fixed infinite chunk loading in lazyWithRetry.js, and converted automation daemon to Node.js backup triggers",
     "Milestone 217: Sale Invoice Urdu Disclaimer Sharp Typography Upgrade: Replaced heavy bold with crisp font-weight 500, antialiased rendering, and high-fidelity Noto Nastaliq / Noto Sans Arabic typography stack",
     "Milestone 215: Bulk Store Inventory CSV Intelligence Engine: Regex Smart Packing Extractor, Inverted Unit Normalizer, Title-Casing, Company Breakdown Analytics & Zero-Duplicate Merge Guard",
     "Milestone 214: Universal Multi-Device Real-Time Auto-Sync Engine, Fleet Heartbeat Telemetry & Live Connected Terminals Radar",

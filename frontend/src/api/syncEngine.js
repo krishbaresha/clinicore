@@ -13,6 +13,7 @@ import {
   dbOutbox,
   KEYS,
   getDeviceId,
+  setCollection,
 } from "./db.js";
 
 import { telemetry } from "./telemetry.js";
@@ -309,13 +310,48 @@ class SyncEngine {
 
       if (res && res.ok) {
         const json = await res.json().catch(() => null);
-        const cloudData = json?.data;
+        let cloudData = json?.data;
         if (cloudData && typeof cloudData === "object") {
+          // If collections were nested from an older restore, flatten transparently
+          if (cloudData.collections && typeof cloudData.collections === "object") {
+            cloudData = { ...cloudData, ...cloudData.collections };
+          }
+          if (cloudData.data && typeof cloudData.data === "object" && !Array.isArray(cloudData.data)) {
+            cloudData = { ...cloudData, ...cloudData.data };
+          }
+
           const syncKeys = [
-            "cf_patients_v5", "cf_visits_v5", "cf_sales_v5", "cf_b2b_sales_v5",
-            "cf_inventory_v5", "cf_purchases_v5", "cf_suppliers_v5", "cf_parties_v5",
-            "cf_salesmen_v5", "cf_warehouses_v6", "cf_accounts_v6", "cf_cashbook_v6",
-            "cf_expenses_v5", "cf_users_v5", "cf_clinic_v5"
+            "cf_patients_v5",
+            "cf_visits_v5",
+            "cf_sales_v5",
+            "cf_b2b_sales_v5",
+            "cf_inventory_v5",
+            "cf_purchases_v5",
+            "cf_suppliers_v5",
+            "cf_parties_v5",
+            "cf_salesmen_v5",
+            "cf_warehouses_v6",
+            "cf_accounts_v6",
+            "cf_cashbook_v6",
+            "cf_main_ac_v6",
+            "cf_expenses_v5",
+            "cf_returns_v5",
+            "cf_stock_transfers_v5",
+            "cf_stock_movements_v1",
+            "cf_shift_closings_v5",
+            "cf_patient_ledger_v5",
+            "cf_supplier_ledger_v6",
+            "cf_documents_v5",
+            "cf_users_v5",
+            "cf_audit_logs_v1",
+            "cf_clinic_v5",
+            "cf_license_config_v1",
+            "cf_medicine_batches_v1",
+            "cf_medicine_categories_v1",
+            "cf_medicine_companies_v1",
+            "cf_services_v5",
+            "cf_approvals_v1",
+            "cf_transactions_v1",
           ];
 
           for (const k of syncKeys) {
@@ -325,13 +361,13 @@ class SyncEngine {
               try { parsedLocal = localRaw ? JSON.parse(localRaw) : []; } catch (_) {}
 
               if (parsedLocal.length === 0) {
-                storageDriver.setItem(k, JSON.stringify(cloudData[k]));
+                setCollection(k, cloudData[k]);
               } else {
-                const localMap = new Map(parsedLocal.map((item) => [item.id, item]));
+                const localMap = new Map(parsedLocal.map((item) => [item && item.id, item]));
                 cloudData[k].forEach((serverItem) => {
                   if (serverItem && serverItem.id) {
                     if (!localMap.has(serverItem.id)) {
-                      parsedLocal.unshift(serverItem);
+                      localMap.set(serverItem.id, serverItem);
                     } else {
                       const existing = localMap.get(serverItem.id);
                       const sTime = new Date(serverItem.updated_at || serverItem.created_at || 0).getTime();
@@ -342,10 +378,11 @@ class SyncEngine {
                     }
                   }
                 });
-                storageDriver.setItem(k, JSON.stringify(parsedLocal));
+                const mergedArray = Array.from(localMap.values()).filter(Boolean);
+                setCollection(k, mergedArray);
               }
             } else if (cloudData[k] && typeof cloudData[k] === "object" && !Array.isArray(cloudData[k])) {
-              storageDriver.setItem(k, JSON.stringify(cloudData[k]));
+              setCollection(k, cloudData[k]);
             }
           }
           this.lastSyncTime = new Date().toISOString();
