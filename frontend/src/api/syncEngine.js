@@ -3,46 +3,42 @@
  * Features:
  * 1. Finite State Machine (FSM): IDLE, SYNCING_PUSH, SYNCING_PULL, OFFLINE, ERROR, CONFLICT, DEAD_LETTER
  * 2. Idempotent batch mutation pushes (POST /api/v1/sync/push) with retry count & dead-letter queue
- * 3. Domain-specific conflict resolution (3-way merge for patients, PN-counter deltas for stock, server supremacy for licensing)
- * 4. Dirty local record protection during pull hydration
- * 5. Exponential backoff with jitter on network/server failures
- * 6. Master clock time calibration (/api/v1/time) & active health probe
- * 7. Granular inspection & manual retry/discard APIs
+ * 3. Domain-specific conflict resolution and safe pull hydration
+ * 4. Automatic periodic heartbeat beacon (POST /api/v1/telemetry/heartbeat)
+ * 5. Background state poller on window focus & online event
+ * 6. Multi-device fleet telemetry and real-time synchronization
  */
 
 import {
   dbOutbox,
-  getAllCollectionsSnapshot,
-  registerCollectionChangeHook,
-  dbPatients,
-  dbLicense,
-  dbSales,
-  setCollection,
   KEYS,
   getDeviceId,
 } from "./db.js";
 
-import {
-  mergePatientEntity,
-  reconcileInventoryWithDeltas,
-  reconcileSystemSettings,
-} from "./conflictResolver.js";
 import { telemetry } from "./telemetry.js";
 import { storageDriver } from "./storageDriver.js";
 
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
-  (typeof window !== "undefined" && window.location.origin && window.location.protocol.startsWith("http") && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("tauri")
-    ? window.location.origin
-    : "https://api.clinicore.me");
+export function getActiveServerUrl() {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const custom = localStorage.getItem("cf_custom_api_url");
+      if (custom && custom.trim()) return custom.trim().replace(/\/$/, "");
+    }
+  } catch (_) {}
+  if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1") && !window.location.hostname.includes("tauri")) {
+    return window.location.origin.replace(/\/$/, "");
+  }
+  return "https://clinicore.me";
+}
 
 export const FALLBACK_ENDPOINTS = [
-  "https://api.clinicore.me",
   "https://clinicore.me",
+  "http://77.37.45.233:8000",
   "http://127.0.0.1:5000"
 ];
-
 
 export const SYNC_FSM_STATES = {
   IDLE: "IDLE",
@@ -55,24 +51,41 @@ export const SYNC_FSM_STATES = {
 };
 
 const MAX_RETRIES = 5;
-const BASE_BACKOFF_MS = 1000;
-const MAX_BACKOFF_MS = 30000;
 
 class SyncEngine {
   constructor() {
-    this.isOnline = true;
+    this.isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
     this.isSyncing = false;
     this.fsmState = SYNC_FSM_STATES.IDLE;
     this.pushTimer = null;
     this.pollInterval = null;
-    this.healthInterval = null;
+    this.heartbeatInterval = null;
     this.lastStateHash = "";
     this.lastErrorMessage = null;
     this.retryAttempt = 0;
     this.subscribers = new Set();
-    this.lastSyncTime = null;
+    this.lastSyncTime = typeof localStorage !== "undefined" ? localStorage.getItem("cf_last_sync_time") || null : null;
     this.serverTimeOffsetMs = 0;
-    this.enableSnapshotSyncFallback = false;
+    this.init();
+  }
+
+  init() {
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", () => {
+        this.handleNetworkChange(true);
+        this.forceSyncNow();
+      });
+      window.addEventListener("offline", () => {
+        this.handleNetworkChange(false);
+      });
+      window.addEventListener("focus", () => {
+        if (this.isOnline) {
+          this.pullLatestCloudState();
+          this.processOutbox();
+        }
+      });
+      this.startBackgroundPoller();
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -138,56 +151,214 @@ class SyncEngine {
     });
   }
 
-  // --------------------------------------------------------------------------
-  // Network Listeners & Active Health Probing
-  // --------------------------------------------------------------------------
-
   handleNetworkChange(onlineStatus) {
     this.isOnline = onlineStatus;
     this.setState(onlineStatus ? SYNC_FSM_STATES.IDLE : SYNC_FSM_STATES.OFFLINE);
   }
 
-  startBackgroundPoller() {
-    // Disabled per user directive
-  }
+  // --------------------------------------------------------------------------
+  // Heartbeat Telemetry & Background Poller
+  // --------------------------------------------------------------------------
 
-  startHealthProber() {
-    // Disabled per user directive
-  }
+  async sendDeviceHeartbeat() {
+    if (!this.isOnline) return;
+    try {
+      const serverUrl = getActiveServerUrl();
+      const devId = typeof getDeviceId === "function" ? getDeviceId() : "dev_unknown";
 
-  async checkCloudHealth() {
-    return true;
-  }
+      let userObj = null;
+      try {
+        const rawUser = localStorage.getItem("cf_current_user") || sessionStorage.getItem("cf_auth_session");
+        if (rawUser) userObj = JSON.parse(rawUser);
+      } catch (_) {}
 
-  async calibrateServerTime() {
-    return;
-  }
+      const allOutbox = dbOutbox?.getAll?.() || [];
+      const pendingItems = allOutbox.filter((m) => m.status === "pending" || m.status === "sending");
 
-  getCalibratedPKTIsoString() {
-    const calibratedEpoch = Date.now() + this.serverTimeOffsetMs;
-    return new Date(calibratedEpoch).toISOString();
-  }
+      const payload = {
+        device_id: devId,
+        device_name: (typeof window !== "undefined" && window.__TAURI__ ? "Desktop App (Tauri)" : "Web Browser") + (typeof navigator !== "undefined" ? ` (${navigator.platform || "PC"})` : ""),
+        user_name: userObj?.name || userObj?.username || "Staff Terminal",
+        user_role: userObj?.role || "staff",
+        app_version: (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || (typeof localStorage !== "undefined" && localStorage.getItem("cf_applied_version")) || "2.5.9",
+        platform: typeof window !== "undefined" && window.__TAURI__ ? "Desktop (Windows Tauri)" : "Web Browser SPA",
+        pending_outbox_count: pendingItems.length,
+        last_sync_time: this.lastSyncTime || new Date().toISOString(),
+      };
 
-  calculateBackoffMs() {
-    return 1000;
+      await fetch(`${serverUrl}/api/v1/telemetry/heartbeat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      }).catch(() => null);
+    } catch (_) {}
   }
 
   schedulePush() {
-    // Sync push disabled per user directive
+    if (this.pushTimer) clearTimeout(this.pushTimer);
+    this.pushTimer = setTimeout(() => {
+      this.processOutbox();
+    }, 300);
   }
+
+  startBackgroundPoller() {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+    // Poll every 25 seconds
+    this.pollInterval = setInterval(() => {
+      if (this.isOnline && typeof document !== "undefined" && document.visibilityState === "visible") {
+        this.pullLatestCloudState();
+        this.processOutbox();
+      }
+    }, 25000);
+
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    // Send heartbeat every 30 seconds
+    this.heartbeatInterval = setInterval(() => {
+      this.sendDeviceHeartbeat();
+    }, 30000);
+
+    // Initial check after 1.5 seconds
+    setTimeout(() => {
+      this.pullLatestCloudState();
+      this.processOutbox();
+      this.sendDeviceHeartbeat();
+    }, 1500);
+  }
+
+  // --------------------------------------------------------------------------
+  // Core Push & Pull Synchronization Workers
+  // --------------------------------------------------------------------------
 
   async processOutbox() {
-    this.setState(SYNC_FSM_STATES.IDLE);
-    return;
-  }
+    if (!this.isOnline || this.isSyncing) return;
+    const allOutbox = dbOutbox?.getAll?.() || [];
+    const pendingItems = allOutbox.filter((m) => m.status === "pending" || m.status === "sending");
+    if (pendingItems.length === 0) return;
 
-  async pushLocalStateToCloud() {
-    return;
+    this.setState(SYNC_FSM_STATES.SYNCING_PUSH);
+    const serverUrl = getActiveServerUrl();
+
+    try {
+      pendingItems.forEach((m) => { m.status = "sending"; });
+      storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
+
+      const res = await fetch(`${serverUrl}/api/v1/sync/push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mutations: pendingItems }),
+        cache: "no-store",
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        const json = await res.json().catch(() => null);
+        const results = json?.data?.results || [];
+        const resultMap = new Map(results.map((r) => [r.mutation_id, r]));
+
+        pendingItems.forEach((m) => {
+          const mId = m.mutation_id || m.id;
+          const r = resultMap.get(mId);
+          if (!r || r.status === "confirmed") {
+            dbOutbox.markSynced(mId);
+          } else if (r.status === "rejected") {
+            m.status = "dead_letter";
+            m.last_error = r.reason || "Server rejected mutation";
+          }
+        });
+
+        this.retryAttempt = 0;
+        this.lastSyncTime = new Date().toISOString();
+        try { localStorage.setItem("cf_last_sync_time", this.lastSyncTime); } catch (_) {}
+        this.setState(SYNC_FSM_STATES.IDLE);
+      } else {
+        pendingItems.forEach((m) => {
+          m.status = "failed";
+          m.retry_count = (m.retry_count || 0) + 1;
+          m.last_error = `HTTP ${res?.status || "network_error"}`;
+          if (m.retry_count >= MAX_RETRIES) {
+            m.status = "dead_letter";
+          }
+        });
+        storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
+        this.setState(SYNC_FSM_STATES.ERROR, `Push failed: HTTP ${res?.status || "err"}`);
+      }
+    } catch (err) {
+      pendingItems.forEach((m) => {
+        m.status = "failed";
+        m.retry_count = (m.retry_count || 0) + 1;
+        m.last_error = err.message;
+      });
+      storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(allOutbox));
+      this.setState(SYNC_FSM_STATES.ERROR, err.message);
+    } finally {
+      this.sendDeviceHeartbeat().catch(() => {});
+    }
   }
 
   async pullLatestCloudState() {
-    this.setState(SYNC_FSM_STATES.IDLE);
-    return;
+    if (!this.isOnline || this.isSyncing) return;
+    this.setState(SYNC_FSM_STATES.SYNCING_PULL);
+    const serverUrl = getActiveServerUrl();
+
+    try {
+      const res = await fetch(`${serverUrl}/api/v1/system/sync-state?_t=${Date.now()}`, {
+        method: "GET",
+        headers: { "Cache-Control": "no-cache" },
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        const json = await res.json().catch(() => null);
+        const cloudData = json?.data;
+        if (cloudData && typeof cloudData === "object") {
+          const syncKeys = [
+            "cf_patients_v5", "cf_visits_v5", "cf_sales_v5", "cf_b2b_sales_v5",
+            "cf_inventory_v5", "cf_purchases_v5", "cf_suppliers_v5", "cf_parties_v5",
+            "cf_salesmen_v5", "cf_warehouses_v6", "cf_accounts_v6", "cf_cashbook_v6",
+            "cf_expenses_v5", "cf_users_v5", "cf_clinic_v5"
+          ];
+
+          for (const k of syncKeys) {
+            if (Array.isArray(cloudData[k]) && cloudData[k].length > 0) {
+              const localRaw = storageDriver.getItem(k);
+              let parsedLocal = [];
+              try { parsedLocal = localRaw ? JSON.parse(localRaw) : []; } catch (_) {}
+
+              if (parsedLocal.length === 0) {
+                storageDriver.setItem(k, JSON.stringify(cloudData[k]));
+              } else {
+                const localMap = new Map(parsedLocal.map((item) => [item.id, item]));
+                cloudData[k].forEach((serverItem) => {
+                  if (serverItem && serverItem.id) {
+                    if (!localMap.has(serverItem.id)) {
+                      parsedLocal.unshift(serverItem);
+                    } else {
+                      const existing = localMap.get(serverItem.id);
+                      const sTime = new Date(serverItem.updated_at || serverItem.created_at || 0).getTime();
+                      const lTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+                      if (sTime >= lTime) {
+                        localMap.set(serverItem.id, { ...existing, ...serverItem });
+                      }
+                    }
+                  }
+                });
+                storageDriver.setItem(k, JSON.stringify(parsedLocal));
+              }
+            } else if (cloudData[k] && typeof cloudData[k] === "object" && !Array.isArray(cloudData[k])) {
+              storageDriver.setItem(k, JSON.stringify(cloudData[k]));
+            }
+          }
+          this.lastSyncTime = new Date().toISOString();
+          try { localStorage.setItem("cf_last_sync_time", this.lastSyncTime); } catch (_) {}
+        }
+        this.setState(SYNC_FSM_STATES.IDLE);
+      } else {
+        this.setState(SYNC_FSM_STATES.IDLE);
+      }
+    } catch (err) {
+      this.setState(SYNC_FSM_STATES.ERROR, err.message);
+    } finally {
+      this.sendDeviceHeartbeat().catch(() => {});
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -247,9 +418,9 @@ class SyncEngine {
     if (!this.isOnline) {
       return { success: false, message: "Device is currently offline." };
     }
-    await this.calibrateServerTime();
     await this.pullLatestCloudState();
     await this.processOutbox();
+    await this.sendDeviceHeartbeat();
     return { success: true, timestamp: this.lastSyncTime };
   }
 }

@@ -18,6 +18,7 @@ if (!fs.existsSync(DATA_DIR)) {
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
 const STATE_FILE = path.join(DATA_DIR, "sync_state.json");
+const DEVICES_FILE = path.join(DATA_DIR, "devices.json");
 
 function loadJson(file, defaultData) {
   try {
@@ -81,6 +82,7 @@ let systemConfig = loadJson(CONFIG_FILE, {
 
 let users = loadJson(USERS_FILE, []);
 let syncStateData = loadJson(STATE_FILE, {});
+let connectedDevices = loadJson(DEVICES_FILE, {});
 
 // Pre-seed backend syncStateData if empty so VPS serves the full catalog
 const MASTER_MEDS_FILE = path.join(DATA_DIR, "master_medicines_seed.json");
@@ -190,6 +192,45 @@ const server = http.createServer((req, res) => {
     if (url.pathname === "/api/v1/time" || url.pathname === "/api/v1/system/time") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ success: true, data: { epoch_ms: Date.now() } }));
+      return;
+    }
+
+    // ── Fleet Telemetry & Connected Devices Heartbeat ──
+    if (url.pathname === "/api/v1/telemetry/heartbeat" && req.method === "POST") {
+      const devId = payload.device_id || "dev_unknown";
+      const clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1";
+      const cleanIp = String(clientIp).split(",")[0].trim().replace(/^::ffff:/, "");
+
+      connectedDevices[devId] = {
+        device_id: devId,
+        device_name: payload.device_name || "CliniCore Terminal",
+        user_name: payload.user_name || "Counter Staff",
+        user_role: payload.user_role || "staff",
+        app_version: payload.app_version || "2.5.9",
+        platform: payload.platform || "Desktop / Browser",
+        pending_outbox_count: Number(payload.pending_outbox_count) || 0,
+        last_sync_time: payload.last_sync_time || new Date().toISOString(),
+        client_ip: cleanIp,
+        last_seen: Date.now(),
+      };
+
+      saveJson(DEVICES_FILE, connectedDevices);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, timestamp: Date.now() }));
+      return;
+    }
+
+    // ── Get Connected Fleet Devices List ──
+    if (url.pathname === "/api/v1/telemetry/devices" && req.method === "GET") {
+      const now = Date.now();
+      const list = Object.values(connectedDevices).map((d) => ({
+        ...d,
+        is_online: (now - (d.last_seen || 0)) < 90000, // active in last 90s = Online
+        seconds_ago: Math.max(0, Math.round((now - (d.last_seen || 0)) / 1000)),
+      })).sort((a, b) => (b.last_seen || 0) - (a.last_seen || 0));
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, count: list.length, data: list }));
       return;
     }
 

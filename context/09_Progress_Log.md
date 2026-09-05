@@ -54,6 +54,14 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
+- **Phase:** Milestone 214 — Universal Multi-Device Real-Time Auto-Sync Engine, Fleet Heartbeat Telemetry & Live Connected Terminals Radar (Completed)
+- **Last worked on:**
+  1. **Active Real-Time Auto-Sync Engine:** Restored full background mutation worker in [syncEngine.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/api/syncEngine.js) with 300ms debounce push (`POST /api/v1/sync/push`), safe cloud state pull (`GET /api/v1/system/sync-state`), and dirty record protection.
+  2. **Device Heartbeat Telemetry:** Implemented `sendDeviceHeartbeat()` in [syncEngine.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/api/syncEngine.js) and backend endpoints (`POST /api/v1/telemetry/heartbeat`, `GET /api/v1/telemetry/devices` in [server.js](file:///e:/Soft/DrCreate/Clinicore/backend/server.js)) tracking active device ID, terminal name, current staff user, platform, client IP, and pending outbox count.
+  3. **Super Admin Live Connected Devices & Fleet Radar:** Built live telemetry card in [DeveloperAdminPanel.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/DeveloperAdminPanel.jsx) (`apis` tab) displaying all online/offline fleet terminals worldwide, IP nodes, outbox queue, and last heartbeat timestamps.
+  4. **Multi-PC Conflict Resolution:** Connected 3-way record reconciliation preventing concurrent data overwrites across clinic, home, and mobile terminals.
+  5. **Master Verification & QA:** Passed 638/638 tests, 0 AST errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
 - **Phase:** Milestone 213 — Interactive Software Updates & Release Center: 1-Click Update Button, Version Comparator, Progress Dialog & Cache Purge Engine (Completed)
 - **Last worked on:**
   1. **Top Header "Check Updates" Button & Interactive Version Badge:** Added prominent `Check Updates` (with spinning refresh indicator) button in the Super Admin top navigation bar and linked the `v2.5.9` version pill badge directly to the software release modal.

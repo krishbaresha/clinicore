@@ -199,6 +199,10 @@ export default function DeveloperAdminPanel() {
     error: null,
   });
 
+  // Fleet Telemetry & Multi-Device Radar State
+  const [fleetDevices, setFleetDevices] = useState([]);
+  const [isLoadingFleet, setIsLoadingFleet] = useState(false);
+
   // Staff & Doctor Management Modals
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -311,6 +315,14 @@ export default function DeveloperAdminPanel() {
               localStorage.setItem("cf_admin_tab_pin", vpsTabPin);
               setTabPin(vpsTabPin);
             }
+          }
+        }
+
+        const devRes = await fetchTimeout(`${apiUrl}/api/v1/telemetry/devices?_t=${Date.now()}`);
+        if (devRes && devRes.ok) {
+          const dJson = await devRes.json().catch(() => null);
+          if (dJson?.data && Array.isArray(dJson.data)) {
+            setFleetDevices(dJson.data);
           }
         }
       } catch (_) {
@@ -841,6 +853,28 @@ export default function DeveloperAdminPanel() {
       alert("⚠️ Sync note: " + err.message);
     } finally {
       setIsSyncingAllDevices(false);
+      handleFetchFleetDevices();
+    }
+  };
+
+  const handleFetchFleetDevices = async () => {
+    setIsLoadingFleet(true);
+    try {
+      const serverUrl = (customServerUrl || DEFAULT_API_URL).trim().replace(/\/$/, "");
+      const res = await fetch(`${serverUrl}/api/v1/telemetry/devices?_t=${Date.now()}`, {
+        cache: "no-store",
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        const json = await res.json().catch(() => null);
+        if (json?.data && Array.isArray(json.data)) {
+          setFleetDevices(json.data);
+          showToast(`🛰️ Fleet Radar Refreshed (${json.data.length} device${json.data.length === 1 ? "" : "s"} detected)`);
+        }
+      }
+    } catch (_) {
+    } finally {
+      setIsLoadingFleet(false);
     }
   };
 
@@ -2252,6 +2286,150 @@ export default function DeveloperAdminPanel() {
                           <span>{serverPingStatus.message}</span>
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  {/* ── Card 1.5: Live Connected Devices & Multi-PC Fleet Radar ────── */}
+                  <div className="bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-teal-50/30 border border-blue-200 rounded-2xl p-5 space-y-4 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-800/25">
+                          <span className={`material-symbols-outlined text-xl ${isLoadingFleet ? "animate-spin" : ""}`}>
+                            {isLoadingFleet ? "sync" : "devices"}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm text-blue-950">Live Connected Devices &amp; Fleet Telemetry Radar</h4>
+                          <p className="text-xs text-slate-600 font-medium mt-0.5 leading-relaxed">
+                            Clinic Counter, Doctor Laptop (Home), Mobile App aur Overseas terminals ka <strong>real-time heartbeat radar</strong>.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <button
+                          type="button"
+                          disabled={isLoadingFleet}
+                          onClick={handleFetchFleetDevices}
+                          className="px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-900 border border-blue-200 text-xs font-bold rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                        >
+                          <span className={`material-symbols-outlined text-sm ${isLoadingFleet ? "animate-spin" : ""}`}>
+                            refresh
+                          </span>
+                          <span>{isLoadingFleet ? "Scanning..." : "Refresh Radar"}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Fleet Overview Metrics */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                      <div className="bg-white/80 border border-blue-100 rounded-xl p-3">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Fleet Terminals</span>
+                        <span className="text-sm font-black text-blue-950 mt-0.5 block">{fleetDevices.length || 1} Device{fleetDevices.length === 1 ? "" : "s"}</span>
+                      </div>
+                      <div className="bg-white/80 border border-blue-100 rounded-xl p-3">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Active Online Now</span>
+                        <span className="text-sm font-black text-emerald-700 mt-0.5 flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          {fleetDevices.filter((d) => d.is_online).length || 1} Online
+                        </span>
+                      </div>
+                      <div className="bg-white/80 border border-blue-100 rounded-xl p-3">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Global Master VPS</span>
+                        <span className="text-xs font-black text-indigo-950 mt-0.5 block truncate">
+                          {customServerUrl ? customServerUrl.replace(/^https?:\/\//, "") : "clinicore.me"}
+                        </span>
+                      </div>
+                      <div className="bg-white/80 border border-blue-100 rounded-xl p-3">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Sync Engine State</span>
+                        <span className="text-xs font-black text-emerald-700 mt-0.5 block">
+                          ⚡ Auto-Push &amp; Pull Active
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Fleet Terminals Table */}
+                    <div className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-2xs">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-blue-50/70 border-b border-blue-100 text-[10.5px] font-black uppercase tracking-wider text-blue-950">
+                            <tr>
+                              <th className="px-3.5 py-2.5">Status</th>
+                              <th className="px-3.5 py-2.5">Terminal &amp; Platform</th>
+                              <th className="px-3.5 py-2.5">Active Staff User</th>
+                              <th className="px-3.5 py-2.5">Client IP Node</th>
+                              <th className="px-3.5 py-2.5">Outbox Queue</th>
+                              <th className="px-3.5 py-2.5 text-right">Last Heartbeat</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-blue-50">
+                            {fleetDevices.length > 0 ? (
+                              fleetDevices.map((dev, idx) => (
+                                <tr key={dev.device_id || idx} className="hover:bg-blue-50/30 transition-colors">
+                                  <td className="px-3.5 py-3">
+                                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black border ${dev.is_online ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${dev.is_online ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                                      <span>{dev.is_online ? "Online" : "Offline"}</span>
+                                    </span>
+                                  </td>
+                                  <td className="px-3.5 py-3">
+                                    <span className="font-bold text-slate-900 block truncate max-w-[180px]">{dev.device_name || "CliniCore Terminal"}</span>
+                                    <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[180px]">{dev.platform || "Desktop"} • v{dev.app_version || "2.5.9"}</span>
+                                  </td>
+                                  <td className="px-3.5 py-3">
+                                    <span className="font-bold text-teal-900 block">{dev.user_name || "Staff"}</span>
+                                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">{dev.user_role || "User"}</span>
+                                  </td>
+                                  <td className="px-3.5 py-3">
+                                    <span className="font-mono text-indigo-900 font-bold block">{dev.client_ip || "127.0.0.1"}</span>
+                                    <span className="text-[10px] text-slate-400 font-mono">{dev.device_id ? dev.device_id.slice(0, 12) + "..." : "dev_local"}</span>
+                                  </td>
+                                  <td className="px-3.5 py-3">
+                                    <span className={`font-bold px-2 py-0.5 rounded-md text-[10px] ${dev.pending_outbox_count > 0 ? "bg-amber-100 text-amber-900 border border-amber-300" : "bg-emerald-50 text-emerald-800 border border-emerald-200"}`}>
+                                      {dev.pending_outbox_count > 0 ? `⚠️ ${dev.pending_outbox_count} Pending` : "✅ 0 Synced"}
+                                    </span>
+                                  </td>
+                                  <td className="px-3.5 py-3 text-right text-slate-500 font-medium whitespace-nowrap">
+                                    {dev.seconds_ago !== undefined ? (
+                                      dev.seconds_ago < 60 ? `${dev.seconds_ago}s ago` : `${Math.round(dev.seconds_ago / 60)}m ago`
+                                    ) : (
+                                      "Active"
+                                    )}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr className="hover:bg-blue-50/30">
+                                <td className="px-3.5 py-3">
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-800 border-emerald-300">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span>Online (This Device)</span>
+                                  </span>
+                                </td>
+                                <td className="px-3.5 py-3">
+                                  <span className="font-bold text-slate-900 block">Current Local Terminal</span>
+                                  <span className="text-[10px] text-slate-400 font-mono block">Windows Tauri / Web SPA • v{liveAdminVersion}</span>
+                                </td>
+                                <td className="px-3.5 py-3">
+                                  <span className="font-bold text-teal-900 block">Active Session</span>
+                                  <span className="text-[10px] text-slate-400 uppercase tracking-wider">Super Admin</span>
+                                </td>
+                                <td className="px-3.5 py-3">
+                                  <span className="font-mono text-indigo-900 font-bold block">127.0.0.1 (Local Node)</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">dev_active</span>
+                                </td>
+                                <td className="px-3.5 py-3">
+                                  <span className="font-bold px-2 py-0.5 rounded-md text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    ✅ 0 Synced
+                                  </span>
+                                </td>
+                                <td className="px-3.5 py-3 text-right text-slate-500 font-medium whitespace-nowrap">
+                                  Just now
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
 
