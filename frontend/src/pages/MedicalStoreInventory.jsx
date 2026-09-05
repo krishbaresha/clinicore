@@ -136,6 +136,7 @@ export default function MedicalStoreInventory() {
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvParsedRows, setCsvParsedRows] = useState([]);
   const [csvFileName, setCsvFileName] = useState("");
+  const [csvCompanyFilter, setCsvCompanyFilter] = useState("ALL");
   const [csvImportStatus, setCsvImportStatus] = useState({ loading: false, result: null, error: "" });
 
   // Zero-Pilferage Blind Physical Stock Audit State
@@ -856,6 +857,7 @@ export default function MedicalStoreInventory() {
     const file = e.target.files?.[0];
     if (!file) return;
     setCsvFileName(file.name);
+    setCsvCompanyFilter("ALL");
     setCsvImportStatus({ loading: false, result: null, error: "" });
 
     const reader = new FileReader();
@@ -868,6 +870,7 @@ export default function MedicalStoreInventory() {
           setCsvParsedRows([]);
         } else {
           setCsvParsedRows(parsed);
+          setCsvCompanyFilter("ALL");
         }
       } catch (err) {
         setCsvImportStatus({ loading: false, result: null, error: `CSV Parsing error: ${err.message}` });
@@ -875,6 +878,22 @@ export default function MedicalStoreInventory() {
     };
     reader.readAsText(file);
   }
+
+  // Company breakdown analytics and filtered rows for CSV Import Preview
+  const csvCompanyBreakdown = useMemo(() => {
+    if (!csvParsedRows || csvParsedRows.length === 0) return [];
+    const map = new Map();
+    for (const r of csvParsedRows) {
+      const comp = r.company_name || "BM Pvt LTD";
+      map.set(comp, (map.get(comp) || 0) + 1);
+    }
+    return Array.from(map.entries()).map(([company, count]) => ({ company, count }));
+  }, [csvParsedRows]);
+
+  const displayedCsvRows = useMemo(() => {
+    if (!csvCompanyFilter || csvCompanyFilter === "ALL") return csvParsedRows;
+    return csvParsedRows.filter((r) => (r.company_name || "BM Pvt LTD") === csvCompanyFilter);
+  }, [csvParsedRows, csvCompanyFilter]);
 
   function handleExecuteCsvImport() {
     if (csvParsedRows.length === 0) return;
@@ -2858,136 +2877,195 @@ export default function MedicalStoreInventory() {
               />
             </div>
 
-            {/* Live Table Preview with Full Responsive Scroll & Inline Edit */}
+            {/* Live Table Preview with Full Responsive Scroll, Company Analytics & Inline Edit */}
             {csvParsedRows.length > 0 && (
-              <div className="space-y-2.5 flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex flex-wrap justify-between items-center text-xs font-bold text-slate-800 gap-2 shrink-0">
-                  <span className="text-teal-950 font-black">
-                    Showing All {csvParsedRows.length} Items (Click any cell to edit before importing):
-                  </span>
-                  <span className="text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full text-xs font-black border border-emerald-200">
-                    Schema Validated • Auto Company Linkage Active ✅
-                  </span>
+              <div className="space-y-3 flex-1 flex flex-col min-h-0 overflow-hidden">
+                {/* Intelligence Analytics & Company Breakdown Bar */}
+                <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-slate-900 p-3.5 rounded-2xl text-white space-y-2.5 shrink-0 shadow-sm border border-teal-700/40">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="font-extrabold text-sm text-white">
+                        {csvParsedRows.length} Total SKUs Detected
+                      </span>
+                      <span className="text-teal-300 font-medium">•</span>
+                      <span className="text-teal-200 font-bold">
+                        {csvCompanyBreakdown.length} {csvCompanyBreakdown.length === 1 ? "Company" : "Companies"} in CSV
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold bg-teal-500/20 px-3 py-1 rounded-full border border-teal-400/30 text-emerald-300">
+                      <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                      <span>Auto A-Z Sorted • Title-Cased • Smart Packing Extracted ✅</span>
+                    </div>
+                  </div>
+
+                  {/* Interactive Company Filter Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto custom-scroll pb-1 pt-0.5">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-teal-300 shrink-0 mr-1">
+                      Filter Company:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCsvCompanyFilter("ALL")}
+                      className={`px-3 py-1 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                        csvCompanyFilter === "ALL"
+                          ? "bg-white text-teal-950 shadow-md font-extrabold"
+                          : "bg-white/10 hover:bg-white/20 text-teal-100"
+                      }`}
+                    >
+                      All Companies ({csvParsedRows.length})
+                    </button>
+                    {csvCompanyBreakdown.map((b) => {
+                      const isActive = csvCompanyFilter === b.company;
+                      return (
+                        <button
+                          key={b.company}
+                          type="button"
+                          onClick={() => setCsvCompanyFilter(b.company)}
+                          className={`px-3 py-1 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                            isActive
+                              ? "bg-teal-400 text-teal-950 shadow-md font-extrabold"
+                              : "bg-teal-950/60 hover:bg-teal-950/90 text-teal-200 border border-teal-600/40"
+                          }`}
+                        >
+                          <span>{b.company}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isActive ? "bg-teal-950 text-teal-200 font-mono" : "bg-teal-800 text-white font-mono"}`}>
+                            {b.count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 
+                {/* Clean Responsive Table with Live Inline Edit */}
                 <div className="overflow-x-auto overflow-y-auto border border-slate-200 rounded-2xl flex-1 text-xs">
-                  <table className="w-full text-left min-w-[900px]">
+                  <table className="w-full text-left min-w-[950px]">
                     <thead className="bg-slate-100 font-black text-slate-700 sticky top-0 z-10 uppercase text-[10.5px]">
                       <tr>
                         <th className="p-3 w-12 text-center">#</th>
-                        <th className="p-3">Medicine Name *</th>
-                        <th className="p-3">Description</th>
-                        <th className="p-3">Packing</th>
-                        <th className="p-3">Company / Brand *</th>
+                        <th className="p-3">Medicine Name (Title Cased) *</th>
+                        <th className="p-3">Description / Generic</th>
+                        <th className="p-3 w-36">Clean Packing *</th>
+                        <th className="p-3 w-40">Company / Brand *</th>
                         <th className="p-3 w-28 text-right">Cost (Rs)</th>
                         <th className="p-3 w-28 text-right">Retail Sale (Rs) *</th>
                         <th className="p-3 w-24 text-right">Stock Qty *</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium">
-                      {csvParsedRows.map((r, i) => (
-                        <tr key={i} className="hover:bg-sky-50/50 transition-colors">
-                          <td className="p-2 text-center text-slate-400 font-mono text-[11px]">{i + 1}</td>
-                          <td className="p-2">
-                            <input
-                              type="text"
-                              value={r.medicine_name || ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setCsvParsedRows((prev) => prev.map((row, idx) => idx === i ? { ...row, medicine_name: val } : row));
-                              }}
-                              className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-bold text-slate-900"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="text"
-                              value={r.product_description || r.generic_name || ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setCsvParsedRows((prev) => prev.map((row, idx) => idx === i ? { ...row, product_description: val, generic_name: val } : row));
-                              }}
-                              placeholder="Description..."
-                              className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs text-slate-700"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="text"
-                              value={r.packing || r.unit_label || ""}
-                              list="packingSuggestionsCsv"
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setCsvParsedRows((prev) => prev.map((row, idx) => idx === i ? { ...row, packing: val, unit_label: val } : row));
-                              }}
-                              placeholder="e.g. 60 TABS, 30 ML..."
-                              className="w-full bg-white border border-teal-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-bold text-slate-800 uppercase"
-                            />
-                            <datalist id="packingSuggestionsCsv">
-                              <option value="30 ML" />
-                              <option value="60 TABS" />
-                              <option value="40 TABS" />
-                              <option value="45 TABS" />
-                              <option value="90 TABS" />
-                              <option value="90 ML" />
-                              <option value="250 ML" />
-                              <option value="1000 ML" />
-                              <option value="60 CAPS" />
-                              <option value="350 GMS" />
-                              <option value="100 GMS" />
-                              <option value="30 ML / 60 TABS" />
-                              <option value="Course" />
-                            </datalist>
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="text"
-                              value={r.company_name || ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setCsvParsedRows((prev) => prev.map((row, idx) => idx === i ? { ...row, company_name: val } : row));
-                              }}
-                              className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-semibold text-slate-900"
-                            />
-                          </td>
-                          <td className="p-2 text-right">
-                            <input
-                              type="number"
-                              min="0"
-                              value={r.cost_price_per_box ?? 0}
-                              onChange={(e) => {
-                                const val = Number(e.target.value) || 0;
-                                setCsvParsedRows((prev) => prev.map((row, idx) => idx === i ? { ...row, cost_price_per_box: val, purchase_price: val, cost_price: val } : row));
-                              }}
-                              className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 text-right"
-                            />
-                          </td>
-                          <td className="p-2 text-right">
-                            <input
-                              type="number"
-                              min="0"
-                              value={r.unit_sale_price ?? 0}
-                              onChange={(e) => {
-                                const val = Number(e.target.value) || 0;
-                                setCsvParsedRows((prev) => prev.map((row, idx) => idx === i ? { ...row, unit_sale_price: val, box_sale_price: val, unit_price: val } : row));
-                              }}
-                              className="w-full bg-white border border-teal-300 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-black text-teal-900 text-right"
-                            />
-                          </td>
-                          <td className="p-2 text-right">
-                            <input
-                              type="number"
-                              min="0"
-                              value={r.total_base_stock ?? 0}
-                              onChange={(e) => {
-                                const val = Number(e.target.value) || 0;
-                                setCsvParsedRows((prev) => prev.map((row, idx) => idx === i ? { ...row, total_base_stock: val, store_stock: val, stock_qty: val } : row));
-                              }}
-                              className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 text-right"
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                      {displayedCsvRows.map((r, i) => {
+                        const originalIdx = csvParsedRows.indexOf(r);
+                        const rowIdx = originalIdx !== -1 ? originalIdx : i;
+                        return (
+                          <tr key={rowIdx} className="hover:bg-sky-50/50 transition-colors">
+                            <td className="p-2 text-center text-slate-400 font-mono text-[11px] font-bold">
+                              {rowIdx + 1}
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="text"
+                                value={r.medicine_name || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, medicine_name: val } : row));
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="text"
+                                value={r.product_description || r.generic_name || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, product_description: val, generic_name: val } : row));
+                                }}
+                                placeholder="Description..."
+                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs text-slate-700"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="text"
+                                value={r.packing || r.unit_label || ""}
+                                list="packingSuggestionsCsv"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, packing: val, unit_label: val } : row));
+                                }}
+                                placeholder="e.g. 60 TABS, 30 ML..."
+                                className="w-full bg-white border border-teal-300 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs font-black text-teal-900 uppercase"
+                              />
+                              <datalist id="packingSuggestionsCsv">
+                                <option value="30 ML" />
+                                <option value="60 TABS" />
+                                <option value="40 TABS" />
+                                <option value="45 TABS" />
+                                <option value="75 TABS" />
+                                <option value="90 TABS" />
+                                <option value="90 ML" />
+                                <option value="120 ML" />
+                                <option value="250 ML" />
+                                <option value="1000 ML" />
+                                <option value="20 CAPS" />
+                                <option value="60 CAPS" />
+                                <option value="350 GMS" />
+                                <option value="100 GMS" />
+                                <option value="30 ML / 60 TABS" />
+                                <option value="Course" />
+                              </datalist>
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="text"
+                                value={r.company_name || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, company_name: val } : row));
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900"
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                value={r.cost_price_per_box ?? 0}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 0;
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, cost_price_per_box: val, purchase_price: val, cost_price: val } : row));
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 text-right"
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                value={r.unit_sale_price ?? 0}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 0;
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, unit_sale_price: val, box_sale_price: val, unit_price: val } : row));
+                                }}
+                                className="w-full bg-white border border-teal-300 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-black text-teal-900 text-right"
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                value={r.total_base_stock ?? 0}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 0;
+                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, total_base_stock: val, store_stock: val, stock_qty: val } : row));
+                                }}
+                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 text-right"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

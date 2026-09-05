@@ -2223,12 +2223,15 @@ export const dbInventory = {
 
     for (const raw of rawList) {
       if (!raw || !raw.medicine_name || !raw.medicine_name.trim()) continue;
-      const cleanName = raw.medicine_name.trim();
       
-      const company = raw.company_name || dbInventory.resolveCompanyCode(raw.item_code) || "BM Pvt LTD";
-      const code = raw.item_code || company.slice(0, 3).toUpperCase();
+      const { name: cleanName, packing: extractedPacking } = extractSmartPackingAndName(raw.medicine_name, raw.packing || raw.unit_label);
+      if (!cleanName) continue;
+
+      const rawComp = raw.company_name || dbInventory.resolveCompanyCode(raw.item_code) || "BM Pvt LTD";
+      const company = toTitleCaseClean(rawComp) || "BM Pvt LTD";
+      const code = raw.item_code ? raw.item_code.toUpperCase().trim() : (company.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN");
       
-      // Auto-register company in dbSuppliers if not already registered (deduplicated)
+      // Auto-register company in dbSuppliers & dbCompanies if not already registered (deduplicated)
       if (company && company.trim()) {
         const compClean = company.trim();
         const existingSuppliers = dbSuppliers.getAll() || [];
@@ -2247,6 +2250,24 @@ export const dbInventory = {
             status: "active",
           });
         }
+
+        if (typeof dbCompanies !== "undefined" && dbCompanies.getAll) {
+          const existingComps = dbCompanies.getAll() || [];
+          const compExists = existingComps.some(
+            (c) => (c.name || "").toLowerCase().trim() === compClean.toLowerCase() ||
+                   (c.code || "").toLowerCase().trim() === code.toLowerCase()
+          );
+          if (!compExists) {
+            try {
+              dbCompanies.add({
+                name: compClean,
+                code: code,
+                category: "Allopathy / Homeopathy",
+                status: "active"
+              });
+            } catch {}
+          }
+        }
       }
 
       const salePrice = Number(raw.unit_sale_price || raw.box_sale_price || raw.sale_price) || 0;
@@ -2254,9 +2275,11 @@ export const dbInventory = {
       const storeStock = Number(raw.store_stock ?? raw.stock_qty ?? 0);
       const godownStock = Number(raw.warehouse_stock ?? 0);
       const totalBase = storeStock + godownStock;
-      const packing = raw.packing || raw.unit_label || "20ml Drop";
-      const desc = raw.product_description || raw.generic_name || raw.description || "";
-      const category = raw.category || "Homeopathic Drops";
+      const packing = extractedPacking || normalizePackingUnit(raw.packing || raw.unit_label) || "Standard Pack";
+      const rawDesc = raw.product_description || raw.generic_name || raw.description || "";
+      const desc = toTitleCaseClean(rawDesc);
+      const rawCat = raw.category || "Homeopathic Medicine";
+      const category = toTitleCaseClean(rawCat);
       const minAlert = Number(raw.low_stock_threshold) || 6;
 
       const existingIdx = current.findIndex(
@@ -2279,11 +2302,14 @@ export const dbInventory = {
           strip_sale_price: salePrice || current[existingIdx].strip_sale_price,
           unit_sale_price: salePrice || current[existingIdx].unit_sale_price,
           unit_price: salePrice || current[existingIdx].unit_price,
-          store_stock: storeStock,
-          stock_qty: storeStock,
-          warehouse_stock: godownStock,
-          total_base_stock: totalBase,
-          location_stocks: { wh_str: storeStock, ...(godownStock > 0 ? { wh_001: godownStock } : {}) },
+          store_stock: storeStock > 0 ? storeStock : current[existingIdx].store_stock,
+          stock_qty: storeStock > 0 ? storeStock : current[existingIdx].stock_qty,
+          warehouse_stock: godownStock > 0 ? godownStock : current[existingIdx].warehouse_stock,
+          total_base_stock: totalBase > 0 ? totalBase : current[existingIdx].total_base_stock,
+          location_stocks: {
+            wh_str: storeStock > 0 ? storeStock : (current[existingIdx].location_stocks?.wh_str || current[existingIdx].store_stock || 0),
+            ...(godownStock > 0 ? { wh_001: godownStock } : (current[existingIdx].location_stocks?.wh_001 ? { wh_001: current[existingIdx].location_stocks.wh_001 } : {}))
+          },
           low_stock_threshold: minAlert,
         };
         updatedCount++;
@@ -2321,6 +2347,18 @@ export const dbInventory = {
         addedCount++;
       }
     }
+
+    // Deterministic Sort before saving
+    current.sort((a, b) => {
+      const compA = (a.company_name || "").toLowerCase();
+      const compB = (b.company_name || "").toLowerCase();
+      if (compA !== compB) {
+        return compA.localeCompare(compB, undefined, { numeric: true, sensitivity: "base" });
+      }
+      const nameA = (a.medicine_name || "").toLowerCase();
+      const nameB = (b.medicine_name || "").toLowerCase();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
+    });
 
     setCollection(KEYS.INVENTORY, current);
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
@@ -2432,7 +2470,135 @@ export function exportInventoryTemplateCSV() {
   return `${headers}\n${rows.join("\n")}`;
 }
 
-/** Parse and Validate Inventory CSV File Content */
+/**
+ * Smart Title Casing that preserves medical potencies, acronyms and Roman numerals
+ */
+export function toTitleCaseClean(str) {
+  if (!str || typeof str !== "string") return "";
+  const trimmed = str.trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+
+  // Preserved medical abbreviations, potencies & units
+  const preserveExact = new Set([
+    "Q", "Ø", "1X", "2X", "3X", "4X", "5X", "6X", "12X", "30X", "200X",
+    "3C", "6C", "12C", "30C", "200C", "1M", "10M", "50M", "CM",
+    "BM", "SCH", "PB", "MKT", "BLS", "LPM", "GHR", "DHU", "WSG", "SBL",
+    "ML", "TABS", "CAPS", "GMS", "MG", "MCG", "KG", "IU",
+    "IV", "IM", "POS", "SKU", "MRP", "OPD"
+  ]);
+
+  return trimmed
+    .split(" ")
+    .map((word) => {
+      const upper = word.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (preserveExact.has(upper)) {
+        return word.toUpperCase();
+      }
+      if (/\d+[a-zA-Z]+|[a-zA-Z]+\d+/.test(word)) {
+        return word;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+/**
+ * Standardize packing string: e.g. "10ml" -> "10 ML", "60tabs" -> "60 TABS", "capsule 20" -> "20 CAPS"
+ */
+export function normalizePackingUnit(packStr) {
+  if (!packStr || typeof packStr !== "string") return "";
+  let clean = packStr.trim().replace(/[()]/g, "").trim();
+
+  // Inverted: "capsule 20", "tabs 75", "caps 20", "bottle 120ml"
+  const invertedMatch = clean.match(/^([a-zA-Z]+)\s*(\d+(?:\.\d+)?(?:\s*[a-zA-Z]+)?)$/i);
+  if (invertedMatch) {
+    const rawUnit = invertedMatch[1].toLowerCase();
+    const num = invertedMatch[2].trim();
+    let unitLabel = "PACK";
+    if (rawUnit.includes("cap")) unitLabel = "CAPS";
+    else if (rawUnit.includes("tab")) unitLabel = "TABS";
+    else if (rawUnit.includes("drop")) unitLabel = "DROPS";
+    else if (rawUnit.includes("sachet")) unitLabel = "SACHETS";
+    else if (rawUnit.includes("bot")) unitLabel = "BOTTLE";
+    else unitLabel = rawUnit.toUpperCase();
+    return `${num} ${unitLabel}`.replace(/\s+/g, " ").trim();
+  }
+
+  // Standard: "120ml", "120 ML", "75tabs", "75 TABS", "350gms", "350 GMS"
+  const unitMatch = clean.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+.*)$/);
+  if (unitMatch) {
+    const num = unitMatch[1];
+    let unit = unitMatch[2].trim().toUpperCase();
+    if (unit === "ML" || unit === "MLS" || unit === "MILLILITER" || unit === "MILLILITRES") unit = "ML";
+    else if (unit === "TAB" || unit === "TABS" || unit === "TABLET" || unit === "TABLETS") unit = "TABS";
+    else if (unit === "CAP" || unit === "CAPS" || unit === "CAPSULE" || unit === "CAPSULES") unit = "CAPS";
+    else if (unit === "GM" || unit === "GMS" || unit === "GRAM" || unit === "GRAMS" || unit === "G") unit = "GMS";
+    else if (unit === "DROP" || unit === "DROPS") unit = "DROPS";
+    else if (unit === "SACHET" || unit === "SACHETS") unit = "SACHETS";
+    return `${num} ${unit}`;
+  }
+
+  return clean.toUpperCase();
+}
+
+/**
+ * Smart Regex Packing & Product Name Extractor:
+ * If packing is embedded in product name (e.g. "hepakent sugarfree 120ml", "gastric plus with podina 75tabs", "Endura Mens Essential capsule 20"),
+ * extracts packing, normalizes it, strips it from name, and returns sanitized clean name and packing.
+ */
+export function extractSmartPackingAndName(rawName, existingPacking = "") {
+  if (!rawName || typeof rawName !== "string") {
+    return { name: "", packing: normalizePackingUnit(existingPacking) || "Standard Pack" };
+  }
+
+  let name = rawName.trim();
+  let extractedPacking = existingPacking ? normalizePackingUnit(existingPacking) : "";
+
+  // 1. Check for inverted pattern at end of name: " ... capsule 20" or " ... tabs 60" or " ... bottle 120ml"
+  const invertedRegex = /(?:[-–—,\s(]+)?\b(capsules?|caps?|tablets?|tabs?|drops?|sachets?|bottles?)\s*(\d+(?:\.\d+)?(?:\s*(?:ml|mg|gm|g|tabs?|caps?))?)\b\)?$/i;
+  const invertedMatch = name.match(invertedRegex);
+  if (invertedMatch) {
+    const rawUnit = invertedMatch[1].toLowerCase();
+    const num = invertedMatch[2].trim();
+    let unitLabel = "CAPS";
+    if (rawUnit.includes("tab")) unitLabel = "TABS";
+    else if (rawUnit.includes("drop")) unitLabel = "DROPS";
+    else if (rawUnit.includes("sachet")) unitLabel = "SACHETS";
+    else if (rawUnit.includes("bot")) unitLabel = "BOTTLE";
+    
+    if (!extractedPacking) {
+      extractedPacking = `${num} ${unitLabel}`.replace(/\s+/g, " ").trim();
+    }
+    name = name.slice(0, invertedMatch.index).trim();
+  }
+
+  // 2. Check for standard trailing quantity + unit pattern: " ... 120ml" or " ... 75tabs" or " ... (250 ML)" or " ... 350gms"
+  if (!invertedMatch) {
+    const standardRegex = /(?:[-–—,\s(]+)?\b(\d+(?:\.\d+)?)\s*(ml|mls|milliliters?|millilitres?|ltr|liters?|litres?|tabs?|tablets?|caps?|capsules?|gms?|grams?|g|drops?|sachets?|puffs?|iu|mg|mcg|kg)\b\)?$/i;
+    const stdMatch = name.match(standardRegex);
+    if (stdMatch) {
+      if (!extractedPacking) {
+        extractedPacking = normalizePackingUnit(`${stdMatch[1]} ${stdMatch[2]}`);
+      }
+      name = name.slice(0, stdMatch.index).trim();
+    }
+  }
+
+  // Strip trailing punctuation like hyphens, commas, open brackets if left after removal
+  name = name.replace(/[-–—,(/]+$/, "").trim();
+  name = toTitleCaseClean(name);
+
+  if (!extractedPacking) {
+    extractedPacking = "Standard Pack";
+  }
+
+  return {
+    name,
+    packing: extractedPacking
+  };
+}
+
+/** Parse, Sanitize, Clean, and Validate Inventory CSV File Content with Smart Auto-Sort & Categorization */
 export function parseInventoryCSV(csvText) {
   if (!csvText || !csvText.trim()) return [];
   const lines = csvText.trim().split(/\r?\n/);
@@ -2479,13 +2645,20 @@ export function parseInventoryCSV(csvText) {
     cells.push(cur.trim());
 
     // If S/R No is column 0, name is column 1
-    const name = nameIdx !== -1 ? cells[nameIdx] : (cells[1] || cells[0]);
-    if (!name || name.toLowerCase() === "medicine name" || name.toLowerCase() === "null") continue;
+    const rawNameCell = nameIdx !== -1 ? cells[nameIdx] : (cells[1] || cells[0]);
+    if (!rawNameCell || rawNameCell.toLowerCase() === "medicine name" || rawNameCell.toLowerCase() === "null") continue;
 
-    const description = descIdx !== -1 && cells[descIdx] ? cells[descIdx] : "";
-    const packing = packIdx !== -1 && cells[packIdx] ? cells[packIdx] : "";
-    const company = compIdx !== -1 && cells[compIdx] ? cells[compIdx] : "BM Pvt LTD";
-    const code = codeIdx !== -1 && cells[codeIdx] ? cells[codeIdx] : (company.slice(0, 3).toUpperCase() || "GEN");
+    const rawDesc = descIdx !== -1 && cells[descIdx] ? cells[descIdx] : "";
+    const rawPacking = packIdx !== -1 && cells[packIdx] ? cells[packIdx] : "";
+    const rawComp = compIdx !== -1 && cells[compIdx] ? cells[compIdx] : "BM Pvt LTD";
+
+    // Run Smart Extraction & Title Casing
+    const { name: cleanName, packing: cleanPacking } = extractSmartPackingAndName(rawNameCell, rawPacking);
+    if (!cleanName) continue;
+
+    const description = toTitleCaseClean(rawDesc);
+    const company = toTitleCaseClean(rawComp) || "BM Pvt LTD";
+    const code = codeIdx !== -1 && cells[codeIdx] ? cells[codeIdx].toUpperCase().trim() : (company.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN");
     
     const purchasePrice = costIdx !== -1 && cells[costIdx] ? (parseFloat(cells[costIdx]) || 0) : 0;
     const salePrice = saleIdx !== -1 && cells[saleIdx] ? (parseFloat(cells[saleIdx]) || 0) : (purchasePrice > 0 ? purchasePrice : 0);
@@ -2494,17 +2667,18 @@ export function parseInventoryCSV(csvText) {
     const godownStock = whStockIdx !== -1 && cells[whStockIdx] ? (parseInt(cells[whStockIdx]) || 0) : 0;
     const totalBase = storeStock + godownStock;
     
-    const category = catIdx !== -1 && cells[catIdx] ? cells[catIdx] : "";
+    const rawCat = catIdx !== -1 && cells[catIdx] ? cells[catIdx] : "";
+    const category = toTitleCaseClean(rawCat);
     const minAlert = alertIdx !== -1 && cells[alertIdx] ? (parseInt(cells[alertIdx]) || 6) : 6;
 
     parsed.push({
-      medicine_name: name,
+      medicine_name: cleanName,
       product_description: description,
       generic_name: description || "Homeopathic Dilution / Mother Tincture",
       naration: description,
-      packing: packing,
-      unit_label: packing,
-      strip_label: packing,
+      packing: cleanPacking,
+      unit_label: cleanPacking,
+      strip_label: cleanPacking,
       box_label: "Pack",
       company_name: company,
       item_code: code,
@@ -2528,6 +2702,19 @@ export function parseInventoryCSV(csvText) {
       expiry_date: "2028-12-31"
     });
   }
+
+  // Multi-Tier Deterministic Sorting: Primary by Company (A-Z), Secondary by Medicine Name (A-Z)
+  parsed.sort((a, b) => {
+    const compA = (a.company_name || "").toLowerCase();
+    const compB = (b.company_name || "").toLowerCase();
+    if (compA !== compB) {
+      return compA.localeCompare(compB, undefined, { numeric: true, sensitivity: "base" });
+    }
+    const nameA = (a.medicine_name || "").toLowerCase();
+    const nameB = (b.medicine_name || "").toLowerCase();
+    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
+  });
+
   return parsed;
 }
 

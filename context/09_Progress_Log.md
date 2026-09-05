@@ -54,6 +54,15 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
+- **Phase:** Milestone 215 — Bulk Store Inventory CSV Intelligence Engine: Regex Smart Packing Extractor, Inverted Unit Normalizer, Title-Casing, Company Breakdown Analytics & Zero-Duplicate Merge Guard (Completed)
+- **Last worked on:**
+  1. **Smart Regex Packing & Product Name Extractor:** Implemented `extractSmartPackingAndName()` and `normalizePackingUnit()` in `frontend/src/api/db.js` capable of extracting embedded quantities and dosages from names (e.g. `"hepakent sugarfree 120ml"` ➔ Name: `"Hepakent Sugarfree"`, Packing: `"120 ML"`; `"gastric plus with podina 75tabs"` ➔ Name: `"Gastric Plus With Podina"`, Packing: `"75 TABS"`).
+  2. **Inverted Unit Reordering Engine:** Detects unit-first inverted packaging (e.g. `"Endura Mens Essential capsule 20"`) and standardizes it to number-first format (`"20 CAPS"`).
+  3. **Title Casing & Medical Nomenclature Standardizer:** Formats all product names, generic descriptions, categories, and brands to proper Title Case while preserving essential potencies & abbreviations (`Q`, `1X`, `30C`, `1M`, `BM`, `SCH`, `PB`, `POS`, `SKU`, `MRP`).
+  4. **Multi-Tier Company-Wise & Alphabetical Auto-Sorting:** Regardless of unarranged CSV rows or missing Sr.# columns, auto-sorts records primarily by Company Name (A-Z) and secondarily by Medicine Name (A-Z).
+  5. **CSV Intelligence Preview & Company Analytics Bar:** Enhanced `MedicalStoreInventory.jsx` Bulk CSV Modal with total SKUs counter, company count, interactive company breakdown pills (e.g. `BM Pvt LTD (45)`, `Paul Brooks (12)`), company filtering tabs, and live inline cell editing.
+  6. **Zero-Duplicate Merge Guard:** Prevents duplicate company registrations in `dbSuppliers` / `dbCompanies` and updates existing inventory item stocks/prices seamlessly without duplicate rows.
+
 - **Phase:** Milestone 214 — Universal Multi-Device Real-Time Auto-Sync Engine, Fleet Heartbeat Telemetry & Live Connected Terminals Radar (Completed)
 - **Last worked on:**
   1. **Active Real-Time Auto-Sync Engine:** Restored full background mutation worker in [syncEngine.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/api/syncEngine.js) with 300ms debounce push (`POST /api/v1/sync/push`), safe cloud state pull (`GET /api/v1/system/sync-state`), and dirty record protection.
