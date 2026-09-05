@@ -1,7 +1,7 @@
 import base64
 from PIL import Image
 
-src_img = r"C:\Users\Kali\.gemini\antigravity-ide\brain\6b419ad0-d477-4ece-ac9a-49fdd2f1b19a\.user_uploaded\media_1788641728583.png"
+src_img = r"C:\Users\Kali\.gemini\antigravity-ide\brain\6b419ad0-d477-4ece-ac9a-49fdd2f1b19a\.user_uploaded\media_1788642473820.png"
 dest_png = r"e:\Soft\DrCreate\Clinicore\frontend\src\assets\receipt-header.png"
 dest_js = r"e:\Soft\DrCreate\Clinicore\frontend\src\utils\receiptHeaderBase64.js"
 
@@ -20,4 +20,4 @@ js_content = 'export const RECEIPT_HEADER_IMAGE_BASE64 = "data:image/png;base64,
 with open(dest_js, "w", encoding="utf-8") as f:
     f.write(js_content)
 
-print("Updated receipt-header.png and receiptHeaderBase64.js successfully! Length:", len(b64_data))
+print("Updated receipt-header.png and receiptHeaderBase64.js to M. Asif Ashraf Khan! Length:", len(b64_data))
