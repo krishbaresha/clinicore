@@ -956,7 +956,7 @@ export default function SidebarLayout({ children }) {
               id="main-content-viewport"
               className={`flex-1 h-full min-h-0 min-w-0 ${
                 isPOSCockpit
-                  ? "overflow-hidden p-1 sm:p-1.5 max-w-none pb-0 md:pb-0 flex flex-col"
+                  ? "overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6 max-w-none pb-16 md:pb-6 flex flex-col"
                   : isFeesPage
                   ? "overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-3.5 max-w-none pb-16 md:pb-3"
                   : isFullWidthPage
@@ -966,7 +966,7 @@ export default function SidebarLayout({ children }) {
               tabIndex={-1}
             >
               {isPOSCockpit ? (
-                <div className="w-full h-full flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div className="w-full flex-1 min-h-0 flex flex-col">
                   {children}
                 </div>
               ) : (

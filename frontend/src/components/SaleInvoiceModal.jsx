@@ -1589,65 +1589,67 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
   const modalBody = (
     <>
-      <div className={`bg-white w-full ${isPage ? 'rounded-2xl shadow-sm border border-emerald-300 h-full max-h-full flex-1 min-h-0' : 'max-w-[99vw] 2xl:max-w-[1550px] rounded-2xl sm:rounded-3xl shadow-2xl border border-emerald-300 my-auto h-[98vh] sm:h-[95vh] max-h-[98vh] sm:max-h-[95vh]'} overflow-hidden flex flex-col`}>
+      <div className={`bg-white w-full ${isPage ? 'rounded-2xl shadow-md border border-slate-200/80 flex-1 min-h-0' : 'max-w-[99vw] 2xl:max-w-[1550px] rounded-2xl sm:rounded-3xl shadow-2xl border border-emerald-300 my-auto h-[98vh] sm:h-[95vh] max-h-[98vh] sm:max-h-[95vh]'} overflow-hidden flex flex-col`}>
         {/* Solid Theme Teal Header Banner */}
-        <div className="bg-[#0f766e] px-3 sm:px-4 py-1.5 sm:py-2 text-white flex items-center justify-between shadow-xs shrink-0">
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
-              <span className="material-symbols-outlined text-lg sm:text-xl text-emerald-300">point_of_sale</span>
+        <div className="bg-[#0f766e] px-4 sm:px-6 py-2.5 sm:py-3 text-white flex items-center justify-between shadow-xs shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+              <span className="material-symbols-outlined text-xl sm:text-2xl text-emerald-300">point_of_sale</span>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[8.5px] sm:text-[9.5px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
-                  WHOLESALE &amp; RETAIL POS • clinicflow terminal
+                <span className="text-[9px] sm:text-[10px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
+                  WHOLESALE &amp; RETAIL POS • CLINICFLOW TERMINAL
                 </span>
               </div>
-              <h2 className="text-sm sm:text-lg font-black tracking-tight leading-tight text-white">
-                SALE INVOICE
+              <h2 className="text-base sm:text-xl font-black tracking-tight leading-tight text-white">
+                SALE INVOICE &amp; POS TERMINAL
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <button
               type="button"
               onClick={() => setShowReceiptDrawer(true)}
-              className="bg-white/10 hover:bg-white/20 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all shadow-xs flex items-center gap-1 sm:gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
+              className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
               title="Toggle Live Thermal Receipt Preview"
             >
-              <span className="material-symbols-outlined text-xs sm:text-sm text-emerald-300">receipt_long</span>
+              <span className="material-symbols-outlined text-sm text-emerald-300">receipt_long</span>
               <span className="hidden sm:inline">Preview Receipt</span>
               <span className="sm:hidden">Receipt</span>
             </button>
             <button
               type="button"
               onClick={() => setShowListModal(true)}
-              className="bg-white/10 hover:bg-white/20 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all shadow-xs flex items-center gap-1 sm:gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
+              className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-xs sm:text-sm">list_alt</span>
+              <span className="material-symbols-outlined text-sm">list_alt</span>
               <span className="hidden sm:inline">Invoices List</span>
               <span className="sm:hidden">List</span>
             </button>
             <button
               type="button"
               onClick={handleSaveSaleBill}
-              className="bg-white text-emerald-950 hover:bg-emerald-50 px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1 sm:gap-1.5 active:scale-95 cursor-pointer"
+              className="bg-white text-emerald-950 hover:bg-emerald-50 px-4 py-1.5 rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-sm text-emerald-800">print</span>
-              <span>Save (F9)</span>
+              <span className="material-symbols-outlined text-base text-emerald-800">print</span>
+              <span>Save &amp; Print (F9)</span>
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-7 h-7 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-base">close</span>
-            </button>
+            {!isPage && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            )}
           </div>
         </div>
 
         {/* Viewport-Fit Full-Width Body with Vertical Scroll Resilience */}
-        <div className="p-2 sm:p-2.5 lg:p-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0 bg-slate-100/60 flex flex-col space-y-2 custom-scrollbar">
+        <div className="p-3 sm:p-4 lg:p-5 overflow-y-auto overflow-x-hidden flex-1 min-h-0 bg-slate-50 flex flex-col space-y-3.5 custom-scrollbar">
 
           {/* Unified Section 1 & 2: Customer, Party & Fast Line Item Entry in a Single Prominent Card */}
           <div className="shrink-0 bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 space-y-3 shadow-xs">
