@@ -2848,34 +2848,73 @@ export default function MedicalStoreInventory() {
               </button>
             </div>
 
-            {/* Template Download Prompt */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-sky-50/70 p-4 rounded-2xl border border-sky-200 gap-3 shrink-0">
-              <div className="text-xs text-sky-950 font-semibold">
-                Download the standardized CSV template with required column schema:
-              </div>
-              <button
-                type="button"
-                onClick={handleDownloadCsvTemplate}
-                className="px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">download</span>
-                <span>Download Template</span>
-              </button>
-            </div>
+            {/* File Upload Area — Auto-Collapses When File Is Loaded to Maximize Preview Table Space */}
+            {csvParsedRows.length === 0 ? (
+              <>
+                {/* Template Download Prompt */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-sky-50/70 p-3 sm:p-4 rounded-2xl border border-sky-200 gap-2.5 shrink-0">
+                  <div className="text-xs text-sky-950 font-semibold">
+                    Download the standardized CSV template with required column schema:
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDownloadCsvTemplate}
+                    className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">download</span>
+                    <span>Download Template</span>
+                  </button>
+                </div>
 
-            {/* File Upload Area */}
-            <div className="border-2 border-dashed border-slate-300 hover:border-sky-500 rounded-3xl p-5 text-center space-y-2 bg-slate-50/50 transition-colors shrink-0">
-              <span className="material-symbols-outlined text-3xl text-slate-400">csv</span>
-              <div className="text-xs text-slate-700 font-bold">
-                {csvFileName ? `Selected File: ${csvFileName}` : "Click to select or drag & drop CSV file here"}
+                <div className="border-2 border-dashed border-slate-300 hover:border-sky-500 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-center space-y-2 bg-slate-50/50 transition-colors shrink-0">
+                  <span className="material-symbols-outlined text-3xl text-slate-400">csv</span>
+                  <div className="text-xs text-slate-700 font-bold">
+                    {csvFileName ? `Selected File: ${csvFileName}` : "Click to select or drag & drop CSV file here"}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={handleCsvFileSelected}
+                    className="text-xs cursor-pointer file:mr-3 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-sky-100 file:text-sky-800 hover:file:bg-sky-200"
+                  />
+                </div>
+              </>
+            ) : (
+              /* Compact Active File Ribbon with Change / Re-upload Action */
+              <div className="flex items-center justify-between bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-2xl text-xs shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="material-symbols-outlined text-teal-700 text-lg">description</span>
+                  <span className="font-bold text-slate-900 truncate">Loaded: {csvFileName || "Uploaded Inventory.csv"}</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-900 font-mono">
+                    {csvParsedRows.length} Items Ready
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-2xs flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs text-slate-500">sync</span>
+                    <span>Change File</span>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleCsvFileSelected}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCsvParsedRows([]);
+                      setCsvFileName("");
+                      setCsvCompanyFilter("ALL");
+                      setCsvImportStatus({ loading: false, result: null, error: "" });
+                    }}
+                    className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                onChange={handleCsvFileSelected}
-                className="text-xs cursor-pointer file:mr-3 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-sky-100 file:text-sky-800 hover:file:bg-sky-200"
-              />
-            </div>
+            )}
 
             {/* Live Table Preview with Full Responsive Scroll, Company Analytics & Inline Edit */}
             {csvParsedRows.length > 0 && (

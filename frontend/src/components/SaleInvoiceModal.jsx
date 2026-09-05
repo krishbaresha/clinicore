@@ -1589,50 +1589,52 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
   const modalBody = (
     <>
-      <div className={`bg-white w-full ${isPage ? 'rounded-2xl shadow-sm border border-emerald-300 h-full max-h-full flex-1 min-h-0' : 'max-w-[98vw] 2xl:max-w-[1550px] rounded-3xl shadow-2xl border border-emerald-300 my-auto h-[95vh] max-h-[95vh]'} overflow-hidden flex flex-col`}>
+      <div className={`bg-white w-full ${isPage ? 'rounded-2xl shadow-sm border border-emerald-300 h-full max-h-full flex-1 min-h-0' : 'max-w-[99vw] 2xl:max-w-[1550px] rounded-2xl sm:rounded-3xl shadow-2xl border border-emerald-300 my-auto h-[98vh] sm:h-[95vh] max-h-[98vh] sm:max-h-[95vh]'} overflow-hidden flex flex-col`}>
         {/* Solid Theme Teal Header Banner */}
-        <div className="bg-[#0f766e] px-4 py-2 text-white flex items-center justify-between shadow-xs shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
-              <span className="material-symbols-outlined text-xl text-emerald-300">point_of_sale</span>
+        <div className="bg-[#0f766e] px-3 sm:px-4 py-1.5 sm:py-2 text-white flex items-center justify-between shadow-xs shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+              <span className="material-symbols-outlined text-lg sm:text-xl text-emerald-300">point_of_sale</span>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[9.5px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
+                <span className="text-[8.5px] sm:text-[9.5px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
                   WHOLESALE &amp; RETAIL POS • clinicflow terminal
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight text-white">
+              <h2 className="text-sm sm:text-lg font-black tracking-tight leading-tight text-white">
                 SALE INVOICE
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setShowReceiptDrawer(true)}
-              className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
+              className="bg-white/10 hover:bg-white/20 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all shadow-xs flex items-center gap-1 sm:gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
               title="Toggle Live Thermal Receipt Preview"
             >
-              <span className="material-symbols-outlined text-sm text-emerald-300">receipt_long</span>
-              Preview Receipt
+              <span className="material-symbols-outlined text-xs sm:text-sm text-emerald-300">receipt_long</span>
+              <span className="hidden sm:inline">Preview Receipt</span>
+              <span className="sm:hidden">Receipt</span>
             </button>
             <button
               type="button"
               onClick={() => setShowListModal(true)}
-              className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
+              className="bg-white/10 hover:bg-white/20 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all shadow-xs flex items-center gap-1 sm:gap-1.5 border border-white/20 active:scale-95 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-sm">list_alt</span>
-              Invoices List
+              <span className="material-symbols-outlined text-xs sm:text-sm">list_alt</span>
+              <span className="hidden sm:inline">Invoices List</span>
+              <span className="sm:hidden">List</span>
             </button>
             <button
               type="button"
               onClick={handleSaveSaleBill}
-              className="bg-white text-emerald-950 hover:bg-emerald-50 px-4 py-1.5 rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              className="bg-white text-emerald-950 hover:bg-emerald-50 px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1 sm:gap-1.5 active:scale-95 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm text-emerald-800">print</span>
-              Save &amp; Print (F9)
+              <span>Save (F9)</span>
             </button>
             <button
               type="button"
@@ -1644,8 +1646,8 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
           </div>
         </div>
 
-        {/* Viewport-Fit Full-Width Body */}
-        <div className="p-2.5 sm:p-3 overflow-hidden flex-1 min-h-0 bg-slate-100/60 flex flex-col space-y-2">
+        {/* Viewport-Fit Full-Width Body with Vertical Scroll Resilience */}
+        <div className="p-2 sm:p-2.5 lg:p-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0 bg-slate-100/60 flex flex-col space-y-2 custom-scrollbar">
 
           {/* Unified Section 1 & 2: Customer, Party & Fast Line Item Entry in a Single Prominent Card */}
           <div className="shrink-0 bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 space-y-3 shadow-xs">
@@ -1687,10 +1689,10 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
             {billingType === "patient" ? (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2.5 items-end">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2 sm:gap-2.5 items-end">
                   <div className="md:col-span-2">
-                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs text-slate-500">lock</span>
+                    <label className="block text-[10px] sm:text-xs font-bold text-slate-700 mb-0.5 sm:mb-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[10px] sm:text-xs text-slate-500">lock</span>
                       <span>Date (Locked)</span>
                     </label>
                     <input
@@ -1698,30 +1700,30 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       readOnly={true}
                       tabIndex={-1}
                       value={saleForm.date}
-                      className="w-full h-9 sm:h-10 bg-slate-100/90 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-700 outline-none cursor-not-allowed select-none shadow-inner"
+                      className="w-full h-8 sm:h-9 md:h-10 bg-slate-100/90 border border-slate-300 rounded-xl px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-bold text-slate-700 outline-none cursor-not-allowed select-none shadow-inner"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-[11px] sm:text-xs font-bold text-teal-950 mb-1">Invoice #</label>
+                    <label className="block text-[10px] sm:text-xs font-bold text-teal-950 mb-0.5 sm:mb-1">Invoice #</label>
                     <input
                       type="text"
                       readOnly={true}
                       value={saleForm.voucher_no}
-                      className="w-full h-9 sm:h-10 bg-teal-50 border border-teal-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-black text-teal-950 font-mono text-center outline-none"
+                      className="w-full h-8 sm:h-9 md:h-10 bg-teal-50 border border-teal-300 rounded-xl px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-black text-teal-950 font-mono text-center outline-none"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Token #</label>
+                    <label className="block text-[10px] sm:text-xs font-bold text-slate-700 mb-0.5 sm:mb-1">Token #</label>
                     <input
                       type="text"
                       value={saleForm.token_no}
                       onChange={(e) => handleTokenNumberChange(e.target.value)}
                       placeholder="e.g. 14, T-05"
-                      className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-mono font-bold text-slate-800 placeholder:text-slate-400 text-center focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                      className="w-full h-8 sm:h-9 md:h-10 bg-white border border-slate-300 rounded-xl px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-mono font-bold text-slate-800 placeholder:text-slate-400 text-center focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
                     />
                   </div>
                   <div className="col-span-2 sm:col-span-2 md:col-span-4">
-                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
+                    <label className="block text-[10px] sm:text-xs font-bold text-slate-700 mb-0.5 sm:mb-1">
                       Patient / Customer Name <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -1737,11 +1739,11 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       }}
                       onKeyDown={(e) => handleGenericEnterNext(e, narationInputRef)}
                       placeholder="Enter Patient or Walk-In Name..."
-                      className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 outline-none"
+                      className="w-full h-8 sm:h-9 md:h-10 bg-white border border-slate-300 rounded-xl px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 outline-none"
                     />
                   </div>
                   <div className="col-span-2 sm:col-span-2 md:col-span-2">
-                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1">Relation / Info</label>
+                    <label className="block text-[10px] sm:text-xs font-bold text-slate-600 mb-0.5 sm:mb-1">Relation / Info</label>
                     <input
                       ref={narationInputRef}
                       type="text"
@@ -1749,7 +1751,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       onChange={(e) => setSaleForm({ ...saleForm, naration: e.target.value })}
                       onKeyDown={(e) => handleGenericEnterNext(e, medicineInputRef)}
                       placeholder="e.g. s/o, w/o..."
-                      className="w-full h-9 sm:h-10 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                      className="w-full h-8 sm:h-9 md:h-10 bg-white border border-slate-300 rounded-xl px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
                     />
                   </div>
                 </div>
@@ -2223,26 +2225,28 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
               {/* Fast Entry Row: Product Name + Math Inputs (No Flat Disc 0) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-12 gap-2 sm:gap-2.5 items-end">
-                {/* Product Name Autocomplete Search Field (5 columns) */}
-                <div className="col-span-2 sm:col-span-3 md:col-span-5 relative" ref={medicineInputWrapperRef}>
-                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-                    <span>PRODUCT NAME <span className="text-rose-500">*</span></span>
+                {/* MEDICINE INPUT */}
+                <div className="md:col-span-6 relative">
+                  <label className="block text-[10px] sm:text-xs font-bold text-slate-700 mb-0.5 sm:mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <span>PRODUCT NAME</span>
+                      <span className="text-rose-500">*</span>
+                    </span>
                     {selectedCompany !== "All" && (
-                      <span className="px-2 py-0.5 bg-teal-50 text-teal-800 text-[10px] font-black rounded border border-teal-300 flex items-center gap-1">
-                        <span>🏢 {selectedCompany} ({filteredProducts.length})</span>
+                      <span className="text-[9.5px] text-teal-800 font-bold flex items-center gap-1">
+                        <span>Filter: {selectedCompany}</span>
                         <button
                           type="button"
                           onClick={() => setSelectedCompany("All")}
-                          className="text-rose-600 hover:text-rose-800 font-bold text-xs ml-1"
-                          title="Reset company filter"
+                          className="text-rose-500 hover:text-rose-700 underline text-[9px] cursor-pointer"
                         >
-                          ✕
+                          Clear
                         </button>
                       </span>
                     )}
                   </label>
                   <div className="relative flex items-center">
-                    <span className="material-symbols-outlined text-lg text-teal-700 absolute left-3 pointer-events-none">search</span>
+                    <span className="material-symbols-outlined text-base sm:text-lg text-teal-700 absolute left-3 pointer-events-none">search</span>
                     <input
                       ref={medicineInputRef}
                       type="text"
@@ -2256,7 +2260,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                       onFocus={() => setShowMedicineSuggestions(true)}
                       onKeyDown={handleMedicineKeyDown}
                       placeholder="Type medicine name, formula, code..."
-                      className="w-full h-10 sm:h-11 bg-[#fbfcfb] border border-teal-400 rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 outline-none"
+                      className="w-full h-8 sm:h-9 md:h-10 bg-[#fbfcfb] border border-teal-400 rounded-xl pl-8 sm:pl-9 pr-7 sm:pr-8 py-1 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 outline-none"
                     />
                     {medicineSearchText && (
                       <button
@@ -2280,7 +2284,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                         }}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                       >
-                        <span className="material-symbols-outlined text-sm">close</span>
+                        <span className="material-symbols-outlined text-xs sm:text-sm">close</span>
                       </button>
                     )}
                   </div>
@@ -2289,9 +2293,9 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                   {showMedicineSuggestions && medicineSearchText.trim().length > 0 && (
                     <div
                       ref={suggestionsContainerRef}
-                      className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border-2 border-teal-600 rounded-2xl shadow-2xl max-h-72 overflow-y-auto divide-y divide-gray-100 animate-fade-in"
+                      className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border-2 border-teal-600 rounded-2xl shadow-2xl max-h-64 overflow-y-auto divide-y divide-gray-100 animate-fade-in"
                     >
-                      <div className="bg-[#0f766e] text-white text-[10px] sm:text-[11px] font-black px-3.5 py-1.5 flex items-center justify-between sticky top-0 z-10">
+                      <div className="bg-[#0f766e] text-white text-[10px] sm:text-[11px] font-black px-3 py-1 flex items-center justify-between sticky top-0 z-10">
                         <span className="flex items-center gap-2">
                           <span>SUGGESTIONS ({typeaheadSuggestions.length})</span>
                           {selectedCompany !== "All" && (
@@ -2300,10 +2304,10 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                             </span>
                           )}
                         </span>
-                        <span className="text-[9.5px] text-teal-100 font-normal">↑ ↓ Navigate · Enter Select</span>
+                        <span className="text-[9px] text-teal-100 font-normal">↑ ↓ Navigate · Enter Select</span>
                       </div>
                       {typeaheadSuggestions.length === 0 ? (
-                        <div className="p-4 text-center text-xs text-gray-500 italic">
+                        <div className="p-3 text-center text-xs text-gray-500 italic">
                           No medicines found matching "{medicineSearchText}"
                         </div>
                       ) : (
@@ -2317,28 +2321,28 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                               id={`med-sugg-${idx}`}
                               onMouseEnter={() => setHighlightedMedIndex(idx)}
                               onClick={() => handleSelectTypeaheadMedicine(inv)}
-                              className={`px-3.5 py-2.5 cursor-pointer transition-colors flex items-center justify-between gap-2.5 ${isHighlighted
+                              className={`px-3 py-2 cursor-pointer transition-colors flex items-center justify-between gap-2 ${isHighlighted
                                 ? "bg-teal-50 border-l-4 border-teal-700 text-teal-950 font-bold"
                                 : "hover:bg-gray-50 text-gray-800"
                                 }`}
                             >
                               <div className="flex-1 min-w-0 text-left">
-                                <div className="flex items-center gap-2 flex-wrap">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="text-xs sm:text-sm font-black truncate">{inv.medicine_name}</span>
                                   {(inv.product_description || inv.generic_name || inv.naration) && (
-                                    <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shadow-2xs">
+                                    <span className="text-[10px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 shadow-2xs">
                                       — {inv.product_description || inv.generic_name || inv.naration}
                                     </span>
                                   )}
                                   {inv.company_name && (
-                                    <span className="px-2 py-0.5 rounded text-[9.5px] font-black bg-teal-100 text-teal-900 shrink-0">
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-teal-100 text-teal-900 shrink-0">
                                       {inv.company_name}
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[10px] sm:text-[11px] text-gray-500 font-normal truncate mt-0.5 flex items-center gap-1.5">
+                                <div className="text-[10px] text-gray-500 font-normal truncate mt-0.5 flex items-center gap-1">
                                   {inv.item_code && <span className="font-mono font-bold text-teal-700">{inv.item_code}</span>}
-                                  {inv.category && <span className="text-slate-500 font-medium">· {inv.category}</span>}
+                                  {inv.category && <span className="text-slate-500">· {inv.category}</span>}
                                   {inv.packing && <span>· {inv.packing}</span>}
                                 </div>
                               </div>
@@ -2346,7 +2350,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                                 <div className="text-xs sm:text-sm font-black text-teal-900 font-mono">
                                   Rs. {Number(salePrice).toLocaleString()}
                                 </div>
-                                <div className={`text-[10px] font-bold ${stockUnits <= 0 ? "text-rose-600" : stockUnits <= 5 ? "text-amber-600" : "text-gray-500"}`}>
+                                <div className={`text-[9.5px] font-bold ${stockUnits <= 0 ? "text-rose-600" : stockUnits <= 5 ? "text-amber-600" : "text-gray-500"}`}>
                                   Stock: {stockUnits}
                                 </div>
                               </div>
@@ -2360,7 +2364,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
 
                 {/* QTY */}
                 <div className="md:col-span-1">
-                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 text-center">QTY</label>
+                  <label className="block text-[10px] sm:text-xs font-bold text-slate-700 mb-0.5 sm:mb-1 text-center">QTY</label>
                   <input
                     ref={qtyInputRef}
                     type="number"
@@ -2368,37 +2372,37 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                     value={saleCart.qty}
                     onChange={(e) => handleUpdateCartMath("qty", e.target.value)}
                     onKeyDown={(e) => handleGenericEnterNext(e, rateInputRef)}
-                    className="w-full h-10 sm:h-11 bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-black text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
+                    className="w-full h-8 sm:h-9 md:h-10 bg-white border border-slate-300 rounded-xl px-2 py-1 text-xs sm:text-sm font-black text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
                   />
                 </div>
 
                 {/* RATE */}
                 <div className="md:col-span-1">
-                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 text-center">RATE</label>
+                  <label className="block text-[10px] sm:text-xs font-bold text-slate-700 mb-0.5 sm:mb-1 text-center">RATE</label>
                   <input
                     ref={rateInputRef}
                     type="number"
                     value={saleCart.rate}
                     onChange={(e) => handleUpdateCartMath("rate", e.target.value)}
                     onKeyDown={(e) => handleGenericEnterNext(e, discPctInputRef)}
-                    className="w-full h-10 sm:h-11 bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-bold text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
+                    className="w-full h-8 sm:h-9 md:h-10 bg-white border border-slate-300 rounded-xl px-2 py-1 text-xs sm:text-sm font-bold text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
                   />
                 </div>
 
                 {/* GROSS */}
                 <div className="md:col-span-1">
-                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 text-center">GROSS</label>
+                  <label className="block text-[10px] sm:text-xs font-bold text-slate-700 mb-0.5 sm:mb-1 text-center">GROSS</label>
                   <input
                     type="text"
                     value={saleCart.gross || "-"}
                     readOnly
-                    className="w-full h-10 sm:h-11 bg-slate-100 border border-slate-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-bold text-center text-slate-600 outline-none cursor-not-allowed"
+                    className="w-full h-8 sm:h-9 md:h-10 bg-slate-100 border border-slate-300 rounded-xl px-2 py-1 text-xs sm:text-sm font-bold text-center text-slate-600 outline-none cursor-not-allowed"
                   />
                 </div>
 
                 {/* DISC% */}
                 <div className="md:col-span-1">
-                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1 text-center">DISC%</label>
+                  <label className="block text-[10px] sm:text-xs font-bold text-slate-700 mb-0.5 sm:mb-1 text-center">DISC%</label>
                   <input
                     ref={discPctInputRef}
                     type="number"
@@ -2411,18 +2415,18 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                         setTimeout(() => medicineInputRef.current?.focus(), 40);
                       }
                     }}
-                    className="w-full h-10 sm:h-11 bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-bold text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
+                    className="w-full h-8 sm:h-9 md:h-10 bg-white border border-slate-300 rounded-xl px-2 py-1 text-xs sm:text-sm font-bold text-center text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-700 outline-none"
                   />
                 </div>
 
                 {/* NET */}
                 <div className="md:col-span-2">
-                  <label className="block text-[11px] sm:text-xs font-bold text-teal-800 mb-1 text-center">NET</label>
+                  <label className="block text-[10px] sm:text-xs font-bold text-teal-800 mb-0.5 sm:mb-1 text-center">NET</label>
                   <input
                     type="text"
                     value={saleCart.net_amount || "0.00"}
                     readOnly
-                    className="w-full h-10 sm:h-11 bg-teal-50 border border-teal-300 rounded-xl px-2 py-2 text-xs sm:text-sm font-black text-center text-teal-950 outline-none"
+                    className="w-full h-8 sm:h-9 md:h-10 bg-teal-50 border border-teal-300 rounded-xl px-2 py-1 text-xs sm:text-sm font-black text-center text-teal-950 outline-none"
                   />
                 </div>
 
@@ -2431,7 +2435,7 @@ export default function SaleInvoiceModal({ isOpen = true, onClose, isPage = fals
                   <button
                     type="button"
                     onClick={handleAddSaleItem}
-                    className="w-full h-10 sm:h-11 bg-[#0f766e] hover:bg-[#115e59] text-white font-black py-2 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+                    className="w-full h-8 sm:h-9 md:h-10 bg-[#0f766e] hover:bg-[#115e59] text-white font-black py-1 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
                   >
                     <span>Add</span>
                   </button>

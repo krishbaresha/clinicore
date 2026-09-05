@@ -682,7 +682,7 @@ export default function SidebarLayout({ children }) {
       <LicenseBanner />
 
       {/* ── Top Header Bar (Translucent Glassmorphic Engine - Fixed Topbar) ── */}
-      <header className="border-b border-slate-200/70 bg-white z-40 shadow-xs h-16 flex items-center px-4 sm:px-6 justify-between flex-shrink-0">
+      <header className="border-b border-slate-200/70 bg-white z-40 shadow-xs h-13 sm:h-14 lg:h-16 compact-low-res-header flex items-center px-3 sm:px-6 justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           {/* Sidebar Open/Close Toggle Button with 44px ergonomic touch target */}
           <button

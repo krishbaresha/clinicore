@@ -679,6 +679,17 @@
   background: rgba(5, 150, 105, 0.85);
 }
 
+/* Small Laptop & Low Resolution Displays (1366x768 / 1280x800 / 1024x768) */
+@media (max-height: 800px) {
+  .compact-low-res-header {
+    height: 3rem !important;
+  }
+  .compact-low-res-padding {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+}
+
 /* Mobile Bottom Navigation Safe Clearance */
 @media (max-width: 768px) {
   .mobile-safe-bottom {
