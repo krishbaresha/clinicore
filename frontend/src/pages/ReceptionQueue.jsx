@@ -356,13 +356,66 @@ export default function ReceptionQueue() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
+                    {/* Counter Staff Direct Consultation Actions */}
                     {visit.status === "waiting" && (
+                      <>
+                        <button
+                          onClick={() => {
+                            dbVisits.updateStatus(visit.id, "in_consultation");
+                            load();
+                          }}
+                          title="Send patient into doctor's consultation room"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors border border-teal-300"
+                        >
+                          <span className="material-symbols-outlined text-base">meeting_room</span>
+                          Send to Room
+                        </button>
+                        <button
+                          onClick={() => {
+                            dbVisits.complete(visit.id, {}, "completed");
+                            load();
+                          }}
+                          title="Directly mark consultation completed from counter if doctor forgot or finished"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-xs"
+                        >
+                          <span className="material-symbols-outlined text-base">check_circle</span>
+                          Mark Done
+                        </button>
+                        <button
+                          onClick={() => { dbVisits.updateStatus(visit.id, "skipped"); load(); }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200"
+                        >
+                          <span className="material-symbols-outlined text-base">person_off</span>
+                          Mark Absent / Skip
+                        </button>
+                      </>
+                    )}
+
+                    {visit.status === "in_consultation" && (
                       <button
-                        onClick={() => { dbVisits.updateStatus(visit.id, "skipped"); load(); }}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200"
+                        onClick={() => {
+                          dbVisits.complete(visit.id, {}, "completed");
+                          load();
+                        }}
+                        title="Mark patient consultation finished"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-xs"
                       >
-                        <span className="material-symbols-outlined text-base">person_off</span>
-                        Mark Absent / Skip
+                        <span className="material-symbols-outlined text-base">check_circle</span>
+                        Complete Visit
+                      </button>
+                    )}
+
+                    {visit.status === "completed" && (
+                      <button
+                        onClick={() => {
+                          dbVisits.updateStatus(visit.id, "waiting");
+                          load();
+                        }}
+                        title="Reopen visit back to waiting queue"
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors border border-gray-200"
+                      >
+                        <span className="material-symbols-outlined text-sm">replay</span>
+                        Reopen
                       </button>
                     )}
 
