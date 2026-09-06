@@ -69,9 +69,11 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
-      - name: Compile Production Bundle
+      - name: Compile Production Bundle & OTA Dist Zip
         working-directory: ./frontend
-        run: npm run build
+        run: |
+          npm run build
+          cd dist && zip -r dist.zip .
 
       - name: Post-Build Production Bundle Secret Scan
         run: node scripts/scan_secrets.mjs

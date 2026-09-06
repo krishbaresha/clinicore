@@ -99,6 +99,81 @@ fn get_data_path() -> String {
     get_data_dir().to_string_lossy().to_string()
 }
 
+/// Save an update installer binary to the Windows %TEMP% directory.
+#[tauri::command]
+fn save_update_binary(filename: String, bytes: Vec<u8>) -> Result<String, String> {
+    let temp_dir = std::env::temp_dir();
+    let file_path = temp_dir.join(&filename);
+    fs::write(&file_path, &bytes).map_err(|e| format!("Failed to write update binary: {}", e))?;
+    Ok(file_path.to_string_lossy().to_string())
+}
+
+/// Launch the downloaded installer in silent mode (/S) and exit current process
+/// so Windows file locks are released cleanly.
+#[tauri::command]
+fn launch_silent_update(installer_path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const DETACHED_PROCESS: u32 = 0x00000008;
+
+        let path = std::path::PathBuf::from(&installer_path);
+        if !path.exists() {
+            return Err(format!("Installer not found at: {}", installer_path));
+        }
+
+        std::process::Command::new(&installer_path)
+            .arg("/S")
+            .creation_flags(DETACHED_PROCESS)
+            .spawn()
+            .map_err(|e| format!("Failed to launch installer: {}", e))?;
+
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        std::process::exit(0);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Silent installer is currently supported on Windows".to_string())
+    }
+}
+
+/// Background fallback: downloads installer via native PowerShell and runs silently.
+#[tauri::command]
+fn download_and_run_installer(url: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const DETACHED_PROCESS: u32 = 0x00000008;
+
+        let temp_dir = std::env::temp_dir();
+        let target_exe = temp_dir.join("clinicore_update_setup.exe");
+        let target_str = target_exe.to_string_lossy().to_string();
+
+        let ps_cmd = format!(
+            "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
+             (New-Object System.Net.WebClient).DownloadFile('{url}', '{target}'); \
+             Start-Process '{target}' -ArgumentList '/S'",
+            url = url,
+            target = target_str
+        );
+
+        std::process::Command::new("powershell")
+            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &ps_cmd])
+            .creation_flags(DETACHED_PROCESS)
+            .spawn()
+            .map_err(|e| format!("Failed to launch background updater: {}", e))?;
+
+        std::thread::sleep(std::time::Duration::from_millis(400));
+        std::process::exit(0);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Auto-update is currently supported on Windows".to_string())
+    }
+}
+
 fn main() {
     println!("[ClinicFlow Desktop] Initializing Tauri 2.0 Engine...");
     println!("[ClinicFlow Desktop] Data directory: {:?}", get_data_dir());
@@ -108,7 +183,10 @@ fn main() {
             write_collection,
             remove_collection,
             list_collection_keys,
-            get_data_path
+            get_data_path,
+            save_update_binary,
+            launch_silent_update,
+            download_and_run_installer
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -454,6 +454,23 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Version & OTA Desktop Release Endpoint
+    if ((url.pathname === "/api/v1/system/version" || url.pathname === "/version.json") && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        success: true,
+        data: {
+          version: "2.5.31",
+          build_id: "build.20260906.1",
+          builtAt: new Date().toISOString(),
+          download_url: "https://clinicore.me/downloads/latest-setup.exe",
+          zip_url: "https://clinicore.me/dist.zip",
+          fallback_url: "https://github.com/krishbaresha/clinicore/releases/latest/download/CliniCore-Setup.exe"
+        }
+      }));
+      return;
+    }
+
     // Sync Pull (State Pull)
     if (url.pathname === "/api/v1/system/sync-state" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });

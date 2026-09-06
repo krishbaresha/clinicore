@@ -16,7 +16,7 @@ export const isTauri = typeof window !== "undefined" && Boolean(window.__TAURI__
 // Tauri invoke helper — uses window.__TAURI__ directly (no npm package needed)
 let _invoke = null;
 
-async function getInvoke() {
+export async function getTauriInvoke() {
   if (_invoke) return _invoke;
   if (isTauri && window.__TAURI__?.core?.invoke) {
     _invoke = window.__TAURI__.core.invoke;
@@ -24,6 +24,7 @@ async function getInvoke() {
   }
   return null;
 }
+const getInvoke = getTauriInvoke;
 
 // Pre-load invoke on module init (non-blocking)
 if (isTauri) {

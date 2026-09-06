@@ -27,6 +27,8 @@ import {
   printExecutiveAuditDocument,
 } from "../utils/thermalPrinter.js";
 import { formatDateTime } from "../utils/formatters.js";
+import { isDesktopApp } from "../utils/desktop.js";
+import { getTauriInvoke } from "../api/storageDriver.js";
 import GodAdminPanel from "./GodAdminPanel.jsx";
 
 const DEFAULT_API_URL =
@@ -890,6 +892,7 @@ export default function DeveloperAdminPanel() {
     let latestVer = curVer;
     let buildId = "";
     let builtAt = "";
+    let downloadUrl = "https://clinicore.me/downloads/latest-setup.exe";
     let isNewer = false;
     let checkErr = null;
 
@@ -909,10 +912,12 @@ export default function DeveloperAdminPanel() {
             const v = data?.version || data?.data?.version;
             const bId = data?.build_id || data?.data?.build_id || data?.builtAt || "";
             const bAt = data?.builtAt || data?.data?.builtAt || new Date().toISOString();
+            const dUrl = data?.download_url || data?.data?.download_url || "https://clinicore.me/downloads/latest-setup.exe";
             if (v) {
               latestVer = v;
               buildId = bId;
               builtAt = bAt;
+              downloadUrl = dUrl;
 
               // Semver comparison
               const parseSemver = (str) => {
@@ -941,6 +946,7 @@ export default function DeveloperAdminPanel() {
         updateAvailable: isNewer,
         currentVersion: curVer,
         latestVersion: latestVer,
+        downloadUrl: downloadUrl,
         buildId: buildId || `build.${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
         builtAt: builtAt || new Date().toLocaleString(),
         changelog: [
@@ -962,35 +968,118 @@ export default function DeveloperAdminPanel() {
 
   const handleApplyUpdateNow = async () => {
     setIsApplyingUpdate(true);
-    setUpdateProgressPct(15);
+    setUpdateProgressPct(5);
     setUpdateProgressStep("Connecting to release channel...");
 
-    await new Promise((r) => setTimeout(r, 400));
-    setUpdateProgressPct(45);
-    setUpdateProgressStep("Downloading latest UI bundle & database migrations...");
+    const isDesktop = isDesktopApp();
 
-    await new Promise((r) => setTimeout(r, 600));
-    setUpdateProgressPct(75);
-    setUpdateProgressStep("Validating data integrity & caching new assets...");
+    if (!isDesktop) {
+      // ── WEB BROWSER / PWA MODE ──
+      await new Promise((r) => setTimeout(r, 400));
+      setUpdateProgressPct(35);
+      setUpdateProgressStep("Downloading latest UI bundle & assets...");
+
+      await new Promise((r) => setTimeout(r, 500));
+      setUpdateProgressPct(70);
+      setUpdateProgressStep("Purging stale offline cache...");
+
+      try {
+        if (typeof window !== "undefined" && "caches" in window) {
+          const cacheKeys = await window.caches.keys();
+          await Promise.all(cacheKeys.map((k) => window.caches.delete(k)));
+        }
+        if (updateInfo.latestVersion) {
+          localStorage.setItem("cf_applied_version", updateInfo.latestVersion);
+        }
+        sessionStorage.removeItem("cf_chunk_reload");
+      } catch (_) {}
+
+      setUpdateProgressPct(100);
+      setUpdateProgressStep("Reloading latest CliniCore version...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+      return;
+    }
+
+    // ── DESKTOP TAURI (.EXE) NATIVE SILENT AUTO-UPDATER ──
+    const targetUrl =
+      updateInfo.downloadUrl ||
+      "https://clinicore.me/downloads/latest-setup.exe";
 
     try {
-      if (typeof window !== "undefined" && "caches" in window) {
-        const cacheKeys = await window.caches.keys();
-        await Promise.all(cacheKeys.map((k) => window.caches.delete(k)));
-      }
-      if (updateInfo.latestVersion) {
-        localStorage.setItem("cf_applied_version", updateInfo.latestVersion);
-      }
-      sessionStorage.removeItem("cf_chunk_reload");
-    } catch (_) {}
+      const invoke = await getTauriInvoke();
+      setUpdateProgressPct(10);
+      setUpdateProgressStep("Requesting update package from cloud...");
 
-    await new Promise((r) => setTimeout(r, 500));
-    setUpdateProgressPct(100);
-    setUpdateProgressStep("Update installed! Restarting CliniCore...");
+      // Try streaming download with live percentage
+      let downloadedBytes = null;
+      try {
+        const res = await fetch(targetUrl, { cache: "no-store" });
+        if (res.ok) {
+          const contentLength = Number(res.headers.get("content-length")) || 10485760;
+          const reader = res.body.getReader();
+          let received = 0;
+          const chunks = [];
 
-    setTimeout(() => {
-      window.location.reload();
-    }, 600);
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.length;
+            const pct = Math.min(92, Math.round((received / contentLength) * 100));
+            setUpdateProgressPct(pct);
+            const mbRec = (received / (1024 * 1024)).toFixed(1);
+            const mbTotal = (contentLength / (1024 * 1024)).toFixed(1);
+            setUpdateProgressStep(`Downloading CliniCore v${updateInfo.latestVersion} (${mbRec} MB / ${mbTotal} MB - ${pct}%)...`);
+          }
+
+          const combined = new Uint8Array(received);
+          let offset = 0;
+          for (const c of chunks) {
+            combined.set(c, offset);
+            offset += c.length;
+          }
+          downloadedBytes = combined;
+        }
+      } catch (streamErr) {
+        console.warn("[OTA Update Stream Note]:", streamErr);
+      }
+
+      if (downloadedBytes && invoke) {
+        setUpdateProgressPct(95);
+        setUpdateProgressStep("Writing update installer to disk...");
+        const installerPath = await invoke("save_update_binary", {
+          filename: `clinicore_setup_${updateInfo.latestVersion || "latest"}.exe`,
+          bytes: Array.from(downloadedBytes),
+        });
+
+        setUpdateProgressPct(100);
+        setUpdateProgressStep("Update verified! Silently installing and relaunching CliniCore...");
+        await new Promise((r) => setTimeout(r, 600));
+        await invoke("launch_silent_update", { installerPath });
+        return;
+      }
+
+      // Background PowerShell Native Downloader Fallback
+      if (invoke) {
+        setUpdateProgressPct(50);
+        setUpdateProgressStep("Downloading update via background engine...");
+        await invoke("download_and_run_installer", { url: targetUrl });
+        setUpdateProgressPct(100);
+        setUpdateProgressStep("Installer running silently. Closing current instance...");
+        return;
+      }
+
+      // Final fallback: open browser download
+      window.open(targetUrl, "_blank");
+      showToast("Download opened in browser. Please run the downloaded installer.");
+      setIsApplyingUpdate(false);
+    } catch (err) {
+      console.error("[Desktop Update Error]:", err);
+      showToast(`Update error: ${err.message}. Please retry or download manually.`);
+      setIsApplyingUpdate(false);
+    }
   };
 
   const handleForcePurgeCache = async () => {

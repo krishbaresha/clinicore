@@ -54,6 +54,15 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
+- **Phase:** Milestone 219 — Desktop 1-Click Silent Auto-Updater, Native OTA Package Streamer & Multi-Device Zero-UAC Upgrade Engine (Completed)
+- **Last worked on:**
+  1. **Tauri Native Rust Update Commands:** Implemented `save_update_binary`, `launch_silent_update`, and `download_and_run_installer` in [main.rs](file:///e:/Soft/DrCreate/Clinicore/frontend/src-tauri/src/main.rs), allowing silent background execution (`/S`) and graceful detached process handoff.
+  2. **Streaming Downloader with Live Progress:** Overhauled `handleApplyUpdateNow` in [DeveloperAdminPanel.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/DeveloperAdminPanel.jsx) with real streaming download progress (MBs received, percentage 0% to 100%), passing verified installer bytes to Rust without browser popups.
+  3. **Multi-Channel Fallback:** Integrated native PowerShell hidden background updater fallback if direct streaming is blocked, plus browser download fallback.
+  4. **Server Version & Release Endpoint:** Added `/version.json` and `/api/v1/system/version` in [server.js](file:///e:/Soft/DrCreate/Clinicore/backend/server.js) serving current version, build ID, download URLs, and asset URLs.
+  5. **Automated Dist Zip Packaging in CI/CD:** Added automatic `dist.zip` packaging step in [.github/workflows/deploy.yml](file:///e:/Soft/DrCreate/Clinicore/.github/workflows/deploy.yml) for rapid asset distribution.
+  6. **Pre-Push Validation:** 634/634 unit tests passed, 0 AST errors, 0 secret leaks, clean 14s Rust cargo check, and clean Vite build.
+
 - **Phase:** Milestone 218 — Cloud Sync, Database Parity, Backend Auto-Healing & SPA Chunk Resilience (Completed)
 - **Last worked on:**
   1. **Backend Entity & Keyword Parity:** Mapped `pos_sales` & `sales` to `cf_sales_v5` and aligned all 35 entities/aliases in [server.js](file:///e:/Soft/DrCreate/Clinicore/backend/server.js).
