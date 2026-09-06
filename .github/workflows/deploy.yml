@@ -188,7 +188,7 @@ jobs:
             mkdir -p /var/www/clinicore/frontend/dist/downloads
             chown -R www-data:www-data /var/www/clinicore/frontend/dist
             chmod -R 755 /var/www/clinicore/frontend/dist
-            systemctl restart clinicore-node-api || true
+            systemctl restart clinicore-api || true
             nginx -t && systemctl reload nginx || true
             echo "🎉 CliniCore VPS Deployment & Installer Release completed successfully!"
 

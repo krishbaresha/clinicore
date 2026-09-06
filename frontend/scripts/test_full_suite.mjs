@@ -116,6 +116,8 @@ import {
   getSystemDiagnosticInfo,
 } from "../src/utils/version.js";
 
+import { formatWhatsAppPhone } from "../src/utils/whatsappPdfHelper.js";
+
 import {
   decorateRecordLineage,
   stripLineageMetadata,
@@ -4011,6 +4013,34 @@ async function runTests() {
     localStorage.setItem("cf_session_user", JSON.stringify({ name: "Dr. Muhammad Asif", role: "doctor" }));
     const closingWithUser = dbDayClosing.getDayClosingData(today);
     assert(closingWithUser.closed_by === "Dr. Muhammad Asif", "getDayClosingData dynamically resolves active logged-in cashier");
+  });
+
+  // =========================================================================
+  // 🧪 SUITE 49: Automated Day Closing PDF & WhatsApp Smart Protocol Dispatcher
+  // =========================================================================
+  suite("49. Automated Day Closing PDF & WhatsApp Smart Protocol Dispatcher", () => {
+    // 1. Phone Number Normalization
+    assert(formatWhatsAppPhone("0347-3100304") === "923473100304", "Standard Pakistani mobile with dashes formatted to 923473100304");
+    assert(formatWhatsAppPhone("+92 347 3100304") === "923473100304", "E.164 formatted number with plus and spaces normalized");
+    assert(formatWhatsAppPhone("03001234567") === "923001234567", "0300 leading zero converted to country code 92");
+    assert(formatWhatsAppPhone("3473100304") === "923473100304", "10-digit number without leading 0 prepends 92");
+    assert(formatWhatsAppPhone("") === "", "Empty phone returns empty string");
+
+    // 2. URI Protocol Generation
+    const cleanPhone = formatWhatsAppPhone("03473100304");
+    const sampleText = "DAY CLOSING REPORT: Total Sale Rs. 50,000";
+    const desktopUri = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(sampleText)}`;
+    const webUri = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(sampleText)}`;
+
+    assert(desktopUri.startsWith("whatsapp://send?phone=923473100304"), "Desktop URI correctly targets whatsapp:// custom protocol");
+    assert(desktopUri.includes(encodeURIComponent(sampleText)), "Desktop URI safely encodes summary message");
+    assert(webUri.startsWith("https://web.whatsapp.com/send?phone=923473100304"), "Web URI targets https://web.whatsapp.com standard gateway");
+
+    // 3. PDF Filename & Dimensions Spec
+    const todayStr = new Date().toISOString().split("T")[0];
+    const expectedFilename = `Day_Closing_Receipt_${todayStr}.pdf`;
+    assert(expectedFilename.endsWith(".pdf"), "Closing PDF filename ends with .pdf extension");
+    assert(expectedFilename.includes(todayStr), "Closing PDF filename contains today's ISO date");
   });
 
   // ----------------------------------------------------

@@ -245,10 +245,10 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.39",
-        build_id: "20260906.7113939",
+        version: "2.5.40",
+        build_id: "20260906.7113940",
         release_channel: "production",
-        changelog: "Dynamic Categories, Doctor Token Isolation, Cashier Accountability, Expiry Date Pickers",
+        changelog: "WhatsApp PDF Day Closing Dispatcher, Dynamic Categories, Doctor Token Isolation, Expiry Date Pickers",
         min_client_version: "2.4.0",
         download_url: "https://api.clinicore.me/api/v1/system/download-installer"
       }));

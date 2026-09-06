@@ -52,6 +52,38 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 253 — WhatsApp Closing PDF Smart Dispatcher, VPS Service Unification & Full Context Sync (Completed)
+- **Last worked on:**
+  1. **Automated Day Closing Receipt PDF Generation & WhatsApp Smart Dispatcher:**
+     - Created `frontend/src/utils/whatsappPdfHelper.js`:
+       - `formatWhatsAppPhone(phone)`: cleans numbers and standardizes Pakistani formats to international format `923...`.
+       - `generateAndDownloadClosingPDF(previewTarget, dateStr)`: renders the 80mm receipt element using `html2canvas` at 2x scale and exports/downloads a crisp `Day_Closing_Receipt_YYYY-MM-DD.pdf` via `jspdf`.
+       - `openWhatsAppSmart(phone, text, options)`: attempts deep link protocol `whatsapp://send?phone=...&text=...` to launch the native desktop application if installed on the computer; uses a window blur detection fallback timer to seamlessly open WhatsApp Web (`https://web.whatsapp.com/send?...`) if the desktop app is not present.
+       - `dispatchDayClosingWhatsAppWithPDF`: coordinates PDF generation and download, copies Z-Report summary text to clipboard, and triggers smart WhatsApp dispatch for the specified admin/doctor mobile number.
+     - Updated `frontend/src/components/DayClosingReceiptModal.jsx`:
+       - Bound modal thermal preview DOM element with ID `day-closing-thermal-preview`.
+       - Wired "Send WhatsApp" button to `dispatchDayClosingWhatsAppWithPDF`.
+       - Added explicit "📄 Download PDF" button and fallback "WhatsApp Web" button.
+     - Updated `frontend/src/pages/FeesReports.jsx`:
+       - Connected WhatsApp dispatch with automatic clipboard copy and `openWhatsAppSmart`.
+     - Installed `jspdf` and `html2canvas` dependencies in `frontend/package.json`.
+  2. **VPS Dual-Service Conflict Resolution & Factory Reset Route Activation:**
+     - Investigated `localhost:5173 says: ❌ Factory Reset Denied: Route not found`.
+     - Diagnosed that on VPS `77.37.45.233`, duplicate systemd services existed: `clinicore-api.service` and `clinicore-node-api.service`.
+     - Port 5000 was held by a 19-hour-old Node.js process (PID 1567990) under `clinicore-api.service` running an older `server.js` prior to Milestone 251.
+     - Permanently stopped, disabled, and removed `clinicore-node-api.service`.
+     - Uploaded latest `backend/server.js` to `/var/www/clinicore/backend/server.js` and restarted `clinicore-api.service`.
+     - Verified live `/api/v1/system/factory-reset` route on `https://api.clinicore.me/api/v1/system/factory-reset` returning JSON passcode challenge.
+     - Updated CI/CD workflow `.github/workflows/deploy.yml` to target `clinicore-api.service` for all future automated deploys.
+  3. **Full Product Documentation Overhaul:**
+     - Updated root `README.md`, `context/00_README_Index.md`, `context/01_PRD.md`, `context/04_Screens_and_Sitemap.md`, and `context/14_Comprehensive_Conversation_and_Feature_Context.md` to reflect up-to-date v2.5.40 architecture, PDF generation, WhatsApp smart dispatch, and unified VPS services.
+  4. **Automated Verification Pipeline & Master Test Suite:**
+     - Added Test Suite 49 (`WhatsApp PDF Helper & Smart Dispatch Validation`) to `frontend/scripts/test_full_suite.mjs` verifying phone formatting, URL generation, and fallback logic.
+     - Updated AST Hook/Symbol scanner `scripts/scan_imports_and_hooks.mjs` to register `whatsappPdfHelper.js` symbols.
+     - Executed full 5-step pre-push validation (0 secret leaks, 100% AST integrity, oxlint clean, all 49 test suites passing, Vite bundle compiled).
+  5. **Full-Stack Version Bump (v2.5.40) & Desktop Release:**
+     - Bumped version to `2.5.40` across frontend, backend, Tauri desktop configs, and git release tags.
+
 - **Phase:** Milestone 252 — Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Day Closing Cashier Name, Smart Expiry Calendar & v2.5.38 Native Release (Completed)
 - **Last worked on:**
   1. **Dynamic Medicine Category Engine & Edit Modal Upgrade:**

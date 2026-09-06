@@ -60,7 +60,11 @@ const FORMATTERS = [
   "toTitleCase",
   "formatStockBreakdown",
   "formatStockShort",
-  "normalizeDateForInput"
+  "normalizeDateForInput",
+  "formatWhatsAppPhone",
+  "openWhatsAppSmart",
+  "generateAndDownloadClosingPDF",
+  "dispatchDayClosingWhatsAppWithPDF"
 ];
 
 function getAllFiles(dir, exts = [".js", ".jsx"]) {

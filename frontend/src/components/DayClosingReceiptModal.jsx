@@ -4,6 +4,7 @@ import { dbDayClosing, dbClinic } from "../api/db.js";
 import { getSession } from "../api/auth.js";
 import { printDayEndClosingReceipt } from "../utils/thermalPrinter.js";
 import { RECEIPT_HEADER_IMAGE_BASE64 } from "../utils/receiptHeaderBase64.js";
+import { generateAndDownloadClosingPDF, dispatchDayClosingWhatsAppWithPDF, openWhatsAppSmart } from "../utils/whatsappPdfHelper.js";
 import clinicLogoPng from "../assets/clinic-logo.png";
 
 /**
@@ -13,6 +14,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [whatsAppNo, setWhatsAppNo] = useState("03473100304");
   const [statusMsg, setStatusMsg] = useState("Ready");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [closingData, setClosingData] = useState(null);
   const [clinicData, setClinicData] = useState(null);
   const session = useMemo(() => getSession(), []);
@@ -66,20 +68,58 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
     }
   };
 
-  // Handle Send via WhatsApp
-  const handleSendWhatsApp = () => {
+  // 1. Download Closing Receipt as High-Definition 80mm PDF
+  const handleDownloadPDF = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      setIsGeneratingPdf(true);
+      setStatusMsg("📄 Rendering Closing PDF...");
+      const filename = await generateAndDownloadClosingPDF("#day-closing-thermal-preview", date);
+      setStatusMsg(`✅ PDF saved to Downloads: ${filename}`);
+      setTimeout(() => setStatusMsg("Ready"), 4000);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      alert("Failed to generate PDF: " + (err.message || "Unknown error"));
+      setStatusMsg("PDF Error");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // 2. Automated WhatsApp Dispatcher: Generates PDF + Copies Text + Opens Desktop App with Web Fallback
+  const handleSendWhatsApp = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!closingData) return;
+    try {
+      setIsGeneratingPdf(true);
+      setStatusMsg("📄 Generating PDF & Launching WhatsApp...");
+      const res = await dispatchDayClosingWhatsAppWithPDF({
+        phone: whatsAppNo,
+        text: closingData.whatsapp_text,
+        dateStr: date,
+        previewTarget: "#day-closing-thermal-preview",
+      });
+      setStatusMsg(`✅ PDF (${res.filename}) ready! WhatsApp launched.`);
+      setTimeout(() => setStatusMsg("Ready"), 5000);
+    } catch (err) {
+      console.error("WhatsApp dispatch error:", err);
+      alert("WhatsApp Dispatch: " + (err.message || "Failed to dispatch."));
+      setStatusMsg("Ready");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // 3. Fallback: Direct WhatsApp Web link
+  const handleOpenWhatsAppWeb = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!closingData) return;
     let cleanPhone = (whatsAppNo || "").replace(/[^0-9]/g, "");
-    if (cleanPhone.startsWith("0")) {
-      cleanPhone = "92" + cleanPhone.slice(1);
-    }
-    if (!cleanPhone) {
-      alert("⚠️ Please enter a valid WhatsApp mobile number (e.g., 03473100304).");
-      return;
-    }
-    const encodedText = encodeURIComponent(closingData.whatsapp_text);
-    const waUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
-    window.open(waUrl, "_blank");
+    if (cleanPhone.startsWith("0")) cleanPhone = "92" + cleanPhone.slice(1);
+    const encodedText = encodeURIComponent(
+      `${closingData.whatsapp_text}\n\n📄 Note: Day Closing Receipt PDF downloaded to computer.`
+    );
+    window.open(`https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`, "_blank");
   };
 
   if (!isOpen) return null;
@@ -125,7 +165,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             
             {/* ─── LEFT: 80MM THERMAL RECEIPT PREVIEW (Exactly Matching UserForm12) ─── */}
-            <div className="md:col-span-7 bg-white rounded-2xl border-2 border-gray-300/80 shadow-md p-5 font-sans relative">
+            <div id="day-closing-thermal-preview" data-closing-preview="true" className="md:col-span-7 bg-white rounded-2xl border-2 border-gray-300/80 shadow-md p-5 font-sans relative">
               
               {/* Receipt Header Badge */}
               <div className="absolute top-2 left-4 text-[10px] font-black uppercase tracking-wider text-gray-400">
@@ -307,29 +347,81 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
             {/* ─── RIGHT: INTERACTIVE CONTROL PANEL (DrCreate Style) ─────── */}
             <div className="md:col-span-5 space-y-4">
               
-              {/* WhatsApp Sharing Card */}
+              {/* WhatsApp Sharing & PDF Export Card */}
               <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-emerald-600">chat</span>
-                  <label className="text-xs font-black text-gray-800 uppercase tracking-wider">
-                    WhatsApp No
-                  </label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-600">chat</span>
+                    <label className="text-xs font-black text-gray-800 uppercase tracking-wider">
+                      WhatsApp Dispatcher
+                    </label>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded-full border border-emerald-200">
+                    PDF + Chat
+                  </span>
                 </div>
-                <input
-                  type="text"
-                  placeholder="03XXXXXXXXX"
-                  value={whatsAppNo}
-                  onChange={(e) => setWhatsAppNo(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-mono font-black text-gray-900 focus:border-emerald-500 focus:outline-none shadow-inner"
-                />
+
+                <div>
+                  <div className="text-[10px] text-gray-500 font-bold mb-1">Target Phone (Mobile / WhatsApp)</div>
+                  <input
+                    type="text"
+                    placeholder="03XXXXXXXXX"
+                    value={whatsAppNo}
+                    onChange={(e) => setWhatsAppNo(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-mono font-black text-gray-900 focus:border-emerald-500 focus:outline-none shadow-inner"
+                  />
+                </div>
+
+                {/* Primary: Send WhatsApp + Auto PDF */}
                 <button
                   type="button"
+                  disabled={isGeneratingPdf}
                   onClick={handleSendWhatsApp}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-emerald-700 text-white font-black text-xs transition-all shadow-md shadow-slate-900/20 flex items-center justify-center gap-2 active:scale-95"
+                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-emerald-700 disabled:opacity-60 text-white font-black text-xs transition-all shadow-md shadow-slate-900/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-base text-emerald-400">send</span>
-                  Send WhatsApp Report
+                  {isGeneratingPdf ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Generating PDF &amp; Opening...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-base text-emerald-400">send</span>
+                      <span>Send WhatsApp Report (with PDF)</span>
+                    </>
+                  )}
                 </button>
+
+                {/* Secondary Actions: Download PDF & Web WhatsApp */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={isGeneratingPdf}
+                    onClick={handleDownloadPDF}
+                    className="py-2 px-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-900 font-bold text-[11px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="Download 80mm high-res PDF directly"
+                  >
+                    <span className="material-symbols-outlined text-sm text-teal-700">picture_as_pdf</span>
+                    <span>Download PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenWhatsAppWeb}
+                    className="py-2 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 font-bold text-[11px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="Open directly in WhatsApp Web"
+                  >
+                    <span className="material-symbols-outlined text-sm text-emerald-600">open_in_new</span>
+                    <span>WhatsApp Web</span>
+                  </button>
+                </div>
+
+                <div className="text-[10px] text-slate-500 font-medium leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-start gap-1.5">
+                  <span className="material-symbols-outlined text-xs text-teal-600 shrink-0 mt-0.5">info</span>
+                  <span>
+                    <strong>Auto-PDF Attached Flow:</strong> Clicking Send automatically generates and downloads the 80mm PDF to your computer, then opens WhatsApp Desktop (or WhatsApp Web) with pre-filled summary text so you can instantly attach and send.
+                  </span>
+                </div>
               </div>
 
               {/* Status Indicator Box */}

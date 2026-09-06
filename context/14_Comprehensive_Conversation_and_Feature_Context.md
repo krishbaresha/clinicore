@@ -108,6 +108,27 @@
 - **SW Skip Waiting:** Restored `self.skipWaiting()` on service worker installation to instantly activate deployments and clear client-side cache white screens.
 - **Test Integrity:** Refactored unit tests to dynamically initialize test databases for inventory validations, keeping 100% test coverage green.
 
+### Milestone 250 — Master Synchronization Engine & Universal Conflict Resolution
+- Real-time delta sync between Desktop offline SQLite/IndexedDB and VPS MySQL backend.
+- Automatic retry exponential backoff and PN-counter conflict resolution for concurrent multi-terminal checkouts.
+
+### Milestone 251 — Universal Cross-Terminal Real-Time Sync, Ground Zero Wipe & Autonomous VPS Backup Vault
+- Linked outbox mutations directly to immediate 300ms server pushes.
+- Permanent Factory Reset engine with epoch timestamps (`_last_reset_epoch`) preventing zombie data resurrection across terminals.
+- Autonomous physical snapshot backup vault on VPS SSD with automatic 30-day rotation and 1-click download links.
+
+### Milestone 252 — Dynamic Medicine Category Engine, Per-Doctor Isolated Tokens & Smart Expiry Normalizer
+- Dynamic Category Engine with 13 standard homeopathic categories and custom creation on-the-fly.
+- Independent per-doctor daily token numbering without cross-doctor sequence collisions.
+- Smart multi-format expiry date normalizer and native calendar date pickers.
+- Cashier name accountability on Day-End Closing thermal slips and receipts.
+
+### Milestone 253 — WhatsApp Closing PDF Smart Dispatcher, VPS Service Unification & v2.5.40 Production Release
+- **Client-Side Day Closing PDF Engine:** Automated high-resolution 80mm PDF receipt generation via `html2canvas` & `jspdf` (`Day_Closing_Receipt_YYYY-MM-DD.pdf`) with 1-click download.
+- **WhatsApp Smart Dispatcher:** Deep link protocol `whatsapp://send?phone=...&text=...` opens native desktop app when installed, with automatic clipboard copy of closing text and seamless window-blur fallback to WhatsApp Web.
+- **VPS Service Unification:** Cleaned duplicate systemd services on VPS, permanently unifying on `clinicore-api.service` and deploying the live Factory Reset route.
+- **Full-Stack Version 2.5.40:** Synchronized across all configurations, tags, and documentation.
+
 ---
 
 ## 🔒 3. Golden Rules for Future AI Coding Sessions

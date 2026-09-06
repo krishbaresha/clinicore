@@ -8,11 +8,11 @@ const g = typeof globalThis !== 'undefined' ? globalThis : {};
 
 export const APP_CONFIG = Object.freeze({
   NAME: 'ClinicFlow (CliniCore) OS',
-  SEMVER: typeof g.__APP_SEMVER__ !== 'undefined' ? g.__APP_SEMVER__ : '2.5.39',
-  BUILD_HASH: typeof g.__APP_BUILD_HASH__ !== 'undefined' ? g.__APP_BUILD_HASH__ : '7113939',
+  SEMVER: typeof g.__APP_SEMVER__ !== 'undefined' ? g.__APP_SEMVER__ : '2.5.40',
+  BUILD_HASH: typeof g.__APP_BUILD_HASH__ !== 'undefined' ? g.__APP_BUILD_HASH__ : '7113940',
   BUILD_DATE: typeof g.__APP_BUILD_DATE__ !== 'undefined' ? g.__APP_BUILD_DATE__ : '20260906',
-  BUILD_ID: typeof g.__APP_BUILD_ID__ !== 'undefined' ? g.__APP_BUILD_ID__ : '20260906.7113939',
-  FULL_VERSION: typeof g.__APP_FULL_VERSION__ !== 'undefined' ? g.__APP_FULL_VERSION__ : 'v2.5.39+build.20260906.7113939',
+  BUILD_ID: typeof g.__APP_BUILD_ID__ !== 'undefined' ? g.__APP_BUILD_ID__ : '20260906.7113940',
+  FULL_VERSION: typeof g.__APP_FULL_VERSION__ !== 'undefined' ? g.__APP_FULL_VERSION__ : 'v2.5.40+build.20260906.7113940',
   BUILD_TIME: typeof g.__APP_BUILD_TIME__ !== 'undefined' ? g.__APP_BUILD_TIME__ : '2026-09-06T00:00:00.000Z',
   SCHEMA_VERSION: typeof g.__TARGET_SCHEMA_VERSION__ !== 'undefined' ? g.__TARGET_SCHEMA_VERSION__ : 4,
   MIN_SERVER_SCHEMA_VERSION: typeof g.__MIN_SERVER_SCHEMA_VERSION__ !== 'undefined' ? g.__MIN_SERVER_SCHEMA_VERSION__ : 3,

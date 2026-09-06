@@ -1,15 +1,15 @@
 <div align="center">
 
-# 🏥 CliniCore Hybrid V2.5
+# 🏥 CliniCore Hybrid V2.5.40
 ### **Enterprise OPD Clinical Management, Multi-Warehouse Pharmacy POS & Wholesale Distribution Engine**
 *Designed & Engineered for Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Medical Store (Hyderabad & Interior Sindh)*
 
-[![Test Suite](https://img.shields.io/badge/Tests-308%2F308%20Passing%20(100%25)-10b981.svg?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/krishbaresha/clinicore)
+[![Test Suite](https://img.shields.io/badge/Tests-756%2F756%20Passing%20(100%25)-10b981.svg?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/krishbaresha/clinicore)
 [![Code Quality](https://img.shields.io/badge/Oxlint-0%20Errors%20(Strict%20AST)-0ea5e9.svg?style=for-the-badge&logo=eslint&logoColor=white)](https://github.com/krishbaresha/clinicore)
-[![Build Status](https://img.shields.io/badge/Vite%208.2.1-Production%20Ready%20(<1s)-8b5cf6.svg?style=for-the-badge&logo=vite&logoColor=white)](https://github.com/krishbaresha/clinicore)
+[![Build Status](https://img.shields.io/badge/Vite%208.2.1-Production%20Ready%20(2.1s)-8b5cf6.svg?style=for-the-badge&logo=vite&logoColor=white)](https://github.com/krishbaresha/clinicore)
 [![PWA Ready](https://img.shields.io/badge/PWA-Offline--First%20ServiceWorker-f59e0b.svg?style=for-the-badge&logo=pwa&logoColor=white)](https://github.com/krishbaresha/clinicore)
 [![Thermal Printing](https://img.shields.io/badge/ESC%2FPOS-80mm%20Low--Ink%20Engine-14b8a6.svg?style=for-the-badge&logo=print&logoColor=white)](https://github.com/krishbaresha/clinicore)
-[![Dual Engine](https://img.shields.io/badge/Desktop%20Hybrid-React%20%2B%20SQLite%20%2B%20MySQL-6366f1.svg?style=for-the-badge&logo=electron&logoColor=white)](https://github.com/krishbaresha/clinicore)
+[![Dual Engine](https://img.shields.io/badge/Desktop%20Hybrid-Tauri%202.0%20%2B%20Vite%20%2B%20Node.js-6366f1.svg?style=for-the-badge&logo=tauri&logoColor=white)](https://github.com/krishbaresha/clinicore)
 
 ---
 
@@ -17,9 +17,9 @@
 
 ## 📌 Executive Summary
 
-**ClinicFlow (CliniCore)** is a mission-critical, enterprise-grade clinical management and pharmacy distribution software suite. Built with an **offline-first hybrid architecture**, it seamlessly bridges high-speed OPD patient consultations, rapid retail POS counter dispensing, multi-godown wholesale distribution across Interior Sindh, and 2-way synchronized cloud reporting.
+**ClinicFlow (CliniCore) v2.5.40** is a mission-critical, enterprise-grade clinical management and pharmacy distribution software suite. Built with an **offline-first hybrid architecture**, it seamlessly bridges high-speed OPD patient consultations, rapid retail POS counter dispensing, multi-godown wholesale distribution across Interior Sindh, and 2-way synchronized cloud reporting.
 
-Originally developed to modernize legacy MS Access (`DrCreate.xlsm` / `AshrafKhan.accdb`) workflows, ClinicFlow provides instantaneous sub-millisecond local operations with zero network dependency, automatic background cloud synchronization, and strict role-based access control (RBAC).
+Originally developed to modernize legacy MS Access (`DrCreate.xlsm` / `AshrafKhan.accdb`) workflows, CliniCore provides instantaneous sub-millisecond local operations with zero network dependency, automatic background cloud synchronization, and strict role-based access control (RBAC).
 
 ---
 

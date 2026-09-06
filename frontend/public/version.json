@@ -1,9 +1,9 @@
 {
-  "version": "2.5.39",
-  "full_version": "v2.5.39+build.20260906.7113939",
-  "build_id": "20260906.7113939",
-  "git_hash": "7113939",
-  "builtAt": "2026-09-06T07:21:00.000Z",
+  "version": "2.5.40",
+  "full_version": "v2.5.40+build.20260906.7113940",
+  "build_id": "20260906.7113940",
+  "git_hash": "7113940",
+  "builtAt": "2026-09-06T07:29:00.000Z",
   "schema_version": 4,
   "min_server_schema": 3,
   "app": "CliniCore / ClinicFlow"

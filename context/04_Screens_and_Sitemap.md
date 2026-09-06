@@ -14,7 +14,7 @@
 | `/doctor/consultation/:id` | Doctor Consultation | Doctor Only | Vitals logs, prescription builder, follow-up scheduler, and camera capture. |
 | `/patients` | Patients Directory | All Staff | Omni-search directory showing outstanding patient dues (Udhaar). |
 | `/patients/:id` | Patient Profile | All Staff | Interactive timeline of all past visits, HD Lightbox, and pharmacy receipts. |
-| `/fees` | Financial Register | Admin / Accountant | Three-Tab Register: Daily Cash Drawer Z-Report, Expense Journal CashBook, and Analytics. |
+| `/fees` | Financial Register | Admin / Accountant | Three-Tab Register: Daily Cash Drawer Z-Report, Expense Journal CashBook, Analytics, and Day Closing Receipt Modal with automated PDF generation & WhatsApp Smart Dispatcher. |
 | `/store/pos` | Counter POS | Pharmacist / Cashier | Retail sales screen, B2B wholesale invoicing, overall discounts, party codes, and active cashier switching. |
 | `/store/inventory` | Inventory & Ledger | Pharmacist / Admin | Item catalog, multi-unit ratios, bulk import, and 4-Level Stock Ledger. |
 | `/store/sales-log` | Store Sales Log | Pharmacist / Admin | History of sales invoices, return processing, and receipt reprints. |
@@ -98,5 +98,20 @@
   - `F3`: Add new invoice item line
   - `F4`: Toggle Cash vs Credit / Udhaar
   - `2D Arrow Keys`: Cell-to-cell navigation (Item ⇄ Qty ⇄ Rate ⇄ Disc) in invoice tables
+
+---
+
+## 6. Day Closing Receipt Modal & WhatsApp Smart Dispatcher (Milestone 253)
+
+- **Modal Access:** Accessed from `/fees` (Fees & Cash Drawer) via the **"Print Day Closing"** / **"WhatsApp Closing"** action buttons.
+- **Features & Dispatch Capabilities:**
+  - **Live Thermal Preview:** Interactive 80mm ESC/POS live rendering with clinic branding, opening float, cash sales, OPD collections, supplier payouts, expense breakdowns, net in drawer, and physical drawer count.
+  - **Client-Side PDF Generator:** Uses `html2canvas` at 2x scale and `jspdf` to convert the rendered 80mm receipt into a high-resolution, vector-accurate printable document (`Day_Closing_Receipt_YYYY-MM-DD.pdf`) and auto-triggers download.
+  - **WhatsApp Smart Dispatcher:**
+    - Attempts native protocol `whatsapp://send?phone=...&text=...` to launch the Windows Desktop WhatsApp application if installed.
+    - Employs a window-blur detection fallback: if WhatsApp desktop is not installed or doesn't activate, automatically redirects to WhatsApp Web (`https://web.whatsapp.com/send?...`).
+    - Copies structured Z-Report summary text to system clipboard so the user can easily paste and attach the downloaded PDF receipt.
+    - Includes direct "WhatsApp Web" fallback and "📄 Download PDF" buttons for maximum operator flexibility.
+
 
 

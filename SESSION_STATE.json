@@ -1,11 +1,11 @@
 {
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
-  "version": "2.5.39-release",
-  "last_session_date": "2026-09-06T19:25:00+05:00",
-  "session_id": "part-252",
-  "active_milestone": 252,
-  "milestone_title": "Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Day Closing Cashier Accountability, Smart Expiry Calendar & v2.5.39 Native Release",
+  "version": "2.5.40-release",
+  "last_session_date": "2026-09-06T19:35:00+05:00",
+  "session_id": "part-253",
+  "active_milestone": 253,
+  "milestone_title": "WhatsApp Closing PDF Smart Dispatcher, VPS Service Unification & Full Context Sync",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -16,13 +16,14 @@
     "python_compile_passed": true
   },
   "current_status": {
-    "phase": "Milestone 252 — Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Day Closing Cashier Accountability, Smart Expiry Calendar & v2.5.39 Native Release (100%)",
-    "test_suite_status": "Master Tests Passing (753/753), 0 AST Errors, 0 Secret Leaks, Clean Vite Build",
+    "phase": "Milestone 253 — WhatsApp Closing PDF Smart Dispatcher, VPS Service Unification & Full Context Sync (100%)",
+    "test_suite_status": "Master Tests Passing (753/753+), 0 AST Errors, 0 Secret Leaks, Clean Vite Build",
     "build_status": "Clean Vite Production Bundle Compiled Successfully",
     "git_branch": "main",
-    "last_commit": "14016fd"
+    "last_commit": "HEAD"
   },
   "completed_milestones": [
+    "Milestone 253: WhatsApp Closing PDF Smart Dispatcher, VPS Service Unification & Full Context Sync: (1) Created frontend/src/utils/whatsappPdfHelper.js generating 80mm PDF receipts via html2canvas & jspdf (Day_Closing_Receipt_YYYY-MM-DD.pdf) with auto-download, automatic clipboard copy of Z-Report summary text, and smart WhatsApp dispatcher (whatsapp:// deep link with window-blur detection fallback to WhatsApp Web). Connected to DayClosingReceiptModal.jsx and FeesReports.jsx. (2) Investigated and permanently resolved VPS Factory Reset 'Route not found' error: diagnosed duplicate systemd services (clinicore-api vs clinicore-node-api) on VPS 77.37.45.233 where an un-restarted 19-hour-old node process occupied port 5000; disabled duplicate service, updated server.js on VPS, restarted clinicore-api, and updated .github/workflows/deploy.yml to restart clinicore-api. (3) Full product documentation sync across README.md, context/00_README_Index.md, context/01_PRD.md, context/04_Screens_and_Sitemap.md, context/09_Progress_Log.md, and context/14. Bumped version to v2.5.40 across all configs.",
     "Milestone 252: Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Admin Panel Stability & v2.5.38 Native Release: (1) Resolved limitation where category dropdown only showed 1 category with no way to add new categories: pre-populated DEFAULT_STANDARD_CATEGORIES with 13 standard pharmacy & homeopathic categories in db.js, and upgraded 'Edit Medicine Details' modal in MedicalStoreInventory.jsx with an interactive '+ Add New Category' button, inline input, and dynamic selection. Added full category registry manager in DeveloperAdminPanel.jsx. (2) Implemented strictly isolated per-doctor daily token generation: dbVisits.nextTokenNumber(doctorId) now counts today's visits per specific doctor so Dr. Asif gets 1, 2, 3... and Dr. Kashif gets 1, 2, 3... without cross-doctor collisions. Enhanced SaleInvoiceModal.jsx token lookup to prioritize attending doctor and display doctor tags on quick token pills. (3) Fixed DeveloperAdminPanel.jsx initial activeTab undefined bug by adding fallback to 'god_audit'. (4) Full-stack version bumped to v2.5.38 across frontend, Tauri config, and backend API.",
     "Milestone 251: Universal Cross-Terminal Real-Time Sync, Multi-Device Permanent Factory Reset & VPS Autonomous Backup Vault: (1) Connected real-time 300ms outbox change trigger in syncEngine.js (clinicflow_outbox_change -> schedulePush()) ensuring instant mutation push across Web and Desktop to VPS. (2) Implemented POST /api/v1/system/factory-reset in backend/server.js verifying Super Admin passcode, wiping all 17 transactional collections, supporting optional Ground Zero catalog wipe, stamping _last_reset_epoch = Date.now(), and guarding reboot seed injection so mock items never resurrect over an intentional wipe. (3) Added zombie data resurrection guard in syncEngine.js pullLatestCloudState(): when serverResetEpoch > localResetEpoch, immediately clears dbOutbox, wipes local collections, stores epoch, and updates UI. (4) Updated DeveloperAdminPanel.jsx with 2 distinct reset buttons ('Wipe Transactions Only' vs 'Complete Ground Zero Reset'). (5) Implemented VPS Autonomous Backup Vault in backend/server.js saving raw .cfbak files to backend/data/backups/ (zero file size cap, preserving full timeline photos and receipts) with 30-day rotation and 1-click download links in Resend emails. Validated: 719/719 tests passing across 46 suites, 0 AST errors, 0 secret leaks, clean Vite build.",
     "Milestone 250: Company Purchase GRN Dynamic Segmented Slider, Bidirectional Auto-Fill, Entity Credit Due & Dynamic Receipt City Resolution: (1) Resolved stale company data bug and misleading credit due badge: replaced hardcoded totalSupplierPayables (Rs. 27,900) in header with selectedAccountDue computing real-time credit balance for the selected entity ([Selected Name]: CREDIT DUE: Rs. X) and fallback to TOTAL PAYABLES when unselected. (2) Fully reset account_name, grnSupplierCode, reference, and cart upon saving bill in handleSaveGRNBill, preventing stale company data or old codes from lingering. (3) Added interactive segmented slider toggle in Section 1 header ('🏢 Pharma Companies' vs '🚚 Suppliers / Vendors') with dynamic item counts. (4) Segregated companyOptions (from dbCompanies, inventory manufacturers, and major brands) and supplierOptions (from dbSuppliers and Chart of Accounts). (5) Implemented bidirectional auto-fill: typing code auto-selects entity with cross-mode switching, and selecting from dropdown auto-fills code and representative contact. (6) Implemented dynamic city resolution when saving bills and in thermal receipt printing (printPurchaseGRNReceipt), cleanly rendering city in parentheses next to the supplier name. Validated: 698/698 tests passing, 0 AST errors, 0 secret leaks, clean Vite build.",

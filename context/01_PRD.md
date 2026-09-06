@@ -39,4 +39,5 @@ CliniCore is a high-performance, medical-grade hybrid software designed for clin
 
 ### 💰 CashBook & Z-Reports
 - **Double-Entry Ledger:** Tracks cash receipt inflows and payment outflows.
-- **Automated Z-Reports:** Reconciles opening cash float, total daily inflows, and physical counts with automated WhatsApp/Email dispatch.
+- **Automated Z-Reports:** Reconciles opening cash float, total daily inflows, cashier name accountability, and physical counts.
+- **Day Closing PDF & WhatsApp Smart Dispatcher (Milestone 253):** Instant client-side 80mm high-resolution PDF rendering via `html2canvas` & `jspdf` (`Day_Closing_Receipt_YYYY-MM-DD.pdf`), auto-download, automatic clipboard copy of closing text, and smart WhatsApp launcher (`whatsapp://` for desktop app with seamless fallback to WhatsApp Web).
