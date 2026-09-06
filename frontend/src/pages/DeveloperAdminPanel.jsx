@@ -29,6 +29,7 @@ import {
 import { formatDateTime } from "../utils/formatters.js";
 import { isDesktopApp } from "../utils/desktop.js";
 import { getTauriInvoke } from "../api/storageDriver.js";
+import { APP_CONFIG, compareSemver, getEffectiveVersion, setEffectiveVersion } from "../utils/version.js";
 import GodAdminPanel from "./GodAdminPanel.jsx";
 
 const DEFAULT_API_URL =
@@ -37,11 +38,11 @@ const DEFAULT_API_URL =
     ? window.location.origin
     : "https://api.clinicore.me");
 
-export function getApiUrl() {
+function getApiUrl() {
   return DEFAULT_API_URL;
 }
 
-export function getAdminPasscode() {
+function getAdminPasscode() {
   try {
     const clinic = dbClinic.get() || {};
     return clinic.admin_master_passcode || localStorage.getItem("cf_admin_master_passcode") || "7860";
@@ -50,7 +51,7 @@ export function getAdminPasscode() {
   }
 }
 
-export function setAdminPasscode(pass) {
+function setAdminPasscode(pass) {
   try {
     localStorage.setItem("cf_admin_master_passcode", pass);
     dbClinic.update({ admin_master_passcode: pass });
@@ -94,11 +95,7 @@ export default function DeveloperAdminPanel() {
     try { return localStorage.getItem("cf_drive_last_status") || "success"; } catch { return "success"; }
   });
   const [liveAdminVersion, setLiveAdminVersion] = useState(() => {
-    try {
-      return localStorage.getItem("cf_applied_version") || (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || "2.5.9";
-    } catch {
-      return "2.5.9";
-    }
+    return getEffectiveVersion();
   });
   const [showOutboxDetails, setShowOutboxDetails] = useState(false);
 
@@ -185,20 +182,23 @@ export default function DeveloperAdminPanel() {
   const [isApplyingUpdate, setIsApplyingUpdate] = useState(false);
   const [updateProgressPct, setUpdateProgressPct] = useState(0);
   const [updateProgressStep, setUpdateProgressStep] = useState("");
-  const [updateInfo, setUpdateInfo] = useState({
-    checked: false,
-    updateAvailable: false,
-    currentVersion: liveAdminVersion || "2.5.9",
-    latestVersion: liveAdminVersion || "2.5.9",
-    buildId: "",
-    builtAt: "",
-    changelog: [
+  const [updateInfo, setUpdateInfo] = useState(() => {
+    const eff = getEffectiveVersion();
+    return {
+      checked: false,
+      updateAvailable: false,
+      currentVersion: eff,
+      latestVersion: eff,
+      buildId: "",
+      builtAt: "",
+      changelog: [
       "Central Cloud VPS & Multi-PC Real-Time Synchronization",
       "Automatic Daily Encrypted Google Drive & Email Backups",
       "Low-Ink ESC/POS Thermal Receipt Engine & Fast Billing",
       "Local-First Offline-Proof Database Cache & Multi-Tenant Support",
-    ],
-    error: null,
+      ],
+      error: null,
+    };
   });
 
   // Fleet Telemetry & Multi-Device Radar State
@@ -296,9 +296,9 @@ export default function DeveloperAdminPanel() {
         if (vRes && vRes.ok) {
           const vData = await vRes.json().catch(() => null);
           const ver = vData?.version || vData?.data?.version;
-          if (ver) {
+          if (ver && compareSemver(ver, getEffectiveVersion()) > 0) {
             setLiveAdminVersion(ver);
-            try { localStorage.setItem("cf_applied_version", ver); } catch (_) {}
+            setEffectiveVersion(ver);
           }
         }
 
@@ -888,7 +888,7 @@ export default function DeveloperAdminPanel() {
     if (openModalDirectly) setShowUpdateModal(true);
     showToast("🔍 Checking for latest CliniCore software updates...");
 
-    const curVer = liveAdminVersion || "2.5.9";
+    const curVer = getEffectiveVersion();
     let latestVer = curVer;
     let buildId = "";
     let builtAt = "";
@@ -919,19 +919,7 @@ export default function DeveloperAdminPanel() {
               builtAt = bAt;
               downloadUrl = dUrl;
 
-              // Semver comparison
-              const parseSemver = (str) => {
-                const m = String(str).match(/^v?(\d+)\.(\d+)\.(\d+)/);
-                return m ? { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) } : null;
-              };
-              const sSem = parseSemver(latestVer);
-              const cSem = parseSemver(curVer);
-
-              if (sSem && cSem) {
-                if (sSem.major > cSem.major) isNewer = true;
-                else if (sSem.major === cSem.major && sSem.minor > cSem.minor) isNewer = true;
-                else if (sSem.major === cSem.major && sSem.minor === cSem.minor && sSem.patch > cSem.patch) isNewer = true;
-              }
+              isNewer = compareSemver(latestVer, curVer) > 0;
               break;
             }
           }
@@ -971,6 +959,26 @@ export default function DeveloperAdminPanel() {
     setUpdateProgressPct(5);
     setUpdateProgressStep("Connecting to release channel...");
 
+    // ── DEVELOPMENT ENVIRONMENT SHORT-CIRCUIT ──
+    // When running inside Vite dev server / tauri:dev, source files run directly.
+    // Sync local version state instantly without launching external production binary.
+    if (import.meta.env.DEV) {
+      await new Promise((r) => setTimeout(r, 400));
+      setUpdateProgressPct(50);
+      setUpdateProgressStep("Syncing development environment state...");
+      const targetVer = updateInfo.latestVersion || getEffectiveVersion();
+      setEffectiveVersion(targetVer);
+      setLiveAdminVersion(targetVer);
+      setUpdateProgressPct(100);
+      setUpdateProgressStep(`Development active: Synced to v${targetVer}`);
+      setUpdateInfo((prev) => ({ ...prev, currentVersion: targetVer, updateAvailable: false }));
+      await new Promise((r) => setTimeout(r, 500));
+      setIsApplyingUpdate(false);
+      setShowUpdateModal(false);
+      showToast(`✅ Development mode: Synced to v${targetVer}`);
+      return;
+    }
+
     const isDesktop = isDesktopApp();
 
     if (!isDesktop) {
@@ -989,7 +997,8 @@ export default function DeveloperAdminPanel() {
           await Promise.all(cacheKeys.map((k) => window.caches.delete(k)));
         }
         if (updateInfo.latestVersion) {
-          localStorage.setItem("cf_applied_version", updateInfo.latestVersion);
+          setEffectiveVersion(updateInfo.latestVersion);
+          setLiveAdminVersion(updateInfo.latestVersion);
         }
         sessionStorage.removeItem("cf_chunk_reload");
       } catch (_) {}
@@ -1054,6 +1063,12 @@ export default function DeveloperAdminPanel() {
           bytes: Array.from(downloadedBytes),
         });
 
+        // Set applied version BEFORE launching installer so restarted app is up to date
+        if (updateInfo.latestVersion) {
+          setEffectiveVersion(updateInfo.latestVersion);
+          setLiveAdminVersion(updateInfo.latestVersion);
+        }
+
         setUpdateProgressPct(100);
         setUpdateProgressStep("Update verified! Silently installing and relaunching CliniCore...");
         await new Promise((r) => setTimeout(r, 600));
@@ -1063,6 +1078,10 @@ export default function DeveloperAdminPanel() {
 
       // Background PowerShell Native Downloader Fallback
       if (invoke) {
+        if (updateInfo.latestVersion) {
+          setEffectiveVersion(updateInfo.latestVersion);
+          setLiveAdminVersion(updateInfo.latestVersion);
+        }
         setUpdateProgressPct(50);
         setUpdateProgressStep("Downloading update via background engine...");
         await invoke("download_and_run_installer", { url: targetUrl });

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getEffectiveVersion, setEffectiveVersion, compareSemver } from "../utils/version.js";
 
 /**
  * usePWAUpdate — Enterprise PWA Lifecycle & Live Hot-Update Engine.
@@ -14,10 +15,13 @@ export function usePWAUpdate() {
   const [newVersion, setNewVersion] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const registrationRef = useRef(null);
-  // Read app version stamped at build time by Vite, with safe fallbacks
-  const currentVersion = (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || (typeof localStorage !== "undefined" && localStorage.getItem("cf_applied_version")) || "2.5.9";
+  // Read authoritative app version
+  const currentVersion = getEffectiveVersion();
   const currentBuildId = (typeof globalThis !== "undefined" && globalThis.__APP_BUILD_ID__) || "";
   const currentVersionRef = useRef(currentVersion);
+
+  const isDev = Boolean(import.meta.env.DEV);
+  const isTauri = typeof window !== "undefined" && Boolean(window.__TAURI__ || window.__TAURI_INTERNALS__);
 
   const applyUpdate = useCallback(() => {
     setIsUpdating(true);
@@ -25,7 +29,7 @@ export function usePWAUpdate() {
     // Record that we have applied up to this version to prevent loops
     try {
       if (newVersion) {
-        localStorage.setItem("cf_applied_version", newVersion);
+        setEffectiveVersion(newVersion);
       }
     } catch (_) {}
 
@@ -46,6 +50,8 @@ export function usePWAUpdate() {
   }, [newVersion]);
 
   const checkForUpdate = useCallback(async () => {
+    if (isDev || isTauri) return;
+
     // 1. Trigger SW registration check
     if (registrationRef.current) {
       try {
@@ -73,26 +79,18 @@ export function usePWAUpdate() {
             const serverVersion = data?.version || (data?.data && data.data.version);
             const serverBuildId = data?.build_id || (data?.data && data.data.build_id) || "";
             if (serverVersion) {
+              // Ignore updates in local development
+              if (import.meta.env.DEV) {
+                continue;
+              }
+
               // Check if user already dismissed/applied this exact version recently in this session
               const appliedVersion = (typeof localStorage !== "undefined" ? localStorage.getItem("cf_applied_version") : null);
               if (appliedVersion && appliedVersion === serverVersion) {
                 continue;
               }
 
-              const parseSemver = (v) => {
-                if (!v) return null;
-                const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)/);
-                return m ? { major: parseInt(m[1], 10), minor: parseInt(m[2], 10), patch: parseInt(m[3], 10) } : null;
-              };
-              
-              const sSem = parseSemver(serverVersion);
-              const cSem = parseSemver(currentVersionRef.current);
-              let hasNewerVersion = false;
-              if (sSem && cSem) {
-                if (sSem.major > cSem.major) hasNewerVersion = true;
-                else if (sSem.major === cSem.major && sSem.minor > cSem.minor) hasNewerVersion = true;
-                else if (sSem.major === cSem.major && sSem.minor === cSem.minor && sSem.patch > cSem.patch) hasNewerVersion = true;
-              }
+              const hasNewerVersion = compareSemver(serverVersion, getEffectiveVersion()) > 0;
 
               if (hasNewerVersion) {
                 console.log(`[PWA/OTA] New version detected on server: ${serverVersion} (current: ${currentVersionRef.current})`);
@@ -113,6 +111,17 @@ export function usePWAUpdate() {
 
   useEffect(() => {
     // 1. Service Worker setup for Web / PWA environments
+    if (isDev || isTauri) {
+      if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const reg of registrations) {
+            reg.unregister().catch(() => {});
+          }
+        }).catch(() => {});
+      }
+      return;
+    }
+
     let handleControllerChange = null;
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";

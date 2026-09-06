@@ -97,13 +97,13 @@ export function getLogoHeaderHtml(docTypeLabel = "", blockFlags = {}) {
   const headerSrc = sanitizeLogoSrc(rawHeader) || RECEIPT_HEADER_IMAGE_BASE64;
 
   let headerHtml = `
-    <div style="width: 100%; text-align: center; margin: 0 0 3px 0; padding: 0; box-sizing: border-box; line-height: 0;">
-      <img src="${headerSrc}" alt="Dr. Asif Khan Homoeopathic Clinic" style="width: 100%; max-width: 100%; height: auto; display: block; margin: 0 auto; padding: 0;" />
+    <div style="width: 100%; text-align: center; margin: 0 0 4px 0; padding: 0; box-sizing: border-box; line-height: 0;">
+      <img src="${headerSrc}" alt="Clinic Header Logo" style="width: 100% !important; max-width: 100% !important; min-width: 100% !important; height: auto !important; display: block; margin: 0 auto; padding: 0; image-rendering: -webkit-optimize-contrast;" />
     </div>
   `;
 
   if (docTypeLabel) {
-    headerHtml += `<div style="font-size: 11px; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; margin: 2px 0 4px 0; padding: 2px 4px; border: 1px solid #000; background: #fff; color: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${escapeHtml(docTypeLabel)}</div>`;
+    headerHtml += `<div style="font-size: 11.5px; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; margin: 3px 0 4px 0; padding: 2px 4px; border: 1.5px solid #000; background: #fff; color: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${escapeHtml(docTypeLabel)}</div>`;
   }
 
   return headerHtml;
@@ -424,32 +424,38 @@ export function executeThermalPrint(receiptHtml, title = "Print") {
   }
 }
 
-export function printThermalReceipt(sale, clinicData = null) {
-  if (!sale) return;
+/**
+ * Generate 80mm ESC/POS Thermal Receipt HTML for Sale Invoices (Retail POS & Wholesale B2B)
+ */
+export function generateSaleInvoiceReceiptHtml(sale, clinicData = null) {
+  if (!sale) return "";
 
-  // Read block visibility saved by Receipt Studio for POS mode
-  const _blocks = getBlocksConfig("pos");
-  const showLogo     = isBlockEnabled(_blocks, "header_logo");
-  const showTagline  = isBlockEnabled(_blocks, "tagline");
-  const showContact  = isBlockEnabled(_blocks, "contact_info");
-  const showDiv1     = isBlockEnabled(_blocks, "divider_1");
-  const showMeta     = isBlockEnabled(_blocks, "meta_info");
-  const showCustomer = isBlockEnabled(_blocks, "customer_info");
-  const showItems    = isBlockEnabled(_blocks, "items_table");
-  const showDiv2     = isBlockEnabled(_blocks, "divider_2");
-  const showTotals   = isBlockEnabled(_blocks, "financial_totals");
-  const showUrdu     = isBlockEnabled(_blocks, "urdu_footer");
-  const showNote     = isBlockEnabled(_blocks, "custom_note");
+  const isWholesale = sale.billing_type === "wholesale_party" || sale.is_wholesale || Boolean(sale.party_code && String(sale.party_code).toUpperCase() !== "POS");
+  const modeKey = isWholesale ? "b2b" : "pos";
+
+  // Read block visibility saved by Receipt Studio for mode
+  const _blocks = getBlocksConfig(modeKey) || getBlocksConfig("pos");
+  const showLogo     = isBlockEnabled(_blocks, "header_logo", modeKey);
+  const showTagline  = isBlockEnabled(_blocks, "tagline", modeKey);
+  const showContact  = isBlockEnabled(_blocks, "contact_info", modeKey);
+  const showDiv1     = isBlockEnabled(_blocks, "divider_1", modeKey);
+  const showMeta     = isBlockEnabled(_blocks, "meta_info", modeKey);
+  const showCustomer = isBlockEnabled(_blocks, "customer_info", modeKey);
+  const showItems    = isBlockEnabled(_blocks, "items_table", modeKey);
+  const showDiv2     = isBlockEnabled(_blocks, "divider_2", modeKey);
+  const showTotals   = isBlockEnabled(_blocks, "financial_totals", modeKey);
+  const showUrdu     = isBlockEnabled(_blocks, "urdu_footer", modeKey);
+  const showNote     = isBlockEnabled(_blocks, "custom_note", modeKey);
   const cfg          = getCustomReceiptConfig();
 
-  const clinicName = escapeHtml(clinicData?.name || "H/Dr.Asif Ashraf Khan Clinic");
-  const subtotal = Number(sale.subtotal_amount) || Number(sale.total_amount) || 0;
+  const subtotal = Number(sale.subtotal_amount) || Number(sale.subtotal) || Number(sale.total_amount) || 0;
   const discount = Number(sale.discount_amount) || 0;
   const netTotal = Number(sale.total_amount) || subtotal;
-  const cashTendered = Number(sale.cash_tendered) || netTotal;
-  const changeDue = Number(sale.change_due) || Math.max(0, cashTendered - netTotal);
+  const isCredit = sale.payment_type === "credit" || sale.balance_due > 0 || (sale.payment_mode && String(sale.payment_mode).toLowerCase().includes("credit"));
+  const cashTendered = Number(sale.cash_tendered ?? sale.paid_amount) || (isCredit ? 0 : netTotal);
+  const changeDue = Number(sale.change_due ?? sale.change_return) || Math.max(0, cashTendered - netTotal);
 
-  const rawDate = sale.sale_date ? new Date(sale.sale_date) : new Date();
+  const rawDate = sale.sale_date || sale.date ? new Date(sale.sale_date || sale.date) : new Date();
   const dateTimeStr = rawDate.toLocaleString("en-US", {
     timeZone: "Asia/Karachi",
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -458,25 +464,37 @@ export function printThermalReceipt(sale, clinicData = null) {
 
   const activeCashier = typeof getActiveCashier === "function" ? getActiveCashier() : null;
   const cashierName = escapeHtml(sale.cashier_name || sale.active_cashier_name || (activeCashier?.name) || sale.user_name || "Store Staff");
-  const customerName = escapeHtml(toTitleCase(sale.patient_name || sale.account_name || (sale.visit_id ? "Linked OPD Patient" : "Walk-In Customer")));
-  const invoiceId = escapeHtml(sale.receipt_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
+  const customerName = escapeHtml(toTitleCase(sale.patient_name || sale.account_name || (sale.visit_id ? "Linked OPD Patient" : (isWholesale ? "B2B Wholesale Party" : "Walk-In Customer"))));
+  const invoiceId = escapeHtml(sale.receipt_no || sale.voucher_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
 
-
-  const tokenNo = escapeHtml(sale.token_no || sale.token_number || sale.token || "");
+  const rawToken = String(sale.token_no || sale.token_number || sale.token || "").trim();
+  const isWalkInOrManual = !rawToken || ["walk-in", "walkin", "manual", "none", "null", "undefined", "-"].includes(rawToken.toLowerCase());
+  const tokenNo = isWalkInOrManual ? "" : escapeHtml(rawToken);
   const partyCode = escapeHtml(sale.party_code || sale.party_type || "");
-  const docName = escapeHtml(sale.attending_doctor_name || "");
+  const docName = (isWalkInOrManual || isWholesale) ? "" : escapeHtml(sale.attending_doctor_name || "");
   const docFee = Number(sale.doctor_fee || 0);
   const docFeeWaived = Boolean(sale.doctor_fee_waived);
+  const posFee = Number(sale.pos_fee != null ? sale.pos_fee : (sale.is_pos_fee_included ? 1 : 0)) || 0;
+  const salesman = escapeHtml(sale.salesman || sale.booker || "");
+  const city = escapeHtml(sale.city || "");
+  const transport = escapeHtml(sale.transport || "");
+  const biltyNo = escapeHtml(sale.bilty_no || "");
+  const prevBalance = Number(sale.previous_balance || sale.purana_udhaar || 0);
 
   const itemsHtml = buildBorderedReceiptItemsTableHtml(sale.items || []);
+  const docTypeLabel = isWholesale ? "WHOLESALE DELIVERY BILL" : "";
 
-  const receiptHtml = `
+  return `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
         <title>Receipt_${invoiceId}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet">
         <style>
+          @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap');
           @page { size: 80mm auto; margin: 0mm !important; }
           @media print {
             @page { size: 80mm auto; margin: 0mm !important; }
@@ -509,32 +527,61 @@ export function printThermalReceipt(sale, clinicData = null) {
             color: #000;
             line-height: 1.35;
           }
+          .urdu-disclaimer {
+            font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', serif;
+            direction: rtl;
+            text-align: center;
+            font-size: 12.5px;
+            line-height: 1.8;
+            font-weight: 400;
+            color: #000;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+          }
           ${getThermalItemsTableCss()}
         </style>
       </head>
       <body>
         <!-- Top Clinic Header (header_logo + clinic_name + tagline + contact_info blocks) -->
-        ${getLogoHeaderHtml("", { showLogo, showTagline, showContact })}
+        ${getLogoHeaderHtml(docTypeLabel, { showLogo, showTagline, showContact })}
 
         ${showDiv1 ? `<div class="dotted-line"></div>` : ""}
 
-        <!-- Invoice Meta (meta_info block) -->
-        ${showMeta ? `
-        <div class="meta-text">
-          <div><span style="color: #4b5563; font-weight: 500;">Date &amp; Time :</span> ${dateTimeStr}</div>
-          <div><span style="color: #4b5563; font-weight: 500;">Cashier :</span> ${cashierName}</div>
-          <div><span style="color: #4b5563; font-weight: 500;">Invoice # :</span> <strong>${invoiceId}</strong></div>
-        </div>` : ""}
-
-        <!-- Customer Info (customer_info block) -->
-        ${showCustomer ? `
-        <div class="meta-text">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span><span style="color: #4b5563; font-weight: 500;">Customer :</span> <strong>${customerName}</strong></span>
-            ${tokenNo ? `<span style="border: 1px solid #000; color: #000; font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 4px; font-family: monospace;">Token #: ${tokenNo}</span>` : ""}
+        <!-- Invoice & Customer Meta (Balanced 2-Column Left / Right Layout) -->
+        ${(showMeta || showCustomer) ? `
+        <div class="meta-text" style="display: flex; flex-direction: column; gap: 2px;">
+          <!-- Row 1: Date & Time (Left) | Invoice # (Right) -->
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <span><span style="color: #4b5563; font-weight: 500;">Date &amp; Time :</span> ${dateTimeStr}</span>
+            <span><span style="color: #4b5563; font-weight: 500;">Invoice # :</span> <strong>${invoiceId}</strong></span>
           </div>
-          ${docName ? `<div><span style="color: #4b5563; font-weight: 500;">Attending Doctor :</span> <strong>${docName}</strong></div>` : ""}
-          ${partyCode ? `<div><span style="color: #4b5563; font-weight: 500;">Party / Route :</span> ${partyCode}</div>` : ""}
+
+          <!-- Row 2: Cashier/Salesman (Left) | Attending Doctor / City (Right) -->
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <span><span style="color: #4b5563; font-weight: 500;">${isWholesale ? "Salesman :" : "Cashier :"}</span> <strong>${isWholesale ? (salesman || cashierName) : cashierName}</strong></span>
+            ${isWholesale 
+              ? (city ? `<span><span style="color: #4b5563; font-weight: 500;">City :</span> <strong>${city}</strong></span>` : `<span></span>`) 
+              : (docName ? `<span><span style="color: #4b5563; font-weight: 500;">Doctor :</span> <strong>${docName}</strong></span>` : `<span></span>`)}
+          </div>
+
+          <!-- Row 3: Customer / Party (Left) | Party Code (Right) -->
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <span><span style="color: #4b5563; font-weight: 500;">${isWholesale ? "Party / Store :" : "Customer :"}</span> <strong>${customerName}</strong></span>
+            ${isWholesale && partyCode ? `<span><span style="color: #4b5563; font-weight: 500;">Party Code :</span> <strong>${partyCode}</strong></span>` : `<span></span>`}
+          </div>
+
+          <!-- Extra Details (Token # in Retail / Transport & Bilty in Wholesale) -->
+          ${tokenNo ? `
+          <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 2px;">
+            <span style="border: 1.5px solid #000; color: #000; font-size: 12px; font-weight: 800; padding: 1px 7px; border-radius: 4px; font-family: monospace; background: #fff;">Token #: ${tokenNo}</span>
+          </div>` : ""}
+
+          ${isWholesale && (transport || biltyNo) ? `
+          <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; color: #333; margin-top: 2px;">
+            <span><span style="color: #4b5563; font-weight: 500;">Transport :</span> ${transport || "-"}</span>
+            <span><span style="color: #4b5563; font-weight: 500;">Bilty # :</span> ${biltyNo || "-"}</span>
+          </div>` : ""}
         </div>` : ""}
 
         ${showDiv1 ? `<div class="dotted-line"></div>` : ""}
@@ -562,6 +609,11 @@ export function printThermalReceipt(sale, clinicData = null) {
             <span>- Rs. ${Number(docFee).toFixed(2)}</span>
           </div>` : ""}
           ` : ""}
+          ${posFee > 0 ? `
+          <div style="display: flex; justify-content: space-between; color: #374151; font-size: 11px;">
+            <span>POS Charges:</span>
+            <span>Rs. ${Number(posFee).toFixed(2)}</span>
+          </div>` : ""}
           ${discount > 0 ? `
           <div style="display: flex; justify-content: space-between; color: #0f766e; font-weight: 600;">
             <span>Discount</span>
@@ -571,7 +623,12 @@ export function printThermalReceipt(sale, clinicData = null) {
             <span>Grand Total</span>
             <span>Rs. ${Number(netTotal).toFixed(2)}</span>
           </div>
-          ${(sale.payment_type === "credit" || sale.balance_due > 0 || (sale.payment_mode && String(sale.payment_mode).toLowerCase().includes("credit"))) ? `
+          ${prevBalance > 0 ? `
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #991b1b; margin-top: 1px;">
+            <span>Previous Balance:</span>
+            <span>Rs. ${Number(prevBalance).toFixed(2)}</span>
+          </div>` : ""}
+          ${isCredit ? `
           <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #b45309; margin-top: 2px;">
             <span>Payment</span>
             <span>Credit / Udhaar</span>
@@ -592,14 +649,17 @@ export function printThermalReceipt(sale, clinicData = null) {
         <!-- Custom Note (custom_note block) -->
         ${showNote ? `
         <div style="text-align: center; margin: 4px 0 3px 0; font-size: 11px; font-weight: 600; color: #000; line-height: 1.35;">
-          ${escapeHtml(cfg.custom_policy_note || "Thank You. Please Visit Again.")}
+          ${escapeHtml(cfg.custom_policy_note || (isWholesale ? "Thank You for Your Wholesale Order!" : "Thank You. Please Visit Again."))}
         </div>` : ""}
 
-        <!-- Urdu Footer Disclaimer (1-Line Compact Professional Font) -->
-        ${(showUrdu || cfg.show_urdu_footer || cfg.urdu_footer_text) ? `
-        <div style="border-top: 1px dashed #000; margin-top: 4px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;">
-          <div style="font-size: 13.5px; line-height: 1.4; font-weight: 500; color: #000; letter-spacing: 0.1px;">
-            ${escapeHtml(cfg.urdu_footer_text || "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔")}
+        <!-- Footer Disclaimer (Light Urdu in Noto Nastaliq Urdu) -->
+        ${(showUrdu || cfg.show_urdu_footer || cfg.urdu_footer_text !== undefined) ? `
+        <div style="border-top: 1px dashed #000; margin-top: 6px; padding-top: 4px; text-align: center;">
+          <div class="urdu-disclaimer">
+            ${escapeHtml((cfg.urdu_footer_text && !cfg.urdu_footer_text.toLowerCase().includes("once sold") && !cfg.urdu_footer_text.toLowerCase().includes("returned"))
+              ? cfg.urdu_footer_text
+              : (isWholesale ? "خریدی ہوئی دوا یا سامان واپس یا تبدیل نہیں ہوگا۔" : "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔")
+            )}
           </div>
         </div>` : ""}
 
@@ -611,9 +671,16 @@ export function printThermalReceipt(sale, clinicData = null) {
       </body>
     </html>
   `;
+}
 
+export function printThermalReceipt(sale, clinicData = null) {
+  if (!sale) return;
+  const invoiceId = escapeHtml(sale.receipt_no || sale.voucher_no || sale.id || `POS-${Math.floor(1000 + Math.random() * 9000)}`);
+  const receiptHtml = generateSaleInvoiceReceiptHtml(sale, clinicData);
   executeThermalPrint(receiptHtml, `Receipt_${invoiceId}`);
 }
+
+export const printSaleInvoiceReceipt = printThermalReceipt;
 
 /** Print 80mm Daily Day-End Cash Closure & DrCreate Day Closing Receipt */
 export function printDayEndClosingReceipt(closing, clinicData = null) {
@@ -955,7 +1022,8 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
 
   const doctorName = escapeHtml(receipt.doctor?.name || receipt.visit?.doctor_name || cfg.doctor_name || "H/Dr Muhammad Asif Khan");
   const gender = escapeHtml((receipt.patient?.gender || "M").toUpperCase().charAt(0));
-  const age = escapeHtml(formatPatientAge(receipt.patient) || "18").replace(/[^0-9]/g, "") || "18";
+  const rawAge = formatPatientAge(receipt.patient);
+  const age = rawAge && rawAge !== "—" ? escapeHtml(rawAge.replace(/[^0-9]/g, "") || rawAge) : "—";
 
   const rawLogo = showLogo && cfg.logo_base64 ? cfg.logo_base64 : CLINIC_LOGO_BASE64;
   const logoSrc = sanitizeLogoSrc(rawLogo);
@@ -1998,226 +2066,7 @@ export function printPurchaseGRNReceipt(purchase, clinic = null) {
   executeThermalPrint(receiptHtml, `Purchase_GRN_${voucherNo}`);
 }
 
-/**
- * Low-Ink 80mm ESC/POS Sale Invoice Thermal Receipt (DrCreate & MS Access Style)
- */
-export function printSaleInvoiceReceipt(sale, clinic) {
-  if (!sale) return;
 
-  const _blocks    = getBlocksConfig("b2b");
-  const showLogo   = isBlockEnabled(_blocks, "header_logo");
-  const showTagline= isBlockEnabled(_blocks, "tagline");
-  const showContact= isBlockEnabled(_blocks, "contact_info");
-
-  const voucherNo = escapeHtml(sale.voucher_no || sale.receipt_no || sale.invoice_no || "Inv-6218");
-  const dateStr = escapeHtml((sale.sale_date || sale.created_at || new Date().toISOString()).split("T")[0]);
-  const customerName = escapeHtml(toTitleCase(sale.account_name || sale.customer_name || "Walk-In Patient"));
-  const tokenNo = escapeHtml(sale.token_no || sale.patient_token || "");
-  const city = escapeHtml(sale.party_type || sale.city || "");
-  const partyCode = escapeHtml(sale.party_code || "");
-  const reference = escapeHtml(sale.reference || (clinic?.user_name || "Clinic Administrator"));
-  const transport = escapeHtml(sale.transport || "By Hand");
-  const biltyNo = escapeHtml(sale.bilty_no || "-");
-  const paymentMode = escapeHtml(sale.payment_mode || "Cash");
-
-  const isUdhaar = String(paymentMode).toLowerCase().includes("credit") || String(paymentMode).toLowerCase().includes("udhaar");
-  const puranaUdhaar = Number(sale.previous_balance || sale.purana_udhaar || sale.party_balance || 0);
-  const currentBill = Number(sale.total_amount || sale.net_total || sale.net_amount || sale.subtotal_amount || 0);
-  const grandPayable = puranaUdhaar > 0 ? (currentBill + puranaUdhaar) : currentBill;
-  const cashPaid = sale.cash_received !== undefined && sale.cash_received !== "" && !isNaN(Number(sale.cash_received))
-    ? Number(sale.cash_received)
-    : (isUdhaar ? 0 : currentBill);
-  const changeReturn = Math.max(0, cashPaid - grandPayable);
-  const remainingBalance = Math.max(0, grandPayable - cashPaid);
-
-  const items = sale.items || [];
-  const itemsSubtotal = items.reduce((sum, item) => sum + (Number(item.net) || (Number(item.qty) * Number(item.rate)) || 0), 0) || Number(sale.subtotal || sale.subtotal_amount || 0);
-  const itemsGross = items.reduce((sum, item) => sum + (Number(item.gross) || (Number(item.qty) * Number(item.rate)) || 0), 0) || itemsSubtotal;
-  const totalItemDiscount = Math.max(0, itemsGross - itemsSubtotal);
-
-  const docFee = (sale.attending_doctor_id && !sale.doctor_fee_waived) ? (Number(sale.doctor_fee) || 0) : 0;
-  const freightCharges = Number(sale.freight_charges || sale.freight || 0);
-  const posFee = Number(sale.pos_service_fee || sale.pos_fee || 0);
-
-  const itemsTableHtml = buildBorderedReceiptItemsTableHtml(items);
-
-  const receiptHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8"/>
-        <title>Sale_Invoice_${voucherNo}</title>
-        <style>
-          @page { size: 80mm auto; margin: 0mm !important; }
-          @media print {
-            @page { size: 80mm auto; margin: 0mm !important; }
-            html, body { width: 78mm !important; max-width: 78mm !important; margin: 0 auto !important; padding: 0 1.5mm 2mm 1.5mm !important; }
-            .no-print { display: none !important; }
-          }
-          * {
-            box-sizing: border-box;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 13.5px;
-            line-height: 1.35;
-            width: 78mm;
-            margin: 0 auto;
-            padding: 0 2mm 2mm 2mm;
-            color: #000;
-            background: #fff;
-            font-weight: 500;
-          }
-          table { width: 100%; border-collapse: collapse; }
-          ${getThermalItemsTableCss()}
-        </style>
-      </head>
-      <body>
-        <!-- Top Receipt Header Banner -->
-        ${getLogoHeaderHtml((sale.billing_type === "wholesale_party" || sale.party_type || partyCode) ? "TAX INVOICE / B2B BILL" : "SALE INVOICE")}
-
-        <!-- Meta Information -->
-        ${(sale.billing_type === "wholesale_party" || sale.party_type || partyCode) ? `
-          <div style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 4px; font-size: 13px; line-height: 1.35; color: #000;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: 700; font-size: 14px;">Invoice #: ${voucherNo}</span>
-              <span>Date: ${dateStr}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 2px; gap: 4px;">
-              <span style="font-weight: 700; font-size: 14.5px;">Name: ${customerName}</span>
-              <span style="text-align: right; white-space: nowrap; flex-shrink: 0;">Salesman: ${reference}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-              <span>City : ${(city || "HAIDERABAD").toUpperCase()}</span>
-              <span style="font-weight: 700;">Mode: ${paymentMode}</span>
-            </div>
-            ${(sale.transport && String(sale.transport).trim() && String(sale.transport).trim() !== "0") ? `
-              <div style="margin-top: 2px;">Transport: ${escapeHtml(toTitleCase(sale.transport))}</div>
-            ` : ""}
-            ${(sale.bilty_no && String(sale.bilty_no).trim() && String(sale.bilty_no).trim() !== "0") ? `
-              <div style="margin-top: 2px;">Bilty #: ${escapeHtml(sale.bilty_no)}</div>
-            ` : ""}
-          </div>
-        ` : `
-          <div style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 4px; font-size: 13px; line-height: 1.35; color: #000;">
-            <div style="display: flex; justify-content: space-between;">
-              <span>Date: ${dateStr}</span>
-              <span style="font-weight: 700; font-size: 14px;">Inv: #${voucherNo}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span>Cashier: ${reference}</span>
-              <span>Mode: ${paymentMode}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 2px; border-top: 1px solid #000; margin-top: 2px;">
-              <span style="font-weight: 700; font-size: 14px;">Customer: ${customerName}</span>
-              ${tokenNo ? `<span style="border: 1px solid #000; color: #000; padding: 1px 6px; border-radius: 4px; font-weight: 700; font-size: 12px; font-family: monospace;">Token #: ${tokenNo}</span>` : ""}
-            </div>
-            ${(sale.transport && String(sale.transport).trim() && String(sale.transport).trim() !== "0") ? `
-              <div style="margin-top: 2px;">Transport: ${escapeHtml(toTitleCase(sale.transport))}</div>
-            ` : ""}
-            ${(sale.bilty_no && String(sale.bilty_no).trim() && String(sale.bilty_no).trim() !== "0") ? `
-              <div style="margin-top: 2px;">Bilty #: ${escapeHtml(sale.bilty_no)}</div>
-            ` : ""}
-          </div>
-        `}
-
-        <!-- Items Table -->
-        ${itemsTableHtml}
-
-        <!-- Totals Summary -->
-        <div style="font-size: 13.5px; padding-top: 3px; line-height: 1.35; color: #000; font-weight: 500;">
-          ${totalItemDiscount > 0 ? `
-            <div style="display: flex; justify-content: space-between;">
-              <span>Gross Total:</span>
-              <span style="font-weight: 700; font-size: 13.5px;">Rs. ${Math.round(itemsGross).toLocaleString("en-US")}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span>Discount:</span>
-              <span>-Rs. ${Math.round(totalItemDiscount).toLocaleString("en-US")}</span>
-            </div>
-          ` : ""}
-
-          <div style="display: flex; justify-content: space-between;">
-            <span style="font-weight: 700;">Subtotal:</span>
-            <span style="font-weight: 700; font-size: 14px;">Rs. ${Math.round(itemsSubtotal).toLocaleString("en-US")}</span>
-          </div>
-
-          ${docFee > 0 ? `
-            <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-              <span>Doctor Consultation Fee:</span>
-              <span>Rs. ${Math.round(docFee).toLocaleString("en-US")}</span>
-            </div>
-          ` : ""}
-          ${freightCharges > 0 ? `
-            <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-              <span>Freight Charges:</span>
-              <span>Rs. ${Math.round(freightCharges).toLocaleString("en-US")}</span>
-            </div>
-          ` : ""}
-          ${posFee > 0 ? `
-            <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-              <span>POS Service Fee:</span>
-              <span>Rs. ${Math.round(posFee).toLocaleString("en-US")}</span>
-            </div>
-          ` : ""}
-
-          <div style="display: flex; justify-content: space-between; margin-top: 2px; border-top: 1px dashed #000; padding-top: 2px;">
-            <span>Current Bill:</span>
-            <span style="font-weight: 700; font-size: 14.5px;">Rs. ${Math.round(currentBill).toLocaleString("en-US")}</span>
-          </div>
-          ${puranaUdhaar > 0 ? `
-            <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-              <span>Previous Balance:</span>
-              <span>Rs. ${Math.round(puranaUdhaar).toLocaleString("en-US")}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 16.5px; font-weight: 700; border-top: 1px solid #000; padding-top: 3px; margin-top: 3px; color: #000;">
-              <span>Total Payable:</span>
-              <span>Rs. ${Math.round(grandPayable).toLocaleString("en-US")}</span>
-            </div>
-          ` : `
-            <div style="display: flex; justify-content: space-between; font-size: 16.5px; font-weight: 700; border-top: 1px solid #000; padding-top: 3px; margin-top: 3px; color: #000;">
-              <span>Total Amount:</span>
-              <span>Rs. ${Math.round(currentBill).toLocaleString("en-US")}</span>
-            </div>
-          `}
-          <div style="display: flex; justify-content: space-between; margin-top: 2px;">
-            <span>Cash Paid:</span>
-            <span style="font-weight: 700; font-size: 14.5px;">Rs. ${Math.round(cashPaid).toLocaleString("en-US")}</span>
-          </div>
-          ${changeReturn > 0 ? `
-            <div style="display: flex; justify-content: space-between; font-weight: 700; color: #000; margin-top: 2px;">
-              <span>Change Return:</span>
-              <span style="font-size: 14.5px;">Rs. ${Math.round(changeReturn).toLocaleString("en-US")}</span>
-            </div>
-          ` : ""}
-          ${remainingBalance > 0 ? `
-            <div style="display: flex; justify-content: space-between; font-weight: 700; color: #000; border-top: 1px dashed #000; padding-top: 2px; margin-top: 2px;">
-              <span>Remaining Balance:</span>
-              <span style="font-size: 15px;">Rs. ${Math.round(remainingBalance).toLocaleString("en-US")}</span>
-            </div>
-          ` : ""}
-        </div>
-
-        <!-- Urdu Footer Disclaimer (Specifically for Sale Invoices - 1-Line Compact) -->
-        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;">
-          <div style="font-size: 13.5px; line-height: 1.4; font-weight: 500; color: #000; letter-spacing: 0.1px;">
-            خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔
-          </div>
-        </div>
-
-        <!-- Doctor Signature Line -->
-        ${getDoctorSignatureHtml()}
-
-        <!-- Powered By Watermark -->
-        ${getWatermarkFooterHtml()}
-      </body>
-    </html>
-  `;
-
-  executeThermalPrint(receiptHtml, `Sale_Invoice_${voucherNo}`);
-}
 
 /**
  * Print 80mm Low-Ink Thermal Slip for Executive Financial & Pharmacy Audit (6-Mo / 1-Yr / 2-Yr / Custom)

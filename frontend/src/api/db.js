@@ -1202,19 +1202,36 @@ export const dbPatients = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("patients", newPat, "CREATE", newPat.id);
     }
+    dbAuditLogs.logEvent({
+      action: "REGISTER_PATIENT",
+      entity: "patients",
+      entity_id: newPat.id,
+      reason: `Registered patient ${newPat.full_name || 'Patient'} (${newPat.mr_number || ''}) - Phone: ${newPat.phone || 'N/A'}`,
+      after: newPat,
+    });
     return newPat;
   },
   update: (id, data) => {
     const patients = getCollection(KEYS.PATIENTS);
+    const existingPatient = patients.find((p) => p.id === id);
     const updated = patients.map((p) => (p.id === id ? { ...p, ...data } : p));
     setCollection(KEYS.PATIENTS, updated);
     const updatedRecord = updated.find((p) => p.id === id);
     if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("patients", updatedRecord, "UPDATE", id);
     }
+    dbAuditLogs.logEvent({
+      action: "UPDATE_PATIENT",
+      entity: "patients",
+      entity_id: id,
+      before: existingPatient,
+      after: updatedRecord,
+      reason: `Updated patient profile for ${updatedRecord?.full_name || existingPatient?.full_name || id}`,
+    });
     return updatedRecord || null;
   },
   delete: (id) => {
+    const existing = dbPatients.getById(id);
     // 1. Remove patient record
     const patients = getCollection(KEYS.PATIENTS);
     setCollection(KEYS.PATIENTS, patients.filter((p) => p.id !== id));
@@ -1233,6 +1250,15 @@ export const dbPatients = {
     // 4. Cascade delete patient ledger entries
     const ledger = getCollection(KEYS.PATIENT_LEDGER);
     setCollection(KEYS.PATIENT_LEDGER, ledger.filter((l) => l.patient_id !== id));
+
+    dbAuditLogs.logEvent({
+      action: "DELETE_PATIENT",
+      entity: "patients",
+      entity_id: id,
+      before: existing,
+      after: null,
+      reason: `Deleted patient profile ${existing?.full_name || id} (${existing?.mr_number || ''})`,
+    });
 
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return true;
@@ -1862,6 +1888,13 @@ export const dbInventory = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("inventory", newItem, "CREATE", newItem.id);
     }
+    dbAuditLogs.logEvent({
+      action: "ADD_INVENTORY_ITEM",
+      entity: "inventory",
+      entity_id: newItem.id,
+      reason: `Added medicine ${newItem.medicine_name || 'Item'} (${newItem.company_name || 'General'}) - Retail: Rs. ${newItem.sale_price || newItem.box_sale_price || 0}, Stock: ${newItem.stock_qty || 0}`,
+      after: newItem,
+    });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("clinicflow_status_update"));
     }
@@ -1870,11 +1903,22 @@ export const dbInventory = {
 
   update: (id, data) => {
     const inventory = getCollection(KEYS.INVENTORY);
+    const existing = inventory.find((i) => i.id === id);
     const updated = inventory.map((i) => (i.id === id ? { ...i, ...data } : i));
     setCollection(KEYS.INVENTORY, updated);
     const updatedRecord = updated.find((i) => i.id === id);
     if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("inventory", updatedRecord, "UPDATE", id);
+    }
+    if (existing && data && Object.keys(data).length > 0) {
+      dbAuditLogs.logEvent({
+        action: "UPDATE_INVENTORY_ITEM",
+        entity: "inventory",
+        entity_id: id,
+        before: existing,
+        after: updatedRecord,
+        reason: `Updated medicine details for ${updatedRecord?.medicine_name || existing?.medicine_name || id}`,
+      });
     }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("clinicflow_status_update"));
@@ -2638,6 +2682,8 @@ export function parseInventoryCSV(csvText) {
   const whStockIdx = rawHeaders.findIndex((h) => h.includes("godown") || h.includes("warehouse") || h.includes("wh stock"));
   const alertIdx = rawHeaders.findIndex((h) => h.includes("alert") || h.includes("min") || h.includes("threshold") || h.includes("level"));
   const catIdx = rawHeaders.findIndex((h) => h.includes("category") || h.includes("group") || h.includes("type"));
+  const batchIdx = rawHeaders.findIndex((h) => h === "batch" || h.includes("batch") || h === "lot");
+  const expIdx = rawHeaders.findIndex((h) => h === "expiry" || h.includes("expiry") || h.includes("exp") || h === "exp date" || h === "expiry date");
 
   const parsed = [];
   for (let i = 1; i < lines.length; i++) {
@@ -2664,6 +2710,8 @@ export function parseInventoryCSV(csvText) {
     const rawComp = compIdx !== -1 && cells[compIdx] ? cells[compIdx] : "BM Pvt LTD";
     const rawCompCode = compCodeIdx !== -1 && cells[compCodeIdx] ? cells[compCodeIdx].toUpperCase().trim() : "";
     const rawItemCode = itemCodeIdx !== -1 && cells[itemCodeIdx] ? cells[itemCodeIdx].toUpperCase().trim() : (fallbackCodeIdx !== -1 && cells[fallbackCodeIdx] ? cells[fallbackCodeIdx].toUpperCase().trim() : "");
+    const rawBatch = batchIdx !== -1 && cells[batchIdx] ? cells[batchIdx].trim() : "B-01";
+    const rawExp = expIdx !== -1 && cells[expIdx] ? cells[expIdx].trim() : "2028-12-31";
 
     // Run Smart Extraction & Title Casing
     const { name: cleanName, packing: cleanPacking } = extractSmartPackingAndName(rawNameCell, rawPacking);
@@ -2714,7 +2762,9 @@ export function parseInventoryCSV(csvText) {
       units_per_strip: 1,
       low_stock_threshold: minAlert,
       location_stocks: { wh_str: storeStock, ...(godownStock > 0 ? { wh_001: godownStock } : {}) },
-      expiry_date: "2028-12-31"
+      batch_no: rawBatch || "B-01",
+      batch: rawBatch || "B-01",
+      expiry_date: rawExp || "2028-12-31"
     });
   }
 
@@ -4330,21 +4380,102 @@ export const dbParties = {
   getById: (id) => getFromCollectionById(KEYS.PARTIES, id),
   getByCity: (city) => getCollection(KEYS.PARTIES).filter((p) => (p.city || "").toLowerCase() === (city || "").toLowerCase()),
   add: (party) => {
-    const list = getCollection(KEYS.PARTIES);
-    const newP = { ...party, id: generateId("pty"), balance_due: Number(party.balance_due) || 0 };
+    const list = getCollection(KEYS.PARTIES) || [];
+    const partyName = String(party.name || party.account_name || "").trim();
+    if (!partyName) return null;
+
+    const cleanName = partyName.toLowerCase();
+    const cleanCode = party.party_code ? String(party.party_code).trim().toLowerCase() : "";
+
+    const existing = list.find(
+      (p) =>
+        (p.name && p.name.trim().toLowerCase() === cleanName) ||
+        (cleanCode && p.party_code && p.party_code.trim().toLowerCase() === cleanCode)
+    );
+
+    if (existing) {
+      return existing;
+    }
+
+    const openingBal = Number(party.balance_due ?? party.opening_balance ?? party.current_balance ?? 0);
+    const newP = {
+      ...party,
+      id: party.id || generateId("pty"),
+      name: partyName,
+      party_code: party.party_code ? String(party.party_code).trim().toUpperCase() : `P-${Math.floor(100 + Math.random() * 900)}`,
+      city: party.city || "Hyderabad",
+      phone: party.phone || "",
+      address: party.address || party.transport || "",
+      transport: party.transport || party.address || "",
+      salesman: party.salesman || "Salesman",
+      balance_due: openingBal,
+      current_balance: openingBal,
+      opening_balance: openingBal,
+      created_at: party.created_at || new Date().toISOString(),
+    };
     setCollection(KEYS.PARTIES, [newP, ...list]);
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("parties", newP, "CREATE", newP.id);
     }
+
+    // Auto-sync to dbAccounts so it appears in CashBook / Accounts ledger across the software
+    try {
+      if (typeof dbAccounts !== "undefined" && dbAccounts.getAll) {
+        const allAccs = dbAccounts.getAll();
+        const hasAcc = allAccs.some((a) => (a.account_name || "").trim().toLowerCase() === cleanName);
+        if (!hasAcc) {
+          const nextNo = dbAccounts.getNextAccountNo ? dbAccounts.getNextAccountNo() : `A-${Math.floor(1000 + Math.random() * 9000)}`;
+          const accRecord = {
+            id: generateId("acc"),
+            account_no: nextNo,
+            account_name: partyName,
+            account_type: newP.city || "Wholesale Party",
+            opening_balance: openingBal,
+            naration: `Wholesale Party registered: ${newP.party_code}`,
+            created_at: new Date().toISOString(),
+          };
+          setCollection(KEYS.ACCOUNTS, [accRecord, ...allAccs]);
+          if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+            dbOutbox.enqueue("accounts", accRecord, "CREATE", accRecord.id);
+          }
+        }
+      }
+    } catch (accErr) {
+      console.warn("dbParties -> dbAccounts auto-sync warning:", accErr);
+    }
+
+    try {
+      window.dispatchEvent(new Event("clinicflow_status_update"));
+    } catch {}
+
+    dbAuditLogs.logEvent({
+      action: "REGISTER_PARTY",
+      entity: "parties",
+      entity_id: newP.id,
+      reason: `Registered wholesale party ${newP.name} (Code: ${newP.party_code}, City: ${newP.city}) - Balance: Rs. ${newP.balance_due || 0}`,
+      after: newP,
+    });
+
     return newP;
   },
   update: (id, data) => {
     const list = getCollection(KEYS.PARTIES);
+    const existing = list.find((p) => p.id === id);
     const updated = list.map((p) => (p.id === id ? { ...p, ...data } : p));
     setCollection(KEYS.PARTIES, updated);
     const updatedRecord = updated.find((p) => p.id === id);
     if (updatedRecord && typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("parties", updatedRecord, "UPDATE", id);
+    }
+    if (existing && data && Object.keys(data).length > 0) {
+      dbAuditLogs.logEvent({
+        action: "UPDATE_PARTY",
+        entity: "parties",
+        entity_id: id,
+        before: existing,
+        after: updatedRecord,
+        reason: `Updated details for party ${updatedRecord?.name || existing?.name || id}`,
+      });
     }
     return updatedRecord || null;
   },
@@ -5285,6 +5416,13 @@ export const dbPurchases = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("purchases", newPurchase, "CREATE", newPurchase.id);
     }
+    dbAuditLogs.logEvent({
+      action: "CREATE_PURCHASE_GRN",
+      entity: "purchases",
+      entity_id: newPurchase.id,
+      reason: `Recorded Purchase Bill #${newPurchase.invoice_no} from ${newPurchase.supplier_name || 'Distributor'} for Rs. ${newPurchase.total_amount || 0} (Paid: Rs. ${newPurchase.paid_amount || 0}, Due: Rs. ${newPurchase.balance_due || 0})`,
+      after: newPurchase,
+    });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("clinicflow_status_update"));
     }
@@ -5472,6 +5610,13 @@ export const dbB2BSales = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("b2b_sales", newB2BSale, "CREATE", newB2BSale.id);
     }
+    dbAuditLogs.logEvent({
+      action: "B2B_WHOLESALE_SALE",
+      entity: "b2b_sales",
+      entity_id: newB2BSale.id,
+      reason: `Wholesale B2B Sale #${newB2BSale.invoice_no} to ${newB2BSale.buyer_name || newB2BSale.party_name || 'Wholesale Client'} for Rs. ${newB2BSale.total_amount} (Paid: Rs. ${newB2BSale.paid_amount || 0}, Due: Rs. ${newB2BSale.balance_due || 0})`,
+      after: newB2BSale,
+    });
     return newB2BSale;
   },
   add: (saleData) => {
@@ -5595,14 +5740,30 @@ export const dbExpenses = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("expenses", newExp, "CREATE", newExp.id);
     }
+    dbAuditLogs.logEvent({
+      action: "RECORD_EXPENSE",
+      entity: "expenses",
+      entity_id: newExp.id,
+      reason: `Recorded expense of Rs. ${newExp.amount || 0} (${newExp.description || newExp.category || 'General'})`,
+      after: newExp,
+    });
     return newExp;
   },
   delete: (id) => {
     const list = getCollection(KEYS.EXPENSES);
+    const existing = list.find((e) => e.id === id);
     setCollection(KEYS.EXPENSES, list.filter((e) => e.id !== id));
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("expenses", { id }, "DELETE", id);
     }
+    dbAuditLogs.logEvent({
+      action: "DELETE_EXPENSE",
+      entity: "expenses",
+      entity_id: id,
+      before: existing,
+      after: null,
+      reason: `Deleted expense #${id} of Rs. ${existing?.amount || 0}`,
+    });
   },
 };
 
@@ -5662,6 +5823,13 @@ export const dbShiftClosings = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("shift_closings", newRecord, "CREATE", newRecord.id);
     }
+    dbAuditLogs.logEvent({
+      action: "DAY_CLOSING_SHIFT",
+      entity: "shift_closings",
+      entity_id: newRecord.id,
+      reason: `Completed shift day closing for ${newRecord.date || 'Today'} (Total: Rs. ${newRecord.total_sales || newRecord.closing_cash || 0})`,
+      after: newRecord,
+    });
     return newRecord;
   },
   delete: (id) => {
@@ -7074,6 +7242,17 @@ export const dbAuditLogs = {
       } catch {}
     }
 
+    if (!finalActorId || finalActorId === "system" || finalActorId === "user_system") {
+      try {
+        const activeUser = getActiveSessionUser();
+        if (activeUser && activeUser.name) {
+          finalActorId = activeUser.id || activeUser.userId || finalActorId;
+          finalActorName = activeUser.name || activeUser.full_name || finalActorName;
+          finalRole = activeUser.role || finalRole;
+        }
+      } catch {}
+    }
+
     const existingLogs = getCollection(KEYS.AUDIT_LOGS) || [];
     const lastEntry = existingLogs.length > 0 ? existingLogs[0] : null;
     const prevHash = lastEntry ? (lastEntry.hash || "GENESIS_CLINICFLOW_2026") : "GENESIS_CLINICFLOW_2026";
@@ -7111,6 +7290,13 @@ export const dbAuditLogs = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("audit_logs", eventRecord, "CREATE", eventRecord.id || eventRecord.hash);
     }
+
+    try {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("clinicflow_status_update"));
+        window.dispatchEvent(new CustomEvent("clinicflow_audit_logged", { detail: eventRecord }));
+      }
+    } catch {}
 
     return eventRecord;
   },

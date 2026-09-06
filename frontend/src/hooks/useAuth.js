@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { AuthContext } from "../context/AuthContext.jsx";
+import { AuthContext } from "../context/authContextInstance.js";
 import { getSession, getActiveCashier } from "../api/auth.js";
 import { dbClinic } from "../api/db.js";
 

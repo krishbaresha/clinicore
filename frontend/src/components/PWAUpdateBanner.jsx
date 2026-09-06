@@ -5,7 +5,7 @@ import { useState } from "react";
  * PWAUpdateBanner — Prominent Auto-Updating Modal & Notification Deck
  * Displays a 5-second countdown warning before applying live OTA updates seamlessly.
  */
-export default function PWAUpdateBanner() {
+function PWAUpdateBannerContent() {
   const { updateAvailable, isUpdating, applyUpdate, newVersion } = usePWAUpdate();
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -99,3 +99,16 @@ export default function PWAUpdateBanner() {
     </aside>
   );
 }
+
+export default function PWAUpdateBanner() {
+  const isDev = Boolean(import.meta.env.DEV);
+  const isTauri = typeof window !== "undefined" && Boolean(window.__TAURI__ || window.__TAURI_INTERNALS__);
+
+  // Completely bypass in dev mode or Tauri desktop app
+  if (isDev || isTauri) {
+    return null;
+  }
+
+  return <PWAUpdateBannerContent />;
+}
+

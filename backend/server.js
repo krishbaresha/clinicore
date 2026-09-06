@@ -234,8 +234,8 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.8",
-        build_id: "20260901.212000",
+        version: "2.5.35",
+        build_id: "20260906.7113922",
         release_channel: "production",
         changelog: "Real-Time Global Cloud Mutation Sync, Dr. Asif Clinic Logo on All Receipts & Mobile PWA App Fix",
         min_client_version: "2.4.0",

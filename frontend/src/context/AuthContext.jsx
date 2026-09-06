@@ -1,8 +1,9 @@
-import { createContext, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { AuthContext } from "./authContextInstance.js";
 import { getSession, login as apiLogin, logout as apiLogout, getActiveCashier, setActiveCashier as apiSetActiveCashier, loginWithPin as apiLoginWithPin } from "../api/auth.js";
 import { dbClinic } from "../api/db.js";
 
-export const AuthContext = createContext(null);
+export { AuthContext };
 
 export function AuthProvider({ children }) {
   const [user, setUser]     = useState(null);   // { userId, name, role, clinic_id, is_owner, can_view_financials }

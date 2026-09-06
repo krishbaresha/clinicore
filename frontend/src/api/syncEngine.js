@@ -18,6 +18,7 @@ import {
 
 import { telemetry } from "./telemetry.js";
 import { storageDriver } from "./storageDriver.js";
+import { getEffectiveVersion } from "../utils/version.js";
 
 export function getActiveServerUrl() {
   try {
@@ -182,7 +183,7 @@ class SyncEngine {
         device_name: (typeof window !== "undefined" && window.__TAURI__ ? "Desktop App (Tauri)" : "Web Browser") + (typeof navigator !== "undefined" ? ` (${navigator.platform || "PC"})` : ""),
         user_name: userObj?.name || userObj?.username || "Staff Terminal",
         user_role: userObj?.role || "staff",
-        app_version: (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || (typeof localStorage !== "undefined" && localStorage.getItem("cf_applied_version")) || "2.5.9",
+        app_version: getEffectiveVersion(),
         platform: typeof window !== "undefined" && window.__TAURI__ ? "Desktop (Windows Tauri)" : "Web Browser SPA",
         pending_outbox_count: pendingItems.length,
         last_sync_time: this.lastSyncTime || new Date().toISOString(),

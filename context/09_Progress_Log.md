@@ -54,6 +54,215 @@ be specific so a human or next AI can correct it if wrong]
 
 ---
 
+- **Phase:** Milestone 233 — Full-Stack Version Synchrony (v2.5.35), Development Environment Installer Bypass & Stale LocalStorage Lock Elimination (Completed)
+- **Last worked on:**
+  1. **Root Cause Analysis of Persistent `v2.5.8` / Update Modal Loop:**
+     - Identified that `backend/server.js` was serving a hardcoded `version: "2.5.8"` on `/api/v1/system/version` and `/version.json`.
+     - In `LoginScreen.jsx`, a `fetchLiveVersion` on localhost:5000 was repeatedly setting `localStorage.setItem("cf_applied_version", "2.5.8")`.
+     - In `vite.config.js`, `define` variables (`__APP_SEMVER__`, etc.) were declared inside an unhooked plugin property instead of root `defineConfig`, causing `globalThis.__APP_SEMVER__` to evaluate to `undefined` in dev.
+     - In `DeveloperAdminPanel.jsx` and `usePWAUpdate.js`, components fell back to `localStorage.getItem("cf_applied_version")` (`2.5.8`), causing semver comparison against remote `2.5.31` to trigger an update available alert.
+     - When clicking "Install & Restart Software Now" in desktop dev (`tauri:dev`), launching a production `.exe` binary was failing or unnecessary in development, and `cf_applied_version` was never persisted before Tauri's silent updater command.
+  2. **Authoritative Version Engine & Stale Lock Elimination:**
+     - Created `getEffectiveVersion()` and `setEffectiveVersion()` in `frontend/src/utils/version.js`. The effective version is strictly bounded from below by `APP_CONFIG.SEMVER` (`2.5.35`); stale or downgraded `localStorage` entries (like `2.5.8`) can never lower the active version.
+     - Injected root `define: { __APP_SEMVER__: JSON.stringify(SEMVER), ... }` in `frontend/vite.config.js`.
+     - Standardized `LoginScreen.jsx`, `DeveloperAdminPanel.jsx`, `usePWAUpdate.js`, and `syncEngine.js` to initialize and reference `getEffectiveVersion()`.
+  3. **Development Environment Installer Bypass (`import.meta.env.DEV`):**
+     - In `DeveloperAdminPanel.jsx:handleApplyUpdateNow`, added immediate dev-mode short-circuit: syncs version state, disables update nag modal, displays a friendly toast (`✅ Development mode: Synced to v2.5.35`), and safely closes without triggering native Windows installer execution.
+     - In desktop production mode, ensured `setEffectiveVersion(updateInfo.latestVersion)` is saved *before* invoking `launch_silent_update`, so restarted instances immediately boot up with the new version recognized.
+     - In `usePWAUpdate.js`, bypassed update prompts when `import.meta.env.DEV` is true.
+  4. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets across 1047 files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST/symbol errors across 76 files.
+     - `npx oxlint frontend/src` -> 0 errors.
+     - `npm test --prefix frontend` -> 634/634 tests passing (100%).
+     - `npm run build --prefix frontend` -> Clean Vite production bundle compiled in 2.22s.
+
+- **Phase:** Milestone 232 — Real-Time Audit Log Events Dynamic Stream, Zero-Lag Multi-Channel Listeners, Dedicated Custom Scrollbar & Full CRUD Audit Tracking (Completed)
+- **Last worked on:**
+  1. **Dynamic Full-Lifecycle CRUD Audit Logging Across System:**
+     - Connected missing audit logging across all major operational mutations in `frontend/src/api/db.js`:
+       - Purchases / GRN Inward: Added `CREATE_PURCHASE_GRN` in `dbPurchases.add`.
+       - Patients Management: Added `REGISTER_PATIENT`, `UPDATE_PATIENT`, and `DELETE_PATIENT` in `dbPatients.add`, `update`, and `delete`.
+       - Inventory Items: Added `ADD_INVENTORY_ITEM` and `UPDATE_INVENTORY_ITEM` in `dbInventory.add` and `update`.
+       - Wholesale Parties: Added `REGISTER_PARTY` and `UPDATE_PARTY` in `dbParties.add` and `update`.
+       - Wholesale B2B Sales: Added `B2B_WHOLESALE_SALE` in `dbB2BSales.checkout`.
+       - Clinic & Shop Expenses: Added `RECORD_EXPENSE` and `DELETE_EXPENSE` in `dbExpenses.add` and `delete`.
+       - Shift Day Closing: Added `DAY_CLOSING_SHIFT` in `dbShiftClosings.add`.
+     - Enhanced `dbAuditLogs.logEvent` with active session user fallback (`getActiveSessionUser`) so logged-in staff identities are dynamically captured, and added immediate `clinicflow_audit_logged` and `clinicflow_status_update` event broadcasts.
+  2. **Dedicated Scrollable Container & Zero-Lag Real-Time Stream in GodAdminPanel:**
+     - Replaced unconstrained table container with `max-h-[560px] overflow-y-auto overflow-x-auto border border-slate-200 rounded-2xl custom-scrollbar relative shadow-inner bg-slate-50/20` featuring a pinned sticky backdrop-blurred header (`sticky top-0 z-20 bg-slate-100/95`).
+     - Added dynamic multi-channel real-time synchronization in `GodAdminPanel.jsx` (`clinicflow_status_update`, `clinicflow_audit_logged`, `storage`, and a 2.0s background polling fallback).
+     - Expanded tab categories to include `Purchases & GRN` (`ShoppingCart`) and `Inventory & Items` (`Package`) alongside `Registrations`, `Sales`, `Discounts`, and `Stock Adjustments`.
+     - Added live log count pill selector (`50`, `100`, `250`, `500`, `All`) with live badge (`Showing X of Y`).
+     - Enhanced action badges with distinct, professional color palettes across all action types.
+  3. **Master Quality & Pre-Push Validation (Rule 17):**
+     - Verified 0 secret leaks (`node scripts/scan_secrets.mjs`).
+     - Verified 0 AST/hook errors (`node scripts/scan_imports_and_hooks.mjs`).
+     - Verified 634/634 master tests passing (`npm test --prefix frontend`).
+     - Verified clean Vite production bundle compilation.
+
+- **Phase:** Milestone 231 — CliniCore v3.4 Minimal Company Purchase Invoice Entry (GRN) UI Template Upgrade (Completed)
+- **Last worked on:**
+  1. **Company Purchase Invoice Entry UI Template Upgrade:**
+     - Overhauled `frontend/src/pages/SupplierPurchases.jsx` (`grn_form` view) with the CliniCore v3.4 Minimal template layout.
+     - Implemented Sub-Navigation Tabs Strip (`Company Purchase Invoice Entry` with live GRN entry badge, `Pharma Companies & Suppliers Directory`, and `All Purchase Bills Log`).
+     - Added Company & Invoice Info card with Date, Auto Entry #, Bill/Inv #, Bilty/Tracking #, Supplier Code lookup, Company/Supplier selector, and Cash Paid vs Credit (Udhar) payment mode pill toggle.
+     - Added Fast Line Item Entry bar with item code lookup, medicine selector, batch, expiry, quantity, bonus free units, trade price rate (TP), total preview, and Add button.
+     - Added Inward Items Scrollable Table with Item Name, Batch #, Exp Date, Qty, Bonus badge (`+X`), Rate (TP), Gross, Disc %, Net Amount, and Delete action.
+     - Pinned bottom settlement dock with live items count, total paid qty + free bonus qty counter, Gross Total, Total Discount, Net Payable highlight card, and `Save Invoice & Add to Stock (F9)` primary action.
+  2. **Zero Dummy Data Feeding & Full Live Database Binding:**
+     - Fully bound all dropdowns, counters, and handlers directly to active database collections (`dbPurchases`, `dbSuppliers`, `dbInventory`, `dbAccounts`).
+     - Preserved zero dummy data feeding rule (no fake or hardcoded medicine rows injected into database or state).
+  3. **Quality & Pre-Push Validation (Rule 17):**
+     - Verified 0 secret leaks (`scan_secrets.mjs`), 0 AST/hook errors (`scan_imports_and_hooks.mjs`), 634/634 test suite passing (`npm test`), and clean Vite production build.
+
+- **Phase:** Milestone 230 — Balanced 2-Column Receipt Metadata Alignment & Single Operator Role (Completed)
+- **Last worked on:**
+  1. **Clean Single Operator (Cashier / Salesman) Field:**
+     - Removed redundant Booker / Salesman duplicate line from thermal receipts. Retail mode exclusively renders `Cashier : <Name>` and Wholesale mode exclusively renders `Salesman : <Name>`.
+  2. **Balanced 2-Column (Left & Right) Metadata Header:**
+     - Restructured receipt metadata header into neat 50/50 flex rows:
+       - Row 1: `Date & Time` (Left) | `Invoice #` (Right)
+       - Row 2: `Cashier` / `Salesman` (Left) | `Doctor` / `City` (Right)
+       - Row 3: `Customer` / `Party` (Left) | `Party Code` (Right, in Wholesale)
+       - Row 4: Extra Details (`Token #` badge on the right in Retail; `Transport` & `Bilty #` in Wholesale).
+     - Directly followed by the divider line and items table.
+  3. **Quality & Pre-Push Validation:**
+     - Verified 0 secret leaks, 0 AST/hook errors, 634/634 test suite passing, and clean Vite production build.
+
+- **Phase:** Milestone 229 — Patient Registration Age Dash Fallback & Dynamic POS Service Fee (Rs. 1.00) Toggle (Completed)
+- **Last worked on:**
+  1. **Patient Registration Age Defaulting Fix:**
+     - Fixed `printOPDTokenReceipt` and `PatientRegistration.jsx` receipt preview to display `Age : —` (dash) when age is omitted or empty during patient registration instead of defaulting to `18`.
+  2. **Dynamic POS Service Fee (Rs. 1.00) in Sale Invoice Modal:**
+     - Added dynamic `isPosFeeIncluded` state (default active) with an interactive UI toggle checkbox in Retail Ribbon Row 1 and visual breakdown in Checkout Dock.
+     - Dynamically calculates `posFee` (Rs. 1.00) into `currentBill` and `grandNet`, persisting `pos_fee` and `is_pos_fee_included` into sales records.
+     - Updated 80mm ESC/POS thermal printer layout (`generateSaleInvoiceReceiptHtml`) to dynamically render `POS Charges: Rs. 1.00` in the receipt totals section whenever included.
+  3. **Quality & Validation Gate:**
+     - Passed `scan_secrets.mjs` (0 leaks).
+     - Passed `scan_imports_and_hooks.mjs` (0 AST / React hook errors).
+     - Passed Vitest test suite (634/634 tests passing).
+     - Passed Vite production build with 0 errors.
+
+- **Phase:** Milestone 228 — Clean-Slate Auto-Reset, Full Header Logo & English Disclaimer Upgrade (Completed)
+- **Last worked on:**
+  1. **Automatic Clean Slate Cart & Info Reset on Bill Creation & Modal Print:**
+     - Created `resetInvoiceToCleanSlate` master reset routine in [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate\Clinicore\frontend\src\components\SaleInvoiceModal.jsx) that automatically clears `cartItems`, medicine entry line, previous customer/party details, cash received, and retrieves a fresh next voucher number upon invoice save, mode toggle, or clear cart action.
+     - Upgraded `handlePrintModalReceipt` so that clicking "Print Slip / Wholesale Bill" from the live preview modal on an active draft automatically triggers `processSaleAndPrint`, saving the sale to database and clearing the cart immediately.
+  2. **High-Definition Full Header Logo & English Disclaimer:**
+     - Upgraded `getLogoHeaderHtml` in [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) with full-width responsive header logo display across all receipts.
+     - Replaced Urdu footer disclaimer with sharp, high-contrast English disclaimer (`"Medicines once sold will not be returned or exchanged."` / `"Goods once sold will not be returned or exchanged."`) in 12.5px bold uppercase letter-spaced font.
+  3. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets found across 1047 tracked files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST/symbol errors across 76 files.
+     - `npm test` -> 634/634 tests passing (100%).
+     - `npm run build` -> Clean Vite production bundle compiled in 7.95s.
+
+- **Phase:** Milestone 227 — Register Wholesale Party High-Contrast Input Visibility Polish (Completed)
+- **Last worked on:**
+  1. **High-Contrast Input Text in Register Wholesale Party Modal:**
+     - Fixed text color and background styles in [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx) `+ New Party` registration modal so that all fields (`Party Code`, `Store / Pharmacy Name`, `City`, `Phone`, `Transport / Carrier`, `Opening Balance`) have explicit `bg-white text-slate-900 placeholder:text-slate-400` styling, ensuring 100% dark, crisp, and readable text when typing.
+  2. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets found across 1047 tracked files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST/symbol errors across 76 files.
+     - `npm test` -> 634/634 tests passing (100%).
+     - `npm run build` -> Clean Vite production bundle compiled in 2.17s.
+
+- **Phase:** Milestone 226 — Manual & Walk-In Sale Attending Doctor Omission Engine (Completed)
+- **Last worked on:**
+  1. **Omit Attending Doctor and OPD Fees on Manual / Walk-In Sales:**
+     - Updated [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) so that `docName` is set to empty for manual, walk-in, and wholesale invoices (`isWalkInOrManual || isWholesale`), removing `Attending Doctor : ...` from thermal slips and receipt preview.
+     - Updated [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx) so switching to Manual mode resets `attending_doctor_id` and `attending_doctor_name` to empty strings and defaults `doctor_fee` to `0`, ensuring no doctor is assigned to over-the-counter walk-in pharmacy sales.
+  2. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets found across 1047 tracked files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST/symbol errors across 76 files.
+     - `npm test` -> 634/634 tests passing (100%).
+     - `npm run build` -> Clean Vite production bundle compiled in 2.40s.
+
+- **Phase:** Milestone 225 — Manual & Walk-In Sale Invoice Token Omission Engine (Completed)
+- **Last worked on:**
+  1. **Omit Token Number on Manual / Walk-In Receipts:**
+     - Updated [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) to detect when a receipt belongs to a manual sale or walk-in customer (e.g. empty token, `"Walk-in"`, `"manual"`, etc.) and completely omit the `[Token #: ...]` badge from the printed thermal slip and preview modal.
+     - Updated [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx) so switching to Manual mode resets `token_no` to empty string (`""`) and passes cleaned empty token strings to `dbSales.addSaleInvoice` and `activeReceiptSaleData`.
+  2. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets found across 1047 tracked files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST/symbol errors across 76 files.
+     - `npm test` -> 634/634 tests passing (100%).
+     - `npm run build` -> Clean Vite production bundle compiled in 1.83s.
+
+- **Phase:** Milestone 224 — Wholesale Real-Time Party Registration, Database Sync & Duplicate Prevention Dropdown Engine (Completed)
+- **Last worked on:**
+  1. **Direct Live Party Registration from Sale Invoice:**
+     - Upgraded `+ New Party` modal in [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx) to immediately register parties into `dbParties` and auto-sync into `dbAccounts` (`KEYS.ACCOUNTS`) so the party instantly appears in the entire software (Warehouse Management, Accounts Ledger, CashBook, Sales Log).
+  2. **Interactive Searchable Typeahead Dropdown on Pharmacy / Ledger:**
+     - When focusing or typing in the **Pharmacy / Ledger** input, an instant dropdown opens showing all matching registered parties with Store Name, Party Code (`[P-104]`), City (`[Hyderabad]`), Booker / Salesman, and live **Udhaar Due Balance** (`Bal: Rs. 24,000`).
+     - Clicking any party immediately links their Party Code, Name, City, Transport Carrier, Bilty #, Booker, and live Previous Balance (`Purana Udhaar`).
+  3. **Zero-Duplicate Registration Guard:**
+     - When registering via `+ New Party`, the system automatically checks if a party with identical name or party code already exists. If found, it warns the user (`⚠️ Party already registered!`), auto-selects and links that party, preventing duplicate records in the database.
+  4. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets found across 1047 files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST/symbol errors across 76 files.
+     - `npm test` -> 634/634 tests passing (100%).
+     - `npm run build` -> Clean Vite production bundle compiled in 2.10s.
+
+- **Phase:** Milestone 223 — Live 80mm ESC/POS Thermal Receipt Slip Preview Engine in Sale Invoice (Completed)
+- **Last worked on:**
+  1. **Live 80mm ESC/POS Thermal Slip Rendering in Preview Modal:**
+     - Exported `generateSaleInvoiceReceiptHtml(sale, clinicData)` from [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) so that the preview dialog renders the exact pixel-perfect thermal receipt that is sent to the physical ESC/POS printer.
+     - Integrated `receiptPreviewHtml` inside [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx) preview modal (`showReceiptModal`), rendering the full 80mm thermal receipt iframe with official clinic logo header, customer/token details, bordered items table (`S/r | Qty | Particulars | Rate | Dis | Net`), totals breakdown, Urdu disclaimer (`خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔`), doctor signature, and CliniCore watermark.
+  2. **Dual-Mode Live Slip Synchronization:**
+     - In **Retail Mode**, displays patient name, token number, attending doctor, OPD consultation fee, medicines table, discounts, cash paid, and change return.
+     - In **Wholesale Mode**, displays party name, party code, salesman/booker, city, transport carrier, bilty number, payment terms (`Credit / Udhaar`), previous balance (`Purana Udhaar`), and remaining ledger balance.
+  3. **Re-Print & Live Cart Preview Support:**
+     - Opening preview slip (`Preview Slip` button) on an active unsaved cart generates a live draft thermal slip.
+     - Clicking `Re-print` from the Invoices Logbook loads the completed historical transaction directly into the live 80mm thermal slip view.
+  4. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets found.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST/symbol errors.
+     - `npm test` -> 634/634 tests passing (100%).
+     - `npm run build` -> Clean bundle compiled in 2.50s.
+
+- **Phase:** Milestone 222 — Pure Live Database Binding, Zero Dummy Feed Cleanup & Clean-Slate Transaction Reset (Completed)
+- **Last worked on:**
+  1. **Purged 100% of Hardcoded Sample / Feed Data:** Removed all static template dummy tokens (`tokenInfoMap` with `T-05: Usman`, `T-06: Ayesha`, `T-08: Rashid`), dummy party map (`wholesalePartyDb` with `P-104: Al-Madina`, `Taxila`), static doctors, and hardcoded voucher numbers from [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx).
+  2. **100% Dynamic Database Binding:**
+     - **Live Token & Patient Queue Lookup:** Connected directly to `dbVisits.getTodayAll()` and `dbPatients.getAll()`. Typing a token or clicking quick tokens immediately pulls real patient details, assigned doctor, and consultation fee status.
+     - **Dynamic Quick Tokens Ribbon:** Renders active real-time waiting tokens from `todayVisits` instead of static pills.
+     - **Wholesale B2B Party Lookup:** Connected directly to `dbParties.getAll()`. Typing party code or selecting from list automatically auto-fills real store name, city, transport carrier, bilty number, salesman, and displays real-time Purana Udhaar (`matchedParty.current_balance`).
+     - **Dynamic Salesmen & Doctor Binding:** Populates salesman and doctor dropdowns from `dbUsers` and `dbClinic` records.
+     - **Dynamic Receipt & Slip Header:** Pulls real clinic name, tagline, address, and contact numbers from `dbClinic.get()`.
+  3. **Conditional Walk-In Mode View Isolation:** When switched to `Manual / Walk-In`, the entire second row (Assigned Doctor Card, OPD Consultation Fee checkbox, and Quick Tokens Strip) as well as the Token input box are completely hidden, giving a clean and distraction-free counter sale interface.
+  4. **Automatic Cart Quantity Consolidation (Zero-Duplicate Rows):**
+     - When adding the same medicine again with any quantity, instead of inserting a duplicate row, the system seamlessly increments and consolidates the existing row's quantity (e.g. 1 + 4 = 5), updating gross totals and discounts in real-time.
+  5. **Clean-Slate Auto-Reset on Save & Mode Switch:**
+     - Whenever an invoice is saved (`processSaleAndPrint`), the cart, fast entry inputs, and all patient/party fields (`account_name`, `token_no`, `patient_id`, `party_code`, `city`, `transport`, `bilty_no`, `bank_name`, `cheque_no`, `cash_received`) are completely cleared and reset with the fresh next voucher number.
+     - Switching between Retail (`Alt+5`) and Wholesale (`Alt+9`) immediately resets previous mode fields for a clean slate.
+  6. **Verified Zero-Secret & Full Test Integrity (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets across 1047 files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST/symbol errors across 76 files.
+     - `npx oxlint` -> 0 errors.
+     - `npm test` -> 634/634 tests passing (100%).
+     - `npm run build` -> Clean bundle compiled in 1.95s.
+
+- **Phase:** Milestone 221 — Dual-Mode Sale Invoice (Retail POS & Wholesale B2B) Full Template Synchronization (Completed)
+- **Last worked on:**
+  1. **Dual-Mode UI Synchronization:** Fully synced [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx) to support both the Retail POS and Wholesale B2B template layouts seamlessly with `Alt+5` and `Alt+9` keyboard shortcuts.
+  2. **Dedicated Pharma Company Code Box:** Added `COMP CODE` filter input (`GSK`, `SAMI`, `GETZ`, `AGP`, `ABT`, `BM`) with interactive dropdown menu and outside-click dismiss to filter medicine suggestions by manufacturer.
+  3. **Wholesale B2B Ribbon & Ledgers:** Implemented exact field layout for Party Code (`P-104`), Pharmacy / Ledger with `+ New Party` modal trigger, Booker / Salesman, City, Transport Carrier, Bilty #, and Payment Modes (`Credit / Udhar (30D)`, `Cash / Ready`, `Bank Transfer`, `Cheque / Bank`).
+  4. **Wholesale Bottom Checkout Dock:** Added `TOTAL UDHAR / BILL` card with `UDHAR (Account Receivable)` badge and `Balance Due: 30-Day Ledger Term` pulse indicator, tender input (`Payment`), balance display, and `Save & Print B2B Invoice (F9)`.
+  5. **B2B Delivery Bill & Invoices Logbook Preview:** Styled 80mm B2B receipt with Transport, Bilty, Booker, Billing Terms, and Balance Ledger rows.
+  6. **Zero-Regression Pre-Push Pipeline:** 634/634 tests passing, 0 AST/Import/Hook errors, 0 secret leaks, 0 oxlint errors, and clean Vite production build.
+
+- **Phase:** Milestone 220 — CliniCore POS Ultra-Simple Sale Invoice UI Template Replacement (Completed)
+- **Last worked on:**
+  1. **Ultra-Compact Single-Screen POS:** Replaced [SaleInvoiceModal.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/components/SaleInvoiceModal.jsx) with the user-provided template layout, featuring a streamlined subheader, live status pulse, and segmented `Retail (Alt+5)` vs `Wholesale (Alt+9)` mode switcher.
+  2. **Retail Mode Ribbon:** Integrated `Auto Token (Patient)` vs `Manual / Walk-In` toggle, patient search with live status badges, payment modes, auto-assigned doctor card, and `Include OPD Fee (Rs. 1,000 / Waived)` toggle with quick token pills.
+  3. **Wholesale B2B Ribbon:** Integrated Party code lookup (e.g. `P-104`), Pharmacy name with `+ New` button & credit limit badge, salesman/booker, transport carrier autocomplete, bilty #, and bank/cheque fields.
+  4. **Fast Line Item Entry & Viewport Table:** Implemented product typeahead search with keyboard navigation (`/`, `Arrow keys`, `Enter`), Qty, Rate, Gross, Disc% (system capped at 28%), Net badge, Add button, and compact cart items table with `Delete` row shortcut.
+  5. **Compact Bottom Checkout Dock:** Added real-time gross, discount, OPD fee, previous balance (purana udhaar), net payable badge, cash tendered input (`F8`), change/balance calculation, and `Save & Print (F9)` button.
+  6. **Hardware & Modals Integration:** 80mm ESC/POS Thermal Receipt & B2B Delivery Bill preview modal, invoices logbook modal with search & reprint, zero stock alert & new party creation modals, and toast notification container.
+  7. **Master Pre-Push Validation:** 634/634 unit tests passed, 0 AST errors, 0 secret leaks, and clean Vite build.
+
 - **Phase:** Milestone 219 — Desktop 1-Click Silent Auto-Updater, Native OTA Package Streamer & Multi-Device Zero-UAC Upgrade Engine (Completed)
 - **Last worked on:**
   1. **Tauri Native Rust Update Commands:** Implemented `save_update_binary`, `launch_silent_update`, and `download_and_run_installer` in [main.rs](file:///e:/Soft/DrCreate/Clinicore/frontend/src-tauri/src/main.rs), allowing silent background execution (`/S`) and graceful detached process handoff.
@@ -4330,5 +4539,73 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
       - `npx oxlint`: 0 errors.
       - `npm test`: 634/634 master tests passing (100%).
       - `npm run build`: Clean 11.75s Vite bundle compiled.
+
+97. **Milestone 234: Bulk Excel / CSV Medicine Upload v2.4 Schema UI Overhaul, Live Inline Editing, Zero Dummy Feed Elimination & Backend Database Engine Binding**
+    - **UI Overhaul & Template Replacement (`MedicalStoreInventory.jsx`)**:
+      - Replaced legacy Bulk CSV upload modal with CliniCore v2.4 Schema modal design matching the provided template layout.
+      - Styled with clean teal upload badge, `v2.4 Schema` status chip, responsive layout with backdrop blur, and custom scrollbars.
+      - Implemented empty state view featuring standardized CSV template download prompt (`clinicflow_inventory_template.csv`) and intuitive drag-and-drop / click-to-browse dashed file dropzone.
+      - Implemented active file info ribbon displaying uploaded filename, human-readable file size (e.g. `42.5 KB`), "Verification Passed" badge, and row count badge with "Change File" re-upload button.
+      - Built interactive live editable table preview with 10 columns: Item Name (editable input), Generic / Formula, Company (badge), Batch, Expiry, TP Rate ($/Rs), MRP ($/Rs), Pack Qty, Status ("Ready" badge), and Delete Row action.
+      - Built client-side pagination controls (10 items per page) with total item and company counter.
+      - Integrated ESC to close and ENTER to confirm keyboard shortcuts.
+    - **Zero Dummy / Feed Data Elimination**:
+      - Completely excluded all static sample medicines (Panadol, Augmentin, Amoxil, Brufen, Lipitor, Zithromax) from code and state.
+      - Initialized empty parsed state `csvParsedRows = []` waiting exclusively for authentic user CSV uploads.
+    - **Live Backend & Database Engine Synchronization**:
+      - Enhanced `parseInventoryCSV` in `frontend/src/api/db.js` with intelligent column detection for `batch` / `lot` and `expiry` / `exp date`.
+      - Connected Confirm & Import action directly to `bulkImportInventory(csvParsedRows, "merge")` from `api/store.js` and `api/db.js`.
+      - Automatically registers new manufacturing companies in `dbCompanies` and `dbSuppliers`.
+      - Updates `dbInventory` catalog with title casing, stock units, and batch information.
+      - Enqueues background audit trail in `dbAuditLogs` and triggers real-time inventory reload and desktop toast notification.
+    - **Verification & Quality Gate Execution**:
+      - `node scripts/scan_secrets.mjs`: 0 secrets detected.
+      - `node scripts/scan_imports_and_hooks.mjs`: 0 AST/hook errors across 76 files.
+      - `npx oxlint frontend/src`: 0 errors.
+      - `npm test --prefix frontend`: 634/634 master tests passing (100%).
+      - `npm run build --prefix frontend`: Clean Vite bundle compiled in 2.67s.
+
+98. **Milestone 235: Elimination of Stale Service Worker Caching, PWA Update Hook Null Dispatcher Crash & Fast Refresh Context Isolation**
+    - **Root Cause Analysis (`useState` is null crash)**:
+      - Diagnosed `TypeError: Cannot read properties of null (reading 'useState')` in `usePWAUpdate.js:12` / `PWAUpdateBanner.jsx:12`.
+      - Root Cause: During Vite dev server restarts and Tauri runs, an active service worker registered on `localhost:5173` had cached older pre-bundled React chunks (`react.js?v=bdca8213`). Meanwhile, newly rendered components like `react-dom_client` were running against the newly re-optimized bundle (`v=9328b6f8`). This split-brain dual-React condition caused `usePWAUpdate` to call `useState()` on an uninitialized React dispatcher instance.
+    - **PWA Update Banner Hardening (`PWAUpdateBanner.jsx`)**:
+      - Separated the component into an outer guard (`PWAUpdateBanner`) and inner content (`PWAUpdateBannerContent`).
+      - In development mode (`import.meta.env.DEV`) and desktop Tauri app (`window.__TAURI__`), `PWAUpdateBanner` returns `null` immediately without mounting or invoking `usePWAUpdate` / `useState` hooks.
+    - **Service Worker Guarding & Stale Registration Auto-Purge (`usePWAUpdate.js`)**:
+      - Added strict Dev & Tauri desktop checks in `usePWAUpdate.js`.
+      - Automatically iterates and unregisters any rogue service workers previously registered on `localhost:5173` to prevent asset caching during development.
+      - Bypasses polling intervals and focus listeners in dev and desktop environments.
+    - **Vite React Fast Refresh Compliance (`authContextInstance.js` & `DeveloperAdminPanel.jsx`)**:
+      - Created dedicated `authContextInstance.js` defining `AuthContext = createContext(null)`, ensuring `AuthContext.jsx` only exports the `AuthProvider` component.
+      - Updated `useAuth.js` to import `AuthContext` from `authContextInstance.js`.
+      - Removed non-component `export` statements (`getApiUrl`, `getAdminPasscode`, `setAdminPasscode`) from `DeveloperAdminPanel.jsx` to eliminate HMR invalidations.
+      - Purged stale `.vite` cache in `frontend/node_modules/.vite`.
+    - **Verification & Quality Gate Execution**:
+      - `node scripts/scan_secrets.mjs`: 0 secrets detected across 1047 files.
+      - `node scripts/scan_imports_and_hooks.mjs`: 0 AST/hook errors across 77 files.
+      - `npx oxlint frontend/src`: 0 errors.
+      - `npm test --prefix frontend`: 634/634 master tests passing (100%).
+      - `npm run build --prefix frontend`: Clean Vite bundle compiled in 2.04s.
+
+99. **Milestone 236: Sale Invoice Thermal Receipt Light Urdu Disclaimer Upgrade with Google Noto Nastaliq Urdu Font**
+    - **Light Urdu Disclaimer Implementation (`thermalPrinter.js`)**:
+      - Replaced hardcoded English disclaimer strings (`"Medicines once sold will not be returned or exchanged."` / `"Goods once sold will not be returned or exchanged."`) in `generateSaleInvoiceReceiptHtml`.
+      - Replaced with beautiful, crisp Light Urdu: `خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔` (with wholesale variant fallback: `خریدی ہوئی دوا یا سامان واپس یا تبدیل نہیں ہوگا۔`).
+    - **Google Fonts & Typography Styling**:
+      - Embedded preconnect and stylesheet link for Google Fonts `Noto Nastaliq Urdu:wght@400;500;600` in the receipt `<head>` and CSS `@import`.
+      - Styled with `.urdu-disclaimer` class: `font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', serif`.
+      - Configured with `font-weight: 400` (light weight), `direction: rtl`, `font-size: 12.5px`, and `line-height: 1.8` to prevent ligature or diacritic clipping.
+      - Synchronized across both the on-screen live 80mm ESC/POS slip preview dialog in `SaleInvoiceModal.jsx` and physical thermal receipt printing.
+    - **Verification & Quality Gate Execution**:
+      - Tested HTML output via Node execution script verifying both `Noto Nastaliq Urdu` font inclusion and Urdu text presence.
+      - `node scripts/scan_secrets.mjs`: 0 secrets detected across 1047 files.
+      - `node scripts/scan_imports_and_hooks.mjs`: 0 AST/hook errors across 77 files.
+      - `npx oxlint frontend/src`: 0 errors.
+      - `npm test --prefix frontend`: 634/634 master tests passing (100%).
+      - `npm run build --prefix frontend`: Clean Vite bundle compiled in 2.52s.
+
+
+
 
 

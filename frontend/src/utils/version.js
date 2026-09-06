@@ -8,12 +8,12 @@ const g = typeof globalThis !== 'undefined' ? globalThis : {};
 
 export const APP_CONFIG = Object.freeze({
   NAME: 'ClinicFlow (CliniCore) OS',
-  SEMVER: typeof g.__APP_SEMVER__ !== 'undefined' ? g.__APP_SEMVER__ : '2.5.0',
+  SEMVER: typeof g.__APP_SEMVER__ !== 'undefined' ? g.__APP_SEMVER__ : '2.5.35',
   BUILD_HASH: typeof g.__APP_BUILD_HASH__ !== 'undefined' ? g.__APP_BUILD_HASH__ : '7113922',
-  BUILD_DATE: typeof g.__APP_BUILD_DATE__ !== 'undefined' ? g.__APP_BUILD_DATE__ : '20260829',
-  BUILD_ID: typeof g.__APP_BUILD_ID__ !== 'undefined' ? g.__APP_BUILD_ID__ : '20260829.7113922',
-  FULL_VERSION: typeof g.__APP_FULL_VERSION__ !== 'undefined' ? g.__APP_FULL_VERSION__ : 'v2.5.0+build.20260829.7113922',
-  BUILD_TIME: typeof g.__APP_BUILD_TIME__ !== 'undefined' ? g.__APP_BUILD_TIME__ : '2026-08-29T00:00:00.000Z',
+  BUILD_DATE: typeof g.__APP_BUILD_DATE__ !== 'undefined' ? g.__APP_BUILD_DATE__ : '20260906',
+  BUILD_ID: typeof g.__APP_BUILD_ID__ !== 'undefined' ? g.__APP_BUILD_ID__ : '20260906.7113922',
+  FULL_VERSION: typeof g.__APP_FULL_VERSION__ !== 'undefined' ? g.__APP_FULL_VERSION__ : 'v2.5.35+build.20260906.7113922',
+  BUILD_TIME: typeof g.__APP_BUILD_TIME__ !== 'undefined' ? g.__APP_BUILD_TIME__ : '2026-09-06T00:00:00.000Z',
   SCHEMA_VERSION: typeof g.__TARGET_SCHEMA_VERSION__ !== 'undefined' ? g.__TARGET_SCHEMA_VERSION__ : 4,
   MIN_SERVER_SCHEMA_VERSION: typeof g.__MIN_SERVER_SCHEMA_VERSION__ !== 'undefined' ? g.__MIN_SERVER_SCHEMA_VERSION__ : 3,
 });
@@ -49,4 +49,27 @@ export function compareSemver(v1, v2) {
     if (a < b) return -1;
   }
   return 0;
+}
+
+export function getEffectiveVersion() {
+  const codeVer = APP_CONFIG.SEMVER || '2.5.35';
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('cf_applied_version');
+      if (stored && compareSemver(stored, codeVer) > 0) {
+        return stored;
+      }
+      localStorage.setItem('cf_applied_version', codeVer);
+    }
+  } catch (_) {}
+  return codeVer;
+}
+
+export function setEffectiveVersion(version) {
+  if (!version) return;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('cf_applied_version', version);
+    }
+  } catch (_) {}
 }

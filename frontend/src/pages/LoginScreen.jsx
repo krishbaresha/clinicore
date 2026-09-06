@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { dbUsers, dbClinic } from "../api/db.js";
+import { getEffectiveVersion, setEffectiveVersion, compareSemver } from "../utils/version.js";
 import clinicLogo from "../assets/clinic-logo.png";
 import drAsif from "../assets/dr-asif.jpg";
 
@@ -17,11 +18,7 @@ export default function LoginScreen() {
   const [clinicData, setClinicData] = useState(null);
   const [search, setSearch] = useState("");
   const [liveAppVersion, setLiveAppVersion] = useState(() => {
-    try {
-      return (typeof globalThis !== "undefined" && globalThis.__APP_SEMVER__) || localStorage.getItem("cf_applied_version") || "2.5.9";
-    } catch {
-      return "2.5.9";
-    }
+    return getEffectiveVersion();
   });
 
   useEffect(() => {
@@ -44,9 +41,9 @@ export default function LoginScreen() {
             if (res.ok) {
               const data = await res.json();
               const v = data?.version || data?.data?.version;
-              if (v) {
+              if (v && compareSemver(v, getEffectiveVersion()) > 0) {
                 setLiveAppVersion(v);
-                try { localStorage.setItem("cf_applied_version", v); } catch (_) {}
+                setEffectiveVersion(v);
                 break;
               }
             }

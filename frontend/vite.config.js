@@ -139,12 +139,29 @@ function viteEmailRelayPlugin() {
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   base: '/',
+  define: {
+    __APP_SEMVER__: JSON.stringify(SEMVER),
+    __APP_BUILD_HASH__: JSON.stringify(BUILD_HASH),
+    __APP_BUILD_DATE__: JSON.stringify(BUILD_DATE),
+    __APP_BUILD_ID__: JSON.stringify(FULL_BUILD_ID),
+    __APP_FULL_VERSION__: JSON.stringify(FULL_VERSION),
+    __APP_BUILD_VERSION__: JSON.stringify(FULL_VERSION),
+    __APP_BUILD_TIME__: JSON.stringify(BUILD_TIME),
+    __TARGET_SCHEMA_VERSION__: JSON.stringify(4),
+    __MIN_SERVER_SCHEMA_VERSION__: JSON.stringify(3),
+  },
   plugins: [
     tailwindcss(),
     react(),
     pwaVersionPlugin(),
     viteEmailRelayPlugin(),
   ],
+  resolve: {
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
+  },
   build: {
     sourcemap: false,
   },

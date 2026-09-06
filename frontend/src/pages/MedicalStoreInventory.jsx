@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { verifyAdminPasscode } from "../api/auth.js";
@@ -136,8 +136,11 @@ export default function MedicalStoreInventory() {
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvParsedRows, setCsvParsedRows] = useState([]);
   const [csvFileName, setCsvFileName] = useState("");
+  const [csvFileSize, setCsvFileSize] = useState("");
   const [csvCompanyFilter, setCsvCompanyFilter] = useState("ALL");
+  const [csvPage, setCsvPage] = useState(1);
   const [csvImportStatus, setCsvImportStatus] = useState({ loading: false, result: null, error: "" });
+  const csvFileInputRef = useRef(null);
 
   // Zero-Pilferage Blind Physical Stock Audit State
   const [showBlindAuditModal, setShowBlindAuditModal] = useState(false);
@@ -852,12 +855,13 @@ export default function MedicalStoreInventory() {
     }
   }
 
-  // CSV File Handler
-  function handleCsvFileSelected(e) {
-    const file = e.target.files?.[0];
+  // CSV File Handler & Drag-and-Drop Loader
+  function handleProcessCsvFile(file) {
     if (!file) return;
     setCsvFileName(file.name);
+    setCsvFileSize(file.size ? `${(file.size / 1024).toFixed(1)} KB` : "");
     setCsvCompanyFilter("ALL");
+    setCsvPage(1);
     setCsvImportStatus({ loading: false, result: null, error: "" });
 
     const reader = new FileReader();
@@ -871,12 +875,61 @@ export default function MedicalStoreInventory() {
         } else {
           setCsvParsedRows(parsed);
           setCsvCompanyFilter("ALL");
+          setCsvPage(1);
         }
       } catch (err) {
         setCsvImportStatus({ loading: false, result: null, error: `CSV Parsing error: ${err.message}` });
       }
     };
     reader.readAsText(file);
+  }
+
+  function handleCsvFileSelected(e) {
+    const file = e.target.files?.[0];
+    if (file) handleProcessCsvFile(file);
+  }
+
+  function handleClearCsv() {
+    setCsvParsedRows([]);
+    setCsvFileName("");
+    setCsvFileSize("");
+    setCsvCompanyFilter("ALL");
+    setCsvPage(1);
+    setCsvImportStatus({ loading: false, result: null, error: "" });
+    if (csvFileInputRef.current) csvFileInputRef.current.value = "";
+  }
+
+  function openCsvModal() {
+    handleClearCsv();
+    setShowCsvModal(true);
+  }
+
+  function updateCsvRow(idx, field, value) {
+    setCsvParsedRows((prev) =>
+      prev.map((row, i) => {
+        if (i !== idx) return row;
+        const updated = { ...row, [field]: value };
+        if (field === "cost_price_per_box") {
+          updated.purchase_price = value;
+          updated.cost_price = value;
+        } else if (field === "unit_sale_price") {
+          updated.box_sale_price = value;
+          updated.strip_sale_price = value;
+          updated.unit_price = value;
+        } else if (field === "total_base_stock") {
+          updated.store_stock = value;
+          updated.stock_qty = value;
+          if (updated.location_stocks) {
+            updated.location_stocks.wh_str = value;
+          }
+        }
+        return updated;
+      })
+    );
+  }
+
+  function handleDeleteCsvRow(idx) {
+    setCsvParsedRows((prev) => prev.filter((_, i) => i !== idx));
   }
 
   // Company breakdown analytics and filtered rows for CSV Import Preview
@@ -895,6 +948,20 @@ export default function MedicalStoreInventory() {
     return csvParsedRows.filter((r) => (r.company_name || "BM Pvt LTD") === csvCompanyFilter);
   }, [csvParsedRows, csvCompanyFilter]);
 
+  const csvUniqueCompaniesCount = useMemo(() => {
+    const set = new Set();
+    for (const r of csvParsedRows) {
+      if (r.company_name) set.add(r.company_name.trim());
+    }
+    return set.size;
+  }, [csvParsedRows]);
+
+  const CSV_PAGE_SIZE = 10;
+  const totalCsvPages = Math.max(1, Math.ceil(displayedCsvRows.length / CSV_PAGE_SIZE));
+  const startCsvIdx = (csvPage - 1) * CSV_PAGE_SIZE;
+  const endCsvIdx = startCsvIdx + CSV_PAGE_SIZE;
+  const currentPaginatedCsvRows = displayedCsvRows.slice(startCsvIdx, endCsvIdx);
+
   function handleExecuteCsvImport() {
     if (csvParsedRows.length === 0) return;
     setCsvImportStatus({ loading: true, result: null, error: "" });
@@ -909,6 +976,27 @@ export default function MedicalStoreInventory() {
       }
     }, 100);
   }
+
+  // ESC / ENTER keyboard handler for Bulk CSV modal
+  useEffect(() => {
+    if (!showCsvModal) return;
+    const handleCsvKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (!csvImportStatus.loading) {
+          setShowCsvModal(false);
+        }
+      } else if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if (tag !== "input" && tag !== "textarea") {
+          if (csvParsedRows.length > 0 && !csvImportStatus.loading && !csvImportStatus.result) {
+            handleExecuteCsvImport();
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleCsvKeyDown);
+    return () => window.removeEventListener("keydown", handleCsvKeyDown);
+  }, [showCsvModal, csvImportStatus, csvParsedRows]);
 
   function handleDownloadCsvTemplate() {
     const csvContent = exportInventoryTemplateCSV();
@@ -1235,12 +1323,7 @@ export default function MedicalStoreInventory() {
 
           <button
             type="button"
-            onClick={() => {
-              setCsvImportStatus({ loading: false, result: null, error: "" });
-              setCsvParsedRows([]);
-              setCsvFileName("");
-              setShowCsvModal(true);
-            }}
+            onClick={openCsvModal}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-teal-700/60 hover:bg-teal-700 text-white font-medium border border-teal-500/40 transition cursor-pointer"
           >
             <svg className="w-3.5 h-3.5 text-teal-200" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
@@ -2107,7 +2190,7 @@ export default function MedicalStoreInventory() {
                   <>
                     <button
                       type="button"
-                      onClick={() => setShowCsvModal(true)}
+                      onClick={openCsvModal}
                       className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
                     >
                       <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -2823,6 +2906,9 @@ export default function MedicalStoreInventory() {
       {/* ========================================================================= */}
       {/* MODAL 4: Bulk CSV / Excel Upload                                          */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* MODAL 4: Bulk CSV / Excel Upload — CliniCore v2.4 Schema Template         */}
+      {/* ========================================================================= */}
       {showCsvModal && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[999] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-200"
@@ -2830,358 +2916,441 @@ export default function MedicalStoreInventory() {
             if (e.target === e.currentTarget && !csvImportStatus.loading) setShowCsvModal(false);
           }}
         >
-          <div
-            className="bg-white max-w-6xl w-full rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-8 space-y-5 max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+          <section
+            aria-labelledby="modal-headline"
+            aria-modal="true"
+            role="dialog"
+            data-purpose="medicine-csv-import-modal"
+            className="relative z-10 w-full max-w-5xl max-h-[92vh] max-h-[690px] bg-white rounded-2xl shadow-2xl border border-slate-100/80 overflow-hidden flex flex-col my-auto transition-all animate-in zoom-in-95 duration-200 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700">
-                  <span className="material-symbols-outlined text-2xl">upload_file</span>
+            {/* Modal Header */}
+            <header className="px-6 py-3.5 border-b border-slate-100 flex items-center justify-between bg-white relative shrink-0">
+              <div className="flex items-center gap-3.5">
+                {/* Teal File Upload Icon Badge */}
+                <div className="w-9 h-9 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 shadow-sm shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"></path>
+                    <path d="M12 9V3" strokeLinecap="round" strokeLinejoin="round"></path>
+                  </svg>
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-900 text-base sm:text-lg">Bulk Excel / CSV Medicine Upload</h3>
-                  <p className="text-xs text-slate-500">Full responsive window with live inline editing &amp; auto company registration</p>
+                  <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2" id="modal-headline">
+                    Bulk Excel / CSV Medicine Upload
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-200/60">
+                      v2.4 Schema
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Full responsive window with live inline editing &amp; auto company registration
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setShowCsvModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                <span className="material-symbols-outlined">close</span>
+              {/* Close Button */}
+              <button
+                aria-label="Close dialog"
+                onClick={() => {
+                  if (!csvImportStatus.loading) setShowCsvModal(false);
+                }}
+                disabled={csvImportStatus.loading}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-xl transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer disabled:opacity-30"
+                type="button"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"></path>
+                </svg>
               </button>
-            </div>
+            </header>
 
-            {/* File Upload Area — Auto-Collapses When File Is Loaded to Maximize Preview Table Space */}
-            {csvParsedRows.length === 0 ? (
-              <>
-                {/* Template Download Prompt */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-sky-50/70 p-3 sm:p-4 rounded-2xl border border-sky-200 gap-2.5 shrink-0">
-                  <div className="text-xs text-sky-950 font-semibold">
-                    Download the standardized CSV template with required column schema:
+            {/* Modal Body Content */}
+            <main className="px-6 py-4 space-y-3.5 overflow-y-auto flex-1 custom-scrollbar">
+              {/* File Upload / Active Ribbon Area */}
+              {csvParsedRows.length === 0 ? (
+                <div className="space-y-3.5">
+                  {/* Template Download Prompt */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-teal-50/70 p-3.5 sm:p-4 rounded-xl border border-teal-200/80 gap-2.5 shrink-0 shadow-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-xs text-teal-950 font-bold">Standardized CSV Template with Schema</p>
+                        <p className="text-[11px] text-teal-800 font-medium">Download the ready template with required column schema: Medicine Name, Company, TP Rate, MRP, Pack Qty, Batch, Expiry.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadCsvTemplate}
+                      className="px-3.5 py-2 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white font-bold text-xs shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer transition-all active:scale-95"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                      </svg>
+                      <span>Download Template</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleDownloadCsvTemplate}
-                    className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer"
+
+                  {/* Drag & Drop Dropzone */}
+                  <div
+                    id="dropzone"
+                    className="border-2 border-dashed border-teal-300 hover:border-teal-600 rounded-2xl p-8 sm:p-10 text-center space-y-3 bg-teal-50/25 hover:bg-teal-50/50 transition-all shrink-0 cursor-pointer relative"
+                    onClick={() => csvFileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const files = e.dataTransfer.files;
+                      if (files?.length) handleProcessCsvFile(files[0]);
+                    }}
                   >
-                    <span className="material-symbols-outlined text-sm">download</span>
-                    <span>Download Template</span>
-                  </button>
-                </div>
-
-                <div className="border-2 border-dashed border-slate-300 hover:border-sky-500 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-center space-y-2 bg-slate-50/50 transition-colors shrink-0">
-                  <span className="material-symbols-outlined text-3xl text-slate-400">csv</span>
-                  <div className="text-xs text-slate-700 font-bold">
-                    {csvFileName ? `Selected File: ${csvFileName}` : "Click to select or drag & drop CSV file here"}
-                  </div>
-                  <input
-                    type="file"
-                    accept=".csv,text/csv"
-                    onChange={handleCsvFileSelected}
-                    className="text-xs cursor-pointer file:mr-3 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-sky-100 file:text-sky-800 hover:file:bg-sky-200"
-                  />
-                </div>
-              </>
-            ) : (
-              /* Compact Active File Ribbon with Change / Re-upload Action */
-              <div className="flex items-center justify-between bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-2xl text-xs shrink-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="material-symbols-outlined text-teal-700 text-lg">description</span>
-                  <span className="font-bold text-slate-900 truncate">Loaded: {csvFileName || "Uploaded Inventory.csv"}</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-900 font-mono">
-                    {csvParsedRows.length} Items Ready
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <label className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-2xs flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs text-slate-500">sync</span>
-                    <span>Change File</span>
+                    <div className="w-12 h-12 mx-auto rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shadow-xs">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                      </svg>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-slate-800">
+                        Click to select or drag &amp; drop CSV file here
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Supports .csv files exported from Excel, MS Access, or Pharmacy ERP systems
+                      </p>
+                    </div>
                     <input
+                      ref={csvFileInputRef}
                       type="file"
-                      accept=".csv,text/csv"
+                      accept=".csv,text/csv,text/plain"
                       onChange={handleCsvFileSelected}
                       className="hidden"
                     />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCsvParsedRows([]);
-                      setCsvFileName("");
-                      setCsvCompanyFilter("ALL");
-                      setCsvImportStatus({ loading: false, result: null, error: "" });
-                    }}
-                    className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 rounded-xl font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Live Table Preview with Full Responsive Scroll, Company Analytics & Inline Edit */}
-            {csvParsedRows.length > 0 && (
-              <div className="space-y-3 flex-1 flex flex-col min-h-0 overflow-hidden">
-                {/* Intelligence Analytics & Company Breakdown Bar */}
-                <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-slate-900 p-3.5 rounded-2xl text-white space-y-2.5 shrink-0 shadow-sm border border-teal-700/40">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      <span className="font-extrabold text-sm text-white">
-                        {csvParsedRows.length} Total SKUs Detected
-                      </span>
-                      <span className="text-teal-300 font-medium">•</span>
-                      <span className="text-teal-200 font-bold">
-                        {csvCompanyBreakdown.length} {csvCompanyBreakdown.length === 1 ? "Company" : "Companies"} in CSV
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold bg-teal-500/20 px-3 py-1 rounded-full border border-teal-400/30 text-emerald-300">
-                      <span className="material-symbols-outlined text-sm">auto_fix_high</span>
-                      <span>Auto A-Z Sorted • Title-Cased • Smart Packing Extracted ✅</span>
-                    </div>
-                  </div>
-
-                  {/* Interactive Company Filter Pills */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto custom-scroll pb-1 pt-0.5">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-teal-300 shrink-0 mr-1">
-                      Filter Company:
-                    </span>
                     <button
                       type="button"
-                      onClick={() => setCsvCompanyFilter("ALL")}
-                      className={`px-3 py-1 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
-                        csvCompanyFilter === "ALL"
-                          ? "bg-white text-teal-950 shadow-md font-extrabold"
-                          : "bg-white/10 hover:bg-white/20 text-teal-100"
-                      }`}
+                      className="px-4 py-2 bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer inline-flex items-center gap-1.5"
                     >
-                      All Companies ({csvParsedRows.length})
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path>
+                      </svg>
+                      <span>Choose File</span>
                     </button>
-                    {csvCompanyBreakdown.map((b) => {
-                      const isActive = csvCompanyFilter === b.company;
-                      return (
-                        <button
-                          key={b.company}
-                          type="button"
-                          onClick={() => setCsvCompanyFilter(b.company)}
-                          className={`px-3 py-1 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                            isActive
-                              ? "bg-teal-400 text-teal-950 shadow-md font-extrabold"
-                              : "bg-teal-950/60 hover:bg-teal-950/90 text-teal-200 border border-teal-600/40"
-                          }`}
-                        >
-                          <span>{b.company}</span>
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isActive ? "bg-teal-950 text-teal-200 font-mono" : "bg-teal-800 text-white font-mono"}`}>
-                            {b.count}
-                          </span>
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
-                
-                {/* Clean Responsive Table with Live Inline Edit */}
-                <div className="overflow-x-auto overflow-y-auto border border-slate-200 rounded-2xl flex-1 text-xs">
-                  <table className="w-full text-left min-w-[1100px]">
-                    <thead className="bg-slate-100 font-black text-slate-700 sticky top-0 z-10 uppercase text-[10.5px]">
-                      <tr>
-                        <th className="p-3 w-12 text-center">#</th>
-                        <th className="p-3">Medicine Name (Title Cased) *</th>
-                        <th className="p-3">Description / Generic</th>
-                        <th className="p-3 w-32">Clean Packing *</th>
-                        <th className="p-3 w-36">Company / Brand *</th>
-                        <th className="p-3 w-24">Company Code</th>
-                        <th className="p-3 w-24">Item Code</th>
-                        <th className="p-3 w-24 text-right">Cost (Rs)</th>
-                        <th className="p-3 w-24 text-right">Retail Sale (Rs) *</th>
-                        <th className="p-3 w-20 text-right">Stock Qty *</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
-                      {displayedCsvRows.map((r, i) => {
-                        const originalIdx = csvParsedRows.indexOf(r);
-                        const rowIdx = originalIdx !== -1 ? originalIdx : i;
-                        return (
-                          <tr key={rowIdx} className="hover:bg-sky-50/50 transition-colors">
-                            <td className="p-2 text-center text-slate-400 font-mono text-[11px] font-bold">
-                              {rowIdx + 1}
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={r.medicine_name || ""}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, medicine_name: val } : row));
-                                }}
-                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={r.product_description || r.generic_name || ""}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, product_description: val, generic_name: val } : row));
-                                }}
-                                placeholder="Description..."
-                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs text-slate-700"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={r.packing || r.unit_label || ""}
-                                list="packingSuggestionsCsv"
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, packing: val, unit_label: val } : row));
-                                }}
-                                placeholder="e.g. 60 TABS, 30 ML..."
-                                className="w-full bg-white border border-teal-300 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs font-black text-teal-900 uppercase"
-                              />
-                              <datalist id="packingSuggestionsCsv">
-                                <option value="30 ML" />
-                                <option value="60 TABS" />
-                                <option value="40 TABS" />
-                                <option value="45 TABS" />
-                                <option value="75 TABS" />
-                                <option value="90 TABS" />
-                                <option value="90 ML" />
-                                <option value="120 ML" />
-                                <option value="250 ML" />
-                                <option value="1000 ML" />
-                                <option value="20 CAPS" />
-                                <option value="60 CAPS" />
-                                <option value="350 GMS" />
-                                <option value="100 GMS" />
-                                <option value="30 ML / 60 TABS" />
-                                <option value="Course" />
-                              </datalist>
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={r.company_name || ""}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, company_name: val } : row));
-                                }}
-                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={r.company_code || ""}
-                                placeholder="e.g. LEH"
-                                onChange={(e) => {
-                                  const val = e.target.value.toUpperCase();
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, company_code: val } : row));
-                                }}
-                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-teal-950 uppercase"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={r.item_code || ""}
-                                placeholder="e.g. LEH-01"
-                                onChange={(e) => {
-                                  const val = e.target.value.toUpperCase();
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, item_code: val } : row));
-                                }}
-                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 uppercase"
-                              />
-                            </td>
-                            <td className="p-2 text-right">
-                              <input
-                                type="number"
-                                min="0"
-                                value={r.cost_price_per_box ?? 0}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value) || 0;
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, cost_price_per_box: val, purchase_price: val, cost_price: val } : row));
-                                }}
-                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 text-right"
-                              />
-                            </td>
-                            <td className="p-2 text-right">
-                              <input
-                                type="number"
-                                min="0"
-                                value={r.unit_sale_price ?? 0}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value) || 0;
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, unit_sale_price: val, box_sale_price: val, unit_price: val } : row));
-                                }}
-                                className="w-full bg-white border border-teal-300 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-black text-teal-900 text-right"
-                              />
-                            </td>
-                            <td className="p-2 text-right">
-                              <input
-                                type="number"
-                                min="0"
-                                value={r.total_base_stock ?? 0}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value) || 0;
-                                  setCsvParsedRows((prev) => prev.map((row, idx) => idx === rowIdx ? { ...row, total_base_stock: val, store_stock: val, stock_qty: val } : row));
-                                }}
-                                className="w-full bg-white border border-slate-200 focus:border-teal-600 focus:bg-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 text-right"
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+              ) : (
+                /* Active Loaded File Ribbon */
+                <div className="flex items-center justify-between bg-teal-50/80 border border-teal-200/80 rounded-xl px-4 py-2.5 shadow-xs shrink-0 flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                    </div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="text-xs font-semibold text-slate-800 font-mono">{csvFileName || "medicines_stock_import.csv"}</span>
+                      <span className="text-slate-400 text-xs">•</span>
+                      <span className="text-xs text-slate-500">{csvFileSize || `${(csvParsedRows.length * 0.12).toFixed(1)} KB`}</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200/80">
+                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                        </svg>
+                        Verification Passed
+                      </span>
+                      <span className="text-xs font-medium text-teal-700 bg-teal-100/70 px-2 py-0.5 rounded">
+                        {csvParsedRows.length} Medicine Rows Loaded
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-teal-800 hover:bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors shadow-xs cursor-pointer">
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                      </svg>
+                      <span>Change File</span>
+                      <input
+                        type="file"
+                        accept=".csv,text/csv,text/plain"
+                        onChange={handleCsvFileSelected}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleClearCsv}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition-colors cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {csvImportStatus.error && (
-              <p className="text-xs text-rose-600 font-bold bg-rose-50 p-3 rounded-xl border border-rose-200 shrink-0">
-                {csvImportStatus.error}
-              </p>
-            )}
-
-            {csvImportStatus.result && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-950 font-bold flex items-center gap-2">
-                <span className="material-symbols-outlined text-emerald-600 text-lg">check_circle</span>
-                <span>Successfully imported {csvImportStatus.result.count} medicines into catalog!</span>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowCsvModal(false)}
-                className="px-5 py-2.5 rounded-2xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50"
-                disabled={csvImportStatus.loading}
-              >
-                {csvImportStatus.result ? "Done" : "Cancel"}
-              </button>
-              {!csvImportStatus.result && (
-                <button
-                  type="button"
-                  onClick={handleExecuteCsvImport}
-                  disabled={csvParsedRows.length === 0 || csvImportStatus.loading}
-                  className="px-6 py-2.5 rounded-2xl bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-40 active:scale-95"
-                >
-                  {csvImportStatus.loading ? (
-                    <>
-                      <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                      <span>Importing {csvParsedRows.length} Items...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-sm">check</span>
-                      <span>Confirm &amp; Import ({csvParsedRows.length} Items)</span>
-                    </>
-                  )}
-                </button>
               )}
-            </div>
-          </div>
+
+              {/* Live Table Preview Container */}
+              {csvParsedRows.length > 0 && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white flex flex-col flex-1 min-h-[360px]" data-purpose="live-inline-preview">
+                  {/* Preview Header Bar */}
+                  <div className="bg-slate-50/80 px-4 py-2 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                      <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Parsed Data Preview (Editable)</span>
+                      <span className="text-[11px] text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">
+                        0 Errors Detected
+                      </span>
+                      {/* Company Quick Filter Pills */}
+                      {csvCompanyBreakdown.length > 1 && (
+                        <div className="flex items-center gap-1 ml-2">
+                          <button
+                            type="button"
+                            onClick={() => { setCsvCompanyFilter("ALL"); setCsvPage(1); }}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                              csvCompanyFilter === "ALL" ? "bg-teal-700 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                            }`}
+                          >
+                            All
+                          </button>
+                          {csvCompanyBreakdown.slice(0, 5).map((b) => (
+                            <button
+                              key={b.company}
+                              type="button"
+                              onClick={() => { setCsvCompanyFilter(b.company); setCsvPage(1); }}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                                csvCompanyFilter === b.company ? "bg-teal-700 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                              }`}
+                            >
+                              {b.company} ({b.count})
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      Showing {displayedCsvRows.length > 0 ? startCsvIdx + 1 : 0}-{Math.min(endCsvIdx, displayedCsvRows.length)} of {displayedCsvRows.length} records
+                    </span>
+                  </div>
+
+                  {/* Table Body */}
+                  <div className="overflow-x-auto flex-1 overflow-y-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="sticky top-0 z-10 bg-slate-50">
+                        <tr className="border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
+                          <th className="py-2 px-3">Item Name</th>
+                          <th className="py-2 px-3">Generic / Formula</th>
+                          <th className="py-2 px-3">Company</th>
+                          <th className="py-2 px-3">Batch</th>
+                          <th className="py-2 px-3">Expiry</th>
+                          <th className="py-2 px-3 text-right">TP Rate</th>
+                          <th className="py-2 px-3 text-right">MRP</th>
+                          <th className="py-2 px-3 text-center">Pack Qty</th>
+                          <th className="py-2 px-3 text-center">Status</th>
+                          <th className="py-2 px-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {currentPaginatedCsvRows.map((r, pageIdx) => {
+                          const actualIdx = startCsvIdx + pageIdx;
+                          return (
+                            <tr key={actualIdx} className="hover:bg-teal-50/30 transition-colors">
+                              <td className="py-1.5 px-3 font-medium text-slate-800">
+                                <input
+                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-xs font-medium w-full text-slate-800"
+                                  type="text"
+                                  value={r.medicine_name || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "medicine_name", e.target.value)}
+                                />
+                              </td>
+                              <td className="py-1.5 px-3 text-slate-500 text-[11px]">
+                                <input
+                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-[11px] text-slate-600 w-full"
+                                  type="text"
+                                  placeholder="Generic formula..."
+                                  value={r.product_description || r.generic_name || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "product_description", e.target.value)}
+                                />
+                              </td>
+                              <td className="py-1.5 px-3">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                  {r.company_name || "BM Pvt LTD"}
+                                </span>
+                              </td>
+                              <td className="py-1.5 px-3 font-mono text-[11px] text-slate-600">
+                                <input
+                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-[11px] font-mono text-slate-600 w-20"
+                                  type="text"
+                                  value={r.batch_no || r.batch || "B-01"}
+                                  onChange={(e) => updateCsvRow(actualIdx, "batch_no", e.target.value)}
+                                />
+                              </td>
+                              <td className="py-1.5 px-3 font-mono text-[11px] text-slate-600">
+                                <input
+                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-[11px] font-mono text-slate-600 w-24"
+                                  type="text"
+                                  value={r.expiry_date || "2028-12-31"}
+                                  onChange={(e) => updateCsvRow(actualIdx, "expiry_date", e.target.value)}
+                                />
+                              </td>
+                              <td className="py-1.5 px-3 text-right font-mono">
+                                <input
+                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-xs font-mono text-right w-16"
+                                  type="number"
+                                  min="0"
+                                  value={r.cost_price_per_box ?? 0}
+                                  onChange={(e) => updateCsvRow(actualIdx, "cost_price_per_box", Number(e.target.value) || 0)}
+                                />
+                              </td>
+                              <td className="py-1.5 px-3 text-right font-mono font-medium text-slate-800">
+                                <input
+                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-xs font-mono font-medium text-slate-800 text-right w-16"
+                                  type="number"
+                                  min="0"
+                                  value={r.unit_sale_price ?? 0}
+                                  onChange={(e) => updateCsvRow(actualIdx, "unit_sale_price", Number(e.target.value) || 0)}
+                                />
+                              </td>
+                              <td className="py-1.5 px-3 text-center font-mono">
+                                <input
+                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-xs font-mono text-center w-14"
+                                  type="number"
+                                  min="0"
+                                  value={r.total_base_stock ?? 0}
+                                  onChange={(e) => updateCsvRow(actualIdx, "total_base_stock", Number(e.target.value) || 0)}
+                                />
+                              </td>
+                              <td className="py-1.5 px-3 text-center">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                                  Ready
+                                </span>
+                              </td>
+                              <td className="py-1.5 px-3 text-center">
+                                <button
+                                  className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                                  title="Delete Row"
+                                  type="button"
+                                  onClick={() => handleDeleteCsvRow(actualIdx)}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Table Footer Pagination */}
+                  <div className="px-4 py-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-500 shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-slate-700">{displayedCsvRows.length}</span> items detected across{" "}
+                      <span className="font-medium text-slate-700">{csvUniqueCompaniesCount}</span> {csvUniqueCompaniesCount === 1 ? "company" : "companies"} • All mandatory fields mapped
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={csvPage <= 1}
+                        onClick={() => setCsvPage((p) => Math.max(1, p - 1))}
+                        className="px-2 py-1 border border-slate-200 rounded text-slate-600 cursor-pointer bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        &lt;
+                      </button>
+                      {Array.from({ length: totalCsvPages }, (_, idx) => idx + 1)
+                        .filter((p) => p === 1 || p === totalCsvPages || Math.abs(p - csvPage) <= 1)
+                        .map((p, idx, arr) => (
+                          <span key={p} className="flex items-center gap-1">
+                            {idx > 0 && p - arr[idx - 1] > 1 && <span className="text-slate-400 px-0.5">...</span>}
+                            <button
+                              type="button"
+                              onClick={() => setCsvPage(p)}
+                              className={`px-2 py-1 rounded cursor-pointer ${
+                                csvPage === p
+                                  ? "font-semibold text-teal-700 bg-teal-50 border border-teal-200"
+                                  : "border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          </span>
+                        ))}
+                      <button
+                        type="button"
+                        disabled={csvPage >= totalCsvPages}
+                        onClick={() => setCsvPage((p) => Math.min(totalCsvPages, p + 1))}
+                        className="px-2 py-1 border border-slate-200 rounded text-slate-600 cursor-pointer bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        &gt;
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Feedback messages */}
+              {csvImportStatus.error && (
+                <p className="text-xs text-rose-600 font-bold bg-rose-50 p-3 rounded-xl border border-rose-200 shrink-0">
+                  {csvImportStatus.error}
+                </p>
+              )}
+
+              {csvImportStatus.result && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 font-bold flex items-center gap-2 shrink-0">
+                  <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                  </svg>
+                  <span>Successfully imported {csvImportStatus.result.count} medicines into inventory catalog!</span>
+                </div>
+              )}
+            </main>
+
+            {/* Modal Footer Actions */}
+            <footer className="px-6 py-3 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              {/* Keyboard Shortcuts Hint */}
+              <div className="text-xs text-slate-400 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 text-[10px] bg-white border border-slate-200 rounded shadow-xs text-slate-500 font-mono">ESC</kbd> Close
+                </span>
+                <span>•</span>
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 text-[10px] bg-white border border-slate-200 rounded shadow-xs text-slate-500 font-mono">ENTER</kbd> Confirm
+                </span>
+              </div>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => setShowCsvModal(false)}
+                  disabled={csvImportStatus.loading}
+                  className="w-1/2 sm:w-auto px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                  type="button"
+                >
+                  {csvImportStatus.result ? "Done" : "Cancel"}
+                </button>
+                {!csvImportStatus.result && (
+                  <button
+                    onClick={handleExecuteCsvImport}
+                    disabled={csvParsedRows.length === 0 || csvImportStatus.loading}
+                    className="w-1/2 sm:w-auto px-5 py-2 text-xs font-semibold text-white bg-[#0F766E] hover:bg-[#115E59] active:bg-[#134E4A] rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 focus:ring-2 focus:ring-teal-400 focus:outline-none cursor-pointer disabled:opacity-50"
+                    type="button"
+                  >
+                    {csvImportStatus.loading ? (
+                      <>
+                        <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                        <span>Importing ({csvParsedRows.length} Records)...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"></path>
+                        </svg>
+                        <span>Confirm &amp; Import ({csvParsedRows.length} Records)</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </footer>
+          </section>
         </div>,
         document.body
       )}

@@ -306,7 +306,7 @@ export default function SupplierPurchases() {
   }, [suppliers]);
 
   const [accountsList, setAccountsList] = useState([]);
-  const [activeTab, setActiveTab] = useState("suppliers"); // "suppliers" | "bills" | "new_purchase"
+  const [activeTab, setActiveTab] = useState("grn_form"); // "grn_form" | "suppliers" | "bills"
 
   // DrCreate Purchase GRN Form State
   const [grnShowAllCompanies, setGrnShowAllCompanies] = useState(false);
@@ -589,6 +589,27 @@ export default function SupplierPurchases() {
     window.addEventListener("clinicflow_status_update", refreshData);
     return () => window.removeEventListener("clinicflow_status_update", refreshData);
   }, []);
+
+  // F9 Keyboard Shortcut Listener for Purchase GRN Save
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "F9" && activeTab === "grn_form") {
+        e.preventDefault();
+        handleSaveGRNBill();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTab, grnItems, grnForm, suppliers]);
+
+  const grnTotalPaidQty = useMemo(() => grnItems.reduce((sum, it) => sum + (Number(it.qty) || 0), 0), [grnItems]);
+  const grnTotalBonusQty = useMemo(() => grnItems.reduce((sum, it) => sum + (Number(it.bonus_qty) || 0), 0), [grnItems]);
+  const grnTotalGross = useMemo(() => grnItems.reduce((sum, it) => sum + (Number(it.gross) || (Number(it.qty) * Number(it.rate)) || 0), 0), [grnItems]);
+  const grnTotalNet = useMemo(() => grnItems.reduce((sum, it) => sum + (Number(it.net) || 0), 0), [grnItems]);
+  const grnTotalDiscount = useMemo(() => Math.max(0, grnTotalGross - grnTotalNet), [grnTotalGross, grnTotalNet]);
+  const grnExtraDiscount = Number(grnForm.extra_bill_discount) || 0;
+  const grnFreight = Number(grnForm.freight_charges) || 0;
+  const grnNetPayable = useMemo(() => Math.max(0, grnTotalNet - grnExtraDiscount + grnFreight), [grnTotalNet, grnExtraDiscount, grnFreight]);
 
   // Quick Code Lookup Handler for Purchase GRN Fast Line Entry
   const handleLookupGRNByCode = (codeQuery) => {
@@ -1162,204 +1183,133 @@ export default function SupplierPurchases() {
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-4 overflow-x-hidden pb-12">
-      {/* SubNavigationTabs Bar */}
-      <div className="bg-white border-b border-slate-200 px-3 sm:px-4 pt-2 pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 overflow-x-auto rounded-2xl shadow-xs">
-        <div className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto whitespace-nowrap pb-1 sm:pb-0 scrollbar-none">
+      {/* Sub-Navigation Tabs Strip */}
+      <div className="bg-white border-b border-slate-200 px-3 md:px-4 pt-1.5 flex items-center justify-between shrink-0 rounded-2xl shadow-xs">
+        <div className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto scrollbar-none">
           <button
             type="button"
             onClick={() => setActiveTab("grn_form")}
-            className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 border-b-2 font-bold text-xs sm:text-sm rounded-t-lg transition-colors shrink-0 ${
+            className={`flex items-center space-x-1.5 pb-2 px-2 sm:px-3 border-b-2 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
               activeTab === "grn_form"
-                ? "border-teal-700 text-teal-800 bg-teal-50/50"
-                : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                ? "border-teal-700 text-teal-800"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <svg className="w-4 h-4 text-teal-700 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" strokeLinecap="round" strokeLinejoin="round" />
+            <svg className="w-3.5 h-3.5 text-teal-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
             </svg>
             <span>Company Purchase Invoice Entry</span>
-            <span className="ml-1 px-1.5 sm:px-2 py-0.5 text-[10px] font-mono font-bold bg-teal-700 text-white rounded-md">
-              {grnForm.voucher_no}
-            </span>
+            <span className="bg-teal-700 text-white text-[9px] font-mono px-1.5 py-0.5 rounded font-bold">{grnForm.voucher_no}</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("suppliers")}
-            className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 font-semibold text-xs sm:text-sm rounded-t-lg transition-colors border-b-2 shrink-0 ${
+            className={`flex items-center space-x-1.5 pb-2 px-2 sm:px-3 border-b-2 font-medium text-xs transition-all whitespace-nowrap cursor-pointer ${
               activeTab === "suppliers"
-                ? "border-teal-700 text-teal-800 bg-teal-50/50"
-                : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                ? "border-teal-700 text-teal-800 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" strokeLinecap="round" strokeLinejoin="round" />
+            <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
             </svg>
-            <span>Pharma Companies &amp; Suppliers Directory</span>
-            <span className="text-xs text-slate-400 font-normal">({suppliers.length})</span>
+            <span className="hidden sm:inline">Pharma Companies &amp; Suppliers Directory</span>
+            <span className="sm:hidden">Suppliers</span>
+            <span className="text-slate-400 text-[10px]">({suppliers.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("bills")}
-            className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 font-semibold text-xs sm:text-sm rounded-t-lg transition-colors border-b-2 shrink-0 ${
+            className={`hidden md:flex items-center space-x-1.5 pb-2 px-3 border-b-2 font-medium text-xs transition-all whitespace-nowrap cursor-pointer ${
               activeTab === "bills"
-                ? "border-teal-700 text-teal-800 bg-teal-50/50"
-                : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                ? "border-teal-700 text-teal-800 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 17.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" strokeLinecap="round" strokeLinejoin="round" />
+            <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
             </svg>
-            <span>All Purchase Bills &amp; Invoices Log</span>
-            <span className="text-xs text-slate-400 font-normal">({purchases.length})</span>
+            <span>All Purchase Bills Log</span>
+            <span className="text-slate-400 text-[10px]">({purchases.length})</span>
           </button>
         </div>
-        <div className="flex items-center gap-2 pb-2 self-end sm:self-auto shrink-0">
-          <div className="bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl text-right shadow-2xs">
-            <span className="text-[9.5px] text-rose-800 font-bold uppercase tracking-wider mr-1">Credit Due:</span>
-            <span className="text-xs font-black text-rose-900">Rs. {totalSupplierPayables.toLocaleString()}</span>
-          </div>
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Godown Synced
+        <div className="hidden sm:flex items-center space-x-2 pb-1.5 text-xs">
+          <span className="text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-[11px]">
+            CREDIT DUE: <span className="font-bold">Rs. {totalSupplierPayables.toLocaleString()}</span>
           </span>
         </div>
       </div>
 
-      {/* TAB 0: DrCreate & MS Access Purchase GRN Form */}
+      {/* TAB 0: CliniCore v3.4 Minimal Company Purchase GRN Invoice Entry */}
       {activeTab === "grn_form" && (
-        <div className="space-y-4 animate-fade-in">
-          {/* HeroActionBanner */}
-          <section className="bg-teal-700 text-white px-3.5 sm:px-6 py-3.5 sm:py-4 rounded-2xl shadow-sm border border-teal-800" data-purpose="hero-action-banner">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="flex items-center gap-2.5 sm:gap-3.5">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center justify-center text-white shrink-0 shadow-inner">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006V8.706c0-.594-.237-1.164-.659-1.586l-3.54-3.54A2.25 2.25 0 0014.25 3H6.75a2.25 2.25 0 00-2.25 2.25v3.456m16.5 5.444l-4.5-4.5m0 0L12 12m4.5-4.5H12" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold tracking-wider uppercase bg-white/15 text-teal-100 border border-white/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
-                      Pharmacy / Godown Company Stock Inward
-                    </span>
-                  </div>
-                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-white flex flex-wrap items-center gap-1.5 sm:gap-2.5 mt-0.5">
-                    <span>Company Purchase Invoice Entry</span>
-                  </h1>
-                </div>
+        <div className="flex-1 flex flex-col min-h-0 gap-2 overflow-hidden animate-fade-in">
+          {/* Compact Inward Title Header */}
+          <div className="flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                </svg>
               </div>
-              <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowGRNListModal(true)}
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-white text-xs sm:text-sm font-semibold transition-colors shadow-xs"
-                >
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span className="whitespace-nowrap">Show Invoices List</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveGRNBill}
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-white text-teal-800 hover:bg-teal-50 text-xs sm:text-sm font-bold shadow-md shadow-black/10 transition-all whitespace-nowrap cursor-pointer"
-                >
-                  <svg className="w-4 h-4 text-teal-700 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span>Save Bill</span>
-                </button>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-tight">Company Purchase Invoice</h1>
+                  <span className="text-[10px] font-mono font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">Stock Inward</span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium hidden sm:block">Record incoming supplier bill and update inventory automatically</p>
               </div>
             </div>
-          </section>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowGRNListModal(true)}
+                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200 transition-colors shadow-2xs cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M4 6h16M4 10h16M4 14h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                </svg>
+                <span className="hidden sm:inline">Invoices List</span>
+                <span className="sm:hidden">List</span>
+              </button>
+            </div>
+          </div>
 
-          {/* Section 1: Company / Party Info */}
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden" data-purpose="company-party-info-card">
-            <div className="h-1 bg-teal-700"></div>
-            <div className="p-3.5 sm:p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 pb-3 sm:pb-4 mb-3 sm:mb-4 border-b border-slate-100">
-                <div className="flex items-center gap-2 sm:gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 shrink-0">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
-                      <span>COMPANY / PARTY INFO</span>
-                    </h2>
-                  </div>
+          {/* Compact Unified Container: Info + Add Line + Table */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col flex-1 min-h-0 overflow-hidden">
+            {/* SECTION 1: Company & Invoice Info */}
+            <div className="p-2 sm:p-2.5 xl:p-2.5 border-b border-slate-200 shrink-0">
+              <div className="flex items-center justify-between pb-1.5">
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-teal-600"></span>
+                  <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Company &amp; Invoice Info</h2>
                 </div>
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 bg-teal-50 border border-teal-200 text-teal-700 rounded-full text-[11px] sm:text-xs font-semibold self-start sm:self-auto">
-                  <span className="relative flex h-2 w-2 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-600"></span>
-                  </span>
-                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span className="truncate">AUTO-FOCUS &amp; KEYBOARD NAVIGATION ACTIVE</span>
-                </div>
+                <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">Tab / Enter to advance</span>
               </div>
-
-              {/* Form Fields Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {/* 1. Invoice Date */}
-                <div className="col-span-1">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 sm:mb-1.5" htmlFor="invoice-date">
-                    <span className="inline-flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Invoice Date</span>
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="invoice-date"
-                      type="text"
-                      value={grnForm.date}
-                      onChange={(e) => setGrnForm({ ...grnForm, date: e.target.value })}
-                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 shadow-2xs transition-all"
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. System Entry # */}
-                <div className="col-span-1">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 sm:mb-1.5" htmlFor="system-entry-num">
-                    <span className="inline-flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M5.25 8.25h13.5m-13.5 7.5h13.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>System Entry #</span>
-                    </span>
-                  </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-2 text-xs">
+                {/* Date */}
+                <div className="col-span-1 sm:col-span-1 xl:col-span-2">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Date</label>
                   <input
-                    id="system-entry-num"
+                    type="text"
+                    value={grnForm.date}
+                    onChange={(e) => setGrnForm({ ...grnForm, date: e.target.value })}
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 focus:border-teal-600 bg-white font-medium text-slate-800"
+                  />
+                </div>
+                {/* System Entry # */}
+                <div className="col-span-1 sm:col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Entry #</label>
+                  <input
                     type="text"
                     value={grnForm.voucher_no}
                     readOnly
-                    className="w-full bg-teal-50/60 border border-teal-200 rounded-lg px-3 py-2 text-xs sm:text-sm font-bold text-teal-800 cursor-not-allowed shadow-2xs font-mono"
+                    className="w-full h-8 text-xs border border-slate-200 bg-slate-50 rounded-lg px-1.5 text-center font-bold font-mono text-teal-800"
                   />
                 </div>
-
-                {/* 3. Co Invoice / Bill # * */}
-                <div className="col-span-1">
-                  <div className="flex items-center justify-between mb-1 sm:mb-1.5">
-                    <label className="text-xs font-semibold text-slate-700" htmlFor="co-invoice-num">
-                      <span>Co Invoice / Bill # <span className="text-rose-500">*</span></span>
-                    </label>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Main Ref</span>
-                  </div>
+                {/* Co Invoice / Bill # */}
+                <div className="col-span-1 sm:col-span-2 xl:col-span-2">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Bill / Inv # <span className="text-rose-500">*</span></label>
                   <input
-                    id="co-invoice-num"
                     type="text"
                     value={grnForm.grn_no}
                     onChange={(e) => setGrnForm({ ...grnForm, grn_no: e.target.value })}
@@ -1369,107 +1319,42 @@ export default function SupplierPurchases() {
                         grnProductInputRef.current?.focus();
                       }
                     }}
-                    placeholder="0"
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 shadow-2xs transition-all font-mono"
+                    placeholder="Inv No."
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-medium text-slate-800 focus:border-teal-600"
                   />
                 </div>
-
-                {/* 4. Salesman / Booker */}
-                <div className="col-span-1">
-                  <div className="flex items-center justify-between mb-1 sm:mb-1.5">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1" htmlFor="salesman-select">
-                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Salesman / Booker</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewRefInput(!showNewRefInput)}
-                      className="text-[11px] font-bold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-0.5 shrink-0"
-                    >
-                      <span>{showNewRefInput ? "Cancel" : "+ New Salesman"}</span>
-                    </button>
-                  </div>
-                  {showNewRefInput ? (
-                    <div className="flex gap-1">
-                      <input
-                        type="text"
-                        value={newRefText}
-                        onChange={(e) => setNewRefText(e.target.value)}
-                        placeholder="New Salesman Name..."
-                        className="flex-1 bg-white border border-teal-400 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800"
-                        autoFocus
-                        onKeyDown={(e) => e.key === "Enter" && handleAddNewReference()}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddNewReference}
-                        className="bg-teal-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-xs hover:bg-teal-800"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  ) : (
-                    <ExpandableCombobox
-                      value={grnForm.reference}
-                      onChange={(val) => setGrnForm({ ...grnForm, reference: val })}
-                      options={referenceOptions}
-                      placeholder="Select or Type Salesman..."
-                      searchPlaceholder="Search or type new Salesman..."
-                      onAddNew={() => setShowNewRefInput(true)}
-                      addNewLabel="+ New Salesman"
-                    />
-                  )}
+                {/* Bilty / Tracking # */}
+                <div className="col-span-1 sm:col-span-2 xl:col-span-2">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Bilty / Tracking #</label>
+                  <input
+                    type="text"
+                    value={grnForm.bilty_no}
+                    onChange={(e) => setGrnForm({ ...grnForm, bilty_no: e.target.value })}
+                    placeholder="e.g. BL-4209"
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-mono font-medium text-slate-800 focus:border-teal-600"
+                  />
                 </div>
-
-                {/* 5. Supplier Code */}
-                <div className="col-span-1">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 sm:mb-1.5" htmlFor="supplier-code">
-                    <span className="inline-flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Supplier Code</span>
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="supplier-code"
-                      type="text"
-                      value={grnSupplierCode}
-                      onChange={(e) => handleSupplierCodeChange(e.target.value)}
-                      placeholder="E.G. SUP-001, BM, GHR"
-                      className="w-full bg-amber-50/20 border border-amber-300/80 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-2xs uppercase font-mono"
-                    />
-                    {grnSupplierCode && (
-                      <button
-                        type="button"
-                        onClick={() => handleSupplierCodeChange("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                        title="Clear Code"
-                      >
-                        <span className="material-symbols-outlined text-xs">close</span>
-                      </button>
-                    )}
-                  </div>
+                {/* Supplier Code */}
+                <div className="col-span-1 sm:col-span-2 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5 truncate">Supplier Code</label>
+                  <input
+                    type="text"
+                    value={grnSupplierCode}
+                    onChange={(e) => handleSupplierCodeChange(e.target.value)}
+                    placeholder="SUP-01"
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-1.5 font-mono uppercase text-slate-700 font-medium focus:border-teal-600 bg-white"
+                  />
                 </div>
-
-                {/* 6. Company / Party Name * (Spans 2 on sm/lg) */}
-                <div className="col-span-1 sm:col-span-2">
-                  <div className="flex items-center justify-between mb-1 sm:mb-1.5">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Company / Party Name <span className="text-rose-500">*</span></span>
-                    </label>
+                {/* Company / Supplier Select */}
+                <div className="col-span-2 sm:col-span-2 xl:col-span-2">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block text-[10px] font-semibold text-slate-600">Company / Supplier <span className="text-rose-500">*</span></label>
                     <button
                       type="button"
                       onClick={() => setShowAddSupplier(true)}
-                      className="text-[11px] text-teal-700 hover:underline cursor-pointer font-bold"
+                      className="text-[9px] text-teal-700 font-bold hover:underline"
                     >
-                      + New Party
+                      + New
                     </button>
                   </div>
                   <ExpandableCombobox
@@ -1481,575 +1366,355 @@ export default function SupplierPurchases() {
                       }
                     }}
                     options={accountOptions}
-                    placeholder="Select or Search Company / Party..."
-                    searchPlaceholder="Search Companies & Distributors..."
+                    placeholder="Select Supplier..."
+                    searchPlaceholder="Search Companies..."
                     required={true}
                   />
                 </div>
-
-                {/* 7. Payment Mode Segmented Control */}
-                <div className="col-span-1">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 sm:mb-1.5">
-                    <span className="inline-flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Payment Mode</span>
-                    </span>
-                  </label>
-                  <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                {/* Payment Mode */}
+                <div className="col-span-2 sm:col-span-2 xl:col-span-2">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Payment Mode</label>
+                  <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-center">
                     <button
                       type="button"
                       onClick={() => setGrnForm({ ...grnForm, payment_mode: "Cash" })}
-                      className={`py-1.5 px-2 sm:px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+                      className={`py-1 px-1 rounded-md font-bold text-[10px] shadow-2xs truncate transition-all ${
                         grnForm.payment_mode === "Cash"
-                          ? "bg-teal-700 text-white shadow-xs"
-                          : "text-slate-600 hover:text-slate-900"
+                          ? "bg-teal-700 text-white"
+                          : "text-slate-600 hover:text-slate-900 bg-transparent"
                       }`}
                     >
-                      <span>Cash Paid</span>
+                      Cash Paid
                     </button>
                     <button
                       type="button"
                       onClick={() => setGrnForm({ ...grnForm, payment_mode: "Credit" })}
-                      className={`py-1.5 px-2 sm:px-3 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 ${
+                      className={`py-1 px-1 rounded-md font-bold text-[10px] truncate transition-all ${
                         grnForm.payment_mode === "Credit"
-                          ? "bg-rose-700 text-white shadow-xs"
-                          : "text-slate-600 hover:text-slate-900"
+                          ? "bg-rose-700 text-white shadow-2xs"
+                          : "text-slate-600 hover:text-slate-900 bg-transparent"
                       }`}
                     >
-                      <span className="truncate">Credit (Payable)</span>
+                      Credit (Udhar)
                     </button>
                   </div>
-                </div>
-
-                {/* 8. Transport Carrier (Spans 2 on sm/lg) */}
-                <div className="col-span-1 sm:col-span-2">
-                  <div className="flex items-center justify-between mb-1 sm:mb-1.5">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.635l-3.25 3.25" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Transport Carrier</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewTransportInput(!showNewTransportInput)}
-                      className="text-[11px] font-bold text-teal-700 hover:text-teal-800 hover:underline shrink-0"
-                    >
-                      {showNewTransportInput ? "Cancel" : "+ New Carrier"}
-                    </button>
-                  </div>
-                  {showNewTransportInput ? (
-                    <div className="flex gap-1">
-                      <input
-                        type="text"
-                        value={newTransportText}
-                        onChange={(e) => setNewTransportText(e.target.value)}
-                        placeholder="New Transport Carrier Name..."
-                        className="flex-1 bg-white border border-teal-400 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800"
-                        autoFocus
-                        onKeyDown={(e) => e.key === "Enter" && handleAddNewTransport()}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddNewTransport}
-                        className="bg-teal-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-xs hover:bg-teal-800"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  ) : (
-                    <ExpandableCombobox
-                      value={grnForm.transport}
-                      onChange={(val) => setGrnForm({ ...grnForm, transport: val })}
-                      options={transportOptions}
-                      placeholder="Carrier (e.g. By Hand)..."
-                      searchPlaceholder="Search Transport Carrier..."
-                      onAddNew={() => setShowNewTransportInput(true)}
-                      addNewLabel="+ New Carrier"
-                    />
-                  )}
-                </div>
-
-                {/* 9. Bilty / Tracking # (Spans 2 on sm/lg) */}
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 sm:mb-1.5" htmlFor="bilty-number">
-                    <span className="inline-flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Bilty / Tracking #</span>
-                    </span>
-                  </label>
-                  <input
-                    id="bilty-number"
-                    type="text"
-                    value={grnForm.bilty_no}
-                    onChange={(e) => setGrnForm({ ...grnForm, bilty_no: e.target.value })}
-                    placeholder="Tracking / Bilty No"
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 shadow-2xs transition-all"
-                  />
-                </div>
-
-                {/* Linked Supplier Info Capsule */}
-                {matchedGrnSupplier && (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 bg-teal-50/80 border border-teal-200 rounded-xl p-3 flex flex-wrap items-center justify-between text-xs text-teal-950 gap-2 shadow-2xs">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-teal-700 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span className="font-semibold">
-                        Linked Supplier: <strong className="font-mono bg-white px-2 py-0.5 rounded border border-teal-200 text-teal-900">#{matchedGrnSupplier.supplier_code || matchedGrnSupplier.id}</strong> — {matchedGrnSupplier.name} ({matchedGrnSupplier.phone || "No Phone"})
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[11px] font-medium text-slate-600">
-                        Current Udhaar Balance: <strong className="text-rose-700 font-bold">Rs. {Number(matchedGrnSupplier.current_balance || matchedGrnSupplier.balance_due || 0).toLocaleString()}</strong>
-                      </span>
-                      <span className="text-[10px] bg-teal-700 text-white px-2 py-0.5 rounded-full font-bold">
-                        Auto-Filled
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* Section 2: Fast Line Item Entry */}
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3.5 sm:p-5" data-purpose="fast-line-item-entry-card">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 pb-3 sm:pb-4 mb-3 sm:mb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2 sm:gap-2.5">
-                <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 shrink-0">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
-                  <span>FAST LINE ITEM ENTRY</span>
-                </h2>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap self-stretch sm:self-auto justify-between sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowQuickAddProductModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-700 text-white hover:bg-teal-800 text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                >
-                  <span>+ Add New Product</span>
-                </button>
-                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-medium">
-                  <kbd className="px-1 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-semibold text-slate-700">Enter</kbd>
-                  <span className="hidden sm:inline">Press Enter to Move Next</span>
-                  <span className="sm:hidden">Next</span>
                 </div>
               </div>
             </div>
 
-            {/* Line Item Fast Grid Inputs */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-11 gap-2.5 sm:gap-3 items-end">
-              {/* Product Code */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1" htmlFor="item-code">Item Code</label>
-                <input
-                  id="item-code"
-                  type="text"
-                  value={grnCart.product_code}
-                  onChange={(e) => setGrnCart({ ...grnCart, product_code: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleLookupGRNByCode(grnCart.product_code);
-                    }
-                  }}
-                  placeholder="Code + Enter"
-                  className="w-full bg-amber-50/40 border border-amber-300 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-center uppercase"
-                />
-              </div>
-
-              {/* Product Name */}
-              <div className="col-span-2 sm:col-span-2 md:col-span-3 lg:col-span-3">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-700" htmlFor="item-product-name">
-                    Product Name <span className="text-rose-500">*</span>
-                  </label>
+            {/* SECTION 2: Fast Line Item Entry */}
+            <div className="p-2 sm:p-2.5 xl:p-2.5 border-b border-slate-200 bg-slate-50/50 shrink-0">
+              <div className="flex items-center justify-between pb-1.5">
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-teal-600"></span>
+                  <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Add Line Item</h2>
+                </div>
+                <div className="flex items-center space-x-2">
                   <button
                     type="button"
-                    onClick={() => setGrnShowAllCompanies(!grnShowAllCompanies)}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-50 text-[10px] font-bold text-teal-700 border border-teal-200 hover:bg-teal-100 transition-colors"
+                    onClick={() => setShowQuickAddProductModal(true)}
+                    className="text-[10px] font-bold text-teal-700 hover:underline"
                   >
-                    <span>
-                      {grnShowAllCompanies
-                        ? `All (${inventoryList.length})`
-                        : `${grnForm.account_name || "Company"} (${filteredGrnInventory.length})`}
-                    </span>
+                    + Add New Product
+                  </button>
+                  <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">Press Enter to Add</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 xl:grid-cols-12 gap-2 text-xs items-end">
+                {/* Code */}
+                <div className="col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Code</label>
+                  <input
+                    type="text"
+                    value={grnCart.product_code}
+                    onChange={(e) => setGrnCart({ ...grnCart, product_code: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleLookupGRNByCode(grnCart.product_code);
+                      }
+                    }}
+                    placeholder="CODE"
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-mono uppercase text-slate-700 focus:border-teal-600 bg-white"
+                  />
+                </div>
+                {/* Product Name */}
+                <div className="col-span-2 sm:col-span-3 md:col-span-3 xl:col-span-4">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block text-[10px] font-semibold text-slate-600">Product Name <span className="text-rose-500">*</span></label>
+                    <button
+                      type="button"
+                      onClick={() => setGrnShowAllCompanies(!grnShowAllCompanies)}
+                      className="text-[9px] text-teal-700 font-bold hover:underline"
+                    >
+                      {grnShowAllCompanies ? `All (${inventoryList.length})` : `Filtered (${filteredGrnInventory.length})`}
+                    </button>
+                  </div>
+                  <ExpandableCombobox
+                    value={grnCart.inventory_id}
+                    onChange={(val) => handleSelectGRNMedicine(val)}
+                    options={productOptions}
+                    placeholder="Search product..."
+                    searchPlaceholder="Type medicine name..."
+                    required={true}
+                  />
+                </div>
+                {/* Batch # */}
+                <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Batch</label>
+                  <input
+                    ref={batchNoRef}
+                    type="text"
+                    value={grnCart.batch_no}
+                    onChange={(e) => handleUpdateGRNCart("batch_no", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        expDateRef.current?.focus();
+                      }
+                    }}
+                    placeholder="BAT-01"
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-mono focus:border-teal-600 bg-white"
+                  />
+                </div>
+                {/* Expiry */}
+                <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Exp Date</label>
+                  <input
+                    ref={expDateRef}
+                    type="text"
+                    value={grnCart.expiry_date}
+                    onChange={(e) => handleUpdateGRNCart("expiry_date", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        qtyRef.current?.focus();
+                      }
+                    }}
+                    placeholder="MM/YY"
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-mono focus:border-teal-600 bg-white"
+                  />
+                </div>
+                {/* Qty */}
+                <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-700 mb-0.5">Qty</label>
+                  <input
+                    ref={qtyRef}
+                    type="number"
+                    min="1"
+                    value={grnCart.qty}
+                    onChange={(e) => handleUpdateGRNCart("qty", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        bonusQtyRef.current?.focus();
+                      }
+                    }}
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 text-center font-bold text-slate-800 focus:border-teal-600 bg-white"
+                  />
+                </div>
+                {/* Bonus */}
+                <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-amber-700 mb-0.5">Bonus</label>
+                  <input
+                    ref={bonusQtyRef}
+                    type="number"
+                    min="0"
+                    value={grnCart.bonus_qty}
+                    onChange={(e) => handleUpdateGRNCart("bonus_qty", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        rateRef.current?.focus();
+                      }
+                    }}
+                    className="w-full h-8 text-xs border border-amber-300 bg-amber-50/50 rounded-lg px-2 text-center font-semibold text-amber-800 focus:border-teal-600"
+                  />
+                </div>
+                {/* Rate (TP) */}
+                <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Rate (TP)</label>
+                  <input
+                    ref={rateRef}
+                    type="number"
+                    step="0.01"
+                    value={grnCart.rate}
+                    onChange={(e) => handleUpdateGRNCart("rate", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        discPctRef.current?.focus();
+                      }
+                    }}
+                    placeholder="0.00"
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-medium text-slate-800 focus:border-teal-600 bg-white"
+                  />
+                </div>
+                {/* Total Preview */}
+                <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Total</label>
+                  <div className="h-8 flex items-center justify-center bg-teal-50 border border-teal-200 rounded-lg text-teal-800 font-bold font-mono text-[11px] px-1 truncate">
+                    Rs. {Number(grnCart.net_amount || grnCart.gross || 0).toLocaleString()}
+                  </div>
+                </div>
+                {/* Add Button */}
+                <div className="col-span-2 sm:col-span-2 md:col-span-1 xl:col-span-1">
+                  <button
+                    ref={addBtnRef}
+                    type="button"
+                    onClick={handleAddGRNItem}
+                    className="w-full h-8 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-bold flex items-center justify-center space-x-1 transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    </svg>
+                    <span>Add</span>
                   </button>
                 </div>
-                <ExpandableCombobox
-                  value={grnCart.inventory_id}
-                  onChange={(val) => handleSelectGRNMedicine(val)}
-                  options={productOptions}
-                  placeholder={
-                    grnShowAllCompanies
-                      ? "-- Search All Medicines --"
-                      : `-- ${grnForm.account_name || "Supplier"} Products (${filteredGrnInventory.length}) --`
-                  }
-                  searchPlaceholder={
-                    grnShowAllCompanies
-                      ? "Search medicines catalogue..."
-                      : `Search within ${grnForm.account_name || "Company"}...`
-                  }
-                  required={true}
-                />
-              </div>
-
-              {/* Batch # */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1" htmlFor="item-batch">Batch #</label>
-                <input
-                  ref={batchNoRef}
-                  id="item-batch"
-                  type="text"
-                  value={grnCart.batch_no}
-                  onChange={(e) => handleUpdateGRNCart("batch_no", e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      expDateRef.current?.focus();
-                    }
-                  }}
-                  placeholder="250525"
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono font-medium text-slate-800 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 text-center"
-                />
-              </div>
-
-              {/* Exp Date (MM/YY) */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1" htmlFor="item-exp">Exp Date</label>
-                <input
-                  ref={expDateRef}
-                  id="item-exp"
-                  type="text"
-                  value={grnCart.expiry_date}
-                  onChange={(e) => handleUpdateGRNCart("expiry_date", e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      qtyRef.current?.focus();
-                    }
-                  }}
-                  placeholder="MM/YY"
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono font-medium text-slate-800 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 text-center uppercase"
-                />
-              </div>
-
-              {/* Paid Qty */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1 text-center" htmlFor="item-qty">Paid Qty</label>
-                <input
-                  ref={qtyRef}
-                  id="item-qty"
-                  type="number"
-                  min="1"
-                  value={grnCart.qty}
-                  onChange={(e) => handleUpdateGRNCart("qty", e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      bonusQtyRef.current?.focus();
-                    }
-                  }}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 text-center"
-                />
-              </div>
-
-              {/* Bonus */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-amber-700 mb-1 flex items-center justify-center gap-1" htmlFor="item-bonus">
-                  <svg className="w-3 h-3 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span>Bonus</span>
-                </label>
-                <input
-                  ref={bonusQtyRef}
-                  id="item-bonus"
-                  type="number"
-                  min="0"
-                  value={grnCart.bonus_qty}
-                  onChange={(e) => handleUpdateGRNCart("bonus_qty", e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      rateRef.current?.focus();
-                    }
-                  }}
-                  className="w-full bg-amber-50/40 border border-amber-300 rounded-lg px-2 py-1.5 text-xs font-semibold text-amber-900 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-center"
-                />
-              </div>
-
-              {/* Rate (TP) */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1 text-center" htmlFor="item-rate">Rate (TP)</label>
-                <input
-                  ref={rateRef}
-                  id="item-rate"
-                  type="number"
-                  value={grnCart.rate}
-                  onChange={(e) => handleUpdateGRNCart("rate", e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      discPctRef.current?.focus();
-                    }
-                  }}
-                  placeholder="0.00"
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 text-center"
-                />
-              </div>
-
-              {/* Gross */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1 text-center">Gross</label>
-                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-600 text-center truncate">
-                  {Number(grnCart.gross || 0).toFixed(2)}
-                </div>
-              </div>
-
-              {/* Disc % */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1 text-center" htmlFor="item-disc-pct">Disc %</label>
-                <input
-                  ref={discPctRef}
-                  id="item-disc-pct"
-                  type="number"
-                  value={grnCart.disc_pct}
-                  onChange={(e) => handleUpdateGRNCart("disc_pct", e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      discFlatRef.current?.focus();
-                    }
-                  }}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 text-center"
-                />
-              </div>
-
-              {/* Disc 0 (Extra/Cash) */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1 text-center" htmlFor="item-disc-val">Disc 0</label>
-                <input
-                  ref={discFlatRef}
-                  id="item-disc-val"
-                  type="number"
-                  value={grnCart.disc_flat}
-                  onChange={(e) => handleUpdateGRNCart("disc_flat", e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddGRNItem(e)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-teal-600 focus:border-teal-600 text-center"
-                />
-              </div>
-
-              {/* Net Amount Output Pill */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-2 lg:col-span-1">
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1 text-center">Net Amt</label>
-                <div className="w-full bg-teal-50 border border-teal-200 rounded-lg px-2 py-1.5 text-xs font-bold text-teal-800 text-center truncate">
-                  Rs. {Number(grnCart.net_amount || 0).toLocaleString()}
-                </div>
-              </div>
-
-              {/* + Add Button */}
-              <div className="col-span-1 sm:col-span-1 md:col-span-2 lg:col-span-1">
-                <button
-                  ref={addBtnRef}
-                  type="button"
-                  onClick={handleAddGRNItem}
-                  className="w-full py-1.5 px-3 bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-sm shadow-teal-700/20 transition-colors cursor-pointer"
-                >
-                  <span>+ Add</span>
-                </button>
               </div>
             </div>
-          </section>
 
-          {/* Section 3: Purchase Items Table */}
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden" data-purpose="purchase-items-table-card">
-            <div ref={grnTableContainerRef} className="overflow-x-auto w-full max-h-80 min-h-[160px] custom-scrollbar">
-              <table className="w-full text-left border-collapse min-w-[700px]">
-                <thead>
-                  <tr className="bg-teal-700 text-white text-[11px] uppercase tracking-wider font-bold select-none sticky top-0 z-10">
-                    <th className="py-3 px-4" scope="col">Item Name</th>
-                    <th className="py-3 px-3 text-center" scope="col">Batch #</th>
-                    <th className="py-3 px-3 text-center" scope="col">Exp Date</th>
-                    <th className="py-3 px-3 text-center" scope="col">Qty</th>
-                    <th className="py-3 px-3 text-right" scope="col">Rate</th>
-                    <th className="py-3 px-3 text-right" scope="col">Gross</th>
-                    <th className="py-3 px-3 text-center" scope="col">Disc(%)</th>
-                    <th className="py-3 px-3 text-center" scope="col">Disc(0)</th>
-                    <th className="py-3 px-4 text-right" scope="col">Net Amount</th>
-                    <th className="py-3 px-4 text-center" scope="col">Action</th>
+            {/* SECTION 3: Inward Items Scrollable Table Area */}
+            <div ref={grnTableContainerRef} className="flex-1 min-h-[140px] max-h-[420px] overflow-y-auto overflow-x-auto relative custom-scrollbar">
+              <table className="w-full text-left text-xs border-collapse min-w-[760px] xl:min-w-full">
+                <thead className="bg-teal-700 text-white uppercase text-[10px] tracking-wider font-semibold sticky top-0 z-10 select-none shadow-xs">
+                  <tr>
+                    <th className="py-2 px-3">Item Name</th>
+                    <th className="py-2 px-3">Batch #</th>
+                    <th className="py-2 px-3">Exp Date</th>
+                    <th className="py-2 px-3 text-center">Qty</th>
+                    <th className="py-2 px-3 text-center">Bonus</th>
+                    <th className="py-2 px-3 text-right">Rate (TP)</th>
+                    <th className="py-2 px-3 text-right">Gross</th>
+                    <th className="py-2 px-3 text-center">Disc (%)</th>
+                    <th className="py-2 px-3 text-right">Net Amount</th>
+                    <th className="py-2 px-3 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                   {grnItems.length === 0 ? (
                     <tr>
-                      <td className="py-12 sm:py-14 text-center px-4" colSpan="10">
-                        <div className="flex flex-col items-center justify-center max-w-md mx-auto">
-                          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600 mb-3 shadow-2xs">
-                            <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                              <path d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </div>
-                          <p className="text-sm font-semibold text-slate-700">No medicine items in this purchase bill yet.</p>
-                          <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                            Select a product above, enter Batch/Exp, and click <span className="text-teal-700 font-semibold">Add</span> or press Enter key to append line items.
-                          </p>
+                      <td colSpan="10" className="py-10 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <span className="text-xs font-semibold text-slate-600">No items in this purchase bill yet</span>
+                          <span className="text-[11px] text-slate-400">Search and add products above to build invoice</span>
                         </div>
                       </td>
                     </tr>
                   ) : (
-                    <>
-                      {grnItems.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-teal-50/40 transition-colors">
-                          <td className="px-4 py-3 font-bold text-slate-900">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span>{item.medicine_name}</span>
-                              {item.product_code && (
-                                <span className="text-[10px] text-slate-400 font-mono">[{item.product_code}]</span>
-                              )}
-                              {item.packing && (
-                                <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">
-                                  {item.packing}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-center font-mono font-bold text-slate-800 bg-slate-50/70">
-                            {item.batch_no || "—"}
-                          </td>
-                          <td className="px-3 py-3 text-center font-semibold text-amber-900 bg-amber-50/40">
-                            {item.expiry_date || "—"}
-                          </td>
-                          <td className="px-3 py-3 text-center font-bold text-teal-800">
-                            {item.qty}
-                            {item.bonus_qty > 0 && (
-                              <span className="ml-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-bold">
-                                +{item.bonus_qty} Bonus
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-right text-slate-700 font-medium">Rs. {Number(item.rate).toLocaleString()}</td>
-                          <td className="px-3 py-3 text-right text-slate-700 font-medium">Rs. {Number(item.gross).toLocaleString()}</td>
-                          <td className="px-3 py-3 text-center text-slate-600">{item.disc_pct}</td>
-                          <td className="px-3 py-3 text-center text-slate-600">Rs. {item.disc_flat}</td>
-                          <td className="px-4 py-3 text-right font-black text-slate-900">Rs. {Number(item.net).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveGRNItem(idx)}
-                              className="text-rose-600 hover:text-rose-800 p-1 rounded-lg hover:bg-rose-50 transition-colors"
-                              title="Delete Row"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      <tr ref={grnItemsEndRef}>
-                        <td colSpan="10" className="p-0 border-0" />
+                    grnItems.map((item, idx) => (
+                      <tr key={item.id || idx} className="hover:bg-teal-50/40 transition-colors">
+                        <td className="py-1.5 px-3">
+                          <div className="font-bold text-slate-900 leading-tight">{item.medicine_name}</div>
+                          <div className="text-[10px] text-slate-400">
+                            {item.company_name || grnForm.account_name || "Pharma"} {item.product_code ? `• ${item.product_code}` : ""}
+                          </div>
+                        </td>
+                        <td className="py-1.5 px-3 font-mono text-[11px] text-slate-600">{item.batch_no || "—"}</td>
+                        <td className="py-1.5 px-3 font-mono text-[11px]">{item.expiry_date || "—"}</td>
+                        <td className="py-1.5 px-3 text-center">
+                          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">{item.qty}</span>
+                        </td>
+                        <td className="py-1.5 px-3 text-center">
+                          {Number(item.bonus_qty) > 0 ? (
+                            <span className="text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[10px]">
+                              +{item.bonus_qty}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-mono text-[11px]">0</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-3 text-right font-mono">Rs. {Number(item.rate).toFixed(2)}</td>
+                        <td className="py-1.5 px-3 text-right font-mono">{Number(item.gross || (item.qty * item.rate)).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                        <td className="py-1.5 px-3 text-center">
+                          {Number(item.disc_pct_num || parseInt(item.disc_pct) || 0) > 0 ? (
+                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-bold text-[10px]">
+                              {item.disc_pct}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">-</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-3 text-right font-bold text-teal-800 font-mono">
+                          Rs. {Number(item.net).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-1.5 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveGRNItem(idx)}
+                            className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Delete Row"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                            </svg>
+                          </button>
+                        </td>
                       </tr>
-                    </>
+                    ))
                   )}
+                  <tr ref={grnItemsEndRef}>
+                    <td colSpan="10" className="p-0 border-0" />
+                  </tr>
                 </tbody>
               </table>
             </div>
-          </section>
+          </div>
 
-          {/* StickyBottomFinancialBar */}
-          <div className="bg-white/95 backdrop-blur-md border border-slate-200 z-20 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 shadow-lg rounded-2xl" data-purpose="sticky-bottom-summary">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
-              {/* Left Action: Invoices Audit List */}
-              <div className="flex items-center justify-between md:justify-start">
-                <button
-                  type="button"
-                  onClick={() => setShowGRNListModal(true)}
-                  className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2 sm:py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                >
-                  <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span>Invoices Audit List</span>
-                </button>
+          {/* Fixed Bottom Settlement Dock */}
+          <footer className="bg-white border border-slate-200 rounded-xl p-2 sm:p-2.5 shadow-md shrink-0 sticky bottom-0 z-20">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+              {/* Left: Counters & Shortcut Cue */}
+              <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start text-xs">
+                <div className="text-slate-500 font-medium">
+                  <span className="text-slate-400">Items:</span> <strong className="text-slate-800 font-mono">{grnItems.length}</strong>
+                </div>
+                <div className="h-3.5 w-[1px] bg-slate-200"></div>
+                <div className="text-slate-500 font-medium">
+                  <span className="text-slate-400">Total Qty:</span>{" "}
+                  <strong className="text-slate-800 font-mono">
+                    {grnTotalPaidQty} {grnTotalBonusQty > 0 ? `+ ${grnTotalBonusQty} Free` : ""}
+                  </strong>
+                </div>
+                <span className="text-[10px] text-slate-400 hidden xl:inline font-mono">(Shortcut: F9 to Save)</span>
               </div>
-
-              {/* Right: Financial Breakdown & Primary Save Button */}
-              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
-                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5">
-                  {/* Items Subtotal */}
-                  <div className="bg-slate-50 border border-slate-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-center min-w-[95px] sm:min-w-[105px]">
-                    <span className="block text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subtotal</span>
-                    <span className="text-xs sm:text-sm font-bold text-slate-800">
-                      Rs. {grnItems.reduce((s, it) => s + (Number(it.net) || 0), 0).toLocaleString()}
-                    </span>
-                  </div>
-
-                  {/* Extra Disc (Rs.) */}
-                  <div className="bg-amber-50/50 border border-amber-200 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-center min-w-[95px] sm:min-w-[110px]">
-                    <label className="block text-[9px] sm:text-[10px] font-bold text-amber-800 uppercase tracking-wider" htmlFor="extra-disc-input">Extra Disc</label>
-                    <input
-                      id="extra-disc-input"
-                      type="number"
-                      min="0"
-                      value={grnForm.extra_bill_discount}
-                      onChange={(e) => setGrnForm({ ...grnForm, extra_bill_discount: e.target.value })}
-                      className="w-14 sm:w-16 bg-transparent border-0 p-0 text-xs sm:text-sm font-bold text-amber-900 text-center focus:ring-0"
-                    />
-                  </div>
-
-                  {/* Freight / Bilty (Rs.) */}
-                  <div className="bg-sky-50/50 border border-sky-200 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-center min-w-[95px] sm:min-w-[115px]">
-                    <label className="block text-[9px] sm:text-[10px] font-bold text-sky-800 uppercase tracking-wider" htmlFor="freight-input">Freight</label>
-                    <input
-                      id="freight-input"
-                      type="number"
-                      min="0"
-                      value={grnForm.freight_charges}
-                      onChange={(e) => setGrnForm({ ...grnForm, freight_charges: e.target.value })}
-                      className="w-14 sm:w-16 bg-transparent border-0 p-0 text-xs sm:text-sm font-bold text-sky-900 text-center focus:ring-0"
-                    />
-                  </div>
-
-                  {/* Net Payable (Highlighted Mint Container) */}
-                  <div className="bg-teal-50 border border-teal-300 px-2.5 sm:px-3.5 py-1 rounded-xl text-center min-w-[95px] sm:min-w-[130px] flex flex-col justify-center">
-                    <span className="text-[9px] sm:text-[10px] font-bold text-teal-900 uppercase tracking-wide flex items-center justify-center gap-1">
-                      <span>NET PAYABLE</span>
-                    </span>
-                    <span className="text-sm sm:text-base md:text-lg font-black text-teal-950 leading-tight">
-                      Rs. {Math.max(
-                        0,
-                        grnItems.reduce((s, it) => s + (Number(it.net) || 0), 0) -
-                          (Number(grnForm.extra_bill_discount) || 0) +
-                          (Number(grnForm.freight_charges) || 0)
-                      ).toLocaleString()}
-                    </span>
+              {/* Right: Gross, Discount, Net Payable, Action Button */}
+              <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 w-full sm:w-auto">
+                {/* Gross Total */}
+                <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-slate-50 border border-slate-200 rounded-lg text-right">
+                  <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-semibold leading-tight">Gross Total</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-slate-700 font-mono leading-none">
+                    Rs. {grnTotalGross.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {/* Discount */}
+                <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-emerald-50/70 border border-emerald-200 rounded-lg text-right">
+                  <span className="text-[8px] uppercase tracking-wider text-emerald-700 block font-semibold leading-tight">Discount</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-emerald-700 font-mono leading-none">
+                    - Rs. {grnTotalDiscount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {/* NET PAYABLE Highlight */}
+                <div className="px-2.5 sm:px-3 py-0.5 sm:py-1 bg-teal-50 border-2 border-teal-600 rounded-lg text-right">
+                  <span className="text-[8px] uppercase tracking-wider text-teal-700 block font-extrabold leading-tight">Net Payable</span>
+                  <div className="text-xs sm:text-sm font-extrabold text-teal-900 font-mono leading-none">
+                    Rs. {grnNetPayable.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
-
-                {/* Primary CTA: Save Invoice & Add to Stock */}
+                {/* Primary Action Button */}
                 <button
                   type="button"
                   onClick={handleSaveGRNBill}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white font-bold text-xs sm:text-sm shadow-md shadow-teal-700/20 transition-all shrink-0 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-bold text-xs shadow-sm flex items-center justify-center space-x-1.5 transition-transform active:scale-95 whitespace-nowrap cursor-pointer"
                 >
-                  <svg className="w-4 h-4 text-teal-200 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                    <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg className="w-4 h-4 text-teal-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                   </svg>
-                  <span>Save Invoice &amp; Add to Stock</span>
+                  <span>Save Invoice &amp; Add to Stock (F9)</span>
                 </button>
               </div>
             </div>
-          </div>
+          </footer>
         </div>
       )}
 

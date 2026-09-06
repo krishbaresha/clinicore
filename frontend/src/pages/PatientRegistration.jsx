@@ -409,7 +409,7 @@ function toTitleCase(str) {
               <div className="flex">
                 <div className="w-1/2 flex">
                   <span className="w-12 text-slate-700">Age &nbsp;:</span>
-                  <span>{formatPatientAge(receipt.patient) || "18"}</span>
+                  <span>{formatPatientAge(receipt.patient) !== "—" ? formatPatientAge(receipt.patient).replace(/[^0-9]/g, "") : "—"}</span>
                 </div>
                 <div className="w-1/2 flex">
                   <span className="w-16 text-slate-700">Gender &nbsp;:</span>

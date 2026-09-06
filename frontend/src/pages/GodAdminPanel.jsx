@@ -26,6 +26,8 @@ import {
   FileText,
   Building2,
   DollarSign,
+  ShoppingCart,
+  Package,
 } from "lucide-react";
 import { printExecutiveAuditReceipt, printExecutiveAuditDocument } from "../utils/thermalPrinter.js";
 
@@ -38,12 +40,13 @@ export default function GodAdminPanel() {
   const [users, setUsers] = useState([]);
 
   // Filters
-  const [activeTab, setActiveTab] = useState("all"); // 'all' | 'registrations' | 'sales' | 'collections' | 'discounts' | 'writeoffs'
+  const [activeTab, setActiveTab] = useState("all"); // 'all' | 'registrations' | 'sales' | 'purchases' | 'inventory' | 'discounts' | 'writeoffs'
   const [searchQuery, setSearchQuery] = useState("");
   const [staffFilter, setStaffFilter] = useState("all");
   const [dateRange, setDateRange] = useState("30_days"); // 'today' | 'yesterday' | '7_days' | '30_days' | 'this_month' | 'custom' | 'all'
   const [customStart, setCustomStart] = useState(() => new Date().toISOString().split("T")[0]);
   const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().split("T")[0]);
+  const [displayLimit, setDisplayLimit] = useState("all"); // '50' | '100' | '250' | '500' | 'all'
 
   const refreshData = () => {
     setAuditLogs(dbAuditLogs.getAll() || []);
@@ -58,18 +61,28 @@ export default function GodAdminPanel() {
     refreshData();
     const handleUpdate = () => refreshData();
     window.addEventListener("clinicflow_status_update", handleUpdate);
-    return () => window.removeEventListener("clinicflow_status_update", handleUpdate);
+    window.addEventListener("clinicflow_audit_logged", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    // Real-time polling fallback ensures zero lag even without manual trigger
+    const interval = setInterval(refreshData, 2000);
+    return () => {
+      window.removeEventListener("clinicflow_status_update", handleUpdate);
+      window.removeEventListener("clinicflow_audit_logged", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   // Filtered Date Range Bounds
   const dateBounds = useMemo(() => {
     const now = new Date();
     let start = new Date(0);
-    let end = new Date();
+    let end = new Date(Date.now() + 86400000); // 24-hour buffer prevents clock-skew dropoffs
 
     if (dateRange === "today") {
       start = new Date();
       start.setHours(0, 0, 0, 0);
+      end = new Date(Date.now() + 86400000);
     } else if (dateRange === "yesterday") {
       start = new Date();
       start.setDate(now.getDate() - 1);
@@ -80,14 +93,20 @@ export default function GodAdminPanel() {
     } else if (dateRange === "7_days") {
       start = new Date();
       start.setDate(now.getDate() - 7);
+      end = new Date(Date.now() + 86400000);
     } else if (dateRange === "30_days") {
       start = new Date();
       start.setDate(now.getDate() - 30);
+      end = new Date(Date.now() + 86400000);
     } else if (dateRange === "this_month") {
       start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(Date.now() + 86400000);
     } else if (dateRange === "custom") {
       start = new Date(customStart + "T00:00:00");
       end = new Date(customEnd + "T23:59:59");
+    } else if (dateRange === "all") {
+      start = new Date(0);
+      end = new Date(Date.now() + 86400000 * 365);
     }
 
     return { startMs: start.getTime(), endMs: end.getTime() };
@@ -219,10 +238,16 @@ export default function GodAdminPanel() {
         }
       }
 
-      if (activeTab === "registrations" && !["PATIENT_REGISTERED", "PATIENT_CREATED"].includes(log.action)) {
+      if (activeTab === "registrations" && !["PATIENT_REGISTERED", "PATIENT_CREATED", "REGISTER_PATIENT", "UPDATE_PATIENT", "DELETE_PATIENT"].includes(log.action) && log.entity !== "patients") {
         return false;
       }
-      if (activeTab === "sales" && !["POS_MEDICINE_SALE", "SALE", "B2B_SALE"].includes(log.action)) {
+      if (activeTab === "sales" && !["POS_MEDICINE_SALE", "SALE", "B2B_SALE", "B2B_WHOLESALE_SALE", "VOID_SALE_INVOICE"].includes(log.action) && !["sales", "b2b_sales"].includes(log.entity)) {
+        return false;
+      }
+      if (activeTab === "purchases" && !["CREATE_PURCHASE_GRN", "DELETE_PURCHASE_GRN"].includes(log.action) && log.entity !== "purchases") {
+        return false;
+      }
+      if (activeTab === "inventory" && !["ADD_INVENTORY_ITEM", "UPDATE_INVENTORY_ITEM", "DELETE_INVENTORY_ITEM", "BULK_INVENTORY_IMPORT"].includes(log.action) && log.entity !== "inventory") {
         return false;
       }
       if (activeTab === "discounts" && log.action !== "DISCOUNT_GRANTED") {
@@ -241,6 +266,11 @@ export default function GodAdminPanel() {
       return true;
     });
   }, [auditLogs, activeTab, dateBounds, staffFilter, searchQuery]);
+
+  const displayedLogs = useMemo(() => {
+    if (displayLimit === "all") return filteredLogs;
+    return filteredLogs.slice(0, Number(displayLimit));
+  }, [filteredLogs, displayLimit]);
 
   const handleExportCSV = () => {
     let csv = "Timestamp,Action,Staff Member,Role,Entity,Entity ID,Details\n";
@@ -535,38 +565,70 @@ export default function GodAdminPanel() {
         </div>
 
         {/* Tab Filters */}
-        <div className="flex items-center gap-1.5 border-b border-slate-200 pb-2 overflow-x-auto custom-scrollbar">
-          {[
-            { id: "all", label: "All Audit Events", icon: ShieldAlert },
-            { id: "registrations", label: "Patient Registrations", icon: Users },
-            { id: "sales", label: "Medicine Sales", icon: CreditCard },
-            { id: "discounts", label: "Discounts Granted", icon: Percent },
-            { id: "writeoffs", label: "Stock Write-Offs", icon: PackageMinus },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? "bg-teal-700 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {tab.label}
-              </button>
-            );
-          })}
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-2 flex-wrap">
+          <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar flex-1 min-w-0 py-0.5">
+            {[
+              { id: "all", label: "All Audit Events", icon: ShieldAlert },
+              { id: "registrations", label: "Patient Registrations", icon: Users },
+              { id: "sales", label: "Medicine Sales", icon: CreditCard },
+              { id: "purchases", label: "Purchases & GRN", icon: ShoppingCart },
+              { id: "inventory", label: "Inventory & Items", icon: Package },
+              { id: "discounts", label: "Discounts Granted", icon: Percent },
+              { id: "writeoffs", label: "Stock Adjustments", icon: PackageMinus },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? "bg-teal-700 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Limit & Live Counter Selector */}
+          <div className="flex items-center gap-2 text-xs shrink-0">
+            <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
+              Showing <strong className="text-slate-900">{displayedLogs.length}</strong> of <strong className="text-teal-700">{filteredLogs.length}</strong>
+            </span>
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold">
+              {[
+                { val: "50", label: "50" },
+                { val: "100", label: "100" },
+                { val: "250", label: "250" },
+                { val: "500", label: "500" },
+                { val: "all", label: "All" },
+              ].map((opt) => (
+                <button
+                  key={opt.val}
+                  onClick={() => setDisplayLimit(opt.val)}
+                  className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                    displayLimit === opt.val
+                      ? "bg-teal-700 text-white shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Audit Log Stream Table */}
-        <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-black uppercase text-[10px] tracking-wider">
+        {/* Audit Log Stream Table with Vertical Scrollbar & Pinned Sticky Header */}
+        <div className="max-h-[560px] overflow-y-auto overflow-x-auto border border-slate-200 rounded-2xl custom-scrollbar relative shadow-inner bg-slate-50/20">
+          <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+            <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-md shadow-xs border-b border-slate-200">
+              <tr className="text-slate-700 font-black uppercase text-[10px] tracking-wider">
                 <th className="p-3">Timestamp</th>
                 <th className="p-3">Action</th>
                 <th className="p-3">Staff Member</th>
@@ -574,15 +636,18 @@ export default function GodAdminPanel() {
                 <th className="p-3">Event Details / Reason</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200/70 font-medium">
-              {filteredLogs.length === 0 ? (
+            <tbody className="divide-y divide-slate-200/70 font-medium bg-white">
+              {displayedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 font-bold">
-                    No matching audit log entries found.
+                  <td colSpan={5} className="p-10 text-center text-slate-400 font-bold">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <Clock className="w-8 h-8 text-slate-300" />
+                      <span>No matching audit log entries found for this filter.</span>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredLogs.slice(0, 100).map((log) => {
+                displayedLogs.map((log) => {
                   const dateStr = new Date(log.timestamp || Date.now()).toLocaleString("en-US", {
                     timeZone: "Asia/Karachi",
                     month: "short",
@@ -603,11 +668,21 @@ export default function GodAdminPanel() {
                           className={`px-2 py-0.5 rounded-md font-black text-[10px] uppercase tracking-wide border inline-block ${
                             log.action?.includes("SALE")
                               ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                              : log.action?.includes("REGISTER")
+                              : log.action?.includes("REGISTER") || log.action?.includes("PATIENT")
                               ? "bg-teal-50 text-teal-800 border-teal-200"
+                              : log.action?.includes("PURCHASE")
+                              ? "bg-purple-50 text-purple-800 border-purple-200"
+                              : log.action?.includes("INVENTORY")
+                              ? "bg-blue-50 text-blue-800 border-blue-200"
+                              : log.action?.includes("PARTY")
+                              ? "bg-cyan-50 text-cyan-800 border-cyan-200"
+                              : log.action?.includes("EXPENSE")
+                              ? "bg-orange-50 text-orange-800 border-orange-200"
+                              : log.action?.includes("CLOSING") || log.action?.includes("SHIFT")
+                              ? "bg-violet-50 text-violet-800 border-violet-200"
                               : log.action?.includes("DISCOUNT")
                               ? "bg-amber-50 text-amber-800 border-amber-200"
-                              : log.action?.includes("WRITE_OFF")
+                              : log.action?.includes("WRITE_OFF") || log.action?.includes("DELETE") || log.action?.includes("VOID")
                               ? "bg-rose-50 text-rose-800 border-rose-200"
                               : "bg-slate-100 text-slate-800 border-slate-200"
                           }`}

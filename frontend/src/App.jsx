@@ -1,5 +1,5 @@
+import React, { useEffect, useState, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState, Suspense } from "react";
 import { initDB, dbPatients } from "./api/db.js";
 import { waitForDiskCache } from "./api/storageDriver.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
