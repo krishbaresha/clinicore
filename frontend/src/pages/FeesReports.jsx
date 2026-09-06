@@ -254,6 +254,7 @@ export default function FeesReports() {
       physical_cash: physicalCashTotal > 0 ? physicalCashTotal : netCashInHand,
       cash_variance: physicalCashTotal > 0 ? cashVariance : 0,
       denominations: physicalCashTotal > 0 ? { ...denominations } : null,
+      closed_by: user?.name || user?.full_name || "Cashier / Doctor",
     };
     printDayEndClosingReceipt(dataToPrint, dbClinic.get());
   };

@@ -15,6 +15,7 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
   const [statusMsg, setStatusMsg] = useState("Ready");
   const [closingData, setClosingData] = useState(null);
   const [clinicData, setClinicData] = useState(null);
+  const session = useMemo(() => getSession(), []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,7 +46,6 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
   const handlePrint = () => {
     if (!closingData) return;
     try {
-      const session = getSession();
       const printPayload = {
         date: closingData.date,
         closing_date: closingData.date,
@@ -149,6 +149,15 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                 </div>
                 <div className="font-serif font-black text-sm text-gray-900 uppercase">
                   Day Closing Receipt
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-dashed border-gray-200 text-xs">
+                <div>
+                  <strong className="text-gray-600">Cashier:</strong>{" "}
+                  <span className="font-bold text-gray-900">{session?.name || session?.full_name || "Front Desk Cashier"}</span>
+                </div>
+                <div className="text-[11px] text-gray-500 font-mono">
+                  {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
                 </div>
               </div>
 
@@ -269,6 +278,17 @@ export default function DayClosingReceiptModal({ isOpen, onClose }) {
                     <span className="font-mono font-black text-xl text-gray-950">
                       Rs. {closingData.closing_cash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
+                  </div>
+
+                  {/* Cashier & Verification Info */}
+                  <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-300 text-[11px] text-gray-700 font-semibold mt-2">
+                    <div>
+                      <span>Closed By:</span>{" "}
+                      <strong className="text-gray-950 font-black">{session?.name || session?.full_name || "Store Cashier"}</strong>
+                    </div>
+                    <div className="font-mono text-[10px] text-gray-500">
+                      Signature: ________________
+                    </div>
                   </div>
 
                 </div>

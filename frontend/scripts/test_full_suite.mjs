@@ -103,6 +103,7 @@ import {
   rollbackLastRestore,
   simulateRestoreDryRun,
   parseAndValidateBackupString,
+  normalizeDateForInput,
   _COLLECTION_CACHE,
   _ID_MAP_CACHE,
   KEYS,
@@ -3979,6 +3980,37 @@ async function runTests() {
     const ownerToken1 = dbVisits.nextTokenNumber("user_owner");
     const user001Token1 = dbVisits.nextTokenNumber("user_001");
     assert(ownerToken1 === user001Token1, "user_owner and user_001 share token sequence equivalence");
+  });
+
+  // =========================================================================
+  // 🧪 SUITE 48: Smart Expiry Calendar Normalization & Day Closing Cashier Accountability
+  // =========================================================================
+  suite("48. Smart Expiry Calendar Normalization & Day Closing Cashier Accountability", () => {
+    // 1. normalizeDateForInput standard formats
+    assert(normalizeDateForInput("2027-12-31") === "2027-12-31", "Pass-through valid YYYY-MM-DD");
+    assert(normalizeDateForInput("12/2028") === "2028-12-01", "MM/YYYY converted to YYYY-MM-01");
+    assert(normalizeDateForInput("05-2029") === "2029-05-01", "MM-YYYY converted to YYYY-MM-01");
+    assert(normalizeDateForInput("2029/08") === "2029-08-01", "YYYY/MM converted to YYYY-MM-01");
+    assert(normalizeDateForInput("15/08/2026") === "2026-08-15", "DD/MM/YYYY converted to YYYY-MM-DD");
+    assert(normalizeDateForInput("2026-09-06T14:30:00.000Z") === "2026-09-06", "ISO timestamp date part extracted");
+    assert(normalizeDateForInput("—") === "", "Dash returns empty string");
+    assert(normalizeDateForInput(null) === "", "Null returns empty string");
+    assert(normalizeDateForInput(undefined) === "", "Undefined returns empty string");
+
+    // 2. Excel serial number date conversion
+    const excelDate = normalizeDateForInput("45657"); // Around Dec 2024
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(excelDate), "Excel serial number correctly converts to YYYY-MM-DD");
+
+    // 3. Day Closing Cashier & Accountability
+    const today = new Date().toISOString().split("T")[0];
+    const closingData = dbDayClosing.getDayClosingData(today);
+    assert(closingData !== null && typeof closingData === "object", "getDayClosingData returns valid closing object");
+    assert(typeof closingData.closed_by === "string" && closingData.closed_by.length > 0, "getDayClosingData includes closed_by cashier identifier");
+
+    // 4. Session user attribution in Day Closing
+    localStorage.setItem("cf_session_user", JSON.stringify({ name: "Dr. Muhammad Asif", role: "doctor" }));
+    const closingWithUser = dbDayClosing.getDayClosingData(today);
+    assert(closingWithUser.closed_by === "Dr. Muhammad Asif", "getDayClosingData dynamically resolves active logged-in cashier");
   });
 
   // ----------------------------------------------------

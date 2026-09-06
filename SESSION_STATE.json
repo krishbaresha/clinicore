@@ -1,11 +1,11 @@
 {
   "project_name": "ClinicFlow (CliniCore)",
   "clinic_name": "Dr. Muhammad Asif Ashraf Khan Clinic & Wholesale Pharmacy",
-  "version": "2.5.38-release",
-  "last_session_date": "2026-09-06T18:55:00+05:00",
+  "version": "2.5.39-release",
+  "last_session_date": "2026-09-06T19:25:00+05:00",
   "session_id": "part-252",
   "active_milestone": 252,
-  "milestone_title": "Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Admin Panel Stability & v2.5.38 Native Release",
+  "milestone_title": "Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Day Closing Cashier Accountability, Smart Expiry Calendar & v2.5.39 Native Release",
   "completion_percentage": 100,
   "validation_status": {
     "ast_scan_passed": true,
@@ -16,11 +16,11 @@
     "python_compile_passed": true
   },
   "current_status": {
-    "phase": "Milestone 252 — Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Admin Panel Stability & v2.5.38 Native Release (100%)",
-    "test_suite_status": "Master Tests Passing, 0 AST Errors, 0 Secret Leaks, Clean Vite Build",
+    "phase": "Milestone 252 — Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Day Closing Cashier Accountability, Smart Expiry Calendar & v2.5.39 Native Release (100%)",
+    "test_suite_status": "Master Tests Passing (753/753), 0 AST Errors, 0 Secret Leaks, Clean Vite Build",
     "build_status": "Clean Vite Production Bundle Compiled Successfully",
     "git_branch": "main",
-    "last_commit": "3997e62"
+    "last_commit": "14016fd"
   },
   "completed_milestones": [
     "Milestone 252: Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Admin Panel Stability & v2.5.38 Native Release: (1) Resolved limitation where category dropdown only showed 1 category with no way to add new categories: pre-populated DEFAULT_STANDARD_CATEGORIES with 13 standard pharmacy & homeopathic categories in db.js, and upgraded 'Edit Medicine Details' modal in MedicalStoreInventory.jsx with an interactive '+ Add New Category' button, inline input, and dynamic selection. Added full category registry manager in DeveloperAdminPanel.jsx. (2) Implemented strictly isolated per-doctor daily token generation: dbVisits.nextTokenNumber(doctorId) now counts today's visits per specific doctor so Dr. Asif gets 1, 2, 3... and Dr. Kashif gets 1, 2, 3... without cross-doctor collisions. Enhanced SaleInvoiceModal.jsx token lookup to prioritize attending doctor and display doctor tags on quick token pills. (3) Fixed DeveloperAdminPanel.jsx initial activeTab undefined bug by adding fallback to 'god_audit'. (4) Full-stack version bumped to v2.5.38 across frontend, Tauri config, and backend API.",

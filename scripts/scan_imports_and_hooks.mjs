@@ -47,6 +47,7 @@ const DB_HELPERS = [
   "dbSupplierLedger",
   "dbSalesmen",
   "dbClinicServices",
+  "dbCategories",
   "dbTenants"
 ];
 
@@ -58,7 +59,8 @@ const FORMATTERS = [
   "getGreeting",
   "toTitleCase",
   "formatStockBreakdown",
-  "formatStockShort"
+  "formatStockShort",
+  "normalizeDateForInput"
 ];
 
 function getAllFiles(dir, exts = [".js", ".jsx"]) {

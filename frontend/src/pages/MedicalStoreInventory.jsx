@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { verifyAdminPasscode } from "../api/auth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
 import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, dbCategories, dbCompanies, dbAuditLogs, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
-import { formatCurrency, downloadCSV } from "../utils/formatters.js";
+import { formatCurrency, downloadCSV, normalizeDateForInput } from "../utils/formatters.js";
 import { printInventoryListReceipt, printProductPricingListReceipt, printBlindStockAuditSheet } from "../utils/thermalPrinter.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
 import StockLedgerModal from "../components/StockLedgerModal.jsx";
@@ -112,6 +112,8 @@ export default function MedicalStoreInventory() {
     company_name: "",
     item_code: "",
     category: "",
+    batch_no: "",
+    expiry_date: "",
     cost_price: "0",
     sale_price: "0",
     store_stock: "0",
@@ -195,6 +197,8 @@ export default function MedicalStoreInventory() {
       company_name: item.company_name || "",
       item_code: item.item_code || "",
       category: item.category || "",
+      batch_no: item.batch_no || item.batch || "",
+      expiry_date: normalizeDateForInput(item.expiry_date || item.exp_date || ""),
       cost_price: String(item.cost_price_per_box || item.purchase_price || item.cost_price || "0"),
       sale_price: String(item.unit_sale_price || item.box_sale_price || item.sale_price || item.unit_price || "0"),
       store_stock: String(storeQty),
@@ -298,6 +302,8 @@ export default function MedicalStoreInventory() {
       company_name: editFormData.company_name.trim(),
       item_code: editFormData.item_code.trim(),
       category: editFormData.category || "",
+      batch_no: (editFormData.batch_no || "").trim(),
+      expiry_date: normalizeDateForInput(editFormData.expiry_date),
       cost_price_per_box: costVal,
       purchase_price: costVal,
       cost_price: costVal,
@@ -367,6 +373,7 @@ export default function MedicalStoreInventory() {
   const [batchAddQty, setBatchAddQty] = useState("");
   const [batchUniformCost, setBatchUniformCost] = useState("");
   const [batchUniformSale, setBatchUniformSale] = useState("");
+  const [batchUniformExpiry, setBatchUniformExpiry] = useState("");
 
   const toggleSelectItem = (itemId) => {
     setSelectedItems((prev) => {
@@ -406,6 +413,8 @@ export default function MedicalStoreInventory() {
           new_cost: cost,
           current_sale: sale,
           new_sale: sale,
+          current_expiry: item.expiry_date || item.exp_date || "",
+          new_expiry: normalizeDateForInput(item.expiry_date || item.exp_date || ""),
         };
       });
 
@@ -414,6 +423,7 @@ export default function MedicalStoreInventory() {
     setBatchAddQty("");
     setBatchUniformCost("");
     setBatchUniformSale("");
+    setBatchUniformExpiry("");
     setShowBulkUpdateModal(true);
   };
 
@@ -463,6 +473,16 @@ export default function MedicalStoreInventory() {
     triggerToast(`Set retail rate to Rs. ${val} for all ${bulkUpdateItems.length} items.`);
   };
 
+  const handleApplyBatchExpiry = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!batchUniformExpiry) return;
+    const val = normalizeDateForInput(batchUniformExpiry);
+    setBulkUpdateItems((prev) =>
+      prev.map((item) => ({ ...item, new_expiry: val }))
+    );
+    triggerToast(`Set expiry date to ${val} for all ${bulkUpdateItems.length} items.`);
+  };
+
   const handleSaveBulkUpdate = (e) => {
     if (e) e.preventDefault();
     if (bulkUpdateItems.length === 0) return;
@@ -489,6 +509,7 @@ export default function MedicalStoreInventory() {
         box_sale_price: saleVal,
         sale_price: saleVal,
         unit_price: saleVal,
+        expiry_date: row.new_expiry ? normalizeDateForInput(row.new_expiry) : (original.expiry_date || ""),
         location_stocks: updatedLocationStocks,
       });
     });
@@ -3380,13 +3401,12 @@ export default function MedicalStoreInventory() {
                                 />
                               </td>
 
-                              {/* 14. Expiry Date (blank if empty) */}
+                              {/* 14. Expiry Date (Calendar Picker) */}
                               <td className="py-1.5 px-2 font-mono">
                                 <input
-                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-[11px] font-mono text-slate-700 transition-all placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-400"
-                                  type="text"
-                                  placeholder="—"
-                                  value={r.expiry_date || ""}
+                                  className="w-full border border-slate-200 hover:border-teal-400 focus:border-teal-500 focus:bg-white bg-slate-50/50 rounded px-1.5 py-1 text-[11px] font-mono font-bold text-slate-800 transition-all focus:outline-none focus:ring-1 focus:ring-teal-400 cursor-pointer"
+                                  type="date"
+                                  value={normalizeDateForInput(r.expiry_date)}
                                   onChange={(e) => updateCsvRow(actualIdx, "expiry_date", e.target.value)}
                                 />
                               </td>
@@ -4010,6 +4030,47 @@ export default function MedicalStoreInventory() {
                   />
                 </div>
 
+                {/* Batch Number */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                    Batch Number
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.batch_no}
+                    onChange={(e) => setEditFormData({ ...editFormData, batch_no: e.target.value })}
+                    onKeyDown={(e) => handleFormKeyDown(e, false, handleSaveEdit)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold font-mono text-slate-900"
+                    placeholder="e.g. BAT-2026"
+                  />
+                </div>
+
+                {/* Expiry Date (Calendar Picker) */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs text-teal-700">calendar_month</span>
+                      Expiry Date
+                    </label>
+                    {editFormData.expiry_date && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData({ ...editFormData, expiry_date: "" })}
+                        className="text-[10px] text-rose-600 hover:text-rose-800 font-bold hover:underline cursor-pointer"
+                      >
+                        ✕ Clear Date
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="date"
+                    value={editFormData.expiry_date}
+                    onChange={(e) => setEditFormData({ ...editFormData, expiry_date: e.target.value })}
+                    onKeyDown={(e) => handleFormKeyDown(e, false, handleSaveEdit)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-black font-mono text-slate-900 bg-teal-50/20 cursor-pointer shadow-2xs"
+                  />
+                </div>
+
                 {/* Pricing Box */}
                 <div className="sm:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -4369,11 +4430,32 @@ export default function MedicalStoreInventory() {
                   Apply
                 </button>
               </div>
+
+              {/* Set Expiry Date */}
+              <div className="flex items-center gap-1 bg-white border border-teal-300 rounded-xl px-2.5 py-1 shadow-2xs">
+                <span className="text-teal-900 font-bold text-[11px] flex items-center gap-0.5">
+                  <span className="material-symbols-outlined text-xs">calendar_month</span>
+                  Expiry:
+                </span>
+                <input
+                  type="date"
+                  value={batchUniformExpiry}
+                  onChange={(e) => setBatchUniformExpiry(e.target.value)}
+                  className="text-center font-bold text-slate-800 outline-none text-xs cursor-pointer font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyBatchExpiry}
+                  className="px-2 py-0.5 bg-teal-700 hover:bg-teal-800 active:scale-95 transition-all text-white rounded-lg font-bold text-[10px] cursor-pointer"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
 
             {/* Editable Spreadsheet Table */}
             <div className="flex-1 overflow-y-auto custom-scroll p-4">
-              <table className="w-full text-left border-collapse min-w-[700px]">
+              <table className="w-full text-left border-collapse min-w-[750px]">
                 <thead className="bg-slate-100 sticky top-0 z-10 text-[11px] font-black text-slate-700 uppercase tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="py-2.5 px-2 text-center w-10">#</th>
@@ -4387,8 +4469,11 @@ export default function MedicalStoreInventory() {
                     <th className="py-2.5 px-3 text-center w-28 bg-slate-50">
                       Cost Price (Rs.)
                     </th>
-                    <th className="py-2.5 px-3 text-center w-32 bg-emerald-50/70 text-emerald-900 border-l border-emerald-200">
+                    <th className="py-2.5 px-3 text-center w-32 bg-emerald-50/70 text-emerald-900 border-x border-emerald-200">
                       Retail Rate (Rs.)
+                    </th>
+                    <th className="py-2.5 px-3 text-center w-36 bg-teal-50/80 text-teal-950 border-r border-teal-200">
+                      Expiry Date
                     </th>
                   </tr>
                 </thead>
@@ -4436,13 +4521,21 @@ export default function MedicalStoreInventory() {
                             className="w-full h-8 text-center bg-white border border-slate-300 rounded-lg font-bold text-xs text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 outline-none shadow-2xs"
                           />
                         </td>
-                        <td className="py-1.5 px-2 text-center bg-emerald-50/40 border-l border-emerald-100">
+                        <td className="py-1.5 px-2 text-center bg-emerald-50/40 border-x border-emerald-100">
                           <input
                             type="number"
                             min="0"
                             value={row.new_sale}
                             onChange={(e) => handleBulkItemChange(row.id, "new_sale", e.target.value)}
                             className="w-full h-8 text-center bg-white border border-emerald-400 rounded-lg font-black text-xs text-emerald-950 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none shadow-2xs"
+                          />
+                        </td>
+                        <td className="py-1.5 px-2 text-center bg-teal-50/30 border-r border-teal-100">
+                          <input
+                            type="date"
+                            value={row.new_expiry || ""}
+                            onChange={(e) => handleBulkItemChange(row.id, "new_expiry", e.target.value)}
+                            className="w-full h-8 text-center bg-white border border-teal-300 rounded-lg font-bold text-xs text-teal-950 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 outline-none shadow-2xs cursor-pointer font-mono"
                           />
                         </td>
                       </tr>

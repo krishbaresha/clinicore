@@ -2727,6 +2727,59 @@ export function extractSmartPackingAndName(rawName, existingPacking = "") {
   };
 }
 
+/**
+ * Normalizes an arbitrary date string (e.g. "12/2027", "2028-11-30", "15/08/2026", Excel serial numbers)
+ * into a valid standard HTML5 input[type="date"] string "YYYY-MM-DD" for calendar pickers.
+ */
+export function normalizeDateForInput(val) {
+  if (!val) return "";
+  const s = String(val).trim();
+  if (!s || s === "—" || s === "null" || s === "undefined") return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (s.includes("T")) return s.split("T")[0];
+
+  // Excel serial date number (e.g. 45657 -> ~2024-12-31)
+  if (/^\d{5}$/.test(s)) {
+    const num = Number(s);
+    if (num > 30000 && num < 60000) {
+      const d = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+    }
+  }
+
+  // MM/YYYY or MM-YYYY
+  const myMatch = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
+  if (myMatch) {
+    const month = myMatch[1].padStart(2, "0");
+    const year = myMatch[2];
+    return `${year}-${month}-01`;
+  }
+  // YYYY/MM or YYYY-MM
+  const ymMatch = s.match(/^(\d{4})[\/\-](\d{1,2})$/);
+  if (ymMatch) {
+    const year = ymMatch[1];
+    const month = ymMatch[2].padStart(2, "0");
+    return `${year}-${month}-01`;
+  }
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, "0");
+    const month = dmyMatch[2].padStart(2, "0");
+    const year = dmyMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    try {
+      return d.toISOString().split("T")[0];
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
 /** Parse, Sanitize, Clean, and Validate Inventory CSV File Content with Smart Auto-Sort & Categorization */
 export function parseInventoryCSV(csvInput) {
   if (!csvInput) return [];
@@ -2876,7 +2929,7 @@ export function parseInventoryCSV(csvInput) {
       location_stocks: { wh_str: storeStock, ...(godownStock > 0 ? { wh_001: godownStock } : {}) },
       batch_no: rawBatch,
       batch: rawBatch,
-      expiry_date: rawExp
+      expiry_date: rawExp ? normalizeDateForInput(rawExp) : ""
     });
   }
 
@@ -6728,11 +6781,23 @@ export const dbDayClosing = {
     // 5. Closing Cash (Net Cash In Hand for the day)
     const closingCash = cashSale + totalPaymentReceive - cashPurchase - totalPaymentPaid;
 
-    // 6. Generate WhatsApp Message Text
+    // 6. Cashier / Closed By identification
+    const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
+    let fallbackCashier = activeCashier?.name || "";
+    if (!fallbackCashier && typeof localStorage !== "undefined") {
+      try {
+        const u = JSON.parse(localStorage.getItem("cf_session_user") || "{}");
+        fallbackCashier = u?.name || u?.full_name || "";
+      } catch {}
+    }
+    const closedBy = fallbackCashier || "Front Desk Cashier";
+
+    // 7. Generate WhatsApp Message Text
     const clinic = dbClinic.get();
     const clinicName = clinic?.name || "H/Dr.Asif Ashraf Khan Clinic";
     const waText = `*📋 DAY CLOSING RECEIPT — ${targetDate}*\n` +
-      `*🏥 ${clinicName}*\n\n` +
+      `*🏥 ${clinicName}*\n` +
+      `*👤 Cashier:* ${closedBy}\n\n` +
       `*💰 SALE:*\n` +
       `• Total Sale: Rs. ${totalSale.toLocaleString()}\n` +
       `• Cash Sale: Rs. ${cashSale.toLocaleString()}\n` +
@@ -6752,6 +6817,7 @@ export const dbDayClosing = {
 
     return {
       date: targetDate,
+      closed_by: closedBy,
       sales: {
         total: totalSale,
         cash: cashSale,

@@ -757,6 +757,22 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
   const openingCash    = Number(closing.opening_cash || 0);
   const closingCash    = Number(closing.closing_cash ?? autoClosing?.closing_cash ?? closing.net_cash_in_hand ?? closing.expected_cash ?? (openingCash + saleCash + recTotal - purchaseCash - paidTotal));
 
+  const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
+  let fallbackCashier = activeCashier?.name || "";
+  if (!fallbackCashier && typeof localStorage !== "undefined") {
+    try {
+      const u = JSON.parse(localStorage.getItem("cf_session_user") || "{}");
+      fallbackCashier = u?.name || u?.full_name || "";
+    } catch {}
+  }
+  const cashierName =
+    closing.closed_by ||
+    closing.cashier_name ||
+    closing.closed_by_name ||
+    closing.cashier ||
+    fallbackCashier ||
+    "Front Desk Cashier";
+
   const paidItemsHtml = paidItems.length > 0
     ? paidItems.map(it => `
       <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;color:#000;">
@@ -821,6 +837,10 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:900;color:#000;margin:6px 0 2px 0;">
           <span>Date</span>
           <span style="font-family:monospace;font-weight:900;">${dateStr} <span style="font-size:12px;font-weight:700;color:#333;margin-left:5px;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}</span></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:800;color:#000;margin:2px 0 4px 0;padding-bottom:3px;border-bottom:1px dotted #000;">
+          <span>Cashier:</span>
+          <span style="font-weight:900;color:#000;font-family:monospace;font-size:13.5px;">${escapeHtml(cashierName)}</span>
         </div>
         <div style="text-align:center;font-size:17px;font-weight:900;font-family:serif;color:#000;margin:2px 0 6px 0;letter-spacing:0.5px;">
           Closing Receipt
@@ -906,6 +926,17 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
         ${showNote && cfg.custom_policy_note ? `
         <div style="text-align:center;font-size:12px;font-weight:800;color:#000;font-style:italic;margin:4px 0;">${escapeHtml(cfg.custom_policy_note)}</div>
         <div class="dotted"></div>` : ""}
+
+        <!-- Cashier Signature & Verification -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:14px;padding-top:4px;border-top:1px dashed #000;">
+          <div style="text-align:left;font-size:11.5px;font-weight:bold;color:#000;">
+            <div>Cashier: <strong>${escapeHtml(cashierName)}</strong></div>
+            <div style="font-size:10px;color:#444;">Closed: ${dateStr} ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}</div>
+          </div>
+          <div style="text-align:right;font-size:11.5px;font-weight:bold;color:#000;">
+            <div style="border-top:1px solid #000;padding-top:2px;width:32mm;text-align:center;">Cashier Signature</div>
+          </div>
+        </div>
 
         <!-- Doctor Signature Line -->
         ${getDoctorSignatureHtml()}

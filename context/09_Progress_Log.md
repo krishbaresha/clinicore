@@ -52,20 +52,34 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
-- **Phase:** Milestone 252 — Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Admin Panel Stability & v2.5.38 Native Release (In Progress)
+- **Phase:** Milestone 252 — Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Day Closing Cashier Name, Smart Expiry Calendar & v2.5.38 Native Release (Completed)
 - **Last worked on:**
   1. **Dynamic Medicine Category Engine & Edit Modal Upgrade:**
-     - Pre-populated `DEFAULT_STANDARD_CATEGORIES` in `db.js` with 13 standard homeopathic & pharmacy categories (Homeopathic Drops, Mother Tinctures, Dilutions, Tablets, Bio-Chemic, Syrups, Ointments, Soaps, Oils, Tonics, Capsules, Injections, General).
+     - Pre-populated `DEFAULT_STANDARD_CATEGORIES` in `db.js` with 13 standard homeopathic & pharmacy categories (Homeopathic Drops, Mother Tinctures (Q), Dilutions, Tablets, Bio-Chemic / Tissue Salts, Syrups, Ointments / Creams, Soaps / Medicated, Oils / Cosmetics, Tonics / Supplements, Capsules, Injections / Ampoules, General / Sundries).
      - Enhanced `dbCategories` with deduplicated merging, custom addition, and deletion.
-     - Upgraded "Edit Medicine Details" modal in `MedicalStoreInventory.jsx` with an interactive `+ New Category` button and inline input with Save & Cancel shortcuts, dynamically registering and selecting new categories on-the-fly.
+     - Upgraded "Edit Medicine Details" modal in `MedicalStoreInventory.jsx` with an interactive `+ Add New Category` button and inline input with Save & Cancel shortcuts, dynamically registering and selecting new categories on-the-fly.
+     - Added `Medicine Categories Master & Dynamic Registry` card in Super Admin Panel (`DeveloperAdminPanel.jsx`) for viewing, adding, and deleting custom categories.
   2. **Independent Per-Doctor Daily Token Generation:**
      - Updated `dbVisits.nextTokenNumber(doctorId)` to calculate daily tokens strictly per doctor, ensuring Dr. Asif gets #1, #2, #3 and Dr. Kashif gets #1, #2, #3 without cross-doctor token skipping.
      - Enhanced `SaleInvoiceModal.jsx` token lookup to prioritize the selected doctor and displayed doctor tags on quick token pills with direct visit ID binding.
-  3. **Super Admin Panel Bug Fixes & Stability:**
+  3. **Day-End Closing Cashier Accountability & Slip Details:**
+     - Added dynamic `closed_by` cashier field to `dbDayClosing.getDayClosingData(dateStr)` resolving active logged-in user (`cf_session_user` or auth context).
+     - Updated ESC/POS 80mm Day Closing receipt in `thermalPrinter.js` to print `Cashier: [User Name]` at the top header and `Closed By (Cashier): [User Name]` with exact timestamp at the bottom signature section.
+     - Updated `DayClosingReceiptModal.jsx` live thermal preview and WhatsApp summary text to include cashier name.
+  4. **Smart Expiry Date Normalization & Calendar Date Pickers:**
+     - Implemented `normalizeDateForInput(val)` in `formatters.js` and `db.js`: converts arbitrary date strings (`MM/YYYY`, `YYYY-MM`, `DD/MM/YYYY`, ISO timestamps, and Excel 5-digit serial numbers) into valid standard `YYYY-MM-DD`.
+     - Upgraded "Edit Medicine Details" modal with native `<input type="date" />` calendar picker and Clear Date button.
+     - Upgraded Quick Bulk Update Modal with "Set Expiry for All" batch tool and Expiry Date column with calendar picker.
+     - Upgraded Bulk CSV Upload preview table with calendar date picker.
+     - Upgraded Supplier Purchases Goods Receipt (GRN) Cart with native calendar date picker.
+  5. **Super Admin Panel Bug Fixes & Stability:**
      - Fixed `activeTab` initialization bug in `DeveloperAdminPanel.jsx` where null URL parameters left the panel blank by providing fallback to `"god_audit"`.
-  4. **Full-Stack Version Bump (v2.5.38) & Desktop Release:**
-     - Aligned version to 2.5.38 across frontend, Tauri config, and backend API.
-     - Pushed git tag `v2.5.38` to trigger GitHub Actions automated desktop installer build.
+  6. **Automated Verification Pipeline & Master Test Suites (Rule 17):**
+     - Added Test Suite 47 (Dynamic Categories & Doctor-Isolated Tokens) and Suite 48 (Expiry Normalization & Cashier Accountability) to `frontend/scripts/test_full_suite.mjs`.
+     - Ran pre-push validation: 0 secrets detected, 100% AST integrity across 75 files, 0 oxlint errors, 753/753 unit tests passing, and clean Vite build.
+  7. **Full-Stack Version Bump (v2.5.38) & Desktop Release:**
+     - Aligned version to `2.5.38` across frontend, backend, and Tauri desktop configs.
+     - Tagged `v2.5.38` and pushed to GitHub triggering the automated `.exe` Windows installer release workflow.
 
 - **Phase:** Milestone 251 — Universal Cross-Terminal Real-Time Sync, Multi-Device Permanent Factory Reset & VPS Autonomous Backup Vault (Completed)
 - **Last worked on:**

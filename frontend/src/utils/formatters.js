@@ -155,4 +155,55 @@ export function downloadCSV(filename, csvContent) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Normalizes an arbitrary date string (e.g. "12/2027", "2028-11-30", "15/08/2026")
+ * into a valid standard HTML5 input[type="date"] string "YYYY-MM-DD" for calendar pickers.
+ */
+export function normalizeDateForInput(val) {
+  if (!val) return "";
+  const s = String(val).trim();
+  if (!s || s === "—" || s === "null" || s === "undefined") return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (s.includes("T")) return s.split("T")[0];
 
+  // Excel serial date number (e.g. 45657 -> ~2024-12-31)
+  if (/^\d{5}$/.test(s)) {
+    const num = Number(s);
+    if (num > 30000 && num < 60000) {
+      const d = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+    }
+  }
+
+  // MM/YYYY or MM-YYYY
+  const myMatch = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
+  if (myMatch) {
+    const month = myMatch[1].padStart(2, "0");
+    const year = myMatch[2];
+    return `${year}-${month}-01`;
+  }
+  // YYYY/MM or YYYY-MM
+  const ymMatch = s.match(/^(\d{4})[\/\-](\d{1,2})$/);
+  if (ymMatch) {
+    const year = ymMatch[1];
+    const month = ymMatch[2].padStart(2, "0");
+    return `${year}-${month}-01`;
+  }
+  // DD/MM/YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, "0");
+    const month = dmyMatch[2].padStart(2, "0");
+    const year = dmyMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    try {
+      return d.toISOString().split("T")[0];
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}

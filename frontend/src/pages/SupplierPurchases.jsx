@@ -4,6 +4,7 @@ import { dbSuppliers, dbPurchases, dbInventory, dbClinic, dbSupplierLedger, dbAc
 import { verifyAdminPasscode } from "../api/auth.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { printSupplierPurchaseReceipt, printPurchaseGRNReceipt } from "../utils/thermalPrinter.js";
+import { normalizeDateForInput } from "../utils/formatters.js";
 
 /**
  * Expandable Combobox with built-in instant search and tall scrollable dropdown (DrCreate / MS Access Style)
@@ -1759,11 +1760,14 @@ export default function SupplierPurchases() {
                 </div>
                 {/* Expiry */}
                 <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Exp Date</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5 flex items-center gap-0.5">
+                    <span className="material-symbols-outlined text-[11px] text-teal-600">calendar_month</span>
+                    <span>Exp Date</span>
+                  </label>
                   <input
                     ref={expDateRef}
-                    type="text"
-                    value={grnCart.expiry_date}
+                    type="date"
+                    value={normalizeDateForInput(grnCart.expiry_date)}
                     onChange={(e) => handleUpdateGRNCart("expiry_date", e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -1771,8 +1775,7 @@ export default function SupplierPurchases() {
                         qtyRef.current?.focus();
                       }
                     }}
-                    placeholder="MM/YY"
-                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-mono focus:border-teal-600 bg-white"
+                    className="w-full h-8 text-xs border border-slate-300 rounded-lg px-1 font-mono focus:border-teal-600 bg-white cursor-pointer"
                   />
                 </div>
                 {/* Qty */}
