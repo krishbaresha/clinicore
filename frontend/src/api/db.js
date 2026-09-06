@@ -490,8 +490,24 @@ function generateId(prefix = "id") {
  * Used by Admin panel before importing a backup or doing a fresh VPS pull.
  * After calling this, the next syncEngine.pullLatestCloudState() will re-hydrate from VPS.
  */
-export function factoryResetAllData() {
+export function factoryResetAllData({ preserveCatalog = false } = {}) {
   try {
+    let preservedInventory = [];
+    let preservedParties = [];
+    let preservedSuppliers = [];
+    let preservedSalesmen = [];
+    let preservedAccounts = [];
+    let preservedWarehouses = [];
+
+    if (preserveCatalog) {
+      try { preservedInventory = JSON.parse(storageDriver.getItem(KEYS.INVENTORY) || "[]"); } catch (_) {}
+      try { preservedParties = JSON.parse(storageDriver.getItem(KEYS.PARTIES) || "[]"); } catch (_) {}
+      try { preservedSuppliers = JSON.parse(storageDriver.getItem(KEYS.SUPPLIERS) || "[]"); } catch (_) {}
+      try { preservedSalesmen = JSON.parse(storageDriver.getItem(KEYS.SALESMEN) || "[]"); } catch (_) {}
+      try { preservedAccounts = JSON.parse(storageDriver.getItem(KEYS.ACCOUNTS) || "[]"); } catch (_) {}
+      try { preservedWarehouses = JSON.parse(storageDriver.getItem(KEYS.WAREHOUSES) || "[]"); } catch (_) {}
+    }
+
     // Collect all cf_* keys first (avoid modifying during iteration)
     const keysToRemove = [];
     for (let i = 0; i < storageDriver.length; i++) {
@@ -506,24 +522,50 @@ export function factoryResetAllData() {
     _COLLECTION_CACHE.clear();
     _ID_MAP_CACHE.clear();
 
-    // Seed clean empty database arrays (0 inventory, 0 suppliers, 0 sales, 0 patients)
+    // Seed clean empty database arrays (0 queue, 0 visits, 0 sales, 0 purchases)
     storageDriver.setItem(KEYS.CLINIC, JSON.stringify(SEED_DATA.clinic));
     storageDriver.setItem(KEYS.USERS, JSON.stringify(SEED_DATA.users));
     storageDriver.setItem(KEYS.PATIENTS, JSON.stringify([]));
     storageDriver.setItem(KEYS.VISITS, JSON.stringify([]));
-    storageDriver.setItem(KEYS.INVENTORY, JSON.stringify([]));
-    storageDriver.setItem(KEYS.PARTIES, JSON.stringify([]));
-    storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify([]));
-    storageDriver.setItem(KEYS.SALESMEN, JSON.stringify([]));
     storageDriver.setItem(KEYS.PURCHASES, JSON.stringify([]));
     storageDriver.setItem(KEYS.B2B_SALES, JSON.stringify([]));
     storageDriver.setItem(KEYS.SALES, JSON.stringify([]));
     storageDriver.setItem(KEYS.PATIENT_LEDGER, JSON.stringify([]));
     storageDriver.setItem(KEYS.EXPENSES, JSON.stringify([]));
+    storageDriver.setItem(KEYS.CASHBOOK, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SUPPLIER_LEDGER, JSON.stringify([]));
+    storageDriver.setItem(KEYS.STOCK_MOVEMENTS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.STOCK_TRANSFERS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.RETURNS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.SHIFT_CLOSINGS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.DOCUMENTS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.AUDIT_LOGS, JSON.stringify([]));
+    storageDriver.setItem(KEYS.OUTBOX, JSON.stringify([]));
+
+    if (preserveCatalog) {
+      storageDriver.setItem(KEYS.INVENTORY, JSON.stringify(preservedInventory));
+      storageDriver.setItem(KEYS.PARTIES, JSON.stringify(preservedParties));
+      storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify(preservedSuppliers));
+      storageDriver.setItem(KEYS.SALESMEN, JSON.stringify(preservedSalesmen));
+      storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify(preservedAccounts));
+      storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify(preservedWarehouses.length > 0 ? preservedWarehouses : SEED_DATA.warehouses));
+    } else {
+      storageDriver.setItem(KEYS.INVENTORY, JSON.stringify([]));
+      storageDriver.setItem(KEYS.PARTIES, JSON.stringify([]));
+      storageDriver.setItem(KEYS.SUPPLIERS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.SALESMEN, JSON.stringify([]));
+      storageDriver.setItem(KEYS.ACCOUNTS, JSON.stringify([]));
+      storageDriver.setItem(KEYS.WAREHOUSES, JSON.stringify(SEED_DATA.warehouses));
+    }
+
+    const resetEpoch = Date.now();
+    try {
+      localStorage.setItem("cf_last_reset_epoch", String(resetEpoch));
+    } catch (_) {}
 
     // Notify all tabs
     if (_syncChannel) {
-      try { _syncChannel.postMessage({ type: "FACTORY_RESET" }); } catch {}
+      try { _syncChannel.postMessage({ type: "FACTORY_RESET", preserveCatalog, epoch: resetEpoch }); } catch {}
     }
     notifyStatusUpdate();
     return true;
@@ -702,26 +744,13 @@ export function initDB() {
   } catch (err) {}
 
   storageDriver.setItem(KEYS.LICENSE, JSON.stringify({
-    license_status: "active", // "active" | "warning" | "grace_period" | "restricted" | "locked"
-    monthly_fee: 5000,
-    currency: "PKR",
-    billing_cycle: "monthly",
-    due_day: 1, // 1st of month
-    warning_days_before: 5, // Show warning 5 days before due date
-    grace_days: 10, // Grace period till 10th of month (no disruption)
-    last_paid_date: new Date().toISOString().split("T")[0],
-    next_due_date: (() => {
-      const d = new Date();
-      d.setMonth(d.getMonth() + 1);
-      d.setDate(1);
-      return d.toISOString().split("T")[0];
-    })(),
+    license_status: "active",
+    license_mode: "lifetime",
+    is_lifetime: true,
+    enforce_license: false,
+    hardware_lock_enabled: false,
     is_hard_locked: false,
-    restricted_features: [], // e.g. ["pos", "b2b", "reports", "consultation"]
-    developer_phone: "03142291356",
-    developer_whatsapp: "03142291356",
-    developer_bank_details: "JazzCash / EasyPaisa / Bank Transfer: 03142291356 (K.B Software)",
-    custom_notice: "",
+    restricted_features: [],
     updated_at: new Date().toISOString(),
   }));
   storageDriver.setItem(KEYS.OUTBOX, JSON.stringify([]));
@@ -1190,12 +1219,18 @@ export const dbPatients = {
     const nextSeq = patients.length + 1;
     const mrNumber = patient.mr_number || `MR-${String(nextSeq).padStart(5, "0")}`;
     const cleanPhone = normalizePhone(patient.phone) || patient.phone || "";
+    const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
+    const staffId = patient.registered_by_id || patient.cashier_id || activeCashier?.id || "user_staff";
+    const staffName = patient.registered_by_name || patient.cashier_name || activeCashier?.name || "Counter Staff";
+
     const newPat = {
       ...patient,
       id: generateId("pat"),
       clinic_id: "clinic_001",
       mr_number: mrNumber,
       phone: cleanPhone,
+      registered_by_id: staffId,
+      registered_by_name: staffName,
       created_at: new Date().toISOString(),
     };
     setCollection(KEYS.PATIENTS, [newPat, ...patients]);
@@ -1206,9 +1241,16 @@ export const dbPatients = {
       action: "REGISTER_PATIENT",
       entity: "patients",
       entity_id: newPat.id,
-      reason: `Registered patient ${newPat.full_name || 'Patient'} (${newPat.mr_number || ''}) - Phone: ${newPat.phone || 'N/A'}`,
-      after: newPat,
+      actor_id: staffId,
+      actor_name: staffName,
+      reason: `Staff "${staffName}" registered patient "${newPat.full_name || 'New Patient'}" (${newPat.mr_number || ''}) - Phone: ${newPat.phone || 'N/A'}`,
+      after: { ...newPat, patient_name: newPat.full_name, customer_name: newPat.full_name, staff_name: staffName },
     });
+    try {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("clinicflow_status_update"));
+      }
+    } catch {}
     return newPat;
   },
   update: (id, data) => {
@@ -1381,12 +1423,14 @@ export const dbVisits = {
       .map((v) => {
         const pat = patientMap.get(v.patient_id);
         const doc = userMap.get(v.doctor_id);
+        const resolvedDocName = v.doctor_name || doc?.name || doc?.full_name || "Doctor";
         return {
           ...v,
           patient_name: v.patient_name || pat?.full_name || pat?.name || "Patient",
           patient_phone: v.patient_phone || pat?.phone || "",
           patient_mr_number: v.patient_mr_number || pat?.mr_number || "",
-          doctor_name: v.doctor_name || doc?.name || "Doctor",
+          doctor_name: resolvedDocName,
+          doctor_fee: v.doctor_fee != null ? v.doctor_fee : (v.fee_amount || 0),
         };
       })
       .sort((a, b) => (a.token_number || 0) - (b.token_number || 0));
@@ -1434,6 +1478,8 @@ export const dbVisits = {
     const pat = visit.patient_id ? dbPatients.getById(visit.patient_id) : null;
     const doc = visit.doctor_id ? dbUsers.getById(visit.doctor_id) : null;
     const patName = visit.patient_name || pat?.full_name || pat?.name || "Patient";
+    const resolvedDocName = visit.doctor_name || doc?.name || doc?.full_name || (visit.doctor_id === "user_owner" ? "Owner Doctor" : "Doctor");
+    const resolvedDocFee = visit.doctor_fee != null ? Number(visit.doctor_fee) : Number(visit.fee_amount || 0);
 
     const newVisit = {
       ...visit,
@@ -1441,13 +1487,15 @@ export const dbVisits = {
       clinic_id: "clinic_001",
       token_number,
       patient_name: patName,
-      doctor_name: visit.doctor_name || doc?.name || "Doctor",
+      doctor_name: resolvedDocName,
+      doctor_id: visit.doctor_id || (doc?.id) || "user_owner",
+      doctor_fee: resolvedDocFee,
+      fee_amount: Number(visit.fee_amount != null ? visit.fee_amount : resolvedDocFee),
       status: visit.status || "waiting",
       visit_date: visit.visit_date || new Date().toISOString(),
       prescription_image_url: null,
       notes: visit.notes || "",
-      doctor_id: visit.doctor_id || "user_owner",
-      fee_status: visit.fee_status || (visit.fee_amount > 0 ? "paid" : "unpaid"),
+      fee_status: visit.fee_status || (resolvedDocFee > 0 ? "paid" : "unpaid"),
       cashier_id: cashierId,
       cashier_name: cashierName,
       active_cashier_id: cashierId,
@@ -1463,8 +1511,8 @@ export const dbVisits = {
       entity_id: newVisit.id,
       actor_id: cashierId,
       actor_name: cashierName,
-      reason: `Registered patient ${newVisit.patient_name || 'Patient'} for OPD Token #${newVisit.token_number} (Fee: Rs. ${newVisit.fee_amount || 0})`,
-      after: newVisit,
+      reason: `Staff "${cashierName}" registered OPD visit for patient "${newVisit.patient_name || 'Patient'}" (Token #${newVisit.token_number}, Dr. ${newVisit.doctor_name || 'Consultant'}, Fee: Rs. ${newVisit.fee_amount || 0})`,
+      after: { ...newVisit, customer_name: newVisit.patient_name, staff_name: cashierName },
     });
     try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
     return newVisit;
@@ -1657,10 +1705,29 @@ export const dbInventory = {
     if (!companyName || companyName === "all") return dbInventory.getAll();
     return dbInventory.getAll().filter((i) => (i.company_name || "").toLowerCase() === companyName.toLowerCase());
   },
-  // Company code resolver — returns trimmed string
+  // Get item by item code or barcode
+  getByItemCode: (code) => {
+    if (!code) return null;
+    const clean = String(code).trim().toLowerCase();
+    const all = dbInventory.getAll();
+    return all.find((i) => (i.item_code && i.item_code.toLowerCase() === clean) || (i.barcode && i.barcode.toLowerCase() === clean)) || null;
+  },
+  // Company code resolver — returns full company name if resolved
   resolveCompanyCode: (code) => {
     if (!code) return null;
-    return code.trim();
+    const clean = String(code).trim().toLowerCase();
+    if (typeof dbCompanies !== "undefined" && dbCompanies.getByCode) {
+      const foundComp = dbCompanies.getByCode(clean);
+      if (foundComp?.name) return foundComp.name;
+    }
+    if (typeof dbSuppliers !== "undefined" && dbSuppliers.getByCode) {
+      const foundSup = dbSuppliers.getByCode(clean);
+      if (foundSup?.name) return foundSup.name;
+    }
+    const inv = (getCollection(KEYS.INVENTORY) || []).find(
+      (i) => (i.company_code && i.company_code.toLowerCase() === clean) || (i.company_name && i.company_name.toLowerCase().startsWith(clean))
+    );
+    return inv ? inv.company_name : code.trim();
   },
   // Get distinct list of all company names for dropdowns
   getCompanyList: () => {
@@ -2274,13 +2341,13 @@ export const dbInventory = {
       const { name: cleanName, packing: extractedPacking } = extractSmartPackingAndName(raw.medicine_name, raw.packing || raw.unit_label);
       if (!cleanName) continue;
 
-      const rawComp = raw.company_name || dbInventory.resolveCompanyCode(raw.company_code || raw.item_code) || "BM Pvt LTD";
-      const company = toTitleCaseClean(rawComp) || "BM Pvt LTD";
-      const compCode = raw.company_code ? raw.company_code.toUpperCase().trim() : (raw.item_code ? raw.item_code.toUpperCase().trim() : (company.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN"));
-      const itemCode = raw.item_code ? raw.item_code.toUpperCase().trim() : compCode;
+      const rawComp = raw.company_name || dbInventory.resolveCompanyCode(raw.company_code || raw.item_code) || "";
+      const company = rawComp ? (rawComp.length <= 5 ? rawComp.toUpperCase() : (rawComp === rawComp.toUpperCase() && /[A-Z]/.test(rawComp) ? toTitleCaseClean(rawComp) : rawComp)) : "General";
+      const compCode = raw.company_code ? raw.company_code.toUpperCase().trim() : (company && company !== "General" ? (company.length <= 4 ? company.toUpperCase() : company.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase()) : "");
+      const itemCode = raw.item_code ? raw.item_code.toUpperCase().trim() : "";
       
       // Auto-register company in dbSuppliers & dbCompanies if not already registered (deduplicated)
-      if (company && company.trim()) {
+      if (company && company.trim() && company !== "General") {
         const compClean = company.trim();
         const existingSuppliers = dbSuppliers.getAll() || [];
         const supplierExists = existingSuppliers.some(
@@ -2325,9 +2392,9 @@ export const dbInventory = {
       const totalBase = storeStock + godownStock;
       const packing = extractedPacking || normalizePackingUnit(raw.packing || raw.unit_label) || "Standard Pack";
       const rawDesc = raw.product_description || raw.generic_name || raw.description || "";
-      const desc = toTitleCaseClean(rawDesc);
-      const rawCat = raw.category || "Homeopathic Medicine";
-      const category = toTitleCaseClean(rawCat);
+      const desc = rawDesc ? (rawDesc === rawDesc.toUpperCase() && /[A-Z]/.test(rawDesc) ? toTitleCaseClean(rawDesc) : rawDesc) : "";
+      const rawCat = raw.category || "";
+      const category = rawCat ? (rawCat === rawCat.toUpperCase() && /[A-Z]/.test(rawCat) ? toTitleCaseClean(rawCat) : rawCat) : "";
       const minAlert = Number(raw.low_stock_threshold) || 6;
 
       const existingIdx = current.findIndex(
@@ -2342,8 +2409,8 @@ export const dbInventory = {
           company_name: company,
           company_code: compCode || current[existingIdx].company_code,
           item_code: itemCode || current[existingIdx].item_code,
-          product_description: desc || current[existingIdx].product_description,
-          generic_name: desc || current[existingIdx].generic_name,
+          product_description: desc !== undefined ? desc : current[existingIdx].product_description,
+          generic_name: desc !== undefined ? desc : current[existingIdx].generic_name,
           category: category || current[existingIdx].category,
           unit_label: packing || current[existingIdx].unit_label,
           cost_price_per_box: costPrice || current[existingIdx].cost_price_per_box,
@@ -2360,6 +2427,8 @@ export const dbInventory = {
             ...(godownStock > 0 ? { wh_001: godownStock } : (current[existingIdx].location_stocks?.wh_001 ? { wh_001: current[existingIdx].location_stocks.wh_001 } : {}))
           },
           low_stock_threshold: minAlert,
+          batch_no: raw.batch_no !== undefined ? raw.batch_no : (current[existingIdx].batch_no || ""),
+          expiry_date: raw.expiry_date !== undefined ? raw.expiry_date : (current[existingIdx].expiry_date || "")
         };
         updatedCount++;
       } else {
@@ -2371,7 +2440,7 @@ export const dbInventory = {
           company_code: compCode,
           item_code: itemCode,
           product_description: desc,
-          generic_name: desc || "Homeopathic Dilution / Mother Tincture",
+          generic_name: desc,
           naration: desc,
           category: category,
           has_multi_unit: Boolean(raw.has_multi_unit),
@@ -2391,7 +2460,8 @@ export const dbInventory = {
           warehouse_stock: godownStock,
           location_stocks: { wh_str: storeStock, ...(godownStock > 0 ? { wh_001: godownStock } : {}) },
           low_stock_threshold: minAlert,
-          expiry_date: raw.expiry_date || "2028-12-31"
+          batch_no: raw.batch_no || "",
+          expiry_date: raw.expiry_date || ""
         };
         current.push(newItem);
         addedCount++;
@@ -2506,17 +2576,16 @@ export const dbInventory = {
   },
 };
 
-/** Generate Sample CSV Template for Bulk Inventory Upload */
-/** Generate Sample CSV Template for Bulk Inventory Upload with Company Code & Item Code */
+/** Generate Sample CSV Template for Bulk Inventory Upload with Full 14 Columns Schema */
 export function exportInventoryTemplateCSV() {
-  const headers = "S/R No,Medicine Name,Description,Packing,Company Name,Company Code,Item Code,Cost Price,Retail Price,Medical Store Stock,Stock Level Alert,Category";
+  const headers = "S/R No,Medicine Name,Description,Packing,Company Name,Company Code,Item Code,Cost Price,Retail Price,Medical Store Stock,Stock Level Alert,Category,Batch Number,Expiry Date";
   const rows = [
-    '1,"AMPHOSCA (FEMALE)","Homeopathic Tablets 60s","60 TABS","LEHNING FRANCE","LEH","LEH-01",1400,1990,20,5,"Tablets"',
-    '2,"BIOCARDE DROPS","Cardiac Drops 30ml","30 ML","LEHNING FRANCE","LEH","LEH-02",950,1340,25,5,"Drops"',
-    '3,"DIACURE CAPSULES","Diabetes Support 60s","60 CAPS","LEHNING FRANCE","LEH","LEH-03",1550,2190,15,5,"Capsules"',
-    '4,"TONIC VEGETAL SYRUP","Herbal Restorative Syrup 250ml","250 ML","LEHNING FRANCE","LEH","LEH-04",1450,2040,15,5,"Syrup"',
-    '5,"L-COMPLEXES","Drops & Tabs Combo Set","30 ML / 60 TABS","LEHNING FRANCE","LEH","LEH-05",900,1290,20,5,"Combination"',
-    '6,"MOTHER TINCTURES","Homeopathic Dilution 1000ml","1000 ML","LEHNING FRANCE","LEH","LEH-06",12800,18000,5,2,"Mother Tinctures"'
+    '1,"GHR-01","","30 ML","GHR HOMEO PHARMA","GHR","GHR-01",465,665,20,5,"Drops","B-01","2028-12-31"',
+    '2,"GHR-02","","30 ML","GHR HOMEO PHARMA","GHR","GHR-02",465,665,25,5,"Drops","",""',
+    '3,"AMPHOSCA (FEMALE)","Homeopathic Tablets 60s","60 TABS","LEHNING FRANCE","LEH","LEH-01",1400,1990,20,5,"Tablets","",""',
+    '4,"BIOCARDE DROPS","Cardiac Drops 30ml","30 ML","LEHNING FRANCE","LEH","LEH-02",950,1340,25,5,"Drops","",""',
+    '5,"DIACURE CAPSULES","Diabetes Support 60s","60 CAPS","LEHNING FRANCE","LEH","LEH-03",1550,2190,15,5,"Capsules","",""',
+    '6,"TONIC VEGETAL SYRUP","Herbal Restorative Syrup 250ml","250 ML","LEHNING FRANCE","LEH","LEH-04",1450,2040,15,5,"Syrup","",""'
   ];
   return `${headers}\n${rows.join("\n")}`;
 }
@@ -2650,93 +2719,127 @@ export function extractSmartPackingAndName(rawName, existingPacking = "") {
 }
 
 /** Parse, Sanitize, Clean, and Validate Inventory CSV File Content with Smart Auto-Sort & Categorization */
-export function parseInventoryCSV(csvText) {
-  if (!csvText || !csvText.trim()) return [];
-  const lines = csvText.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
+export function parseInventoryCSV(csvInput) {
+  if (!csvInput) return [];
 
-  const rawHeaders = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/['"]/g, ""));
+  let rows = [];
+  if (Array.isArray(csvInput)) {
+    rows = csvInput;
+  } else if (typeof csvInput === "string") {
+    if (!csvInput.trim()) return [];
+    const lines = csvInput.trim().split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const cells = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let c = 0; c < line.length; c++) {
+        const char = line[c];
+        if (char === '"') inQuotes = !inQuotes;
+        else if (char === ',' && !inQuotes) { cells.push(cur.trim()); cur = ""; }
+        else cur += char;
+      }
+      cells.push(cur.trim());
+      rows.push(cells);
+    }
+  } else {
+    return [];
+  }
+
+  if (rows.length < 2) return [];
+
+  const rawHeaders = rows[0].map((h) => String(h || "").trim().toLowerCase().replace(/['"]/g, ""));
   
-  // Robust Column Header Resolution
-  const nameIdx = rawHeaders.findIndex((h) => h === "medicine name" || h === "item name" || h === "product name" || (h.includes("name") && !h.includes("company") && !h.includes("incharge")));
-  const descIdx = rawHeaders.findIndex((h) => h.includes("description") || h.includes("generic") || h.includes("formula") || h.includes("naration"));
-  const packIdx = rawHeaders.findIndex((h) => h.includes("packing") || h.includes("pack") || h.includes("unit label") || h.includes("size") || h.includes("volume"));
+  // Robust Column Header Resolution for CliniCore 14-Column Schema
+  const srIdx = rawHeaders.findIndex((h) => h === "s/r" || h === "s/r no" || h === "sr" || h === "sr no" || h === "sr." || h === "s.no" || h === "serial" || h === "sno");
+  const nameIdx = rawHeaders.findIndex((h) => h === "medicine name" || h === "item name" || h === "product name" || (h.includes("name") && !h.includes("company") && !h.includes("incharge") && !h.includes("salesman")));
+  const descIdx = rawHeaders.findIndex((h) => h === "description" || h === "desc" || h === "product description" || (h.includes("description") && !h.includes("product name")));
+  const packIdx = rawHeaders.findIndex((h) => h === "packing" || h.includes("packing") || h.includes("pack") || h.includes("unit label") || h.includes("size") || h.includes("volume"));
   
   // Company & Code Indexes
   const compIdx = rawHeaders.findIndex((h) => (h === "company name" || h === "company" || h.includes("brand") || h.includes("mfg") || h.includes("manufacturer")) && !h.includes("code"));
   const compCodeIdx = rawHeaders.findIndex((h) => h === "company code" || h === "comp code" || h === "mfg code" || (h.includes("company") && h.includes("code")));
-  const itemCodeIdx = rawHeaders.findIndex((h) => h === "item code" || h === "sku" || h === "barcode" || (h.includes("item") && h.includes("code")) || (h === "code" && compCodeIdx !== -1));
+  const itemCodeIdx = rawHeaders.findIndex((h) => h === "item code" || h === "itemcode" || h === "sku" || h === "barcode" || (h.includes("item") && h.includes("code")) || (h === "code" && compCodeIdx !== -1));
   const fallbackCodeIdx = rawHeaders.findIndex((h) => h === "item code" || h === "code" || h.includes("item code") || h.includes("barcode") || h.includes("sku"));
   
   // Cost Index (must be distinct from Retail / Sale)
-  const costIdx = rawHeaders.findIndex((h) => h.includes("cost") || h.includes("purchase") || h.includes("buy") || h === "cp");
+  const costIdx = rawHeaders.findIndex((h) => h === "cost price" || h === "purchase price" || h.includes("cost") || h.includes("purchase") || h.includes("buy") || h === "cp" || h === "tp rate" || h === "tp");
   
   // Sale / Retail Index (prioritize retail or sale over generic price)
-  let saleIdx = rawHeaders.findIndex((h) => h.includes("retail") || h.includes("sale") || h.includes("mrp") || h === "sp");
+  let saleIdx = rawHeaders.findIndex((h) => h === "retail price" || h === "sale price" || h === "retail" || h.includes("retail") || h.includes("sale") || h === "mrp" || h === "sp");
   if (saleIdx === -1) {
     saleIdx = rawHeaders.findIndex((h, idx) => h.includes("price") && idx !== costIdx);
   }
   
   // Stock Indexes
-  const storeStockIdx = rawHeaders.findIndex((h) => h.includes("medical store stock") || h.includes("store stock") || h.includes("store") || (h.includes("stock") && !h.includes("godown") && !h.includes("warehouse") && !h.includes("alert") && !h.includes("level")));
+  const storeStockIdx = rawHeaders.findIndex((h) => h.includes("medical store stock") || h.includes("store stock") || h === "stock" || h.includes("stock qty") || h === "qty" || (h.includes("stock") && !h.includes("godown") && !h.includes("warehouse") && !h.includes("alert") && !h.includes("level")));
   const whStockIdx = rawHeaders.findIndex((h) => h.includes("godown") || h.includes("warehouse") || h.includes("wh stock"));
-  const alertIdx = rawHeaders.findIndex((h) => h.includes("alert") || h.includes("min") || h.includes("threshold") || h.includes("level"));
-  const catIdx = rawHeaders.findIndex((h) => h.includes("category") || h.includes("group") || h.includes("type"));
-  const batchIdx = rawHeaders.findIndex((h) => h === "batch" || h.includes("batch") || h === "lot");
-  const expIdx = rawHeaders.findIndex((h) => h === "expiry" || h.includes("expiry") || h.includes("exp") || h === "exp date" || h === "expiry date");
+  const alertIdx = rawHeaders.findIndex((h) => h.includes("stock level alert") || h.includes("alert") || h.includes("min") || h.includes("threshold") || h.includes("level"));
+  const catIdx = rawHeaders.findIndex((h) => h === "category" || h.includes("category") || h.includes("group") || h.includes("type"));
+  const batchIdx = rawHeaders.findIndex((h) => h === "batch number" || h === "batch no" || h === "batch" || h === "lot");
+  const expIdx = rawHeaders.findIndex((h) => h === "expiry date" || h === "exp date" || h === "expiry" || h === "exp");
 
   const parsed = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const cells = [];
-    let cur = "";
-    let inQuotes = false;
-    for (let c = 0; c < line.length; c++) {
-      const char = line[c];
-      if (char === '"') inQuotes = !inQuotes;
-      else if (char === ',' && !inQuotes) { cells.push(cur.trim()); cur = ""; }
-      else cur += char;
-    }
-    cells.push(cur.trim());
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i];
+    if (!cells || !Array.isArray(cells)) continue;
+    // Filter out completely blank or empty rows (such as trailing Excel template rows)
+    if (cells.every((c) => c === null || c === undefined || String(c).trim() === "")) continue;
 
     // If S/R No is column 0, name is column 1
-    const rawNameCell = nameIdx !== -1 ? cells[nameIdx] : (cells[1] || cells[0]);
+    const rawNameCell = nameIdx !== -1 ? String(cells[nameIdx] || "").trim() : String(cells[1] || cells[0] || "").trim();
     if (!rawNameCell || rawNameCell.toLowerCase() === "medicine name" || rawNameCell.toLowerCase() === "null") continue;
 
-    const rawDesc = descIdx !== -1 && cells[descIdx] ? cells[descIdx] : "";
-    const rawPacking = packIdx !== -1 && cells[packIdx] ? cells[packIdx] : "";
-    const rawComp = compIdx !== -1 && cells[compIdx] ? cells[compIdx] : "BM Pvt LTD";
-    const rawCompCode = compCodeIdx !== -1 && cells[compCodeIdx] ? cells[compCodeIdx].toUpperCase().trim() : "";
-    const rawItemCode = itemCodeIdx !== -1 && cells[itemCodeIdx] ? cells[itemCodeIdx].toUpperCase().trim() : (fallbackCodeIdx !== -1 && cells[fallbackCodeIdx] ? cells[fallbackCodeIdx].toUpperCase().trim() : "");
-    const rawBatch = batchIdx !== -1 && cells[batchIdx] ? cells[batchIdx].trim() : "B-01";
-    const rawExp = expIdx !== -1 && cells[expIdx] ? cells[expIdx].trim() : "2028-12-31";
+    const rawSr = srIdx !== -1 && cells[srIdx] !== undefined && cells[srIdx] !== null && String(cells[srIdx]).trim() !== "" ? String(cells[srIdx]).trim() : String(parsed.length + 1);
+    const rawDesc = descIdx !== -1 && cells[descIdx] !== undefined && cells[descIdx] !== null ? String(cells[descIdx]).trim() : "";
+    const rawPacking = packIdx !== -1 && cells[packIdx] !== undefined && cells[packIdx] !== null ? String(cells[packIdx]).trim() : "";
+    const rawComp = compIdx !== -1 && cells[compIdx] !== undefined && cells[compIdx] !== null ? String(cells[compIdx]).trim() : "";
+    const rawCompCode = compCodeIdx !== -1 && cells[compCodeIdx] !== undefined && cells[compCodeIdx] !== null ? String(cells[compCodeIdx]).toUpperCase().trim() : "";
+    const rawItemCode = itemCodeIdx !== -1 && cells[itemCodeIdx] !== undefined && cells[itemCodeIdx] !== null ? String(cells[itemCodeIdx]).toUpperCase().trim() : (fallbackCodeIdx !== -1 && cells[fallbackCodeIdx] !== undefined && cells[fallbackCodeIdx] !== null ? String(cells[fallbackCodeIdx]).toUpperCase().trim() : "");
+    const rawBatch = batchIdx !== -1 && cells[batchIdx] !== undefined && cells[batchIdx] !== null ? String(cells[batchIdx]).trim() : "";
+    const rawExp = expIdx !== -1 && cells[expIdx] !== undefined && cells[expIdx] !== null ? String(cells[expIdx]).trim() : "";
 
-    // Run Smart Extraction & Title Casing
-    const { name: cleanName, packing: cleanPacking } = extractSmartPackingAndName(rawNameCell, rawPacking);
+    // Run Smart Extraction & Title Casing while preserving exact casing if already provided
+    let cleanName = rawNameCell;
+    let cleanPacking = rawPacking;
+    if (!cleanPacking) {
+      const extracted = extractSmartPackingAndName(rawNameCell, "");
+      cleanName = extracted.name;
+      cleanPacking = extracted.packing;
+    } else {
+      // If medicine name is all uppercase, clean it with toTitleCaseClean; otherwise preserve original casing
+      const isAllCaps = cleanName === cleanName.toUpperCase() && /[A-Z]/.test(cleanName);
+      if (isAllCaps) {
+        cleanName = toTitleCaseClean(cleanName);
+      }
+    }
     if (!cleanName) continue;
 
-    const description = toTitleCaseClean(rawDesc);
-    const company = toTitleCaseClean(rawComp) || "BM Pvt LTD";
-    const companyCode = rawCompCode || (company.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "GEN");
-    const itemCode = rawItemCode || companyCode;
+    // Strict Rule: If description is not present, remain strictly blank "" (never auto-generate formula/disease)
+    const description = rawDesc ? (rawDesc === rawDesc.toUpperCase() && /[A-Z]/.test(rawDesc) ? toTitleCaseClean(rawDesc) : rawDesc) : "";
+    const company = rawComp ? (rawComp.length <= 5 ? rawComp.toUpperCase() : (rawComp === rawComp.toUpperCase() && /[A-Z]/.test(rawComp) ? toTitleCaseClean(rawComp) : rawComp)) : "";
+    const companyCode = rawCompCode || (company ? (company.length <= 4 ? company.toUpperCase() : company.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase()) : "");
     
-    const purchasePrice = costIdx !== -1 && cells[costIdx] ? (parseFloat(cells[costIdx]) || 0) : 0;
-    const salePrice = saleIdx !== -1 && cells[saleIdx] ? (parseFloat(cells[saleIdx]) || 0) : (purchasePrice > 0 ? purchasePrice : 0);
+    // Strict Rule: If item_code is not present in file, leave it strictly blank ""
+    const itemCode = rawItemCode;
     
-    const storeStock = storeStockIdx !== -1 && cells[storeStockIdx] ? (parseInt(cells[storeStockIdx]) || 0) : 0;
-    const godownStock = whStockIdx !== -1 && cells[whStockIdx] ? (parseInt(cells[whStockIdx]) || 0) : 0;
+    const purchasePrice = costIdx !== -1 && cells[costIdx] !== "" && cells[costIdx] !== null && !isNaN(Number(cells[costIdx])) ? parseFloat(cells[costIdx]) : 0;
+    const salePrice = saleIdx !== -1 && cells[saleIdx] !== "" && cells[saleIdx] !== null && !isNaN(Number(cells[saleIdx])) ? parseFloat(cells[saleIdx]) : (purchasePrice > 0 ? purchasePrice : 0);
+    
+    const storeStock = storeStockIdx !== -1 && cells[storeStockIdx] !== "" && cells[storeStockIdx] !== null && !isNaN(Number(cells[storeStockIdx])) ? parseInt(cells[storeStockIdx], 10) : 0;
+    const godownStock = whStockIdx !== -1 && cells[whStockIdx] !== "" && cells[whStockIdx] !== null && !isNaN(Number(cells[whStockIdx])) ? parseInt(cells[whStockIdx], 10) : 0;
     const totalBase = storeStock + godownStock;
     
-    const rawCat = catIdx !== -1 && cells[catIdx] ? cells[catIdx] : "";
-    const category = toTitleCaseClean(rawCat);
-    const minAlert = alertIdx !== -1 && cells[alertIdx] ? (parseInt(cells[alertIdx]) || 6) : 6;
+    // Strict Rule: If category is not present in file, leave strictly blank "" (never default to "Drops")
+    const rawCat = catIdx !== -1 && cells[catIdx] !== undefined && cells[catIdx] !== null ? String(cells[catIdx]).trim() : "";
+    const category = rawCat ? (rawCat === rawCat.toUpperCase() && /[A-Z]/.test(rawCat) ? toTitleCaseClean(rawCat) : rawCat) : "";
+    const minAlert = alertIdx !== -1 && cells[alertIdx] !== "" && cells[alertIdx] !== null && !isNaN(Number(cells[alertIdx])) ? parseInt(cells[alertIdx], 10) : 6;
 
     parsed.push({
+      sr_no: rawSr,
       medicine_name: cleanName,
       product_description: description,
-      generic_name: description || "Homeopathic Dilution / Mother Tincture",
+      generic_name: description,
       naration: description,
       packing: cleanPacking,
       unit_label: cleanPacking,
@@ -2762,9 +2865,9 @@ export function parseInventoryCSV(csvText) {
       units_per_strip: 1,
       low_stock_threshold: minAlert,
       location_stocks: { wh_str: storeStock, ...(godownStock > 0 ? { wh_001: godownStock } : {}) },
-      batch_no: rawBatch || "B-01",
-      batch: rawBatch || "B-01",
-      expiry_date: rawExp || "2028-12-31"
+      batch_no: rawBatch,
+      batch: rawBatch,
+      expiry_date: rawExp
     });
   }
 
@@ -3109,7 +3212,7 @@ export const dbCompanies = {
     const inv = getCollection(KEYS.INVENTORY) || [];
     inv.forEach((item) => {
       const comp = (item.company_name || "").trim();
-      const code = (item.item_code || "").trim().toUpperCase();
+      const code = (item.company_code || item.item_code || "").trim().toUpperCase();
       if (comp && comp !== "BM Pvt LTD" && comp !== "BM Pvt Ltd" && !seen.has(comp.toLowerCase())) {
         seen.add(comp.toLowerCase());
         result.push({
@@ -3122,10 +3225,28 @@ export const dbCompanies = {
 
     return result.sort((a, b) => a.name.localeCompare(b.name));
   },
-  add: (companyName, companyCode = "") => {
-    if (!companyName || !companyName.trim()) return null;
-    const cleanName = companyName.trim();
-    const cleanCode = (companyCode || "").trim().toUpperCase() || cleanName.substring(0, 3).toUpperCase();
+  getByCode: (code) => {
+    if (!code) return null;
+    const clean = String(code).trim().toLowerCase();
+    const list = dbCompanies.getAll();
+    return list.find(
+      (c) =>
+        (c.code && c.code.toLowerCase() === clean) ||
+        (c.name && c.name.toLowerCase() === clean)
+    ) || null;
+  },
+  add: (companyDataOrName, companyCode = "") => {
+    let cleanName = "";
+    let cleanCode = "";
+    if (typeof companyDataOrName === "object" && companyDataOrName !== null) {
+      cleanName = (companyDataOrName.name || "").trim();
+      cleanCode = (companyDataOrName.code || companyCode || "").trim().toUpperCase();
+    } else {
+      cleanName = (companyDataOrName || "").trim();
+      cleanCode = (companyCode || "").trim().toUpperCase();
+    }
+    if (!cleanName) return null;
+    if (!cleanCode) cleanCode = cleanName.substring(0, 3).toUpperCase();
     const current = getCollection(KEYS.COMPANIES) || [];
     const existing = current.find((c) => {
       const n = typeof c === "string" ? c : c?.name;
@@ -4143,23 +4264,34 @@ export const dbStockLedger = {
   // Reconstruct stock ledger from immutable events or fallback to transaction scan
   reconstruct: (targetInventoryId, asOfDate) => dbStockMovements.reconstructStockLedger(targetInventoryId, asOfDate),
   reconcile: () => reconcileFinancialAndStockLedgers(),
-  // Level 1: Category Summary (Grouped by Item Code / Company)
+  // Level 1: Category Summary (Grouped by Company Code & Company Name)
   getCategorySummary: () => {
     const inventory = dbInventory.getAll();
     const map = new Map();
 
     inventory.forEach((item) => {
-      const code = (item.item_code || item.company_name || "General").trim();
+      const compName = (item.company_name || "General").trim();
+      let compCode = (item.company_code || "").trim().toUpperCase();
+      if (!compCode) {
+        if (item.company_name) {
+          const found = typeof dbCompanies !== "undefined" && dbCompanies.getByCode ? dbCompanies.getByCode(item.company_name) : null;
+          compCode = found?.code || item.company_name.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase();
+        }
+      }
+      if (!compCode) compCode = "GEN";
+
+      const key = compCode;
       const qty = Number(item.total_base_stock || item.stock_qty || 0);
-      if (!map.has(code)) {
-        map.set(code, {
-          category: code,
-          company_name: item.company_name || code,
+      if (!map.has(key)) {
+        map.set(key, {
+          category: compCode,
+          company_code: compCode,
+          company_name: compName,
           total_qty: 0,
           item_count: 0,
         });
       }
-      const entry = map.get(code);
+      const entry = map.get(key);
       entry.total_qty += qty;
       entry.item_count += 1;
     });
@@ -4169,7 +4301,7 @@ export const dbStockLedger = {
     );
   },
 
-  // Level 2: SKU Summary (All medicines under a specific Category / Item Code)
+  // Level 2: SKU Summary (All medicines under a specific Company Code / Category)
   getSKUSummary: (categoryCode = "") => {
     const inventory = dbInventory.getAll();
     let items = [];
@@ -4178,6 +4310,7 @@ export const dbStockLedger = {
         id: i.id,
         item_name: i.medicine_name,
         item_code: i.item_code || "General",
+        company_code: i.company_code || "",
         company_name: i.company_name || "",
         qty: Number(i.total_base_stock || i.stock_qty || 0),
         store_stock: Number(i.store_stock || 0),
@@ -4187,11 +4320,17 @@ export const dbStockLedger = {
     } else {
       const normCat = categoryCode.toLowerCase().trim();
       items = inventory
-        .filter((i) => (i.item_code || "").toLowerCase().trim() === normCat || (i.company_name || "").toLowerCase().trim() === normCat)
+        .filter((i) => {
+          const cCode = (i.company_code || "").toLowerCase().trim();
+          const cName = (i.company_name || "").toLowerCase().trim();
+          const iCode = (i.item_code || "").toLowerCase().trim();
+          return cCode === normCat || cName === normCat || (cCode && cCode.startsWith(normCat)) || (normCat.length >= 3 && iCode.startsWith(normCat));
+        })
         .map((i) => ({
           id: i.id,
           item_name: i.medicine_name,
           item_code: i.item_code || "General",
+          company_code: i.company_code || "",
           company_name: i.company_name || "",
           qty: Number(i.total_base_stock || i.stock_qty || 0),
           store_stock: Number(i.store_stock || 0),
@@ -4495,12 +4634,13 @@ export const dbParties = {
       dbOutbox.enqueue("parties", updatedRecord, "UPDATE", id);
     }
   },
-  recordPayment: (partyId, amount, paymentMode = "Cash", notes = "", actorName = "Staff", bankName = "", chequeNo = "") => {
+  recordPayment: (partyId, amount, paymentMode = "Cash", notes = "", actorName = "Staff", bankName = "", chequeNo = "", fromCashBook = false) => {
     const amt = Number(amount) || 0;
     if (amt <= 0) return null;
     const party = dbParties.getById(partyId);
     if (!party) return null;
 
+    const partyCode = party.party_code || party.code || "";
     const previousBalance = Number(party.balance_due ?? party.current_balance ?? 0);
     const remainingBalance = Math.max(0, previousBalance - amt);
 
@@ -4516,10 +4656,12 @@ export const dbParties = {
 
     const partyLedgers = getCollection(KEYS.PARTY_LEDGER) || [];
     const receiptNo = generateSequentialInvoiceNo("REC");
+    const todayIso = new Date().toISOString().split("T")[0];
     const paymentRecord = {
       id: generateId("rec"),
       receipt_no: receiptNo,
       party_id: partyId,
+      party_code: partyCode,
       party_name: party.name || party.party_name || "Wholesale Party",
       city: party.city || party.territory || "Hyderabad",
       amount: amt,
@@ -4531,25 +4673,36 @@ export const dbParties = {
       notes: notes || `Udhaar cash recovery from ${party.name}`,
       collected_by: actorName,
       created_at: new Date().toISOString(),
-      date: new Date().toLocaleDateString("en-US"),
+      date: todayIso,
     };
 
     setCollection(KEYS.PARTY_LEDGER, [paymentRecord, ...partyLedgers]);
 
-    // Auto-record CashBook Inflow Entry
-    if (typeof dbCashBook !== "undefined" && dbCashBook.add) {
-      dbCashBook.add({
-        type: "INCOME",
-        category: "UDHAAR_RECOVERY",
-        title: `Udhaar Payment Received — ${party.name}`,
-        amount: amt,
-        payment_mode: paymentMode,
-        party_id: partyId,
-        party_name: party.name,
-        notes: notes || `Credit repayment received from ${party.name} (${party.city || "Sindh"})`,
-        recorded_by: actorName,
-        date: new Date().toLocaleDateString("en-US"),
-      });
+    // Auto-record CashBook Inflow Entry (with skipPartySync to avoid recursion)
+    if (!fromCashBook && typeof dbCashBook !== "undefined") {
+      const addCb = dbCashBook.addEntry || dbCashBook.add;
+      if (typeof addCb === "function") {
+        const partyLabel = partyCode ? `[#${partyCode}] ${party.name}` : party.name;
+        addCb({
+          voucher_no: receiptNo,
+          type: "Receive",
+          term: "Receive",
+          action_type: "party_wasooli",
+          category: "Party Wasooli",
+          account_name: partyLabel,
+          party_id: partyId,
+          party_code: partyCode,
+          amount: amt,
+          payment_mode: paymentMode,
+          bank_name: bankName ? toTitleCase(bankName) : "",
+          cheque_no: chequeNo ? String(chequeNo).trim() : "",
+          naration: notes || `Udhaar recovery from ${party.name} (${party.city || "Sindh"})`,
+          description: notes || `Udhaar recovery from ${party.name}`,
+          cashier: actorName,
+          date: todayIso,
+          skipPartySync: true,
+        });
+      }
     }
 
     try {
@@ -4957,7 +5110,7 @@ export const dbSupplierLedger = {
     setCollection(KEYS.SUPPLIER_LEDGER, [...list, newTx]);
     return newTx;
   },
-  recordPayment: (supplierIdOrObj, amount, paymentMode, notes = "", reference = "") => {
+  recordPayment: (supplierIdOrObj, amount, paymentMode, notes = "", reference = "", fromCashBook = false) => {
     const typeMap = { cash: "CASH_PAYMENT", cheque: "CHEQUE_PAYMENT", bank: "BANK_PAYMENT" };
     const type = typeMap[paymentMode] || "CASH_PAYMENT";
     let supplierId = typeof supplierIdOrObj === "object" ? (supplierIdOrObj.id || supplierIdOrObj.name) : supplierIdOrObj;
@@ -4973,7 +5126,7 @@ export const dbSupplierLedger = {
     if (dbSuppliers && dbSuppliers.recordPayment) {
       dbSuppliers.recordPayment(supplierId, Number(amount));
     }
-    return dbSupplierLedger.addTransaction(
+    const supTx = dbSupplierLedger.addTransaction(
       supplierId,
       type,
       0,
@@ -4982,6 +5135,29 @@ export const dbSupplierLedger = {
       reference,
       supplierName
     );
+
+    // Auto-record CashBook Outflow Entry (Paid)
+    if (!fromCashBook && typeof dbCashBook !== "undefined") {
+      const addCb = dbCashBook.addEntry || dbCashBook.add;
+      if (typeof addCb === "function") {
+        addCb({
+          voucher_no: reference || undefined,
+          term: "Paid",
+          type: "Paid",
+          action_type: "supplier_payment",
+          category: "Supplier Payment",
+          account_name: supplierName || "Pharma Supplier",
+          supplier_id: supplierId,
+          amount: Number(amount) || 0,
+          payment_mode: paymentMode === "cheque" ? "Cheque" : paymentMode === "bank" ? "Bank Transfer" : "Cash",
+          naration: notes || `Payment disbursed to supplier ${supplierName || ""}`,
+          date: new Date().toISOString().split("T")[0],
+          skipSupplierSync: true,
+        });
+      }
+    }
+
+    return supTx;
   },
   recordReturnClaim: (supplierId, amount, notes = "") => {
     if (dbSuppliers && dbSuppliers.recordPayment) {
@@ -5108,9 +5284,29 @@ export const dbSales = {
       voucherNo = dbSales.getNextVoucherNo(saleData.billing_type);
     }
     const totalAmount = Number(saleData.total_amount) || 0;
-    const isCredit = saleData.payment_mode === "Credit";
+    const isCredit = saleData.payment_mode === "Credit" || saleData.payment_mode === "Credit (Udhar)" || saleData.payment_mode === "Credit / Udhaar";
     const paidAmount = isCredit ? (Number(saleData.paid_amount) || 0) : totalAmount;
     const balanceDue = Math.max(0, totalAmount - paidAmount);
+
+    const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
+    const cashierId = saleData.cashier_id || saleData.active_cashier_id || activeCashier?.id || "user_staff";
+    const cashierName = saleData.salesman || saleData.cashier_name || saleData.active_cashier_name || activeCashier?.name || "Counter Staff";
+
+    const isWholesale = saleData.billing_type === "wholesale_party" || saleData.billing_type === "wholesale";
+    const rawCustomerName = saleData.patient_name || saleData.account_name || saleData.party_name;
+    const customerName = rawCustomerName ? String(rawCustomerName).trim() : (isWholesale ? "Walk-In Customer" : "Walk-In Patient");
+
+    // Calculate total discount from items or explicit field
+    const itemsList = saleData.items || [];
+    let calculatedDiscount = 0;
+    itemsList.forEach((it) => {
+      const rowGross = Number(it.gross || (Number(it.qty || 1) * Number(it.rate || 0))) || 0;
+      const pct = Number(it.disc_pct_num || parseFloat(it.disc_pct) || 0);
+      if (pct > 0 && rowGross > 0) {
+        calculatedDiscount += (rowGross * pct) / 100;
+      }
+    });
+    const discountAmount = Number(saleData.discount_amount || saleData.total_discount || calculatedDiscount) || 0;
 
     const newSale = {
       ...saleData,
@@ -5118,16 +5314,24 @@ export const dbSales = {
       voucher_no: voucherNo,
       receipt_no: voucherNo,
       invoice_no: voucherNo,
+      cashier_id: cashierId,
+      cashier_name: cashierName,
+      active_cashier_id: cashierId,
+      active_cashier_name: cashierName,
+      customer_name: customerName,
+      patient_name: customerName,
       total_amount: totalAmount,
       paid_amount: paidAmount,
       balance_due: balanceDue,
+      discount_amount: discountAmount,
+      total_discount: discountAmount,
       sale_date: saleData.sale_date || new Date().toISOString(),
       created_at: new Date().toISOString(),
     };
 
     // Deduct stock from Godown warehouse (or Store counter)
     const dest = saleData.destination_type === "store" ? "store" : "warehouse";
-    const deductions = (saleData.items || []).reduce((acc, item) => {
+    const deductions = itemsList.reduce((acc, item) => {
       const inv = item.inventory_id ? dbInventory.getById(item.inventory_id) : dbInventory.findByName(item.medicine_name);
       if (inv) {
         const qty = Number(item.qty_base_units || item.qty || item.quantity) || 1;
@@ -5154,6 +5358,55 @@ export const dbSales = {
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
       dbOutbox.enqueue("pos_sales", newSale, "CREATE", newSale.id);
     }
+
+    // Audit Logging
+    const actionType = isWholesale ? "B2B_WHOLESALE_SALE" : "POS_MEDICINE_SALE";
+    const itemsSummary = itemsList.map((i) => `${i.medicine_name || i.name || "Item"} (x${i.qty || 1})`).slice(0, 5).join(", ") + (itemsList.length > 5 ? ` +${itemsList.length - 5} more` : "");
+
+    dbAuditLogs.logEvent({
+      action: actionType,
+      entity: "sales",
+      entity_id: newSale.id,
+      actor_id: cashierId,
+      actor_name: cashierName,
+      reason: `Staff "${cashierName}" sold ${itemsList.length} item(s) [${itemsSummary || "Medicines"}] to ${customerName} for Rs. ${newSale.total_amount} (Invoice #${voucherNo})${discountAmount > 0 ? ` with Rs. ${discountAmount.toFixed(2)} discount` : ""}`,
+      after: {
+        ...newSale,
+        customer_name: customerName,
+        patient_name: customerName,
+        staff_name: cashierName,
+        discount_amount: discountAmount,
+      },
+    });
+
+    if (discountAmount > 0) {
+      dbAuditLogs.logEvent({
+        action: "DISCOUNT_GRANTED",
+        entity: "sales",
+        entity_id: newSale.id,
+        actor_id: cashierId,
+        actor_name: cashierName,
+        reason: `Staff "${cashierName}" granted Rs. ${discountAmount.toFixed(2)} discount to ${customerName} on Invoice #${voucherNo}`,
+        after: {
+          invoice_no: voucherNo,
+          receipt_no: voucherNo,
+          customer_name: customerName,
+          patient_name: customerName,
+          staff_name: cashierName,
+          actor_name: cashierName,
+          discount_amount: discountAmount,
+          total_amount: newSale.total_amount,
+        },
+      });
+    }
+
+    try {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("clinicflow_status_update"));
+        window.dispatchEvent(new Event("clinicflow_audit_logged"));
+      }
+    } catch {}
+
     return newSale;
   },
   checkout: (sale) => {
@@ -5180,6 +5433,7 @@ export const dbSales = {
     const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
     const cashierId = sale.cashier_id || sale.active_cashier_id || activeCashier?.id || "user_admin";
     const cashierName = sale.cashier_name || sale.active_cashier_name || activeCashier?.name || "Counter Staff";
+    const patientName = (sale.patient_name || sale.customer_name || "Walk-In Patient").trim();
 
     const newSale = {
       ...sale,
@@ -5189,6 +5443,8 @@ export const dbSales = {
       cashier_name: cashierName,
       active_cashier_id: cashierId,
       active_cashier_name: cashierName,
+      patient_name: patientName,
+      customer_name: patientName,
       warehouse_id: sale.warehouse_id || "wh_str",
       sale_date: sale.sale_date || new Date().toISOString(),
       subtotal_amount: subtotal,
@@ -5221,8 +5477,14 @@ export const dbSales = {
       entity_id: newSale.id,
       actor_id: cashierId,
       actor_name: cashierName,
-      reason: `Sold ${newSale.items?.length || 0} item(s) to ${newSale.patient_name || 'Walk-in'} for Rs. ${newSale.total_amount} (Receipt #${newSale.receipt_no})`,
-      after: newSale,
+      reason: `Staff "${cashierName}" sold ${newSale.items?.length || 0} item(s) to ${patientName} for Rs. ${newSale.total_amount} (Receipt #${newSale.receipt_no})${discount > 0 ? ` with Rs. ${discount.toFixed(2)} discount` : ""}`,
+      after: {
+        ...newSale,
+        customer_name: patientName,
+        patient_name: patientName,
+        staff_name: cashierName,
+        discount_amount: discount,
+      },
     });
 
     if (discount > 0) {
@@ -5232,8 +5494,17 @@ export const dbSales = {
         entity_id: newSale.id,
         actor_id: cashierId,
         actor_name: cashierName,
-        reason: `Discount of Rs. ${discount} granted on invoice ${newSale.receipt_no}`,
-        after: { receipt_no: newSale.receipt_no, discount_amount: discount, total_amount: total },
+        reason: `Staff "${cashierName}" granted Rs. ${discount.toFixed(2)} discount to ${patientName} on Receipt #${newSale.receipt_no}`,
+        after: {
+          receipt_no: newSale.receipt_no,
+          invoice_no: newSale.receipt_no,
+          discount_amount: discount,
+          total_amount: total,
+          customer_name: patientName,
+          patient_name: patientName,
+          staff_name: cashierName,
+          actor_name: cashierName,
+        },
       });
     }
 
@@ -5396,21 +5667,44 @@ export const dbPurchases = {
 
     });
 
-    // Update supplier running balance
-    if (purchase.supplier_id) {
-      if (balanceDue > 0) {
-        dbSuppliers.updateBalance(purchase.supplier_id, balanceDue);
+    // Update supplier running balance & ledger
+    const supTarget = purchase.supplier_id || purchase.supplier_code || purchase.supplier_name;
+    if (supTarget) {
+      let resolvedSup = (purchase.supplier_id ? dbSuppliers.getById(purchase.supplier_id) : null) ||
+        (purchase.supplier_code ? dbSuppliers.getByCode(purchase.supplier_code) : null);
+      if (!resolvedSup && purchase.supplier_name) {
+        resolvedSup = dbSuppliers.getAll().find(
+          (s) => (s.name || "").toLowerCase().trim() === purchase.supplier_name.toLowerCase().trim()
+        );
       }
-      // Auto-log PURCHASE_BILL transaction in the two-way supplier ledger
-      dbSupplierLedger.addTransaction(
-        purchase.supplier_id,
-        "PURCHASE_BILL",
-        totalAmount,  // debit
-        paidAmount,   // credit (immediate cash payment, if any)
-        `Purchase Bill — ${newPurchase.invoice_no} | Supplier: ${purchase.supplier_name || "Distributor"}`,
-        newPurchase.invoice_no
-      );
+      if (!resolvedSup && purchase.supplier_name && purchase.supplier_name.trim()) {
+        resolvedSup = dbSuppliers.add({
+          name: purchase.supplier_name.trim(),
+          supplier_code: purchase.supplier_code || undefined,
+          current_balance: 0,
+        });
+      }
+      const finalSupId = resolvedSup ? resolvedSup.id : purchase.supplier_id;
+      if (finalSupId) {
+        newPurchase.supplier_id = finalSupId;
+        if (balanceDue > 0) {
+          dbSuppliers.updateBalance(finalSupId, balanceDue);
+        }
+        // Auto-log PURCHASE_BILL transaction in the two-way supplier ledger
+        dbSupplierLedger.addTransaction(
+          finalSupId,
+          "PURCHASE_BILL",
+          totalAmount,  // debit
+          paidAmount,   // credit (immediate cash payment, if any)
+          `Purchase Bill — ${newPurchase.invoice_no} | Supplier: ${purchase.supplier_name || "Distributor"}`,
+          newPurchase.invoice_no
+        );
+      }
     }
+
+    const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
+    const actorId = purchase.created_by_id || purchase.cashier_id || activeCashier?.id || "user_staff";
+    const actorName = purchase.created_by_name || purchase.cashier_name || purchase.salesman || activeCashier?.name || "Counter Staff";
 
     setCollection(KEYS.PURCHASES, [newPurchase, ...purchases]);
     if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
@@ -5420,8 +5714,10 @@ export const dbPurchases = {
       action: "CREATE_PURCHASE_GRN",
       entity: "purchases",
       entity_id: newPurchase.id,
-      reason: `Recorded Purchase Bill #${newPurchase.invoice_no} from ${newPurchase.supplier_name || 'Distributor'} for Rs. ${newPurchase.total_amount || 0} (Paid: Rs. ${newPurchase.paid_amount || 0}, Due: Rs. ${newPurchase.balance_due || 0})`,
-      after: newPurchase,
+      actor_id: actorId,
+      actor_name: actorName,
+      reason: `Staff "${actorName}" recorded Purchase Bill #${newPurchase.invoice_no} from ${newPurchase.supplier_name || 'Distributor'} for Rs. ${newPurchase.total_amount || 0} (Paid: Rs. ${newPurchase.paid_amount || 0}, Due: Rs. ${newPurchase.balance_due || 0})`,
+      after: { ...newPurchase, supplier_name: newPurchase.supplier_name, staff_name: actorName },
     });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("clinicflow_status_update"));
@@ -5840,6 +6136,7 @@ export const dbShiftClosings = {
 
 // ---------- DrCreate & MS Access CashBook Engine ----------
 export const dbCashBook = {
+  add: (entryData) => dbCashBook.addEntry(entryData),
   getAll: (filters = {}) => {
     // VPS-Primary: CashBook starts empty on fresh install.
     // All real entries come from VPS via syncEngine pull.
@@ -5878,7 +6175,7 @@ export const dbCashBook = {
     const list = getCollection(KEYS.CASHBOOK) || [];
     const voucherNo = entryData.voucher_no || dbCashBook.getNextVoucherNo();
     const amount = Math.max(0, Number(entryData.amount) || 0);
-    const actionType = entryData.action_type || (entryData.term === "Paid" ? "supplier_payment" : "party_wasooli");
+    const actionType = entryData.action_type || (entryData.category === "Shop Expense" ? "shop_expense" : entryData.term === "Paid" ? "supplier_payment" : "party_wasooli");
     const paymentMode = entryData.payment_mode || (actionType.includes("credit") ? "Credit" : "Cash");
     const term = (actionType === "party_credit_sale" || actionType === "supplier_credit_purchase" || entryData.term === "Credit")
       ? "Credit"
@@ -5900,7 +6197,9 @@ export const dbCashBook = {
       cheque_no: entryData.cheque_no || undefined,
       account_name: accountName,
       party_id: entryData.party_id || undefined,
+      party_code: entryData.party_code || undefined,
       supplier_id: entryData.supplier_id || undefined,
+      supplier_code: entryData.supplier_code || undefined,
       category: entryData.category || (
         actionType === "party_wasooli" ? "Party Wasooli" :
         actionType === "party_credit_sale" ? "Party Credit Sale" :
@@ -6066,12 +6365,14 @@ export const dbCashBook = {
       });
 
       // Reduce party Udhaar balance if it's a known wholesale party wasooli
-      const parties = dbParties.getAll();
-      const matchedParty = parties.find(
-        (p) => (p.name || "").toLowerCase() === accountName.toLowerCase() || p.id === entryData.party_id
-      );
-      if (matchedParty) {
-        dbParties.recordPayment(matchedParty.id, amount, paymentMode, naration, entryData.cashier);
+      if (!entryData.skipPartySync) {
+        const parties = dbParties.getAll();
+        const matchedParty = parties.find(
+          (p) => (p.name || "").toLowerCase() === accountName.toLowerCase() || p.id === entryData.party_id || (p.code && accountName.includes(p.code))
+        );
+        if (matchedParty) {
+          dbParties.recordPayment(matchedParty.id, amount, paymentMode, naration, entryData.cashier, entryData.bank_name, entryData.cheque_no, true);
+        }
       }
     } else {
       // Paid (Supplier Debt Payment / Shop Expense)
@@ -6099,13 +6400,19 @@ export const dbCashBook = {
         created_at: new Date().toISOString()
       });
 
-      // If supplier, reduce Supplier payable balance
-      const suppliers = dbSuppliers.getAll();
-      const matchedSup = suppliers.find(
-        (s) => (s.name || "").toLowerCase() === accountName.toLowerCase() || s.id === entryData.supplier_id
-      );
-      if (matchedSup) {
-        dbSuppliers.recordPayment(matchedSup.id, amount);
+      // If supplier, reduce Supplier payable balance and record in Supplier Ledger
+      if (!entryData.skipSupplierSync && (actionType === "supplier_payment" || actionType === "supplier_cash_purchase")) {
+        const suppliers = dbSuppliers.getAll();
+        const matchedSup = suppliers.find(
+          (s) => (s.name || "").toLowerCase() === accountName.toLowerCase() || s.id === entryData.supplier_id || (s.code && accountName.includes(s.code))
+        );
+        if (matchedSup) {
+          if (typeof dbSupplierLedger !== "undefined" && dbSupplierLedger.recordPayment) {
+            dbSupplierLedger.recordPayment(matchedSup.id, amount, paymentMode, naration, voucherNo, true);
+          } else {
+            dbSuppliers.recordPayment(matchedSup.id, amount);
+          }
+        }
       }
     }
 
@@ -6161,6 +6468,8 @@ export const dbCashBook = {
       date: targetDate,
       total_debit: totalDebit,
       total_credit: totalCredit,
+      totalDebit,
+      totalCredit,
       balance,
       receive_entries: receiveEntries,
       paid_entries: paidEntries,
@@ -6267,9 +6576,35 @@ export const dbDayClosing = {
           voucher_no: e.id || "",
         })),
     ];
+
+    // Merge Supplier Ledger cash payments for that day if not already in paymentsPaidList
+    const allSupLedger = getCollection(KEYS.SUPPLIER_LEDGER) || [];
+    const daySupPayments = allSupLedger.filter((s) => {
+      const sDate = (s.date || s.created_at || "").split("T")[0];
+      const isPaid = (s.credit && Number(s.credit) > 0) || (s.type && s.type.includes("PAYMENT"));
+      return sDate === targetDate && isPaid;
+    });
+
+    daySupPayments.forEach((s) => {
+      const amt = Number(s.credit || s.amount) || 0;
+      if (amt <= 0) return;
+      const alreadyIncluded = paymentsPaidList.some(
+        (it) => (s.voucher_no && it.voucher_no === s.voucher_no) ||
+                (s.reference && it.voucher_no === s.reference) ||
+                (it.account_name.toLowerCase().includes((s.supplier_name || "").toLowerCase()) && Math.abs(it.amount - amt) < 0.01)
+      );
+      if (!alreadyIncluded) {
+        paymentsPaidList.push({
+          account_name: `${s.supplier_name || "Supplier"} (Supplier Debt Paid)`,
+          amount: amt,
+          naration: s.description || s.notes || "Supplier Cash Payment",
+          voucher_no: s.reference || s.voucher_no || "",
+        });
+      }
+    });
     const totalPaymentPaid = paymentsPaidList.reduce((sum, item) => sum + item.amount, 0);
 
-    // 4. CashBook Payments Received (Inflows) + OPD Consultations
+    // 4. CashBook Payments Received (Inflows) + OPD Consultations + Wholesale Party Wasooli
     const dayCashReceive = cashbookAll.filter((c) => (c.date || "").split("T")[0] === targetDate && (c.term || c.type) === "Receive");
     const allVisits = dbVisits.getAll() || [];
     const dayVisits = allVisits.filter(
@@ -6278,13 +6613,55 @@ export const dbDayClosing = {
     const totalOpdFees = dayVisits.reduce((sum, v) => sum + (Number(v.fee_amount) || 0), 0);
 
     const paymentsReceiveList = [
-      ...dayCashReceive.map((c) => ({
-        account_name: c.account_name || "Party Cash",
-        amount: Number(c.amount) || 0,
-        naration: c.naration || c.description || "",
-        voucher_no: c.voucher_no || "",
-      })),
+      ...dayCashReceive.map((c) => {
+        let accName = c.account_name || "Party Cash";
+        const isParty = c.action_type === "party_wasooli" || c.party_id || c.party_code;
+        if (isParty) {
+          const codeTag = c.party_code && !accName.includes(`[#${c.party_code}]`) ? `[#${c.party_code}] ` : "";
+          if (!accName.toLowerCase().includes("wasooli") && !accName.toLowerCase().includes("recovery")) {
+            accName = `${codeTag}${accName} (Udhaar Wasooli)`;
+          } else if (codeTag && !accName.startsWith(codeTag)) {
+            accName = `${codeTag}${accName}`;
+          }
+        }
+        return {
+          account_name: accName,
+          amount: Number(c.amount) || 0,
+          naration: c.naration || c.description || "",
+          voucher_no: c.voucher_no || "",
+          party_id: c.party_id,
+          party_code: c.party_code,
+        };
+      }),
     ];
+
+    // Merge Party Ledgers repayments for that day if not already in paymentsReceiveList
+    const allPartyLedger = getCollection(KEYS.PARTY_LEDGER) || [];
+    const dayPartyPayments = allPartyLedger.filter((p) => {
+      const pDate = (p.date || p.created_at || "").split("T")[0];
+      return pDate === targetDate;
+    });
+
+    dayPartyPayments.forEach((p) => {
+      const pAmt = Number(p.amount) || 0;
+      if (pAmt <= 0) return;
+      const alreadyIncluded = paymentsReceiveList.some(
+        (it) => it.voucher_no === p.receipt_no ||
+                (it.account_name.toLowerCase().includes((p.party_name || "").toLowerCase()) && Math.abs(it.amount - pAmt) < 0.01)
+      );
+      if (!alreadyIncluded) {
+        const pCode = p.party_code ? `[#${p.party_code}] ` : "";
+        paymentsReceiveList.push({
+          account_name: `${pCode}${p.party_name || "Wholesale Party"} (Udhaar Wasooli)`,
+          amount: pAmt,
+          naration: p.notes || `Udhaar recovery | ${p.payment_mode || "Cash"}`,
+          voucher_no: p.receipt_no || "",
+          party_id: p.party_id,
+          party_code: p.party_code,
+        });
+      }
+    });
+
     if (totalOpdFees > 0) {
       paymentsReceiveList.unshift({
         account_name: "OPD Doctor Consultation Fees",
@@ -6914,60 +7291,61 @@ export function hydrateCollectionsFromSnapshot(snapshot) {
   } catch {}
 }
 
-// ---------- Software License & Subscription Governance Engine ----------
+// ---------- Permanent Lifetime Software Engine (Unrestricted Bespoke Mode) ----------
 export const dbLicense = {
   get: () => {
     try {
       const raw = storageDriver.getItem(KEYS.LICENSE);
       if (!raw) {
-        const initialDevId = getDeviceId();
-        const defaultPolicy = {
+        const lifetimePolicy = {
           license_status: "active",
-          monthly_fee: 5000,
-          currency: "PKR",
-          due_day: 1,
-          warning_days_before: 5,
-          grace_days: 10,
-          hardware_lock_enabled: true,
-          authorized_machine_id: initialDevId,
-          last_paid_date: new Date().toISOString().split("T")[0],
-          next_due_date: (() => {
-            const d = new Date();
-            d.setDate(d.getDate() + 30);
-            return d.toISOString().split("T")[0];
-          })(),
+          license_mode: "lifetime",
+          is_lifetime: true,
+          enforce_license: false,
+          hardware_lock_enabled: false,
           is_hard_locked: false,
           restricted_features: [],
-          developer_phone: "03142291356",
-          developer_whatsapp: "03142291356",
-          developer_bank_details: "JazzCash / EasyPaisa / Bank Transfer: 03142291356 (K.B Software)",
-          custom_notice: "",
+          updated_at: new Date().toISOString(),
         };
         try {
-          storageDriver.setItem(KEYS.LICENSE, JSON.stringify(defaultPolicy));
+          storageDriver.setItem(KEYS.LICENSE, JSON.stringify(lifetimePolicy));
         } catch {}
-        return defaultPolicy;
+        return lifetimePolicy;
       }
       const parsed = JSON.parse(raw);
-      // If hardware lock is enabled but not bound yet, automatically lock to the first installing machine
-      if (parsed.hardware_lock_enabled !== false && !parsed.authorized_machine_id) {
-        parsed.hardware_lock_enabled = true;
-        parsed.authorized_machine_id = getDeviceId();
-        try {
-          storageDriver.setItem(KEYS.LICENSE, JSON.stringify(parsed));
-        } catch {}
-      }
+      // Guarantee lifetime active and no hardware lock
+      parsed.license_status = "active";
+      parsed.is_lifetime = true;
+      parsed.license_mode = "lifetime";
+      parsed.enforce_license = false;
+      parsed.hardware_lock_enabled = false;
+      parsed.is_hard_locked = false;
+      parsed.restricted_features = [];
       return parsed;
     } catch {
-      return { license_status: "active", restricted_features: [], hardware_lock_enabled: true };
+      return {
+        license_status: "active",
+        is_lifetime: true,
+        license_mode: "lifetime",
+        enforce_license: false,
+        restricted_features: [],
+        hardware_lock_enabled: false,
+        is_hard_locked: false,
+      };
     }
   },
 
-  update: (updates) => {
+  update: (updates = {}) => {
     const current = dbLicense.get();
     const merged = {
       ...current,
       ...updates,
+      license_status: "active",
+      is_lifetime: true,
+      license_mode: "lifetime",
+      enforce_license: false,
+      is_hard_locked: false,
+      hardware_lock_enabled: false,
       updated_at: new Date().toISOString(),
     };
     storageDriver.setItem(KEYS.LICENSE, JSON.stringify(merged));
@@ -6983,118 +7361,27 @@ export const dbLicense = {
     return merged;
   },
 
+  renew: () => dbLicense.get(),
+  extendDays: () => dbLicense.get(),
+  setLifetime: () => dbLicense.get(),
+  setMonthlyMode: () => dbLicense.get(),
+  setDueDate: () => dbLicense.get(),
+
   /**
-   * Computes dynamic runtime status:
+   * Always reports active lifetime status with zero locks, warnings or restrictions
    */
   evaluateStatus: () => {
-    const lic = dbLicense.get();
-    const currentDevId = getDeviceId();
-
-    // 0. HARDWARE ANTI-COPY & MACHINE LOCK GUARD
-    if (lic.hardware_lock_enabled && lic.authorized_machine_id) {
-      if (lic.authorized_machine_id !== currentDevId) {
-        return {
-          status: "locked",
-          isLocked: true,
-          isWarning: false,
-          isGrace: false,
-          daysLeft: 0,
-          daysOverdue: 1,
-          message: "🚫 UNAUTHORIZED MACHINE DETECTED: This software license is cryptographically bound to a specific authorized PC/Laptop hardware. Copying or running on another computer is strictly prohibited. Please contact K.B Software (03142291356) for machine re-authorization.",
-          isFeatureBlocked: () => true,
-        };
-      }
-    }
-
-    if (lic.is_hard_locked || lic.license_status === "locked") {
-      return {
-        status: "locked",
-        isLocked: true,
-        isWarning: false,
-        isGrace: false,
-        daysLeft: 0,
-        daysOverdue: 1,
-        message: lic.custom_notice || "Software access is temporarily suspended. Please contact K.B Software to renew your monthly license.",
-        isFeatureBlocked: () => true,
-      };
-    }
-
-    if (lic.license_status === "restricted") {
-      return {
-        status: "restricted",
-        isLocked: false,
-        isWarning: true,
-        isGrace: true,
-        daysLeft: 0,
-        daysOverdue: 1,
-        restrictedFeatures: lic.restricted_features || [],
-        message: lic.custom_notice || "Selected software features have been restricted by the developer due to pending monthly subscription.",
-        isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
-      };
-    }
-
-    const today = new Date();
-    const dueDate = lic.next_due_date ? new Date(lic.next_due_date + "T00:00:00") : new Date();
-    const diffMs = dueDate.getTime() - today.getTime();
-    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    const graceDays = Number(lic.grace_days) || 10;
-
-    // 1. Explicit Warning Mode (Developer manually activated Warning or scheduled)
-    if (lic.license_status === "warning") {
-      return {
-        status: "warning",
-        isLocked: false,
-        isWarning: true,
-        isGrace: false,
-        daysLeft: Math.max(0, daysLeft),
-        daysOverdue: 0,
-        message: lic.custom_notice || `Monthly Software License is due in ${daysLeft <= 0 ? "today" : `${daysLeft} days`} (${lic.next_due_date || "End of Month"}). Please clear payment of Rs. ${Number(lic.monthly_fee || 5000).toLocaleString("en-US")}.`,
-        isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
-      };
-    }
-
-    // 2. Explicit Grace Period Mode
-    if (lic.license_status === "grace_period") {
-      const daysOverdue = daysLeft < 0 ? Math.abs(daysLeft) : 1;
-      return {
-        status: "grace_period",
-        isLocked: false,
-        isWarning: true,
-        isGrace: true,
-        daysLeft: 0,
-        daysOverdue,
-        message: lic.custom_notice || `Monthly Subscription payment is overdue (${daysOverdue} days). Grace period active till ${graceDays} days. System is running normally.`,
-        isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
-      };
-    }
-
-    // 3. If past due date without manual override (overdue)
-    if (daysLeft < 0) {
-      const daysOverdue = Math.abs(daysLeft);
-      return {
-        status: "grace_period",
-        isLocked: false,
-        isWarning: true,
-        isGrace: true,
-        daysLeft: 0,
-        daysOverdue,
-        message: lic.custom_notice || `Monthly Subscription payment is overdue (${daysOverdue} days). Grace period active till ${graceDays} days. System is running normally.`,
-        isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
-      };
-    }
-
-    // 4. Normal Active state (Full Access, no warning notices)
     return {
       status: "active",
       isLocked: false,
       isWarning: false,
       isGrace: false,
-      daysLeft,
+      daysLeft: 99999,
       daysOverdue: 0,
       message: "",
-      isFeatureBlocked: (featureKey) => (lic.restricted_features || []).includes(featureKey),
+      isFeatureBlocked: () => false,
     };
-  }
+  },
 };
 
 // ---------- Unique Device Fingerprint Engine ----------
@@ -7244,11 +7531,18 @@ export const dbAuditLogs = {
 
     if (!finalActorId || finalActorId === "system" || finalActorId === "user_system") {
       try {
-        const activeUser = getActiveSessionUser();
-        if (activeUser && activeUser.name) {
-          finalActorId = activeUser.id || activeUser.userId || finalActorId;
-          finalActorName = activeUser.name || activeUser.full_name || finalActorName;
-          finalRole = activeUser.role || finalRole;
+        const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
+        if (activeCashier && activeCashier.name) {
+          finalActorId = activeCashier.id || finalActorId;
+          finalActorName = activeCashier.name || finalActorName;
+          finalRole = activeCashier.role || "cashier";
+        } else {
+          const activeUser = getActiveSessionUser();
+          if (activeUser && activeUser.name) {
+            finalActorId = activeUser.id || activeUser.userId || finalActorId;
+            finalActorName = activeUser.name || activeUser.full_name || finalActorName;
+            finalRole = activeUser.role || finalRole;
+          }
         }
       } catch {}
     }
@@ -7944,39 +8238,39 @@ export function bulkImportInventoryWithGodowns(csvText) {
       name = row[1];
       desc = row[2] || "";
       packing = row[3] || "Pack";
-      company = row[4] || "BM Pvt LTD";
+      company = row[4] || "";
       companyCode = row[5] || "";
       const itemCodeVal = row[6] || "";
       costPrice = Number(row[7]) || 0;
       retailPrice = Number(row[8]) || 0;
       storeStock = Number(row[9]) || 0;
       minAlert = Number(row[10]) || 6;
-      category = row[11] || "General";
+      category = row[11] || "";
     } else if (row.length >= 11 && !isNaN(Number(row[0]))) {
       // 11-column format: S/R No, Medicine Name, Description, Packing, Company Name, Item Code, Cost Price, Retail Price, Medical Store Stock, Stock Level Alert, Category
       srNo = row[0];
       name = row[1];
       desc = row[2] || "";
       packing = row[3] || "Pack";
-      company = row[4] || "BM Pvt LTD";
+      company = row[4] || "";
       companyCode = row[5] || "";
       costPrice = Number(row[6]) || 0;
       retailPrice = Number(row[7]) || 0;
       storeStock = Number(row[8]) || 0;
       minAlert = Number(row[9]) || 6;
-      category = row[10] || "General";
+      category = row[10] || "";
     } else {
       // Legacy fallback mapping
       name = row[0];
       desc = row[1] || "";
       packing = row[2] || "Pack";
-      company = row[3] || "BM Pvt LTD";
+      company = row[3] || "";
       companyCode = row[4] || "";
       costPrice = Number(row[5]) || 0;
       retailPrice = Number(row[6]) || 0;
       storeStock = Number(row[7]) || 0;
       minAlert = Number(row[8]) || 6;
-      category = row[9] || "General";
+      category = row[9] || "";
     }
 
     if (!name) continue;

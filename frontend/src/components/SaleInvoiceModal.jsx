@@ -9,6 +9,7 @@ import {
   dbPatients,
   dbUsers,
   dbSuppliers,
+  dbCompanies,
   toTitleCase,
   getMaxDiscountLimit,
 } from "../api/db.js";
@@ -133,6 +134,8 @@ export default function SaleInvoiceModal({
   // Typeahead / Autocomplete
   const [showMedDropdown, setShowMedDropdown] = useState(false);
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [showRetailCompanyDropdown, setShowRetailCompanyDropdown] = useState(false);
+  const [retailCompanySearch, setRetailCompanySearch] = useState("");
   const [showPartyDropdown, setShowPartyDropdown] = useState(false);
   const [highlightedMedIdx, setHighlightedMedIdx] = useState(0);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("All");
@@ -148,7 +151,10 @@ export default function SaleInvoiceModal({
 
   // Refs for keyboard navigation
   const medicineInputRef = useRef(null);
+  const itemCodeInputRef = useRef(null);
   const companyCodeInputRef = useRef(null);
+  const retailCompanyInputRef = useRef(null);
+  const retailCompanyDropdownRef = useRef(null);
   const qtyInputRef = useRef(null);
   const rateInputRef = useRef(null);
   const discInputRef = useRef(null);
@@ -237,9 +243,22 @@ export default function SaleInvoiceModal({
 
   // Companies / Brands list
   const companyOptions = useMemo(() => {
-    const list = [{ id: "All", label: "All Brands", code: "ALL" }];
+    const list = [{ id: "All", label: "All Brands / Companies", code: "ALL", name: "All Brands" }];
     const seen = new Set(["all"]);
 
+    // 1. From dbCompanies
+    const comps = dbCompanies?.getAll ? dbCompanies.getAll() : [];
+    comps.forEach((c) => {
+      const name = (c.name || "").trim();
+      const code = (c.code || "").trim().toUpperCase();
+      const key = name.toLowerCase();
+      if (name && !seen.has(key)) {
+        seen.add(key);
+        list.push({ id: name, label: code ? `[${code}] ${name}` : name, code: code || name.slice(0, 3).toUpperCase(), name });
+      }
+    });
+
+    // 2. From dbSuppliers
     const sups = dbSuppliers?.getAll ? dbSuppliers.getAll() : [];
     sups.forEach((s) => {
       const name = (s.name || "").trim();
@@ -251,6 +270,7 @@ export default function SaleInvoiceModal({
       }
     });
 
+    // 3. From inventoryList
     inventoryList.forEach((i) => {
       const comp = (i.company_name || "").trim();
       const code = (i.company_code || i.item_code || "").trim().toUpperCase();
@@ -264,27 +284,56 @@ export default function SaleInvoiceModal({
     return list;
   }, [inventoryList]);
 
-  // Typeahead medicine suggestions
+  // Filtered Company Options for Retail Quick Dropdown
+  const filteredRetailCompanyOptions = useMemo(() => {
+    if (!retailCompanySearch || !retailCompanySearch.trim()) {
+      return companyOptions;
+    }
+    const q = retailCompanySearch.trim().toLowerCase();
+    return companyOptions.filter(
+      (c) =>
+        c.id === "All" ||
+        (c.name || "").toLowerCase().includes(q) ||
+        (c.code || "").toLowerCase().includes(q) ||
+        (c.label || "").toLowerCase().includes(q)
+    );
+  }, [companyOptions, retailCompanySearch]);
+
+  // Typeahead medicine suggestions (Expanded catalog up to 300 items with smart filtering)
   const medicineSuggestions = useMemo(() => {
     const q = (entryLine.medicine_name || "").trim().toLowerCase();
     const cleanQ = q.replace(/[\s\-_./]/g, "");
 
     let pool = inventoryList;
     if (selectedCompanyFilter && selectedCompanyFilter !== "All") {
-      const compLower = selectedCompanyFilter.toLowerCase();
-      pool = pool.filter((i) => (i.company_name || "").toLowerCase().includes(compLower));
+      const compLower = selectedCompanyFilter.toLowerCase().trim();
+      pool = pool.filter((i) => {
+        const cName = (i.company_name || "").toLowerCase();
+        const cCode = (i.company_code || "").toLowerCase();
+        const itmCode = (i.item_code || "").toLowerCase();
+        const medName = (i.medicine_name || "").toLowerCase();
+
+        return (
+          cName.includes(compLower) ||
+          cCode === compLower ||
+          (compLower.length <= 5 && cCode.includes(compLower)) ||
+          (compLower.length >= 3 && itmCode.startsWith(compLower)) ||
+          (compLower.length >= 3 && medName.startsWith(compLower))
+        );
+      });
     }
 
     if (!q) {
-      return pool.slice(0, 10);
+      // Return up to 300 medicines so user can browse extensive catalog
+      return pool.slice(0, 300);
     }
 
     const matches = pool.filter((inv) => {
       const name = (inv.medicine_name || "").toLowerCase();
       const cleanName = name.replace(/[\s\-_./]/g, "");
-      const code = (inv.item_code || "").toLowerCase();
+      const code = (inv.item_code || inv.product_code || "").toLowerCase();
       const generic = (inv.generic_name || inv.product_description || inv.naration || "").toLowerCase();
-      const comp = (inv.company_name || "").toLowerCase();
+      const comp = (inv.company_name || inv.company_code || "").toLowerCase();
 
       return (
         name.includes(q) ||
@@ -295,8 +344,103 @@ export default function SaleInvoiceModal({
       );
     });
 
-    return matches.slice(0, 12);
+    return matches.slice(0, 300);
   }, [inventoryList, entryLine.medicine_name, selectedCompanyFilter]);
+
+  // Fast Item Code / Barcode Lookup Handler (Auto-fills product details & company)
+  const handleLookupByItemCode = (codeQuery) => {
+    if (!codeQuery || !String(codeQuery).trim()) return;
+    const raw = String(codeQuery).trim();
+    const clean = raw.toLowerCase();
+    const cleanNoHyphen = clean.replace(/[\s\-_.]/g, "");
+
+    // 1. Search in current company-filtered pool first if company filter is active
+    let pool = inventoryList;
+    if (selectedCompanyFilter && selectedCompanyFilter !== "All") {
+      const compLower = selectedCompanyFilter.toLowerCase().trim();
+      pool = pool.filter((i) => {
+        const cName = (i.company_name || "").toLowerCase();
+        const cCode = (i.company_code || "").toLowerCase();
+        return cName.includes(compLower) || cCode === compLower;
+      });
+    }
+
+    const checkMatch = (inv) => {
+      const itmCode = (inv.item_code || "").toLowerCase();
+      const prdCode = (inv.product_code || "").toLowerCase();
+      const barcode = (inv.barcode || "").toLowerCase();
+      const id = String(inv.id || "").toLowerCase();
+      const medName = (inv.medicine_name || "").toLowerCase();
+
+      // Exact match on item_code, product_code, barcode, or id
+      if (itmCode === clean || prdCode === clean || barcode === clean || id === clean) {
+        return true;
+      }
+      // Exact match without hyphens/spaces
+      const itmNoHyphen = itmCode.replace(/[\s\-_.]/g, "");
+      const prdNoHyphen = prdCode.replace(/[\s\-_.]/g, "");
+      if (itmNoHyphen === cleanNoHyphen || prdNoHyphen === cleanNoHyphen) {
+        return true;
+      }
+      // Exact match on medicine_name (e.g. user entered "Ghr-7")
+      if (medName === clean || medName.replace(/[\s\-_.]/g, "") === cleanNoHyphen) {
+        return true;
+      }
+      return false;
+    };
+
+    let matched = pool.find(checkMatch);
+
+    // Fallback search across entire inventory if not in filtered pool
+    if (!matched && pool !== inventoryList) {
+      matched = inventoryList.find(checkMatch);
+    }
+
+    // Secondary prefix match if exact match not found
+    if (!matched) {
+      matched = inventoryList.find((inv) => {
+        const itmCode = (inv.item_code || "").toLowerCase();
+        const prdCode = (inv.product_code || "").toLowerCase();
+        const medName = (inv.medicine_name || "").toLowerCase();
+        return (
+          (itmCode && itmCode.startsWith(clean)) ||
+          (prdCode && prdCode.startsWith(clean)) ||
+          (medName && medName.startsWith(clean))
+        );
+      });
+    }
+
+    if (matched) {
+      const rate = Number(matched.unit_sale_price || matched.sale_price || matched.box_sale_price || matched.unit_price || 280) || 0;
+      const compName = matched.company_name || "";
+      const code = matched.item_code || matched.product_code || raw.toUpperCase();
+
+      setEntryLine((prev) => ({
+        ...prev,
+        inventory_id: matched.id,
+        product_code: code,
+        medicine_name: matched.medicine_name,
+        product_description: matched.product_description || matched.generic_name || matched.naration || "",
+        company_name: compName,
+        category: matched.category || matched.medicine_category || "General",
+        packing: matched.packing || "",
+        rate: rate.toFixed(2),
+      }));
+
+      if (compName) {
+        setSelectedCompanyFilter(compName);
+      }
+
+      showToast(`Found: [${code}] ${matched.medicine_name} (${compName || "General"})`);
+
+      setTimeout(() => {
+        qtyInputRef.current?.focus();
+        qtyInputRef.current?.select();
+      }, 40);
+    } else {
+      showToast(`Item code "${raw}" not found in inventory!`, true);
+    }
+  };
 
   // Handle Token Input Lookup (Retail Patient Queue)
   const handleTokenInput = (val) => {
@@ -304,32 +448,52 @@ export default function SaleInvoiceModal({
     if (!val || !val.trim()) return;
     const clean = val.trim().toUpperCase();
 
-    // 1. Check in today's visits list
+    // 1. Check in today's visits list with live DB fallback
     const num = parseInt(clean.replace(/\D/g, ""), 10);
-    const matchedVisit = todayVisits.find(
+    const freshVisits = dbVisits?.getTodayAll ? dbVisits.getTodayAll() : (dbVisits?.getAll ? dbVisits.getAll() : []);
+    const visitsPool = todayVisits && todayVisits.length > 0 ? todayVisits : freshVisits;
+    let matchedVisit = visitsPool.find(
       (v) =>
         String(v.token_number) === clean ||
         `T-${v.token_number}`.toUpperCase() === clean ||
         (num && Number(v.token_number) === num)
     );
+    if (!matchedVisit && freshVisits !== visitsPool) {
+      matchedVisit = freshVisits.find(
+        (v) =>
+          String(v.token_number) === clean ||
+          `T-${v.token_number}`.toUpperCase() === clean ||
+          (num && Number(v.token_number) === num)
+      );
+    }
 
     if (matchedVisit) {
       const pat = matchedVisit.patient_id ? dbPatients.getById(matchedVisit.patient_id) : null;
       const rawName = matchedVisit.patient_name || pat?.full_name || pat?.name || "";
-      const doc = registeredDoctors.find((d) => d.id === matchedVisit.doctor_id || d.name === matchedVisit.doctor_name);
-      const fee = Number(matchedVisit.doctor_fee !== undefined ? matchedVisit.doctor_fee : (doc?.consultation_fee || doc?.fee || clinicInfo.doctor_fee || 0));
+      const docUser = matchedVisit.doctor_id ? dbUsers.getById(matchedVisit.doctor_id) : null;
+      const doc = registeredDoctors.find((d) => d.id === matchedVisit.doctor_id || d.name === matchedVisit.doctor_name) || docUser;
+
+      const resolvedDocName = matchedVisit.doctor_name || doc?.name || doc?.full_name || clinicInfo.doctor_name || "Consultant Doctor";
+      const resolvedDocId = matchedVisit.doctor_id || doc?.id || (primaryDoc?.id || "");
+      const fee = Number(
+        matchedVisit.doctor_fee !== undefined && matchedVisit.doctor_fee !== null && matchedVisit.doctor_fee !== ""
+          ? matchedVisit.doctor_fee
+          : matchedVisit.fee_amount !== undefined && matchedVisit.fee_amount !== null && matchedVisit.fee_amount !== ""
+          ? matchedVisit.fee_amount
+          : doc?.consultation_fee || doc?.fee || clinicInfo.doctor_fee || 0
+      );
 
       setSaleForm((prev) => ({
         ...prev,
         account_name: rawName,
         visit_id: matchedVisit.id,
         patient_id: matchedVisit.patient_id || "",
-        attending_doctor_id: matchedVisit.doctor_id || prev.attending_doctor_id,
-        attending_doctor_name: matchedVisit.doctor_name || doc?.name || prev.attending_doctor_name,
+        attending_doctor_id: resolvedDocId,
+        attending_doctor_name: resolvedDocName,
         doctor_fee: String(fee),
       }));
       setIsDoctorFeeIncluded(fee > 0);
-      showToast(`Token Found: ${rawName} (Token ${matchedVisit.token_number || clean})`);
+      showToast(`Token Found: ${rawName} • Dr. ${resolvedDocName} (Fee: Rs. ${fee})`);
       return;
     }
 
@@ -456,11 +620,25 @@ export default function SaleInvoiceModal({
     }
   };
 
-  // Close party dropdown on outside click
+  // Close party, company, and typeahead dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (partyDropdownRef.current && !partyDropdownRef.current.contains(e.target)) {
         setShowPartyDropdown(false);
+      }
+      if (companyDropdownRef.current && !companyDropdownRef.current.contains(e.target)) {
+        setShowCompanyDropdown(false);
+      }
+      if (retailCompanyDropdownRef.current && !retailCompanyDropdownRef.current.contains(e.target)) {
+        setShowRetailCompanyDropdown(false);
+      }
+      if (
+        medSuggestionsRef.current &&
+        !medSuggestionsRef.current.contains(e.target) &&
+        medicineInputRef.current &&
+        !medicineInputRef.current.contains(e.target)
+      ) {
+        setShowMedDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -546,6 +724,9 @@ export default function SaleInvoiceModal({
     setSelectedReceiptSale(null);
     setShowMedDropdown(false);
     setShowCompanyDropdown(false);
+    setShowRetailCompanyDropdown(false);
+    setSelectedCompanyFilter("All");
+    setRetailCompanySearch("");
     setShowPartyDropdown(false);
     refreshData();
   };
@@ -569,19 +750,25 @@ export default function SaleInvoiceModal({
     if (!inv) return;
     const rate = Number(inv.unit_sale_price || inv.sale_price || inv.box_sale_price || inv.unit_price || 280) || 0;
     const qty = Number(entryLine.qty) || 1;
+    const code = inv.item_code || inv.product_code || "";
+    const comp = inv.company_name || "";
 
     setEntryLine({
       inventory_id: inv.id,
-      product_code: inv.item_code || "",
+      product_code: code,
       medicine_name: inv.medicine_name,
       product_description: inv.product_description || inv.generic_name || inv.naration || "",
-      company_name: inv.company_name || "GSK",
+      company_name: comp,
       category: inv.category || inv.medicine_category || "General",
       packing: inv.packing || "",
       qty: String(qty),
       rate: rate.toFixed(2),
       disc_pct: entryLine.disc_pct || "0",
     });
+
+    if (comp && (!selectedCompanyFilter || selectedCompanyFilter === "All")) {
+      setSelectedCompanyFilter(comp);
+    }
 
     setShowMedDropdown(false);
     setHighlightedMedIdx(0);
@@ -625,6 +812,23 @@ export default function SaleInvoiceModal({
     }
   };
 
+  // Dynamic Maximum Discount Limit Handler
+  const handleDiscInputChange = (e) => {
+    const val = e.target.value;
+    const maxLimit = getMaxDiscountLimit ? getMaxDiscountLimit() : 28;
+    const numVal = parseFloat(val);
+    if (!isNaN(numVal) && numVal > maxLimit) {
+      alert(
+        `⚠️ Maximum Discount Alert!\nAdmin Panel ne maximum discount limit ${maxLimit}% set ki hui hai.\nAap is se zyada discount nahi de sakte. Value automatically ${maxLimit}% par set kar di gayi hai.`
+      );
+      setEntryLine((prev) => ({ ...prev, disc_pct: String(maxLimit) }));
+    } else if (!isNaN(numVal) && numVal < 0) {
+      setEntryLine((prev) => ({ ...prev, disc_pct: "0" }));
+    } else {
+      setEntryLine((prev) => ({ ...prev, disc_pct: val }));
+    }
+  };
+
   // Add Item to Cart (With Auto-Merge & Quantity Consolidation for Same Medicine)
   const addNewItem = () => {
     const name = entryLine.medicine_name.trim();
@@ -639,8 +843,12 @@ export default function SaleInvoiceModal({
     const maxLimit = getMaxDiscountLimit ? getMaxDiscountLimit() : 28;
     let disc = parseFloat(entryLine.disc_pct) || 0;
     if (disc > maxLimit) {
+      alert(
+        `⚠️ Maximum Discount Alert!\nAdmin Panel ne maximum discount limit ${maxLimit}% set ki hui hai.\nAap is se zyada discount nahi de sakte!`
+      );
       disc = maxLimit;
       showToast(`⚠️ Discount capped! Max discount is ${maxLimit}%`, true);
+      setEntryLine((prev) => ({ ...prev, disc_pct: String(maxLimit) }));
     } else if (disc < 0) {
       disc = 0;
     }
@@ -686,9 +894,12 @@ export default function SaleInvoiceModal({
         id: "item_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
         inventory_id: entryLine.inventory_id,
         product_code: entryLine.product_code,
+        item_code: entryLine.product_code,
         name: name,
         detail: entryLine.product_description || (entryLine.company_name ? `${entryLine.company_name} • Formula Standard` : "Formula Standard"),
         company: entryLine.company_name || "",
+        category: entryLine.category || "General",
+        packing: entryLine.packing || "",
         qty: qty,
         rate: rate,
         gross: gross,
@@ -706,7 +917,7 @@ export default function SaleInvoiceModal({
       product_code: "",
       medicine_name: "",
       product_description: "",
-      company_name: "",
+      company_name: selectedCompanyFilter !== "All" ? selectedCompanyFilter : "",
       category: "General",
       packing: "",
       qty: "1",
@@ -752,7 +963,7 @@ export default function SaleInvoiceModal({
     const isRetail = activeInvoiceMode === "retail";
     const opdFee =
       isRetail && tokenMode === "auto" && isDoctorFeeIncluded
-        ? Number(saleForm.doctor_fee || 1000)
+        ? Number(saleForm.doctor_fee || 0)
         : 0;
 
     const posFee = isPosFeeIncluded ? 1 : 0;
@@ -796,10 +1007,11 @@ export default function SaleInvoiceModal({
       toTitleCase(saleForm.account_name.trim()) ||
       (billingType === "patient" ? "Walk-In Patient" : "Walk-In Customer");
 
-    const isManualOrWalkin = tokenMode === "manual" || activeInvoiceMode === "wholesale" || !saleForm.token_no || String(saleForm.token_no).toLowerCase().includes("walk");
-    const cleanedTokenNo = isManualOrWalkin ? "" : saleForm.token_no.trim();
-    const cleanedDoctorName = isManualOrWalkin ? "" : (saleForm.attending_doctor_name || "").trim();
-    const cleanedDoctorId = isManualOrWalkin ? "" : (saleForm.attending_doctor_id || "");
+    const isWholesale = activeInvoiceMode === "wholesale";
+    const isExplicitManual = tokenMode === "manual";
+    const cleanedTokenNo = isExplicitManual || isWholesale ? "" : (saleForm.token_no || "").trim();
+    const cleanedDoctorName = isExplicitManual || isWholesale ? "" : (saleForm.attending_doctor_name || "").trim();
+    const cleanedDoctorId = isExplicitManual || isWholesale ? "" : (saleForm.attending_doctor_id || "");
 
     const createdSale = dbSales?.addSaleInvoice
       ? dbSales.addSaleInvoice({
@@ -823,7 +1035,14 @@ export default function SaleInvoiceModal({
             net: item.net,
             line_total: item.net,
           })),
+          salesman: saleForm.salesman || activeUser || "Salesman",
+          cashier_name: activeUser || saleForm.salesman || "Salesman",
+          active_cashier_name: activeUser || saleForm.salesman || "Salesman",
           subtotal: calculations.medsNet,
+          subtotal_amount: calculations.medsGross,
+          gross_amount: calculations.medsGross,
+          discount_amount: calculations.totalDiscount,
+          total_discount: calculations.totalDiscount,
           doctor_fee: String(calculations.opdFee),
           doctor_fee_waived: !isDoctorFeeIncluded,
           pos_fee: calculations.posFee,
@@ -888,9 +1107,10 @@ export default function SaleInvoiceModal({
       };
     }
 
-    const isManualOrWalkin = tokenMode === "manual" || activeInvoiceMode === "wholesale" || !saleForm.token_no || String(saleForm.token_no).toLowerCase().includes("walk");
-    const resolvedTokenNo = isManualOrWalkin ? "" : saleForm.token_no;
-    const resolvedDoctorName = isManualOrWalkin ? "" : saleForm.attending_doctor_name;
+    const isWholesale = activeInvoiceMode === "wholesale";
+    const isExplicitManual = tokenMode === "manual";
+    const resolvedTokenNo = isExplicitManual || isWholesale ? "" : (saleForm.token_no || "").trim();
+    const resolvedDoctorName = isExplicitManual || isWholesale ? "" : (saleForm.attending_doctor_name || "").trim();
 
     const resolvedAccountName =
       saleForm.account_name ||
@@ -1357,20 +1577,41 @@ export default function SaleInvoiceModal({
               {tokenMode === "auto" && (
                 <div className="pt-1.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs animate-fade-in">
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* Auto-Assigned Doctor Display */}
-                    <div className="min-w-[210px]">
-                      <div className="flex items-center space-x-1.5 bg-teal-50 border border-teal-200 rounded-md px-2 py-1 text-xs text-teal-900" title="Doctor assigned based on queue">
+                    {/* Assigned Doctor Dropdown / Selector */}
+                    <div className="min-w-[220px]">
+                      <div className="flex items-center space-x-1.5 bg-teal-50 border border-teal-200 rounded-md px-2 py-1 text-xs text-teal-900" title="Assigned Doctor">
                         <svg className="w-3.5 h-3.5 text-teal-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <div className="leading-tight truncate">
-                          <div className="text-[8px] uppercase font-bold text-teal-700 tracking-wider flex items-center gap-1">
+                        <div className="leading-tight flex-1">
+                          <div className="text-[8px] uppercase font-bold text-teal-700 tracking-wider flex items-center justify-between">
                             <span>Assigned Doctor</span>
-                            <span className="text-[8px] bg-teal-100 text-teal-800 px-1 rounded font-mono">Auto</span>
+                            <span className="text-[8px] bg-teal-100 text-teal-800 px-1 rounded font-mono">Select</span>
                           </div>
-                          <div className="font-semibold text-slate-800 truncate text-[11px]">
-                            {saleForm.attending_doctor_name || clinicInfo.doctor_name || "Consultant Doctor"}
-                          </div>
+                          <select
+                            value={saleForm.attending_doctor_id || (registeredDoctors.find((d) => d.name === saleForm.attending_doctor_name)?.id || "")}
+                            onChange={(e) => {
+                              const docId = e.target.value;
+                              const selectedDoc = registeredDoctors.find((d) => d.id === docId);
+                              if (selectedDoc) {
+                                const fee = Number(selectedDoc.consultation_fee || selectedDoc.fee || clinicInfo.doctor_fee || 0);
+                                setSaleForm((prev) => ({
+                                  ...prev,
+                                  attending_doctor_id: selectedDoc.id,
+                                  attending_doctor_name: selectedDoc.name || selectedDoc.full_name || clinicInfo.doctor_name || "Doctor",
+                                  doctor_fee: String(fee),
+                                }));
+                                setIsDoctorFeeIncluded(fee > 0);
+                              }
+                            }}
+                            className="w-full bg-transparent font-semibold text-slate-800 text-[11px] focus:outline-none cursor-pointer py-0.5"
+                          >
+                            {registeredDoctors.map((doc) => (
+                              <option key={doc.id} value={doc.id} className="bg-white text-slate-900">
+                                {doc.name || doc.full_name} (Rs. {doc.consultation_fee || doc.fee || clinicInfo.doctor_fee || 0})
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -1628,6 +1869,25 @@ export default function SaleInvoiceModal({
                   </div>
                 )}
 
+                {/* Dynamic POS Charges Toggle for Wholesale */}
+                <label
+                  className="inline-flex items-center gap-1.5 cursor-pointer bg-slate-50 hover:bg-teal-50/50 border border-slate-200 px-2.5 py-0.5 rounded-full transition select-none h-7"
+                  title="POS Service Fee / Charges (Rs. 1)"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isPosFeeIncluded}
+                    onChange={(e) => setIsPosFeeIncluded(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-teal-600 focus:ring-teal-500 border-slate-300 transition cursor-pointer"
+                  />
+                  <span className="font-semibold text-slate-800 text-[11px] flex items-center gap-1">
+                    <span>POS Fee:</span>
+                    <span className={`font-mono font-bold ${isPosFeeIncluded ? "text-teal-800" : "text-slate-400 line-through"}`}>
+                      {isPosFeeIncluded ? "Rs. 1" : "Rs. 0"}
+                    </span>
+                  </span>
+                </label>
+
                 <div className="text-[10px] text-slate-400 ml-auto hidden sm:block font-mono">
                   <span className="inline-flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span>Ledger posting sync
@@ -1650,8 +1910,117 @@ export default function SaleInvoiceModal({
               className="space-y-1"
             >
               <div className="grid grid-cols-12 gap-2 items-end">
-                {/* PRODUCT NAME * (Search input with rounded-full pill border & search icon) */}
-                <div className="col-span-12 sm:col-span-5 relative">
+                {/* 1. COMPANY / BRAND Filter (Select or type company code e.g. GHR, BM) */}
+                <div className="col-span-6 sm:col-span-3 lg:col-span-2 relative" ref={retailCompanyDropdownRef}>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-teal-900 truncate">
+                      COMPANY / BRAND
+                    </label>
+                    {selectedCompanyFilter && selectedCompanyFilter !== "All" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCompanyFilter("All");
+                          setRetailCompanySearch("");
+                          showToast("Company filter cleared — All brands active");
+                        }}
+                        className="text-[9px] font-bold text-rose-600 hover:text-rose-800 underline cursor-pointer flex-shrink-0"
+                      >
+                        Clear (All)
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      ref={retailCompanyInputRef}
+                      type="text"
+                      autoComplete="off"
+                      value={showRetailCompanyDropdown ? retailCompanySearch : (selectedCompanyFilter === "All" ? "" : selectedCompanyFilter)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setRetailCompanySearch(val);
+                        setSelectedCompanyFilter(val || "All");
+                        setShowRetailCompanyDropdown(true);
+                      }}
+                      onFocus={() => {
+                        setRetailCompanySearch(selectedCompanyFilter === "All" ? "" : selectedCompanyFilter);
+                        setShowRetailCompanyDropdown(true);
+                      }}
+                      placeholder="All Brands (or Code)"
+                      title="Filter medicines by Pharma Company or Code (e.g. GHR, BM, Paul Brooks)"
+                      className="w-full text-xs font-semibold pl-2.5 pr-6 py-1.5 rounded-full border-2 border-teal-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 bg-white text-slate-800 h-8 outline-none shadow-xs truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRetailCompanyDropdown((prev) => !prev)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-700 p-0.5 cursor-pointer"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Retail Company Dropdown */}
+                  {showRetailCompanyDropdown && (
+                    <div className="absolute left-0 top-full mt-1 w-64 bg-white border border-slate-200 shadow-2xl rounded-xl py-1 z-40 max-h-60 overflow-y-auto">
+                      <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex justify-between items-center">
+                        <span>Select Company / Brand</span>
+                        <span className="font-mono text-teal-700">Code</span>
+                      </div>
+                      {filteredRetailCompanyOptions.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setSelectedCompanyFilter(c.id === "All" ? "All" : c.id);
+                            setShowRetailCompanyDropdown(false);
+                            setRetailCompanySearch("");
+                            showToast(c.id === "All" ? "All Brands Active" : `Filtered by: ${c.name || c.label}`);
+                            medicineInputRef.current?.focus();
+                          }}
+                          className={`w-full text-left px-2.5 py-1.5 text-xs flex items-center justify-between transition cursor-pointer ${
+                            selectedCompanyFilter === c.id ? "bg-teal-50 font-bold text-teal-950" : "hover:bg-slate-50 text-slate-700"
+                          }`}
+                        >
+                          <span className="truncate">{c.name || c.label}</span>
+                          <span className="font-mono text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold ml-1">
+                            {c.code || "ALL"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. ITEM CODE (Auto-fetch Product & Company Details) */}
+                <div className="col-span-6 sm:col-span-3 lg:col-span-2 relative">
+                  <label className="block text-[9px] font-bold uppercase tracking-wider text-teal-900 mb-0.5">
+                    ITEM CODE
+                  </label>
+                  <input
+                    ref={itemCodeInputRef}
+                    type="text"
+                    autoComplete="off"
+                    value={entryLine.product_code}
+                    onChange={(e) => {
+                      setEntryLine((prev) => ({ ...prev, product_code: e.target.value }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleLookupByItemCode(entryLine.product_code);
+                      }
+                    }}
+                    placeholder="e.g. Ghr-7, BM-1..."
+                    title="Type Item Code / Barcode and press Enter to auto-fill details & company"
+                    className="w-full font-mono text-xs font-bold px-3 py-1.5 rounded-full border-2 border-teal-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 bg-white placeholder-slate-400 text-slate-800 h-8 outline-none shadow-xs uppercase"
+                  />
+                </div>
+
+                {/* 3. PRODUCT NAME * (Search input with rounded-full pill border & search icon) */}
+                <div className="col-span-12 sm:col-span-6 lg:col-span-3 relative">
                   <label className="block text-[9px] font-bold uppercase tracking-wider text-teal-900 mb-0.5">
                     PRODUCT NAME <span className="text-rose-500">*</span>
                   </label>
@@ -1674,7 +2043,7 @@ export default function SaleInvoiceModal({
                       onFocus={() => setShowMedDropdown(true)}
                       onKeyDown={handleMedicineKeyDown}
                       placeholder="Type medicine name, formula, code..."
-                      className="w-full pl-8 pr-3 py-1.5 text-xs font-medium rounded-full border-2 border-teal-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 bg-white placeholder-slate-400 transition text-slate-800 h-8 outline-none"
+                      className="w-full pl-8 pr-3 py-1.5 text-xs font-medium rounded-full border-2 border-teal-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 bg-white placeholder-slate-400 transition text-slate-800 h-8 outline-none shadow-xs"
                     />
                   </div>
 
@@ -1682,14 +2051,24 @@ export default function SaleInvoiceModal({
                   {showMedDropdown && (
                     <div
                       ref={medSuggestionsRef}
-                      className="absolute left-0 top-full mt-1 w-full bg-white border border-slate-200 shadow-xl rounded-lg py-1 z-30 max-h-52 overflow-y-auto"
+                      className="absolute left-0 top-full mt-1 w-full sm:w-[480px] bg-white border border-slate-200 shadow-2xl rounded-xl py-1 z-40 max-h-72 sm:max-h-80 overflow-y-auto"
                     >
-                      <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex justify-between">
-                        <span>Matching Medicines in Stock</span>
+                      <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/90 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10 backdrop-blur-xs">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                          <span>Matching Medicines in Stock ({medicineSuggestions.length})</span>
+                          {selectedCompanyFilter && selectedCompanyFilter !== "All" && (
+                            <span className="text-[8px] bg-teal-100 text-teal-800 px-1.5 py-0.2 rounded font-bold">
+                              {selectedCompanyFilter}
+                            </span>
+                          )}
+                        </span>
                         <span>Price / Stock</span>
                       </div>
                       {medicineSuggestions.length === 0 ? (
-                        <div className="p-2 text-slate-400 text-center text-xs">No medicines found</div>
+                        <div className="p-4 text-slate-400 text-center text-xs">
+                          No medicines found {selectedCompanyFilter !== "All" ? `for "${selectedCompanyFilter}"` : ""}
+                        </div>
                       ) : (
                         medicineSuggestions.map((m, idx) => {
                           const isH = idx === highlightedMedIdx;
@@ -1704,26 +2083,31 @@ export default function SaleInvoiceModal({
                                 handleSelectTypeaheadMedicine(m);
                               }}
                               onMouseEnter={() => setHighlightedMedIdx(idx)}
-                              className={`w-full text-left px-2.5 py-1.5 text-xs flex items-center justify-between border-b border-slate-50 last:border-0 transition cursor-pointer ${
+                              className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between border-b border-slate-50 last:border-0 transition cursor-pointer ${
                                 isH ? "bg-teal-50 text-teal-950 font-bold" : "hover:bg-slate-50 text-slate-700"
                               }`}
                             >
                               <div className="truncate pr-2">
-                                <div className="font-semibold text-slate-900 truncate flex items-center gap-1">
+                                <div className="font-semibold text-slate-900 truncate flex items-center gap-1.5">
                                   <span>{m.medicine_name}</span>
+                                  {m.item_code && (
+                                    <span className="text-[9px] font-mono px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded font-bold">
+                                      {m.item_code}
+                                    </span>
+                                  )}
                                   {m.company_name && (
-                                    <span className="text-[8px] px-1 bg-teal-50 text-teal-800 rounded font-mono font-bold">
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-teal-50 text-teal-800 rounded font-mono font-bold border border-teal-200/50">
                                       {m.company_name}
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[9px] text-slate-400 truncate">
+                                <div className="text-[10px] text-slate-400 truncate">
                                   {m.product_description || m.generic_name || m.packing || "Standard Formula"}
                                 </div>
                               </div>
                               <div className="text-right flex-shrink-0">
                                 <div className="font-mono font-bold text-teal-800 text-xs">Rs. {price.toFixed(2)}</div>
-                                <span className={`text-[8px] px-1 rounded ${stock <= 0 ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"}`}>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${stock <= 0 ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"}`}>
                                   Stock: {stock}
                                 </span>
                               </div>
@@ -1735,8 +2119,8 @@ export default function SaleInvoiceModal({
                   )}
                 </div>
 
-                {/* QTY */}
-                <div className="col-span-3 sm:col-span-2 md:col-span-1">
+                {/* 4. QTY */}
+                <div className="col-span-3 sm:col-span-2 lg:col-span-1">
                   <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-700 text-center mb-0.5">QTY</label>
                   <input
                     ref={qtyInputRef}
@@ -1751,12 +2135,12 @@ export default function SaleInvoiceModal({
                         rateInputRef.current?.select();
                       }
                     }}
-                    className="w-full text-center text-xs font-bold py-1 px-1 rounded-full border border-slate-300 focus:border-teal-500 bg-white text-slate-900 h-8 outline-none"
+                    className="w-full text-center text-xs font-bold py-1 px-1 rounded-full border border-slate-300 focus:border-teal-500 bg-white text-slate-900 h-8 outline-none shadow-xs"
                   />
                 </div>
 
-                {/* RATE */}
-                <div className="col-span-3 sm:col-span-2 md:col-span-1">
+                {/* 5. RATE */}
+                <div className="col-span-3 sm:col-span-2 lg:col-span-1">
                   <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-700 text-center mb-0.5">RATE</label>
                   <input
                     ref={rateInputRef}
@@ -1772,28 +2156,20 @@ export default function SaleInvoiceModal({
                       }
                     }}
                     placeholder="0.00"
-                    className="w-full text-center text-xs font-semibold py-1 px-1 rounded-full border border-slate-300 focus:border-teal-500 bg-white font-mono text-slate-800 h-8 outline-none"
+                    className="w-full text-center text-xs font-semibold py-1 px-1 rounded-full border border-slate-300 focus:border-teal-500 bg-white font-mono text-slate-800 h-8 outline-none shadow-xs"
                   />
                 </div>
 
-                {/* GROSS (Read-Only) */}
-                <div className="col-span-3 sm:col-span-2 md:col-span-1">
-                  <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-700 text-center mb-0.5">GROSS</label>
-                  <div className="w-full text-center text-xs font-bold py-1 px-1 rounded-full border border-slate-200 bg-slate-50/80 text-slate-700 font-mono select-none flex items-center justify-center h-8">
-                    {entryGross}
-                  </div>
-                </div>
-
-                {/* DISC% */}
-                <div className="col-span-3 sm:col-span-2 md:col-span-1 relative">
+                {/* 6. DISC% */}
+                <div className="col-span-3 sm:col-span-2 lg:col-span-1 relative">
                   <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-700 text-center mb-0.5">DISC%</label>
                   <input
                     ref={discInputRef}
                     type="number"
                     min="0"
-                    max="28"
+                    max={getMaxDiscountLimit ? getMaxDiscountLimit() : 28}
                     value={entryLine.disc_pct}
-                    onChange={(e) => setEntryLine({ ...entryLine, disc_pct: e.target.value })}
+                    onChange={handleDiscInputChange}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -1801,20 +2177,25 @@ export default function SaleInvoiceModal({
                       }
                     }}
                     placeholder="0"
-                    className="w-full text-center text-xs font-semibold py-1 px-1 rounded-full border border-slate-300 focus:border-teal-500 bg-white font-mono text-slate-800 h-8 outline-none"
+                    title={`Discount % (Max Limit: ${getMaxDiscountLimit ? getMaxDiscountLimit() : 28}%)`}
+                    className="w-full text-center text-xs font-semibold py-1 px-1 rounded-full border border-slate-300 focus:border-teal-500 bg-white font-mono text-slate-800 h-8 outline-none shadow-xs"
                   />
                 </div>
 
-                {/* NET */}
-                <div className="col-span-8 sm:col-span-3 md:col-span-2">
+                {/* 7. NET (with Gross info) */}
+                <div className="col-span-3 sm:col-span-3 lg:col-span-1">
                   <label className="block text-[9px] font-bold uppercase tracking-wider text-teal-800 text-center mb-0.5">NET</label>
-                  <div className="w-full text-center text-xs font-extrabold py-1 px-1 rounded-full border-2 border-teal-400 bg-teal-50/70 text-teal-950 font-mono select-none tracking-tight flex items-center justify-center h-8">
-                    {entryNet}
+                  <div
+                    title={`Gross: Rs. ${entryGross} | Disc: ${entryLine.disc_pct}%`}
+                    className="w-full text-center text-xs font-extrabold py-0.5 px-1 rounded-full border-2 border-teal-400 bg-teal-50/70 text-teal-950 font-mono select-none tracking-tight flex flex-col items-center justify-center h-8"
+                  >
+                    <span>{entryNet}</span>
+                    <span className="text-[7.5px] font-normal text-slate-500 -mt-0.5 truncate">G: {entryGross}</span>
                   </div>
                 </div>
 
-                {/* ADD BUTTON */}
-                <div className="col-span-4 sm:col-span-1 md:col-span-1">
+                {/* 8. ADD BUTTON */}
+                <div className="col-span-12 sm:col-span-3 lg:col-span-1">
                   <button
                     type="button"
                     onClick={addNewItem}
@@ -1830,7 +2211,7 @@ export default function SaleInvoiceModal({
             </form>
           </section>
         ) : (
-          /* Wholesale Mode Fast Entry Bar With Dedicated COMP CODE Filter */
+          /* Wholesale Mode Fast Entry Bar With Dedicated COMP CODE & ITEM CODE */
           <section className="bg-white p-2.5 rounded-lg border border-teal-200 shadow-xs relative flex-shrink-0" data-purpose="fast-entry-bar">
             <form
               onSubmit={(e) => {
@@ -1855,7 +2236,7 @@ export default function SaleInvoiceModal({
                     }}
                     onFocus={() => setShowCompanyDropdown(true)}
                     placeholder="COMP CODE"
-                    title="Pharma Company Code (e.g. GSK, SAMI, GETZ, AGP, ABT, BM)"
+                    title="Pharma Company Code (e.g. GSK, SAMI, GETZ, AGP, ABT, BM, GHR)"
                     className="w-full uppercase font-mono font-bold text-xs pl-2.5 pr-6 py-1.5 rounded-lg border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 bg-white placeholder-slate-400 shadow-xs h-8 outline-none"
                   />
                   <button
@@ -1903,7 +2284,28 @@ export default function SaleInvoiceModal({
                 )}
               </div>
 
-              {/* 2. Medicine Search Bar with Quick Autocomplete Preview */}
+              {/* 2. Item Code Input (Auto-fetch Product & Details) */}
+              <div className="relative w-full sm:w-28 flex-shrink-0">
+                <input
+                  type="text"
+                  autoComplete="off"
+                  value={entryLine.product_code}
+                  onChange={(e) => {
+                    setEntryLine((prev) => ({ ...prev, product_code: e.target.value }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleLookupByItemCode(entryLine.product_code);
+                    }
+                  }}
+                  placeholder="ITEM CODE"
+                  title="Enter Item Code / Barcode (e.g. GHR-7) and press Enter to auto-fill"
+                  className="w-full uppercase font-mono font-bold text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 bg-white placeholder-slate-400 shadow-xs h-8 outline-none"
+                />
+              </div>
+
+              {/* 3. Medicine Search Bar with Quick Autocomplete Preview */}
               <div className="relative flex-1 w-full">
                 <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-teal-700">
                   <svg className="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1933,14 +2335,24 @@ export default function SaleInvoiceModal({
                 {showMedDropdown && (
                   <div
                     ref={medSuggestionsRef}
-                    className="absolute left-0 top-full mt-1 w-full bg-white border border-slate-200 shadow-xl rounded-lg py-1 z-30 max-h-52 overflow-y-auto"
+                    className="absolute left-0 top-full mt-1 w-full bg-white border border-slate-200 shadow-2xl rounded-xl py-1 z-40 max-h-72 sm:max-h-80 overflow-y-auto"
                   >
-                    <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex justify-between">
-                      <span>Matching Medicines in Stock</span>
+                    <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/90 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10 backdrop-blur-xs">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                        <span>Matching Medicines in Stock ({medicineSuggestions.length})</span>
+                        {selectedCompanyFilter && selectedCompanyFilter !== "All" && (
+                          <span className="text-[8px] bg-teal-100 text-teal-800 px-1.5 py-0.2 rounded font-bold">
+                            {selectedCompanyFilter}
+                          </span>
+                        )}
+                      </span>
                       <span>Price / Stock</span>
                     </div>
                     {medicineSuggestions.length === 0 ? (
-                      <div className="p-2 text-slate-400 text-center text-xs">No medicines found</div>
+                      <div className="p-4 text-slate-400 text-center text-xs">
+                        No medicines found {selectedCompanyFilter !== "All" ? `for "${selectedCompanyFilter}"` : ""}
+                      </div>
                     ) : (
                       medicineSuggestions.map((m, idx) => {
                         const isH = idx === highlightedMedIdx;
@@ -1955,26 +2367,31 @@ export default function SaleInvoiceModal({
                               handleSelectTypeaheadMedicine(m);
                             }}
                             onMouseEnter={() => setHighlightedMedIdx(idx)}
-                            className={`w-full text-left px-2.5 py-1.5 text-xs flex items-center justify-between border-b border-slate-50 last:border-0 transition cursor-pointer ${
+                            className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between border-b border-slate-50 last:border-0 transition cursor-pointer ${
                               isH ? "bg-teal-50 text-teal-950 font-bold" : "hover:bg-slate-50 text-slate-700"
                             }`}
                           >
                             <div className="truncate pr-2">
-                              <div className="font-semibold text-slate-900 truncate flex items-center gap-1">
+                              <div className="font-semibold text-slate-900 truncate flex items-center gap-1.5">
                                 <span>{m.medicine_name}</span>
+                                {m.item_code && (
+                                  <span className="text-[9px] font-mono px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded font-bold">
+                                    {m.item_code}
+                                  </span>
+                                )}
                                 {m.company_name && (
-                                  <span className="text-[8px] px-1 bg-teal-50 text-teal-800 rounded font-mono font-bold">
+                                  <span className="text-[9px] px-1.5 py-0.5 bg-teal-50 text-teal-800 rounded font-mono font-bold border border-teal-200/50">
                                     {m.company_name}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[9px] text-slate-400 truncate">
+                              <div className="text-[10px] text-slate-400 truncate">
                                 {m.product_description || m.generic_name || m.packing || "Standard Formula"}
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
                               <div className="font-mono font-bold text-teal-800 text-xs">Rs. {price.toFixed(2)}</div>
-                              <span className={`text-[8px] px-1 rounded ${stock <= 0 ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"}`}>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${stock <= 0 ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"}`}>
                                 Stock: {stock}
                               </span>
                             </div>
@@ -2036,9 +2453,9 @@ export default function SaleInvoiceModal({
                     ref={discInputRef}
                     type="number"
                     min="0"
-                    max="28"
+                    max={getMaxDiscountLimit ? getMaxDiscountLimit() : 28}
                     value={entryLine.disc_pct}
-                    onChange={(e) => setEntryLine({ ...entryLine, disc_pct: e.target.value })}
+                    onChange={handleDiscInputChange}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -2046,7 +2463,7 @@ export default function SaleInvoiceModal({
                       }
                     }}
                     placeholder="Disc%"
-                    title="Discount %"
+                    title={`Discount % (Max Limit: ${getMaxDiscountLimit ? getMaxDiscountLimit() : 28}%)`}
                     className="w-full text-center text-xs font-semibold py-1 px-1 rounded-lg border border-slate-200 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 bg-white font-mono text-slate-800 h-8 outline-none"
                   />
                 </div>
@@ -2236,20 +2653,28 @@ export default function SaleInvoiceModal({
             {/* Net Amount Box with Wholesale / Retail contextual styling */}
             <div className="bg-teal-50 px-3.5 py-1 rounded-lg border border-teal-200 flex items-center space-x-2 shadow-xs">
               <div className="flex flex-col">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-teal-900 uppercase tracking-tight">
-                    {activeInvoiceMode === "wholesale" ? "TOTAL UDHAR / BILL" : "Net Payable"}
+                    {activeInvoiceMode === "wholesale" ? "Net Total" : "Net Payable"}
                   </span>
-                  {activeInvoiceMode === "wholesale" && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-teal-800 text-teal-100 font-mono uppercase tracking-wider shadow-xs">
-                      UDHAR (Account Receivable)
+                  {activeInvoiceMode === "wholesale" && (saleForm.payment_mode === "Credit / Udhaar" || (saleForm.cash_received !== "" && calculations.balanceDue > 0)) && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-white font-mono uppercase tracking-wider shadow-xs">
+                      Udhaar (Receivable)
                     </span>
                   )}
                 </div>
                 <span className="text-[10px] font-semibold text-teal-700 flex items-center gap-1 mt-0.2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    activeInvoiceMode === "wholesale" && (saleForm.payment_mode === "Credit / Udhaar" || puranaUdhaar > 0)
+                      ? "bg-amber-500 animate-pulse"
+                      : "bg-emerald-500 animate-pulse"
+                  }`}></span>
                   {activeInvoiceMode === "wholesale"
-                    ? "Balance Due: 30-Day Ledger Term"
+                    ? (saleForm.payment_mode === "Credit / Udhaar"
+                        ? (puranaUdhaar > 0 ? `Ledger Credit • Prior Bal: Rs. ${puranaUdhaar.toLocaleString()}` : "Balance Due: Ledger Credit Term")
+                        : puranaUdhaar > 0
+                        ? `Prior Udhaar: Rs. ${puranaUdhaar.toLocaleString()}`
+                        : "Live Wholesale Billing Active")
                     : "Live Sale Billing Active"}
                 </span>
               </div>
@@ -2273,10 +2698,21 @@ export default function SaleInvoiceModal({
               </div>
               <div className="text-[11px] leading-tight">
                 <span className="text-slate-400 block text-[9px] uppercase font-semibold">
-                  {activeInvoiceMode === "wholesale" ? "Balance" : "Change"}
+                  {activeInvoiceMode === "wholesale"
+                    ? (calculations.balanceDue > 0 && saleForm.cash_received !== "" ? "Balance Due" : calculations.change > 0 ? "Change" : "Balance")
+                    : "Change"}
                 </span>
-                <span className={`font-mono font-bold ${calculations.change > 0 ? "text-emerald-600" : "text-slate-700"}`}>
-                  Rs. {calculations.change.toFixed(2)}
+                <span className={`font-mono font-bold ${
+                  activeInvoiceMode === "wholesale" && calculations.balanceDue > 0 && saleForm.cash_received !== ""
+                    ? "text-amber-700"
+                    : calculations.change > 0
+                    ? "text-emerald-600"
+                    : "text-slate-700"
+                }`}>
+                  Rs. {(activeInvoiceMode === "wholesale" && calculations.balanceDue > 0 && saleForm.cash_received !== ""
+                    ? calculations.balanceDue
+                    : calculations.change
+                  ).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -2474,7 +2910,7 @@ export default function SaleInvoiceModal({
                           <span className="font-semibold text-slate-800">{s.account_name || "Walk-In"}</span>
                         </td>
                         <td className="py-2 px-3 text-slate-500 text-[11px]">
-                          {s.attending_doctor_name || s.reference || "Dr. Asif Ashraf"}
+                          {s.attending_doctor_name || s.reference || "—"}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
                           Rs. {Number(s.total_amount || 0).toLocaleString()}

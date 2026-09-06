@@ -87,6 +87,11 @@ class SyncEngine {
           this.processOutbox();
         }
       });
+      window.addEventListener("clinicflow_outbox_change", () => {
+        if (this.isOnline) {
+          this.schedulePush();
+        }
+      });
       this.startBackgroundPoller();
     }
   }
@@ -356,32 +361,75 @@ class SyncEngine {
             "cf_tenants_v5",
           ];
 
-          for (const k of syncKeys) {
-            if (Array.isArray(cloudData[k]) && cloudData[k].length > 0) {
-              const localRaw = storageDriver.getItem(k);
-              let parsedLocal = [];
-              try { parsedLocal = localRaw ? JSON.parse(localRaw) : []; } catch (_) {}
+          const serverResetEpoch = Number(cloudData._last_reset_epoch || 0);
+          const localResetEpoch = Number(typeof localStorage !== "undefined" ? localStorage.getItem("cf_last_reset_epoch") || 0 : 0);
 
-              if (parsedLocal.length === 0) {
-                setCollection(k, cloudData[k]);
+          if (serverResetEpoch > localResetEpoch) {
+            console.warn(`[SyncEngine] ⚠️ Server Factory Reset detected (Server: ${serverResetEpoch} > Local: ${localResetEpoch}). Purging local data.`);
+
+            // 1. Purge local pending outbox mutations immediately to prevent zombie resurrection of old deleted records
+            if (typeof dbOutbox !== "undefined" && dbOutbox.clearAll) {
+              dbOutbox.clearAll();
+            }
+
+            // 2. Wipe transactional collections locally
+            const transactionalKeys = [
+              "cf_patients_v5", "cf_visits_v5", "cf_sales_v5", "cf_b2b_sales_v5",
+              "cf_purchases_v5", "cf_expenses_v5", "cf_cashbook_v6", "cf_main_ac_v6",
+              "cf_returns_v5", "cf_stock_transfers_v5", "cf_stock_movements_v1",
+              "cf_shift_closings_v5", "cf_patient_ledger_v5", "cf_supplier_ledger_v6",
+              "cf_documents_v5", "cf_audit_logs_v1", "pos_sales", "sales", "stock_movement"
+            ];
+            transactionalKeys.forEach((tk) => setCollection(tk, []));
+
+            if (cloudData._wipe_catalog) {
+              const catalogKeys = [
+                "cf_inventory_v5", "cf_parties_v5", "cf_suppliers_v5",
+                "cf_salesmen_v5", "cf_accounts_v6", "cf_medicine_batches_v1",
+                "cf_medicine_categories_v1", "cf_medicine_companies_v1"
+              ];
+              catalogKeys.forEach((ck) => setCollection(ck, []));
+            }
+
+            try {
+              localStorage.setItem("cf_last_reset_epoch", String(serverResetEpoch));
+              window.dispatchEvent(new Event("clinicflow_status_update"));
+            } catch (_) {}
+          }
+
+          for (const k of syncKeys) {
+            if (Array.isArray(cloudData[k])) {
+              if (cloudData[k].length === 0) {
+                // Server collection was intentionally wiped clean
+                if (serverResetEpoch >= localResetEpoch && serverResetEpoch > 0) {
+                  setCollection(k, []);
+                }
               } else {
-                const localMap = new Map(parsedLocal.map((item) => [item && item.id, item]));
-                cloudData[k].forEach((serverItem) => {
-                  if (serverItem && serverItem.id) {
-                    if (!localMap.has(serverItem.id)) {
-                      localMap.set(serverItem.id, serverItem);
-                    } else {
-                      const existing = localMap.get(serverItem.id);
-                      const sTime = new Date(serverItem.updated_at || serverItem.created_at || 0).getTime();
-                      const lTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
-                      if (sTime >= lTime) {
-                        localMap.set(serverItem.id, { ...existing, ...serverItem });
+                const localRaw = storageDriver.getItem(k);
+                let parsedLocal = [];
+                try { parsedLocal = localRaw ? JSON.parse(localRaw) : []; } catch (_) {}
+
+                if (parsedLocal.length === 0) {
+                  setCollection(k, cloudData[k]);
+                } else {
+                  const localMap = new Map(parsedLocal.map((item) => [item && item.id, item]));
+                  cloudData[k].forEach((serverItem) => {
+                    if (serverItem && serverItem.id) {
+                      if (!localMap.has(serverItem.id)) {
+                        localMap.set(serverItem.id, serverItem);
+                      } else {
+                        const existing = localMap.get(serverItem.id);
+                        const sTime = new Date(serverItem.updated_at || serverItem.created_at || 0).getTime();
+                        const lTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+                        if (sTime >= lTime) {
+                          localMap.set(serverItem.id, { ...existing, ...serverItem });
+                        }
                       }
                     }
-                  }
-                });
-                const mergedArray = Array.from(localMap.values()).filter(Boolean);
-                setCollection(k, mergedArray);
+                  });
+                  const mergedArray = Array.from(localMap.values()).filter(Boolean);
+                  setCollection(k, mergedArray);
+                }
               }
             } else if (cloudData[k] && typeof cloudData[k] === "object" && !Array.isArray(cloudData[k])) {
               setCollection(k, cloudData[k]);

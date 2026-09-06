@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   dbClinic,
   dbUsers,
@@ -12,7 +12,6 @@ import {
   dbVisits,
   dbPatients,
   dbCashBook,
-  dbLicense,
   dbOutbox,
   getDeviceId,
   exportFullDatabase,
@@ -78,11 +77,24 @@ import { generateCliniCoreEmailTemplate } from "../utils/emailTemplate.js";
 export { generateCliniCoreEmailTemplate };
 
 export default function DeveloperAdminPanel() {
+  const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcodeInput, setPasscodeInput] = useState("");
   const [authError, setAuthError] = useState("");
-  const [activeTab, setActiveTab] = useState("audits"); // "audits" | "staff" | "apis" | "backups" | "god_audit" | "godowns"
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state?.tab) return location.state.tab;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("tab")) return params.get("tab");
+    } catch {}
+  }); // "audits" | "staff" | "apis" | "backups" | "god_audit"
   const [toastMsg, setToastMsg] = useState("");
+
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
   const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window !== "undefined" ? window.innerWidth >= 1200 : true));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -259,11 +271,7 @@ export default function DeveloperAdminPanel() {
     };
   });
 
-  // Software Licensing & Remote Control State
-  const [licenseForm, setLicenseForm] = useState(() => dbLicense.get());
-  const [isSavingLicense, setIsSavingLicense] = useState(false);
-
-  const loadData = (preserveForm = false) => {
+  const loadData = () => {
     // 1. Hydrate local data INSTANTLY in 0ms to eliminate UI freeze on click
     const curr = dbClinic.get() || {};
     setActiveClinic(curr);
@@ -277,9 +285,6 @@ export default function DeveloperAdminPanel() {
     setVisitsList(dbVisits.getAll() || []);
     setPatientsList(dbPatients.getAll() || []);
     setCashBookList(dbCashBook.getAll() || []);
-    if (!preserveForm) {
-      setLicenseForm(dbLicense.get());
-    }
 
     // 2. Asynchronously check remote cloud version & VPS config with 600ms timeout (non-blocking)
     (async () => {
@@ -2876,7 +2881,7 @@ export default function DeveloperAdminPanel() {
                     <div className="flex flex-wrap gap-3 pt-2">
                       <button
                         onClick={async () => {
-                          const passcode = prompt("⚠️ WARNING: This will permanently wipe ALL transactional data (Patients, Sales, Bills, CashBook, Purchases, etc.) from BOTH the VPS database and your local browser storage!\n\nThis action cannot be undone.\n\nEnter your Super Admin Master Passcode to confirm:");
+                          const passcode = prompt("⚠️ CONFIRM TRANSACTIONAL RESET:\n\nThis will permanently wipe all OPD queue visits, retail POS sales, B2B wholesale bills, GRN purchases, expenses, and cashbook across BOTH the VPS database and local storage!\n\nYour 500+ Item Medicine Catalog, Suppliers, Accounts, and Clinic Profile will remain 100% intact.\n\nEnter Super Admin Master Passcode to confirm:");
                           if (!passcode) return;
 
                           try {
@@ -2887,28 +2892,65 @@ export default function DeveloperAdminPanel() {
                                 "Content-Type": "application/json",
                                 "Authorization": `Bearer ${localStorage.getItem("cf_vps_jwt") || ""}`
                               },
-                              body: JSON.stringify({ passcode }),
+                              body: JSON.stringify({ passcode, wipe_catalog: false }),
                             });
 
                             const data = await res.json().catch(() => null);
 
                             if (res.ok && data?.success) {
-                              // Wipe local cache
                               const { factoryResetAllData } = await import("../api/db.js");
-                              factoryResetAllData();
-                              alert("🎉 SUCCESS: Entire database (VPS + Local Storage) has been permanently wiped clean!\n\nSystem will now reload.");
+                              factoryResetAllData({ preserveCatalog: true });
+                              alert("🎉 SUCCESS: All transactional data has been wiped clean across VPS and Local Storage!\n\nMedicine catalog and clinic profile preserved.\nSystem will now reload.");
                               window.location.reload();
                             } else {
-                              alert("❌ Factory Reset Denied: " + (data?.error?.message || "Incorrect passcode or connection failed."));
+                              alert("❌ Factory Reset Denied: " + (data?.error || data?.message || "Incorrect passcode or connection failed."));
                             }
                           } catch (err) {
                             alert("❌ System Error during reset: " + err.message);
                           }
                         }}
-                        className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        title="Wipe transactions only while keeping your medicine catalog and suppliers"
+                      >
+                        <span className="material-symbols-outlined text-base text-amber-700">mop</span>
+                        Wipe Transactions Only (Keep Inventory)
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          const passcode = prompt("🚨 100% GROUND ZERO FACTORY RESET (COMPLETE WIPE):\n\nThis will permanently DELETE ALL DATA (including all test medicines/inventory, wholesale parties, suppliers, accounts, queue patients, and sales bills) across BOTH the VPS database and local storage!\n\nUse this to clean out ALL test data before uploading the Doctor's real production stock.\n\nEnter Super Admin Master Passcode to confirm:");
+                          if (!passcode) return;
+
+                          try {
+                            const apiUrl = DEFAULT_API_URL;
+                            const res = await fetch(`${apiUrl}/api/v1/system/factory-reset`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${localStorage.getItem("cf_vps_jwt") || ""}`
+                              },
+                              body: JSON.stringify({ passcode, wipe_catalog: true }),
+                            });
+
+                            const data = await res.json().catch(() => null);
+
+                            if (res.ok && data?.success) {
+                              const { factoryResetAllData } = await import("../api/db.js");
+                              factoryResetAllData({ preserveCatalog: false });
+                              alert("🎉 SUCCESS: Entire database (VPS + Local Storage) permanently wiped to 0 Ground Zero!\n\nReady for fresh doctor inventory upload.\nSystem will now reload.");
+                              window.location.reload();
+                            } else {
+                              alert("❌ Factory Reset Denied: " + (data?.error || data?.message || "Incorrect passcode or connection failed."));
+                            }
+                          } catch (err) {
+                            alert("❌ System Error during reset: " + err.message);
+                          }
+                        }}
+                        className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        title="Permanent complete ground zero reset: wipes inventory, parties, and all transactions"
                       >
                         <span className="material-symbols-outlined text-base text-red-600">delete_forever</span>
-                        Wipe Entire App Data (VPS + Local Reset)
+                        Complete Ground Zero Reset (Wipe EVERYTHING for Dr Setup)
                       </button>
 
                       <button
@@ -2918,6 +2960,8 @@ export default function DeveloperAdminPanel() {
                           if (confirm("2. Wipe Retail POS & Wholesale Sales Invoices? (Press OK for Yes, Cancel for No)")) cats.push("sales");
                           if (confirm("3. Wipe Purchases & Stock GRN Ledgers? (Press OK for Yes, Cancel for No)")) cats.push("purchases");
                           if (confirm("4. Wipe Expenses & Cashbook Entries? (Press OK for Yes, Cancel for No)")) cats.push("expenses");
+                          if (confirm("5. Wipe Medicine Inventory & Batches? (Press OK for Yes, Cancel for No)")) cats.push("inventory");
+                          if (confirm("6. Wipe Wholesale Parties & Suppliers? (Press OK for Yes, Cancel for No)")) cats.push("parties");
 
                           if (cats.length === 0) {
                             alert("No categories selected. Nothing was deleted.");
@@ -2930,24 +2974,29 @@ export default function DeveloperAdminPanel() {
                           (async () => {
                             try {
                               const apiUrl = DEFAULT_API_URL;
-                              await fetch(`${apiUrl}/api/v1/system/purge-data`, {
+                              const purgeRes = await fetch(`${apiUrl}/api/v1/system/purge-data`, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ passcode: pass, categories: cats })
                               });
-                              const { dbDatabaseManagement } = await import("../api/db.js");
-                              dbDatabaseManagement.resetDatabase(cats);
-                              await loadData(true);
-                              alert(`✅ Successfully purged selected categories: ${cats.join(", ")}!`);
+                              const pData = await purgeRes.json().catch(() => null);
+                              if (purgeRes.ok && pData?.success) {
+                                const { dbDatabaseManagement } = await import("../api/db.js");
+                                dbDatabaseManagement.resetDatabase(cats);
+                                await loadData(true);
+                                alert(`✅ Successfully purged selected categories: ${cats.join(", ")}!`);
+                              } else {
+                                alert("❌ Purge denied: " + (pData?.error || "Incorrect passcode"));
+                              }
                             } catch (err) {
                               alert("⚠️ Purge note: " + err.message);
                             }
                           })();
                         }}
-                        className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        className="bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-300 px-5 py-3 rounded-2xl font-black text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
                         title="Choose specifically which modules to purge permanently"
                       >
-                        <span className="material-symbols-outlined text-base text-amber-700">checklist_rtl</span>
+                        <span className="material-symbols-outlined text-base text-purple-700">checklist_rtl</span>
                         Custom Granular Data Purge (Choose What to Delete)
                       </button>
 

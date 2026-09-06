@@ -98,6 +98,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Bypass service worker completely for localhost development and Vite pre-bundled deps
+  const isDevHost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  if (
+    isDevHost ||
+    url.pathname.includes('/node_modules/') ||
+    url.pathname.includes('/@vite/') ||
+    url.pathname.includes('/@fs/') ||
+    url.pathname.includes('/@id/') ||
+    url.searchParams.has('v') ||
+    url.searchParams.has('t')
+  ) {
+    return;
+  }
+
   // Bypass service worker for backend API and direct PHP endpoints
   if (url.pathname.startsWith('/api/') || url.pathname.includes('index.php')) {
     return;

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
+import * as XLSX from "xlsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { verifyAdminPasscode } from "../api/auth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
@@ -864,24 +865,55 @@ export default function MedicalStoreInventory() {
     setCsvPage(1);
     setCsvImportStatus({ loading: false, result: null, error: "" });
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const text = evt.target?.result || "";
-        const parsed = parseInventoryCSV(text);
-        if (parsed.length === 0) {
-          setCsvImportStatus({ loading: false, result: null, error: "No valid medicine rows found in CSV. Please verify column headers." });
-          setCsvParsedRows([]);
-        } else {
-          setCsvParsedRows(parsed);
-          setCsvCompanyFilter("ALL");
-          setCsvPage(1);
+    const isExcel =
+      file.name.toLowerCase().endsWith(".xlsx") ||
+      file.name.toLowerCase().endsWith(".xls") ||
+      file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      file.type === "application/vnd.ms-excel";
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const buffer = evt.target?.result;
+          const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
+          const sheetName = wb.SheetNames[0];
+          const ws = wb.Sheets[sheetName];
+          const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+          const parsed = parseInventoryCSV(rawRows);
+          if (parsed.length === 0) {
+            setCsvImportStatus({ loading: false, result: null, error: "No valid medicine rows found in Excel sheet. Please verify column headers." });
+            setCsvParsedRows([]);
+          } else {
+            setCsvParsedRows(parsed);
+            setCsvCompanyFilter("ALL");
+            setCsvPage(1);
+          }
+        } catch (err) {
+          setCsvImportStatus({ loading: false, result: null, error: `Excel Parsing error: ${err.message}` });
         }
-      } catch (err) {
-        setCsvImportStatus({ loading: false, result: null, error: `CSV Parsing error: ${err.message}` });
-      }
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const text = evt.target?.result || "";
+          const parsed = parseInventoryCSV(text);
+          if (parsed.length === 0) {
+            setCsvImportStatus({ loading: false, result: null, error: "No valid medicine rows found in CSV. Please verify column headers." });
+            setCsvParsedRows([]);
+          } else {
+            setCsvParsedRows(parsed);
+            setCsvCompanyFilter("ALL");
+            setCsvPage(1);
+          }
+        } catch (err) {
+          setCsvImportStatus({ loading: false, result: null, error: `CSV Parsing error: ${err.message}` });
+        }
+      };
+      reader.readAsText(file);
+    }
   }
 
   function handleCsvFileSelected(e) {
@@ -909,19 +941,32 @@ export default function MedicalStoreInventory() {
       prev.map((row, i) => {
         if (i !== idx) return row;
         const updated = { ...row, [field]: value };
-        if (field === "cost_price_per_box") {
+        if (field === "product_description") {
+          updated.generic_name = value;
+          updated.naration = value;
+        } else if (field === "packing") {
+          updated.unit_label = value;
+          updated.strip_label = value;
+        } else if (field === "company_code") {
+          updated.company_code = (value || "").toUpperCase().trim();
+        } else if (field === "item_code") {
+          updated.item_code = (value || "").toUpperCase().trim();
+        } else if (field === "cost_price_per_box") {
           updated.purchase_price = value;
           updated.cost_price = value;
         } else if (field === "unit_sale_price") {
           updated.box_sale_price = value;
           updated.strip_sale_price = value;
           updated.unit_price = value;
-        } else if (field === "total_base_stock") {
+        } else if (field === "store_stock" || field === "total_base_stock") {
           updated.store_stock = value;
           updated.stock_qty = value;
+          updated.total_base_stock = value;
           if (updated.location_stocks) {
             updated.location_stocks.wh_str = value;
           }
+        } else if (field === "batch_no") {
+          updated.batch = value;
         }
         return updated;
       })
@@ -937,7 +982,7 @@ export default function MedicalStoreInventory() {
     if (!csvParsedRows || csvParsedRows.length === 0) return [];
     const map = new Map();
     for (const r of csvParsedRows) {
-      const comp = r.company_name || "BM Pvt LTD";
+      const comp = r.company_name || "General";
       map.set(comp, (map.get(comp) || 0) + 1);
     }
     return Array.from(map.entries()).map(([company, count]) => ({ company, count }));
@@ -945,7 +990,7 @@ export default function MedicalStoreInventory() {
 
   const displayedCsvRows = useMemo(() => {
     if (!csvCompanyFilter || csvCompanyFilter === "ALL") return csvParsedRows;
-    return csvParsedRows.filter((r) => (r.company_name || "BM Pvt LTD") === csvCompanyFilter);
+    return csvParsedRows.filter((r) => (r.company_name || "General") === csvCompanyFilter);
   }, [csvParsedRows, csvCompanyFilter]);
 
   const csvUniqueCompaniesCount = useMemo(() => {
@@ -1005,16 +1050,22 @@ export default function MedicalStoreInventory() {
 
   function handleExportModalList(itemsToExport, filename) {
     if (!itemsToExport || itemsToExport.length === 0) return;
-    const headers = ["Item Name", "Item Code", "Company Name", "Company Code", "Category / Naration", "Stock Level", "Sale Price (Rs)", "Purchase Price (Rs)"];
-    const rows = itemsToExport.map((item) => [
+    const headers = ["S/R No", "Medicine Name", "Description", "Packing", "Company Name", "Company Code", "Item Code", "Cost Price", "Retail Price", "Medical Store Stock", "Stock Level Alert", "Category", "Batch Number", "Expiry Date"];
+    const rows = itemsToExport.map((item, idx) => [
+      idx + 1,
       `"${(item.medicine_name || '').replace(/"/g, '""')}"`,
-      `"${item.item_code || ''}"`,
-      `"${item.company_name || ''}"`,
-      `"${item.company_code || item.item_code || ''}"`,
-      `"${item.generic_name || item.category || ''}"`,
-      item.total_base_stock ?? item.stock_qty ?? 0,
+      `"${(item.product_description || item.description || '').replace(/"/g, '""')}"`,
+      `"${(item.packing || item.unit_label || 'Pack').replace(/"/g, '""')}"`,
+      `"${(item.company_name || '').replace(/"/g, '""')}"`,
+      `"${(item.company_code || '').replace(/"/g, '""')}"`,
+      `"${(item.item_code || '').replace(/"/g, '""')}"`,
+      item.cost_price_per_box || item.purchase_price || 0,
       item.unit_sale_price || item.box_sale_price || item.unit_price || 0,
-      item.cost_price_per_box || item.purchase_price || 0
+      item.total_base_stock ?? item.stock_qty ?? 0,
+      item.low_stock_threshold ?? 6,
+      `"${(item.category || 'Drops').replace(/"/g, '""')}"`,
+      `"${(item.batch_no || item.batch || '').replace(/"/g, '""')}"`,
+      `"${(item.expiry_date || '').replace(/"/g, '""')}"`
     ]);
     const csvStr = `${headers.join(",")}\n${rows.map((r) => r.join(",")).join("\n")}`;
     downloadCSV(filename, csvStr);
@@ -2708,37 +2759,49 @@ export default function MedicalStoreInventory() {
                 <thead className="bg-slate-900 text-white font-black uppercase text-[11px] sticky top-0 shadow-md">
                   <tr>
                     <th className="p-3 border-b border-slate-700">Item Particulars</th>
-                    <th className="p-3 border-b border-slate-700 text-center">Company / Code</th>
+                    <th className="p-3 border-b border-slate-700">Company Name</th>
+                    <th className="p-3 border-b border-slate-700 text-center">Company Code</th>
+                    <th className="p-3 border-b border-slate-700 text-center">Item Code</th>
                     <th className="p-3 border-b border-slate-700 text-right">Live Stock Level</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 font-semibold bg-white text-slate-900">
                   {modalFilteredItems.length === 0 ? (
                     <tr>
-                      <td colSpan="3" className="text-center py-12 text-slate-700 font-bold">
+                      <td colSpan="5" className="text-center py-12 text-slate-700 font-bold">
                         No products found under &quot;{modalCategoryFilter}&quot;.
                       </td>
                     </tr>
                   ) : (
-                    modalFilteredItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-teal-50/60 transition-colors">
-                        <td className="p-3 font-black text-slate-900 text-xs">
-                          {item.medicine_name}
-                          {item.packing && (
-                            <span className="block text-[11px] font-bold text-slate-700">{item.packing}</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="font-bold text-slate-900">{item.company_name || "General"}</span>
-                          {item.item_code && (
-                            <span className="block font-mono text-teal-950 font-black text-[10.5px]">[{item.item_code}]</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right font-black text-slate-950 text-sm">
-                          {item.total_base_stock ?? item.stock_qty ?? 0}
-                        </td>
-                      </tr>
-                    ))
+                    modalFilteredItems.map((item) => {
+                      const compCode = item.company_code || (item.company_name ? item.company_name.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() : "GEN");
+                      return (
+                        <tr key={item.id} className="hover:bg-teal-50/60 transition-colors">
+                          <td className="p-3 font-black text-slate-900 text-xs">
+                            {item.medicine_name}
+                            {item.packing && (
+                              <span className="block text-[11px] font-bold text-slate-700">{item.packing}</span>
+                            )}
+                          </td>
+                          <td className="p-3 font-bold text-slate-900 text-xs">
+                            {item.company_name || "General"}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="inline-block px-2 py-0.5 rounded font-mono font-black text-[11px] bg-slate-100 text-slate-800 border border-slate-300">
+                              {compCode}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="inline-block px-2 py-0.5 rounded font-mono font-black text-[11px] bg-teal-50 text-teal-950 border border-teal-300">
+                              {item.item_code || "—"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-black text-slate-950 text-sm">
+                            {item.total_base_stock ?? item.stock_qty ?? 0}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -2822,7 +2885,7 @@ export default function MedicalStoreInventory() {
                   <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
                   <input
                     type="text"
-                    placeholder="Search product, naration, code..."
+                    placeholder="Search product, description, code..."
                     value={modalSearchQuery}
                     onChange={(e) => setModalSearchQuery(e.target.value)}
                     className="w-full border-2 border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs font-bold bg-white text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-teal-600 shadow-xs"
@@ -2837,8 +2900,10 @@ export default function MedicalStoreInventory() {
                 <thead className="bg-slate-900 text-white font-black uppercase text-[11px] sticky top-0 shadow-md">
                   <tr>
                     <th className="p-3 border-b border-slate-700">Product Particulars</th>
-                    <th className="p-3 border-b border-slate-700 text-center">Company / Code</th>
-                    <th className="p-3 border-b border-slate-700">Naration / Form</th>
+                    <th className="p-3 border-b border-slate-700">Company Name</th>
+                    <th className="p-3 border-b border-slate-700 text-center">Company Code</th>
+                    <th className="p-3 border-b border-slate-700 text-center">Item Code</th>
+                    <th className="p-3 border-b border-slate-700">Description</th>
                     <th className="p-3 border-b border-slate-700 text-center">Stock</th>
                     <th className="p-3 border-b border-slate-700 text-right">Retail Price</th>
                     <th className="p-3 border-b border-slate-700 text-right">Purchase Cost</th>
@@ -2847,7 +2912,7 @@ export default function MedicalStoreInventory() {
                 <tbody className="divide-y divide-slate-200 font-semibold bg-white text-slate-900">
                   {modalFilteredItems.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-12 text-slate-700 font-bold">
+                      <td colSpan="8" className="text-center py-12 text-slate-700 font-bold">
                         No pricing records found under this filter.
                       </td>
                     </tr>
@@ -2855,16 +2920,31 @@ export default function MedicalStoreInventory() {
                     modalFilteredItems.map((item) => {
                       const sale = Number(item.unit_sale_price || item.box_sale_price || item.unit_price || 0);
                       const cost = Number(item.cost_price_per_box || item.purchase_price || (sale * 0.7));
+                      const compCode = item.company_code || (item.company_name ? item.company_name.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() : "GEN");
                       return (
                         <tr key={item.id} className="hover:bg-teal-50/60 transition-colors">
-                          <td className="p-3 font-black text-slate-900 text-xs">{item.medicine_name}</td>
-                          <td className="p-3 text-center">
-                            <span className="font-bold text-slate-900">{item.company_name || "General"}</span>
-                            {item.item_code && (
-                              <span className="block font-mono text-teal-950 font-black text-[10.5px]">[{item.item_code}]</span>
+                          <td className="p-3 font-black text-slate-900 text-xs">
+                            {item.medicine_name}
+                            {item.packing && (
+                              <span className="block text-[11px] font-semibold text-slate-600">{item.packing}</span>
                             )}
                           </td>
-                          <td className="p-3 text-slate-800 font-bold text-[11px]">{item.generic_name || item.packing || item.category || "-"}</td>
+                          <td className="p-3 font-bold text-slate-900 text-xs">
+                            {item.company_name || "General"}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="inline-block px-2 py-0.5 rounded font-mono font-black text-[11px] bg-slate-100 text-slate-800 border border-slate-300">
+                              {compCode}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="inline-block px-2 py-0.5 rounded font-mono font-black text-[11px] bg-teal-50 text-teal-950 border border-teal-300">
+                              {item.item_code || "—"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-800 font-semibold text-[11px]">
+                            {item.product_description || item.description || item.generic_name || "—"}
+                          </td>
                           <td className="p-3 text-center font-black text-slate-900">{item.total_base_stock ?? item.stock_qty ?? 0}</td>
                           <td className="p-3 text-right font-black text-emerald-950 text-xs">Rs. {sale.toLocaleString()}</td>
                           <td className="p-3 text-right font-black text-slate-900 text-xs">Rs. {cost.toLocaleString()}</td>
@@ -2921,7 +3001,7 @@ export default function MedicalStoreInventory() {
             aria-modal="true"
             role="dialog"
             data-purpose="medicine-csv-import-modal"
-            className="relative z-10 w-full max-w-5xl max-h-[92vh] max-h-[690px] bg-white rounded-2xl shadow-2xl border border-slate-100/80 overflow-hidden flex flex-col my-auto transition-all animate-in zoom-in-95 duration-200 shrink-0"
+            className="relative z-10 w-full max-w-[96vw] xl:max-w-7xl max-h-[94vh] max-h-[720px] bg-white rounded-2xl shadow-2xl border border-slate-100/80 overflow-hidden flex flex-col my-auto transition-all animate-in zoom-in-95 duration-200 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -2976,8 +3056,8 @@ export default function MedicalStoreInventory() {
                         </svg>
                       </div>
                       <div>
-                        <p className="text-xs text-teal-950 font-bold">Standardized CSV Template with Schema</p>
-                        <p className="text-[11px] text-teal-800 font-medium">Download the ready template with required column schema: Medicine Name, Company, TP Rate, MRP, Pack Qty, Batch, Expiry.</p>
+                        <p className="text-xs text-teal-950 font-bold">Standardized CSV Template (14 Columns Schema)</p>
+                        <p className="text-[11px] text-teal-800 font-medium">Download ready template with full schema: S/R, Medicine Name, Description, Packing, Company Name, Company Code, Item Code, Cost Price, Retail Price, Medical Store Stock, Stock Level Alert, Category, Batch Number, Expiry Date.</p>
                       </div>
                     </div>
                     <button
@@ -3015,16 +3095,16 @@ export default function MedicalStoreInventory() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-bold text-slate-800">
-                        Click to select or drag &amp; drop CSV file here
+                        Click to select or drag &amp; drop Excel (.xlsx, .xls) or CSV file here
                       </p>
                       <p className="text-xs text-slate-500">
-                        Supports .csv files exported from Excel, MS Access, or Pharmacy ERP systems
+                        Supports Excel (.xlsx, .xls) and .csv files from Paul Brooks, BM, Schwabe, MS Access, or Pharmacy ERP
                       </p>
                     </div>
                     <input
                       ref={csvFileInputRef}
                       type="file"
-                      accept=".csv,text/csv,text/plain"
+                      accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain"
                       onChange={handleCsvFileSelected}
                       className="hidden"
                     />
@@ -3132,104 +3212,190 @@ export default function MedicalStoreInventory() {
 
                   {/* Table Body */}
                   <div className="overflow-x-auto flex-1 overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead className="sticky top-0 z-10 bg-slate-50">
-                        <tr className="border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
-                          <th className="py-2 px-3">Item Name</th>
-                          <th className="py-2 px-3">Generic / Formula</th>
-                          <th className="py-2 px-3">Company</th>
-                          <th className="py-2 px-3">Batch</th>
-                          <th className="py-2 px-3">Expiry</th>
-                          <th className="py-2 px-3 text-right">TP Rate</th>
-                          <th className="py-2 px-3 text-right">MRP</th>
-                          <th className="py-2 px-3 text-center">Pack Qty</th>
-                          <th className="py-2 px-3 text-center">Status</th>
-                          <th className="py-2 px-3 text-center">Action</th>
+                    <table className="w-full text-left border-collapse text-xs min-w-[1320px]">
+                      <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-xs border-b border-slate-200 shadow-2xs">
+                        <tr className="text-slate-600 font-bold text-[11px] select-none">
+                          <th className="py-2.5 px-2 text-center w-12 text-slate-500">S/R</th>
+                          <th className="py-2.5 px-3 min-w-[170px] text-slate-800">Medicine Name <span className="text-rose-500">*</span></th>
+                          <th className="py-2.5 px-2 min-w-[130px] text-slate-600">Description</th>
+                          <th className="py-2.5 px-2 min-w-[90px] text-slate-600">Packing</th>
+                          <th className="py-2.5 px-3 min-w-[150px] text-slate-800">Company Name</th>
+                          <th className="py-2.5 px-2 min-w-[95px] text-slate-600">Company Code</th>
+                          <th className="py-2.5 px-2 min-w-[95px] text-slate-600">Item Code</th>
+                          <th className="py-2.5 px-2 text-right min-w-[85px] text-slate-700">Cost Price</th>
+                          <th className="py-2.5 px-2 text-right min-w-[85px] text-emerald-800">Retail Price</th>
+                          <th className="py-2.5 px-2 text-center min-w-[85px] text-slate-800">Store Stock</th>
+                          <th className="py-2.5 px-2 text-center min-w-[75px] text-amber-800">Stock Alert</th>
+                          <th className="py-2.5 px-2 min-w-[95px] text-slate-600">Category</th>
+                          <th className="py-2.5 px-2 min-w-[90px] text-slate-600">Batch No</th>
+                          <th className="py-2.5 px-2 min-w-[95px] text-slate-600">Expiry Date</th>
+                          <th className="py-2.5 px-2 text-center w-12 text-slate-400">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                      <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
                         {currentPaginatedCsvRows.map((r, pageIdx) => {
                           const actualIdx = startCsvIdx + pageIdx;
                           return (
-                            <tr key={actualIdx} className="hover:bg-teal-50/30 transition-colors">
-                              <td className="py-1.5 px-3 font-medium text-slate-800">
+                            <tr key={actualIdx} className="hover:bg-teal-50/40 transition-colors">
+                              {/* 1. S/R */}
+                              <td className="py-1.5 px-2 text-center text-slate-400 font-mono text-[11px] select-none font-semibold">
+                                {actualIdx + 1}
+                              </td>
+
+                              {/* 2. Medicine Name */}
+                              <td className="py-1.5 px-2 font-semibold text-slate-800">
                                 <input
-                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-xs font-medium w-full text-slate-800"
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs font-semibold text-slate-800 transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
                                   type="text"
+                                  placeholder="Medicine Name..."
                                   value={r.medicine_name || ""}
                                   onChange={(e) => updateCsvRow(actualIdx, "medicine_name", e.target.value)}
                                 />
                               </td>
-                              <td className="py-1.5 px-3 text-slate-500 text-[11px]">
+
+                              {/* 3. Description (blank if empty) */}
+                              <td className="py-1.5 px-2 text-slate-600">
                                 <input
-                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-[11px] text-slate-600 w-full"
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-[11px] text-slate-700 transition-all placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-400"
                                   type="text"
-                                  placeholder="Generic formula..."
-                                  value={r.product_description || r.generic_name || ""}
+                                  placeholder="—"
+                                  value={r.product_description || ""}
                                   onChange={(e) => updateCsvRow(actualIdx, "product_description", e.target.value)}
                                 />
                               </td>
-                              <td className="py-1.5 px-3">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                  {r.company_name || "BM Pvt LTD"}
-                                </span>
-                              </td>
-                              <td className="py-1.5 px-3 font-mono text-[11px] text-slate-600">
+
+                              {/* 4. Packing */}
+                              <td className="py-1.5 px-2">
                                 <input
-                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-[11px] font-mono text-slate-600 w-20"
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs text-slate-700 font-medium transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
                                   type="text"
-                                  value={r.batch_no || r.batch || "B-01"}
-                                  onChange={(e) => updateCsvRow(actualIdx, "batch_no", e.target.value)}
+                                  placeholder="Pack"
+                                  value={r.packing || r.unit_label || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "packing", e.target.value)}
                                 />
                               </td>
-                              <td className="py-1.5 px-3 font-mono text-[11px] text-slate-600">
+
+                              {/* 5. Company Name */}
+                              <td className="py-1.5 px-2">
                                 <input
-                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-[11px] font-mono text-slate-600 w-24"
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs font-semibold text-teal-800 transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
                                   type="text"
-                                  value={r.expiry_date || "2028-12-31"}
-                                  onChange={(e) => updateCsvRow(actualIdx, "expiry_date", e.target.value)}
+                                  placeholder="Company Name..."
+                                  value={r.company_name || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "company_name", e.target.value)}
                                 />
                               </td>
-                              <td className="py-1.5 px-3 text-right font-mono">
+
+                              {/* 6. Company Code */}
+                              <td className="py-1.5 px-2 font-mono">
                                 <input
-                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-xs font-mono text-right w-16"
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs font-mono uppercase text-slate-800 font-bold transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
+                                  type="text"
+                                  placeholder="CODE"
+                                  value={r.company_code || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "company_code", e.target.value)}
+                                />
+                              </td>
+
+                              {/* 7. Item Code */}
+                              <td className="py-1.5 px-2 font-mono">
+                                <input
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs font-mono uppercase text-slate-800 font-bold transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
+                                  type="text"
+                                  placeholder="—"
+                                  value={r.item_code || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "item_code", e.target.value)}
+                                />
+                              </td>
+
+                              {/* 8. Cost Price */}
+                              <td className="py-1.5 px-2 text-right font-mono">
+                                <input
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs font-mono text-right text-slate-700 font-semibold transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
                                   type="number"
                                   min="0"
+                                  step="any"
                                   value={r.cost_price_per_box ?? 0}
                                   onChange={(e) => updateCsvRow(actualIdx, "cost_price_per_box", Number(e.target.value) || 0)}
                                 />
                               </td>
-                              <td className="py-1.5 px-3 text-right font-mono font-medium text-slate-800">
+
+                              {/* 9. Retail Price */}
+                              <td className="py-1.5 px-2 text-right font-mono">
                                 <input
-                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-xs font-mono font-medium text-slate-800 text-right w-16"
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs font-mono font-bold text-emerald-700 text-right transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
                                   type="number"
                                   min="0"
+                                  step="any"
                                   value={r.unit_sale_price ?? 0}
                                   onChange={(e) => updateCsvRow(actualIdx, "unit_sale_price", Number(e.target.value) || 0)}
                                 />
                               </td>
-                              <td className="py-1.5 px-3 text-center font-mono">
+
+                              {/* 10. Medical Store Stock */}
+                              <td className="py-1.5 px-2 text-center font-mono">
                                 <input
-                                  className="border-none bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-teal-500 rounded px-1 py-0.5 text-xs font-mono text-center w-14"
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs font-mono text-center font-bold text-slate-800 transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
                                   type="number"
                                   min="0"
-                                  value={r.total_base_stock ?? 0}
-                                  onChange={(e) => updateCsvRow(actualIdx, "total_base_stock", Number(e.target.value) || 0)}
+                                  value={r.store_stock ?? r.total_base_stock ?? 0}
+                                  onChange={(e) => updateCsvRow(actualIdx, "store_stock", Number(e.target.value) || 0)}
                                 />
                               </td>
-                              <td className="py-1.5 px-3 text-center">
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                                  Ready
-                                </span>
+
+                              {/* 11. Stock Level Alert */}
+                              <td className="py-1.5 px-2 text-center font-mono">
+                                <input
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs font-mono text-center text-amber-700 font-bold transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
+                                  type="number"
+                                  min="0"
+                                  value={r.low_stock_threshold ?? 6}
+                                  onChange={(e) => updateCsvRow(actualIdx, "low_stock_threshold", Number(e.target.value) || 0)}
+                                />
                               </td>
-                              <td className="py-1.5 px-3 text-center">
+
+                              {/* 12. Category */}
+                              <td className="py-1.5 px-2">
+                                <input
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-xs text-slate-700 font-medium transition-all focus:outline-none focus:ring-1 focus:ring-teal-400"
+                                  type="text"
+                                  placeholder="—"
+                                  value={r.category || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "category", e.target.value)}
+                                />
+                              </td>
+
+                              {/* 13. Batch Number (blank if empty) */}
+                              <td className="py-1.5 px-2 font-mono">
+                                <input
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-[11px] font-mono text-slate-700 transition-all placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                                  type="text"
+                                  placeholder="—"
+                                  value={r.batch_no || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "batch_no", e.target.value)}
+                                />
+                              </td>
+
+                              {/* 14. Expiry Date (blank if empty) */}
+                              <td className="py-1.5 px-2 font-mono">
+                                <input
+                                  className="w-full border border-transparent hover:border-slate-300 focus:border-teal-500 focus:bg-white bg-transparent rounded px-1.5 py-1 text-[11px] font-mono text-slate-700 transition-all placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                                  type="text"
+                                  placeholder="—"
+                                  value={r.expiry_date || ""}
+                                  onChange={(e) => updateCsvRow(actualIdx, "expiry_date", e.target.value)}
+                                />
+                              </td>
+
+                              {/* 15. Action */}
+                              <td className="py-1.5 px-2 text-center">
                                 <button
-                                  className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                                  className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
                                   title="Delete Row"
                                   type="button"
                                   onClick={() => handleDeleteCsvRow(actualIdx)}
                                 >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
                                   </svg>
                                 </button>

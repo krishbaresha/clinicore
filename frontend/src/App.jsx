@@ -5,7 +5,6 @@ import { waitForDiskCache } from "./api/storageDriver.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import SidebarLayout from "./layouts/SidebarLayout.jsx";
-import LicenseGuard from "./components/LicenseGuard.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import PWAUpdateBanner from "./components/PWAUpdateBanner.jsx";
 
@@ -91,9 +90,7 @@ function AdminOrOwnerRoute({ children }) {
 function AuthenticatedLayout({ children }) {
   return (
     <ProtectedRoute>
-      <LicenseGuard>
-        <SidebarLayout>{children}</SidebarLayout>
-      </LicenseGuard>
+      <SidebarLayout>{children}</SidebarLayout>
     </ProtectedRoute>
   );
 }
@@ -104,9 +101,7 @@ function AuthenticatedLayout({ children }) {
 function OwnerLayout({ children }) {
   return (
     <OwnerRoute>
-      <LicenseGuard>
-        <SidebarLayout>{children}</SidebarLayout>
-      </LicenseGuard>
+      <SidebarLayout>{children}</SidebarLayout>
     </OwnerRoute>
   );
 }
@@ -117,9 +112,7 @@ function OwnerLayout({ children }) {
 function AdminProtectedLayout({ children }) {
   return (
     <AdminOrOwnerRoute>
-      <LicenseGuard>
-        <SidebarLayout>{children}</SidebarLayout>
-      </LicenseGuard>
+      <SidebarLayout>{children}</SidebarLayout>
     </AdminOrOwnerRoute>
   );
 }

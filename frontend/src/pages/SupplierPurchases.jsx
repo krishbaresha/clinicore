@@ -7,6 +7,7 @@ import { printSupplierPurchaseReceipt, printPurchaseGRNReceipt } from "../utils/
 
 /**
  * Expandable Combobox with built-in instant search and tall scrollable dropdown (DrCreate / MS Access Style)
+ * Uses React Portal so the dropdown escapes any parent overflow:hidden clipping.
  */
 function ExpandableCombobox({
   label,
@@ -23,12 +24,45 @@ function ExpandableCombobox({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [highlightedIdx, setHighlightedIdx] = useState(0);
-  const dropdownRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 200 });
+  const triggerRef = useRef(null);
+  const portalRef = useRef(null);
   const listContainerRef = useRef(null);
 
+  // Calculate dropdown position relative to trigger button
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropHeight = 288; // ~max-h-72
+    const openUpward = spaceBelow < dropHeight && rect.top > dropHeight;
+    setDropdownPos({
+      top: openUpward ? rect.top - dropHeight - 4 : rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      openUpward,
+    });
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+    }
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [isOpen]);
+
+  // Close on outside click
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        portalRef.current && !portalRef.current.contains(e.target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -98,7 +132,7 @@ function ExpandableCombobox({
   };
 
   return (
-    <div ref={dropdownRef} className={`relative ${className}`}>
+    <div ref={triggerRef} className={`relative ${className}`}>
       {label && (
         <div className="flex items-center justify-between mb-1">
           <label className="block text-[11px] font-bold text-gray-700">
@@ -149,9 +183,19 @@ function ExpandableCombobox({
         </span>
       </button>
 
-      {/* Expandable Tall Dropdown Popup (10-15 rows visible with scroll) */}
-      {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-emerald-300 shadow-2xl z-[9999] overflow-hidden animate-fade-in flex flex-col max-h-72">
+      {/* Portal Dropdown — escapes all overflow containers */}
+      {isOpen && createPortal(
+        <div
+          ref={portalRef}
+          style={{
+            position: "fixed",
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            width: Math.max(dropdownPos.width, 280),
+            zIndex: 99999,
+          }}
+          className="bg-white rounded-2xl border border-emerald-300 shadow-2xl overflow-hidden flex flex-col max-h-72"
+        >
           {/* Search Header */}
           <div className="p-2 border-b border-gray-100 bg-gray-50 flex items-center gap-1.5 sticky top-0 z-10">
             <span className="material-symbols-outlined text-base text-emerald-700">search</span>
@@ -176,10 +220,10 @@ function ExpandableCombobox({
           </div>
 
           {/* Options List */}
-          <div ref={listContainerRef} className="overflow-y-auto flex-1 p-1 space-y-0.5 max-h-60">
+          <div ref={listContainerRef} className="overflow-y-auto flex-1 p-1 space-y-0.5">
             {filteredOptions.length === 0 ? (
               <div className="text-center py-6 text-gray-400 text-xs font-semibold">
-                No matches found for "{search}"
+                No matches found{search ? ` for "${search}"` : ""}
               </div>
             ) : (
               filteredOptions.map((opt, idx) => {
@@ -217,14 +261,15 @@ function ExpandableCombobox({
                       )}
                     </div>
                     {isSelected && (
-                      <span className="material-symbols-outlined text-sm">check</span>
+                      <span className="material-symbols-outlined text-sm flex-shrink-0">check</span>
                     )}
                   </button>
                 );
               })
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -248,8 +293,10 @@ function filterInventoryByCompanyOrSupplier(inventoryList, companyOrSupplierStr,
     const invComp = (inv.company_name || "").toLowerCase().trim();
     const invSup = (inv.supplier_name || "").toLowerCase().trim();
     const invCode = (inv.item_code || "").toLowerCase().trim();
+    const invCompCode = (inv.company_code || "").toLowerCase().trim();
 
-    // 1. Direct equality or substring
+    // 1. Direct equality, company code or substring
+    if (invCompCode && (invCompCode === raw || raw.includes(invCompCode) || cleanName.includes(invCompCode))) return true;
     if (invComp && (invComp === raw || raw.includes(invComp) || invComp.includes(cleanName))) return true;
     if (cleanName && invComp && (invComp.includes(cleanName) || cleanName.includes(invComp))) return true;
     if (invSup && (invSup === raw || raw.includes(invSup) || invSup.includes(cleanName))) return true;
@@ -307,6 +354,7 @@ export default function SupplierPurchases() {
 
   const [accountsList, setAccountsList] = useState([]);
   const [activeTab, setActiveTab] = useState("grn_form"); // "grn_form" | "suppliers" | "bills"
+  const [accountSelectorMode, setAccountSelectorMode] = useState("company"); // "company" | "supplier"
 
   // DrCreate Purchase GRN Form State
   const [grnShowAllCompanies, setGrnShowAllCompanies] = useState(false);
@@ -346,7 +394,7 @@ export default function SupplierPurchases() {
     bonus_qty: "0",
     rate: "",
     gross: "",
-    disc_pct: "40",
+    disc_pct: "0",
     disc_flat: "0",
     net_amount: "",
   });
@@ -463,84 +511,221 @@ export default function SupplierPurchases() {
     setShowNewTransportInput(false);
   };
 
+  const handleSwitchAccountMode = (mode) => {
+    if (mode === accountSelectorMode) return;
+    setAccountSelectorMode(mode);
+    setGrnForm((prev) => ({
+      ...prev,
+      account_name: "",
+    }));
+    setGrnSupplierCode("");
+  };
+
+  // 1. Memoized Pharma Companies Options
+  const companyOptions = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+
+    // From dbCompanies
+    const dynamicCompanies = dbCompanies ? dbCompanies.getAll() : [];
+    dynamicCompanies.forEach((d) => {
+      const name = (d?.name || "").trim();
+      if (!name || seen.has(name.toLowerCase())) return;
+      seen.add(name.toLowerCase());
+      const code = (d.code || name.substring(0, 3)).toUpperCase();
+      const city = d.city || "";
+      const due = Number(d.balance_due || d.current_balance || 0);
+      list.push({
+        id: name,
+        label: name,
+        code: code,
+        supplier_code: code,
+        city: city,
+        sublabel: `${code ? `[Code: ${code}] ` : ""}${city ? `${city} • ` : ""}Pharma Company / Brand${due > 0 ? ` • Due: Rs. ${due.toLocaleString()}` : ""}`,
+        badge: `🏢 ${code}`,
+        raw: d,
+        type: "company",
+        balance_due: due,
+      });
+    });
+
+    // Unique Manufacturers from Inventory
+    (inventoryList || []).forEach((inv) => {
+      const comp = (inv.company_name || "").trim();
+      if (!comp || seen.has(comp.toLowerCase())) return;
+      seen.add(comp.toLowerCase());
+      const code = (inv.company_code || inv.item_code?.split("-")[0] || comp.substring(0, 3)).toUpperCase();
+      list.push({
+        id: comp,
+        label: comp,
+        code: code,
+        supplier_code: code,
+        city: "",
+        sublabel: `${code ? `[Code: ${code}] ` : ""}Inventory Brand / Manufacturer`,
+        badge: `🏢 ${code}`,
+        raw: inv,
+        type: "company",
+        balance_due: 0,
+      });
+    });
+
+    // Standard major brands
+    const defaultMajorBrands = [
+      { name: "BM Pvt LTD", code: "BM", city: "Lahore" },
+      { name: "Paul Brooks Homoeo Lab", code: "PB", city: "Karachi" },
+      { name: "GHR Homoeo Pharma", code: "GHR", city: "Lahore" },
+      { name: "Schwabe Germany", code: "SCH", city: "Germany / Karachi" },
+      { name: "MEKTUM Homeo Pharma", code: "MKT", city: "Lahore" },
+      { name: "BLOSSOM Homeo Lab", code: "BLS", city: "Lahore" },
+      { name: "Dr. Reckeweg Germany", code: "REC", city: "Germany / Lahore" },
+      { name: "Lehning France", code: "LEH", city: "France" },
+      { name: "Kent Homeopathic", code: "KNT", city: "Karachi" },
+      { name: "SBL Homeo", code: "SBL", city: "Karachi" },
+    ];
+    defaultMajorBrands.forEach((b) => {
+      if (!seen.has(b.name.toLowerCase())) {
+        seen.add(b.name.toLowerCase());
+        list.push({
+          id: b.name,
+          label: b.name,
+          code: b.code,
+          supplier_code: b.code,
+          city: b.city,
+          sublabel: `[Code: ${b.code}] ${b.city} • Pharma Company`,
+          badge: `🏢 ${b.code}`,
+          raw: b,
+          type: "company",
+          balance_due: 0,
+        });
+      }
+    });
+
+    return list.sort((a, b) => a.label.localeCompare(b.label));
+  }, [inventoryList]);
+
+  // 2. Memoized Suppliers / Vendors Options
+  const supplierOptions = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+
+    // From dbSuppliers
+    (suppliers || []).forEach((s) => {
+      const name = (s?.name || "").trim();
+      if (!name || seen.has(name.toLowerCase())) return;
+      seen.add(name.toLowerCase());
+      const code = s.supplier_code || s.code || "";
+      const city = s.city || "";
+      const due = Number(s.balance_due ?? s.current_balance ?? 0);
+      list.push({
+        id: name,
+        label: name,
+        code: code,
+        supplier_code: code,
+        city: city,
+        sublabel: `${code ? `[#${code}] ` : ""}${city ? `${city} • ` : ""}${s.contact_person || "Supplier"}${due > 0 ? ` • Udhaar: Rs. ${due.toLocaleString()}` : ""}`,
+        badge: code ? `🚚 #${code}` : "🚚 Supplier",
+        raw: s,
+        type: "supplier",
+        balance_due: due,
+      });
+    });
+
+    // From Chart of Accounts (accountsList)
+    (accountsList || []).forEach((a) => {
+      const name = (a?.account_name || a?.name || "").trim();
+      if (!name || seen.has(name.toLowerCase())) return;
+      const type = (a.account_type || a.type || "").toLowerCase();
+      const isSupplierAccount = type.includes("supplier") || type.includes("vendor") || type.includes("payable") || type.includes("creditor") || a.account_no;
+      if (!isSupplierAccount) return;
+      seen.add(name.toLowerCase());
+      const code = a.account_no ? String(a.account_no) : (a.code || "");
+      const city = a.city || "";
+      const due = Number(a.balance_due ?? a.current_balance ?? 0);
+      list.push({
+        id: name,
+        label: name,
+        code: code,
+        supplier_code: code,
+        city: city,
+        sublabel: `${code ? `[#${code}] ` : ""}${city ? `${city} • ` : ""}${a.naration || a.contact_person || a.account_type || "Vendor Account"}${due > 0 ? ` • Udhaar: Rs. ${due.toLocaleString()}` : ""}`,
+        badge: code ? `🚚 #${code}` : `🚚 ${a.account_type || "Vendor"}`,
+        raw: a,
+        type: "supplier",
+        balance_due: due,
+      });
+    });
+
+    return list.sort((a, b) => a.label.localeCompare(b.label));
+  }, [suppliers, accountsList]);
+
+  // Dynamically Active Options based on Mode Slider
+  const activeAccountOptions = useMemo(() => {
+    return accountSelectorMode === "company" ? companyOptions : supplierOptions;
+  }, [accountSelectorMode, companyOptions, supplierOptions]);
+
+  // Selected Entity Specific Credit Due
+  const selectedAccountDue = useMemo(() => {
+    if (!grnForm.account_name) return null;
+    const sLower = grnForm.account_name.toLowerCase().trim();
+
+    const supMatch = supplierOptions.find((s) => s.label.toLowerCase().trim() === sLower);
+    if (supMatch && supMatch.balance_due !== undefined) return supMatch.balance_due;
+
+    const compMatch = companyOptions.find((c) => c.label.toLowerCase().trim() === sLower);
+    if (compMatch && compMatch.balance_due !== undefined) return compMatch.balance_due;
+
+    const directSup = suppliers.find((s) => (s.name || "").toLowerCase().trim() === sLower);
+    if (directSup) return Number(directSup.balance_due ?? directSup.current_balance ?? 0);
+
+    const directAcc = accountsList.find((a) => (a.account_name || a.name || "").toLowerCase().trim() === sLower);
+    if (directAcc) return Number(directAcc.balance_due ?? directAcc.current_balance ?? 0);
+
+    return 0;
+  }, [grnForm.account_name, supplierOptions, companyOptions, suppliers, accountsList]);
+
   const handleSupplierCodeChange = (code) => {
     setGrnSupplierCode(code);
-    if (!code || !code.trim()) return;
+    if (!code || !code.trim()) {
+      setGrnForm((prev) => ({ ...prev, account_name: "" }));
+      return;
+    }
     const clean = code.trim().toLowerCase();
-    
-    // 1. Direct match in dbSuppliers
-    const sup = dbSuppliers.getByCode(clean) || suppliers.find(
-      (s) =>
-        (s.supplier_code && s.supplier_code.toLowerCase() === clean) ||
-        (s.supplier_code && s.supplier_code.toLowerCase().startsWith(clean)) ||
-        (s.name && s.name.toLowerCase().startsWith(clean))
-    );
 
-    if (sup) {
+    // 1. Check in currently active mode list
+    const activeList = accountSelectorMode === "company" ? companyOptions : supplierOptions;
+    const match = activeList.find((item) => {
+      const c = (item.code || "").toLowerCase();
+      const l = (item.label || "").toLowerCase();
+      return c === clean || c.startsWith(clean) || l === clean || l.startsWith(clean);
+    });
+
+    if (match) {
       setGrnForm((prev) => ({
         ...prev,
-        account_name: sup.name,
-        reference: sup.contact_person || prev.reference,
+        account_name: match.label,
+        reference: match.raw?.contact_person || prev.reference,
       }));
       return;
     }
 
-    // 2. Fallback match in Chart of Accounts
-    const acc = accountsList.find(
-      (a) =>
-        (a.account_no && String(a.account_no).toLowerCase() === clean) ||
-        (a.account_name && a.account_name.toLowerCase().startsWith(clean))
-    );
-    if (acc) {
+    // 2. Cross-mode auto-switch: If user typed code that exists in the other mode
+    const altMode = accountSelectorMode === "company" ? "supplier" : "company";
+    const altList = accountSelectorMode === "company" ? supplierOptions : companyOptions;
+    const altMatch = altList.find((item) => {
+      const c = (item.code || "").toLowerCase();
+      const l = (item.label || "").toLowerCase();
+      return c === clean || c.startsWith(clean) || l === clean || l.startsWith(clean);
+    });
+
+    if (altMatch) {
+      setAccountSelectorMode(altMode);
       setGrnForm((prev) => ({
         ...prev,
-        account_name: acc.account_name,
-        naration: acc.naration || prev.naration,
+        account_name: altMatch.label,
+        reference: altMatch.raw?.contact_person || prev.reference,
       }));
     }
   };
-
-  const accountOptions = useMemo(() => {
-    const list = [];
-    suppliers.forEach((s) => {
-      list.push({
-        id: s.name,
-        label: s.name,
-        sublabel: `${s.supplier_code ? `[Code: ${s.supplier_code}] ` : ""}${s.contact_person || "Pharma Supplier"}${s.current_balance || s.balance_due ? ` • Udhaar: Rs. ${Number(s.current_balance || s.balance_due || 0).toLocaleString()}` : ""}`,
-        badge: s.supplier_code ? `🏢 ${s.supplier_code}` : "🏢 Supplier",
-        supplier_code: s.supplier_code || s.id,
-        raw: s,
-      });
-    });
-    accountsList.forEach((a) => {
-      if (!suppliers.some((s) => s.name.toLowerCase() === a.account_name.toLowerCase())) {
-        list.push({
-          id: a.account_name,
-          label: a.account_name,
-          sublabel: `${a.account_no ? `[#${a.account_no}] ` : ""}${a.city || a.phone || a.account_type}`,
-          badge: a.account_no ? `📒 #${a.account_no}` : `📒 ${a.account_type || "Account"}`,
-          supplier_code: a.account_no ? String(a.account_no) : a.id,
-          raw: a,
-        });
-      }
-    });
-    allCompanyOptions.forEach((c) => {
-      if (
-        !suppliers.some((s) => s.name.toLowerCase() === c.name.toLowerCase()) &&
-        !accountsList.some((a) => a.account_name.toLowerCase() === c.name.toLowerCase())
-      ) {
-        list.push({
-          id: c.name,
-          label: c.name,
-          sublabel: `${c.code ? `[Code: ${c.code}] ` : ""}Company / Brand`,
-          badge: c.code ? `🏢 ${c.code}` : "🏢 Company",
-          supplier_code: c.code || "",
-          raw: c,
-        });
-      }
-    });
-    return list;
-  }, [suppliers, accountsList, allCompanyOptions]);
 
   const matchedGrnSupplier = useMemo(() => {
     if (!grnForm.account_name) return null;
@@ -579,7 +764,7 @@ export default function SupplierPurchases() {
       id: inv.id,
       label: inv.medicine_name,
       sublabel: `Cost: Rs. ${inv.cost_price_per_box || inv.cost_price || 0} · Godown: ${inv.warehouse_stock || 0}${inv.batch_no ? ` · Bat: ${inv.batch_no}` : ""}`,
-      badge: inv.company_name || inv.item_code || inv.category || "MED",
+      badge: inv.item_code ? `${inv.company_code ? `${inv.company_code} • ` : ""}${inv.item_code}` : (inv.company_name || inv.category || "MED"),
       raw: inv,
     }));
   }, [filteredGrnInventory]);
@@ -628,13 +813,22 @@ export default function SupplierPurchases() {
       );
     }
 
-    if (matched.length === 1) {
-      handleSelectGRNMedicine(matched[0].id);
-      batchNoRef.current?.focus();
-    } else if (matched.length > 1) {
-      // Multiple items with same code across different companies -> auto select first & show notification or switch filter
-      setGrnShowAllCompanies(true);
-      handleSelectGRNMedicine(matched[0].id);
+    if (matched.length > 0) {
+      const selectedInv = matched[0];
+      // Auto-populate Company Name & Company Code if present
+      if (selectedInv.company_name) {
+        setGrnForm((prev) => ({
+          ...prev,
+          account_name: selectedInv.company_name,
+        }));
+        if (selectedInv.company_code) {
+          setGrnSupplierCode(selectedInv.company_code);
+        }
+      }
+      if (matched.length > 1) {
+        setGrnShowAllCompanies(true);
+      }
+      handleSelectGRNMedicine(selectedInv.id);
       batchNoRef.current?.focus();
     } else {
       alert(`Item code "${codeQuery}" not found in inventory.`);
@@ -657,7 +851,7 @@ export default function SupplierPurchases() {
         bonus_qty: "0",
         rate: "",
         gross: "",
-        disc_pct: "40",
+        disc_pct: "0",
         disc_flat: "0",
         net_amount: "",
       }));
@@ -684,10 +878,20 @@ export default function SupplierPurchases() {
       bonus_qty: grnCart.bonus_qty || "0",
       rate: String(rate),
       gross: String(gross),
-      disc_pct: grnCart.disc_pct === "" || grnCart.disc_pct === undefined ? "40" : String(grnCart.disc_pct),
+      disc_pct: grnCart.disc_pct === "" || grnCart.disc_pct === undefined ? "0" : String(grnCart.disc_pct),
       disc_flat: grnCart.disc_flat || "0",
       net_amount: String(net),
     });
+
+    if (inv.company_name && !grnForm.account_name) {
+      setGrnForm((prev) => ({
+        ...prev,
+        account_name: inv.company_name,
+      }));
+      if (inv.company_code) {
+        setGrnSupplierCode(inv.company_code);
+      }
+    }
 
     // Auto-focus Batch # or Qty input
     setTimeout(() => {
@@ -767,7 +971,7 @@ export default function SupplierPurchases() {
       bonus_qty: "0",
       rate: "",
       gross: "",
-      disc_pct: "40",
+      disc_pct: "0",
       disc_flat: "0",
       net_amount: "",
     });
@@ -827,19 +1031,32 @@ export default function SupplierPurchases() {
     const extraDisc = Number(grnForm.extra_bill_discount) || 0;
     const freight = Number(grnForm.freight_charges) || 0;
     const totalBill = Math.max(0, itemsSubtotal - extraDisc + freight);
-    const paidAmount = grnForm.payment_mode === "Cash" ? totalBill : 0;
-    const matchedSup = suppliers.find((s) => s.name.toLowerCase() === grnForm.account_name.toLowerCase());
+    const isCredit = grnForm.payment_mode === "Credit";
+    const paidAmount = isCredit ? 0 : totalBill;
+    const sLower = grnForm.account_name.toLowerCase().trim();
+    const matchedSup = suppliers.find((s) => s.name.toLowerCase().trim() === sLower);
+    const matchedAcc = accountsList.find((a) => (a.account_name || a.name || "").toLowerCase().trim() === sLower);
+    const matchedComp = (dbCompanies ? dbCompanies.getAll() : []).find((c) => (c.name || "").toLowerCase().trim() === sLower);
+    const resolvedCity = matchedSup?.city || matchedAcc?.city || matchedComp?.city || (
+      sLower.includes("schwabe") ? "Germany / Karachi" :
+      sLower.includes("paul") ? "Karachi" :
+      sLower.includes("bm") || sLower.includes("ghr") || sLower.includes("mektum") ? "Lahore" : ""
+    );
+
     const targetWarehouseId = user?.assigned_warehouse_id || "wh_001";
     const savedPur = dbPurchases.add({
       invoice_no: grnForm.voucher_no || dbPurchases.getNextVoucherNo(),
       supplier_name: grnForm.account_name,
       supplier_id: matchedSup ? matchedSup.id : undefined,
+      supplier_code: grnSupplierCode || (matchedSup ? matchedSup.supplier_code : undefined),
+      city: resolvedCity,
+      supplier_city: resolvedCity,
       warehouse_id: targetWarehouseId,
       grn_no: grnForm.grn_no || "0",
       reference: grnForm.reference || "",
       transport: grnForm.transport || "By Hand",
       bilty_no: grnForm.bilty_no || "",
-      payment_mode: grnForm.payment_mode,
+      payment_mode: grnForm.payment_mode || (isCredit ? "Credit" : "Cash"),
       destination_type: grnForm.destination_type || "store",
       purchase_date: grnForm.date || new Date().toISOString(),
       items: grnItems,
@@ -855,7 +1072,7 @@ export default function SupplierPurchases() {
     // Auto-Print Thermal GRN Slip
     printPurchaseGRNReceipt(savedPur, dbClinic.get());
 
-    // Reset Form for next entry
+    // Reset Form completely for next entry - PREVENTS STALE COMPANY DATA BUG
     setGrnItems([]);
     setGrnCart({
       product_code: "",
@@ -868,14 +1085,17 @@ export default function SupplierPurchases() {
       qty: "1",
       rate: "",
       gross: "",
-      disc_pct: "40",
+      disc_pct: "0",
       disc_flat: "0",
       net_amount: "",
     });
+    setGrnSupplierCode("");
     setGrnForm((prev) => ({
       ...prev,
       voucher_no: dbPurchases.getNextVoucherNo(),
       grn_no: "0",
+      account_name: "",
+      reference: "",
       bilty_no: "",
       extra_bill_discount: "0",
       freight_charges: "0",
@@ -885,7 +1105,7 @@ export default function SupplierPurchases() {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("clinicflow_status_update"));
     }
-    alert(`✅ Purchase Invoice ${savedPur.invoice_no} (Co Bill #${savedPur.grn_no}) saved successfully & stock added to Medical Store Inventory!`);
+    alert(`✅ Purchase Invoice ${savedPur.invoice_no} (Co Bill #${savedPur.grn_no}) saved successfully!\n${isCredit ? `📋 Mode: Credit (Udhar) — Rs. ${savedPur.balance_due.toLocaleString()} added to Supplier Payable` : `💵 Mode: Cash Paid — Rs. ${savedPur.paid_amount.toLocaleString()}`}`);
   };
 
   const handleAddItemRow = () => {
@@ -1234,9 +1454,22 @@ export default function SupplierPurchases() {
           </button>
         </div>
         <div className="hidden sm:flex items-center space-x-2 pb-1.5 text-xs">
-          <span className="text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-[11px]">
-            CREDIT DUE: <span className="font-bold">Rs. {totalSupplierPayables.toLocaleString()}</span>
-          </span>
+          {grnForm.account_name ? (
+            <span className="text-rose-700 font-semibold bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 text-[11px] flex items-center space-x-1.5 shadow-2xs">
+              <span className="text-slate-600 font-medium truncate max-w-[140px]">{grnForm.account_name}:</span>
+              <span className="text-rose-600 font-bold uppercase text-[10px]">CREDIT DUE:</span>
+              <span className="font-bold font-mono text-rose-800 text-xs">
+                Rs. {Number(selectedAccountDue || 0).toLocaleString()}
+              </span>
+            </span>
+          ) : (
+            <span className="text-slate-600 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] flex items-center space-x-1.5 shadow-2xs">
+              <span className="text-slate-500 uppercase text-[10px]">TOTAL PAYABLES:</span>
+              <span className="font-bold font-mono text-slate-800 text-xs">
+                Rs. {totalSupplierPayables.toLocaleString()}
+              </span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -1278,11 +1511,48 @@ export default function SupplierPurchases() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col flex-1 min-h-0 overflow-hidden">
             {/* SECTION 1: Company & Invoice Info */}
             <div className="p-2 sm:p-2.5 xl:p-2.5 border-b border-slate-200 shrink-0">
-              <div className="flex items-center justify-between pb-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 mb-1 border-b border-slate-100">
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2 h-2 rounded-full bg-teal-600"></span>
                   <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Company &amp; Invoice Info</h2>
                 </div>
+
+                {/* Dynamic Accounts / Companies Slider Switcher */}
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchAccountMode("company")}
+                    className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      accountSelectorMode === "company"
+                        ? "bg-teal-700 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900 bg-transparent"
+                    }`}
+                  >
+                    <span>🏢 Pharma Companies</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                      accountSelectorMode === "company" ? "bg-teal-800 text-teal-100" : "bg-slate-200 text-slate-600"
+                    }`}>
+                      {companyOptions.length}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchAccountMode("supplier")}
+                    className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      accountSelectorMode === "supplier"
+                        ? "bg-teal-700 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900 bg-transparent"
+                    }`}
+                  >
+                    <span>🚚 Suppliers / Vendors</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                      accountSelectorMode === "supplier" ? "bg-teal-800 text-teal-100" : "bg-slate-200 text-slate-600"
+                    }`}>
+                      {supplierOptions.length}
+                    </span>
+                  </button>
+                </div>
+
                 <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">Tab / Enter to advance</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-2 text-xs">
@@ -1334,21 +1604,25 @@ export default function SupplierPurchases() {
                     className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-mono font-medium text-slate-800 focus:border-teal-600"
                   />
                 </div>
-                {/* Supplier Code */}
+                {/* Company / Supplier Code */}
                 <div className="col-span-1 sm:col-span-2 xl:col-span-1">
-                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5 truncate">Supplier Code</label>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5 truncate">
+                    {accountSelectorMode === "company" ? "Company Code" : "Supplier Code"}
+                  </label>
                   <input
                     type="text"
                     value={grnSupplierCode}
                     onChange={(e) => handleSupplierCodeChange(e.target.value)}
-                    placeholder="SUP-01"
+                    placeholder={accountSelectorMode === "company" ? "GHR" : "#1"}
                     className="w-full h-8 text-xs border border-slate-300 rounded-lg px-1.5 font-mono uppercase text-slate-700 font-medium focus:border-teal-600 bg-white"
                   />
                 </div>
                 {/* Company / Supplier Select */}
                 <div className="col-span-2 sm:col-span-2 xl:col-span-2">
                   <div className="flex items-center justify-between mb-0.5">
-                    <label className="block text-[10px] font-semibold text-slate-600">Company / Supplier <span className="text-rose-500">*</span></label>
+                    <label className="block text-[10px] font-semibold text-slate-600">
+                      {accountSelectorMode === "company" ? "Pharma Company" : "Supplier / Vendor"} <span className="text-rose-500">*</span>
+                    </label>
                     <button
                       type="button"
                       onClick={() => setShowAddSupplier(true)}
@@ -1360,14 +1634,20 @@ export default function SupplierPurchases() {
                   <ExpandableCombobox
                     value={grnForm.account_name}
                     onChange={(val, opt) => {
-                      setGrnForm({ ...grnForm, account_name: val });
-                      if (opt?.supplier_code) {
-                        setGrnSupplierCode(opt.supplier_code);
+                      setGrnForm({
+                        ...grnForm,
+                        account_name: val,
+                        reference: opt?.raw?.contact_person || grnForm.reference,
+                      });
+                      if (opt?.code || opt?.supplier_code) {
+                        setGrnSupplierCode(opt.code || opt.supplier_code);
+                      } else {
+                        setGrnSupplierCode("");
                       }
                     }}
-                    options={accountOptions}
-                    placeholder="Select Supplier..."
-                    searchPlaceholder="Search Companies..."
+                    options={activeAccountOptions}
+                    placeholder={accountSelectorMode === "company" ? "Select Pharma Company..." : "Select Supplier / Vendor..."}
+                    searchPlaceholder={accountSelectorMode === "company" ? "Search Companies..." : "Search Suppliers..."}
                     required={true}
                   />
                 </div>
@@ -1421,9 +1701,9 @@ export default function SupplierPurchases() {
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 xl:grid-cols-12 gap-2 text-xs items-end">
-                {/* Code */}
+                {/* Item Code */}
                 <div className="col-span-1 xl:col-span-1">
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Code</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Item Code</label>
                   <input
                     type="text"
                     value={grnCart.product_code}
@@ -1434,12 +1714,12 @@ export default function SupplierPurchases() {
                         handleLookupGRNByCode(grnCart.product_code);
                       }
                     }}
-                    placeholder="CODE"
+                    placeholder="GHR-1"
                     className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-mono uppercase text-slate-700 focus:border-teal-600 bg-white"
                   />
                 </div>
                 {/* Product Name */}
-                <div className="col-span-2 sm:col-span-3 md:col-span-3 xl:col-span-4">
+                <div className="col-span-2 sm:col-span-3 md:col-span-3 xl:col-span-3">
                   <div className="flex items-center justify-between mb-0.5">
                     <label className="block text-[10px] font-semibold text-slate-600">Product Name <span className="text-rose-500">*</span></label>
                     <button
@@ -1550,6 +1830,27 @@ export default function SupplierPurchases() {
                     className="w-full h-8 text-xs border border-slate-300 rounded-lg px-2 font-medium text-slate-800 focus:border-teal-600 bg-white"
                   />
                 </div>
+                {/* Disc (%) */}
+                <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
+                  <label className="block text-[10px] font-semibold text-teal-700 mb-0.5">Disc (%)</label>
+                  <input
+                    ref={discPctRef}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={grnCart.disc_pct}
+                    onChange={(e) => handleUpdateGRNCart("disc_pct", e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addBtnRef.current?.focus();
+                      }
+                    }}
+                    placeholder="0"
+                    className="w-full h-8 text-xs border border-teal-300 bg-teal-50/40 rounded-lg px-2 text-center font-bold text-teal-900 focus:border-teal-600"
+                  />
+                </div>
                 {/* Total Preview */}
                 <div className="col-span-1 sm:col-span-1 md:col-span-1 xl:col-span-1">
                   <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Total</label>
@@ -1606,8 +1907,18 @@ export default function SupplierPurchases() {
                       <tr key={item.id || idx} className="hover:bg-teal-50/40 transition-colors">
                         <td className="py-1.5 px-3">
                           <div className="font-bold text-slate-900 leading-tight">{item.medicine_name}</div>
-                          <div className="text-[10px] text-slate-400">
-                            {item.company_name || grnForm.account_name || "Pharma"} {item.product_code ? `• ${item.product_code}` : ""}
+                          <div className="text-[10.5px] text-slate-500 font-medium flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span>{item.company_name || grnForm.account_name || "Pharma"}</span>
+                            {item.company_code && (
+                              <span className="font-mono text-[9.5px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                                Co: {item.company_code}
+                              </span>
+                            )}
+                            {item.product_code && (
+                              <span className="font-mono text-[9.5px] px-1.5 py-0.2 rounded bg-teal-50 text-teal-800 font-bold border border-teal-200">
+                                Item: {item.product_code}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="py-1.5 px-3 font-mono text-[11px] text-slate-600">{item.batch_no || "—"}</td>
@@ -1694,10 +2005,20 @@ export default function SupplierPurchases() {
                     - Rs. {grnTotalDiscount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
-                {/* NET PAYABLE Highlight */}
-                <div className="px-2.5 sm:px-3 py-0.5 sm:py-1 bg-teal-50 border-2 border-teal-600 rounded-lg text-right">
-                  <span className="text-[8px] uppercase tracking-wider text-teal-700 block font-extrabold leading-tight">Net Payable</span>
-                  <div className="text-xs sm:text-sm font-extrabold text-teal-900 font-mono leading-none">
+                {/* NET PAYABLE / CREDIT DUE Highlight */}
+                <div className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-lg text-right border-2 transition-colors ${
+                  grnForm.payment_mode === "Credit"
+                    ? "bg-rose-50 border-rose-600"
+                    : "bg-teal-50 border-teal-600"
+                }`}>
+                  <span className={`text-[8px] uppercase tracking-wider block font-extrabold leading-tight ${
+                    grnForm.payment_mode === "Credit" ? "text-rose-700" : "text-teal-700"
+                  }`}>
+                    {grnForm.payment_mode === "Credit" ? "Credit / Udhar Due" : "Net Payable (Cash)"}
+                  </span>
+                  <div className={`text-xs sm:text-sm font-extrabold font-mono leading-none ${
+                    grnForm.payment_mode === "Credit" ? "text-rose-900" : "text-teal-900"
+                  }`}>
                     Rs. {grnNetPayable.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
@@ -1705,12 +2026,20 @@ export default function SupplierPurchases() {
                 <button
                   type="button"
                   onClick={handleSaveGRNBill}
-                  className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-bold text-xs shadow-sm flex items-center justify-center space-x-1.5 transition-transform active:scale-95 whitespace-nowrap cursor-pointer"
+                  className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 text-white rounded-lg font-bold text-xs shadow-sm flex items-center justify-center space-x-1.5 transition-transform active:scale-95 whitespace-nowrap cursor-pointer ${
+                    grnForm.payment_mode === "Credit"
+                      ? "bg-rose-700 hover:bg-rose-800"
+                      : "bg-teal-700 hover:bg-teal-800"
+                  }`}
                 >
-                  <svg className="w-4 h-4 text-teal-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-white/80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                   </svg>
-                  <span>Save Invoice &amp; Add to Stock (F9)</span>
+                  <span>
+                    {grnForm.payment_mode === "Credit"
+                      ? "Save Invoice (Credit) & Add to Stock (F9)"
+                      : "Save Invoice & Add to Stock (F9)"}
+                  </span>
                 </button>
               </div>
             </div>

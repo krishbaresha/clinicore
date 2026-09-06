@@ -30,6 +30,7 @@ if (typeof window === "undefined" || !globalThis.sessionStorage) {
 
 import {
   resetDatabaseToDemoData,
+  factoryResetAllData,
   exportFullDatabase,
   importFullDatabase,
   dbClinic,
@@ -54,6 +55,7 @@ import {
   dbLicense,
   dbOutbox,
   dbPatientLedger,
+  dbPartyLedger,
   dbSupplierLedger,
   dbClinicServices,
   dbAuditLogs,
@@ -1077,69 +1079,32 @@ async function runTests() {
   // =========================================================================
   // SUITE 20: Software Licensing, Grace Periods, Kill-Switches & Outbox Sync
   // =========================================================================
-  await suite("20. Software Licensing, Grace Periods, Kill-Switches & Outbox Sync", async () => {
-    // 1. Initial default state should be active
+  await suite("20. Perpetual Lifetime Software Engine & Outbox Sync", async () => {
+    // 1. Initial default state should be active lifetime
     const lic = dbLicense.get();
-    assert(lic && lic.monthly_fee === 5000, "License default fee loaded: Rs. 5000");
-    assert(lic.currency === "PKR", "Currency set to PKR");
+    assert(lic && lic.license_status === "active", "License default status is active");
+    assert(lic.is_lifetime === true, "Permanent lifetime mode is enabled");
+    assert(lic.hardware_lock_enabled === false, "Hardware machine lock is disabled");
 
     // 2. Active status evaluation
     const activeEval = dbLicense.evaluateStatus();
     assert(activeEval.isLocked === false, "Active license evaluates to isLocked: false");
+    assert(activeEval.isWarning === false, "Active license evaluates to isWarning: false");
+    assert(activeEval.isGrace === false, "Active license evaluates to isGrace: false");
+    assert(activeEval.daysLeft === 99999, "Active lifetime license reports 99999 days");
 
-    // 3. Test Warning Status (when within warning_days_before)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 2);
-    dbLicense.update({
-      license_status: "warning",
-      next_due_date: tomorrow.toISOString().split("T")[0],
-      warning_days_before: 5,
-    });
-    const warnEval = dbLicense.evaluateStatus();
-    assert(warnEval.status === "warning" || warnEval.isWarning === true, "Warning status evaluates correctly before due date");
-    assert(warnEval.isLocked === false, "Warning mode allows full application access without stoppage");
+    // 3. Unrestricted feature access guaranteed
+    assert(activeEval.isFeatureBlocked("pos") === false, "POS feature is never blocked");
+    assert(activeEval.isFeatureBlocked("b2b") === false, "B2B feature is never blocked");
+    assert(activeEval.isFeatureBlocked("consultation") === false, "Doctor consultation is never blocked");
+    assert(activeEval.isFeatureBlocked("inventory") === false, "Inventory is never blocked");
 
-    // 4. Test Grace Period Mode (past due date, e.g. 3 days overdue)
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    dbLicense.update({
-      license_status: "grace_period",
-      next_due_date: threeDaysAgo.toISOString().split("T")[0],
-      grace_days: 10,
-    });
-    const graceEval = dbLicense.evaluateStatus();
-    assert(graceEval.isGrace === true || graceEval.status === "grace_period", "Grace period active when 3 days past due date");
-    assert(graceEval.isLocked === false, "Grace period does not stop doctor or clinic operations");
-
-    // 5. Test Selective Feature Kill-Switch
-    dbLicense.update({
-      license_status: "restricted",
-      restricted_features: ["pos", "b2b"],
-    });
-    const restrictedEval = dbLicense.evaluateStatus();
-    assert(restrictedEval.isFeatureBlocked("pos") === true, "POS feature kill-switch blocked successfully");
-    assert(restrictedEval.isFeatureBlocked("b2b") === true, "B2B feature kill-switch blocked successfully");
-    assert(restrictedEval.isFeatureBlocked("consultation") === false, "Doctor consultation remains unlocked when not restricted");
-
-    // 6. Test Hard Lockout
-    dbLicense.update({
-      license_status: "locked",
-      is_hard_locked: true,
-    });
-    const lockedEval = dbLicense.evaluateStatus();
-    assert(lockedEval.isLocked === true && lockedEval.status === "locked", "Hard lockout triggered with isLocked: true");
-    assert(lockedEval.isFeatureBlocked("consultation") === true, "Hard lock blocks all features");
-
-    // 7. Instant Restoration on Payment
-    const restored = dbLicense.update({
-      license_status: "active",
-      is_hard_locked: false,
-      restricted_features: [],
-      last_paid_date: new Date().toISOString().split("T")[0],
-    });
-    const restoredEval = dbLicense.evaluateStatus();
-    assert(restored.license_status === "active", "License restored to active status");
-    assert(restoredEval.isLocked === false, "All locks cleared after payment restore");
+    // 4. Updating license keeps lifetime active protection
+    const updated = dbLicense.update({ license_status: "active" });
+    assert(updated.license_status === "active", "dbLicense.update maintains active status");
+    assert(updated.is_lifetime === true, "dbLicense.update maintains is_lifetime: true");
+    const updatedEval = dbLicense.evaluateStatus();
+    assert(updatedEval.isLocked === false, "Locks remain cleared after update");
 
     // 8. PWA Outbox Queue Enqueue & Dequeue
     dbOutbox.clearAll();
@@ -2365,9 +2330,9 @@ async function runTests() {
     };
 
     const reconciledSettings = reconcileSystemSettings({ license: localLicense }, cloudLockedLicense);
-    assert(reconciledSettings.license.is_hard_locked === true, "Server supremacy locks license when cloud mandates hard lock");
-    assert(reconciledSettings.license.license_status === "locked", "Server supremacy forces license status to locked");
-    assert(reconciledSettings.license.restricted_features.includes("b2b_wholesale"), "Restricted features enforced from cloud");
+    assert(reconciledSettings.license.is_hard_locked === false, "Perpetual lifetime shield protects software from being locked");
+    assert(reconciledSettings.license.license_status === "active", "License status remains active in bespoke lifetime mode");
+    assert(reconciledSettings.license.restricted_features.length === 0, "Zero restricted features allowed in bespoke mode");
 
     // 6. Sync Engine Finite State Machine & Backoff Calculation
     syncEngine.setState(SYNC_FSM_STATES.IDLE);
@@ -3602,6 +3567,334 @@ async function runTests() {
     assert(syncSnap.metrics.pendingOutbox === 3, "Telemetry sync metric tracks pending outbox count");
     assert(syncSnap.metrics.conflictCount === 1, "Telemetry sync metric tracks conflict count");
     assert(syncSnap.metrics.serverLatencyMs === 85, "Telemetry sync metric tracks roundtrip latency in ms");
+  });
+
+  // ==========================================================================
+  // SUITE 43: DAY-END CLOSING PARTY UDHAAR RECOVERY, SUPPLIER PAYMENTS & GRN CREDIT
+  // ==========================================================================
+  await suite("43. Day-End Closing Party Udhaar Recovery, Supplier Payments & GRN Credit Mode Integrity", async () => {
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    // 1. Party Udhaar Recovery Flow
+    const testParty = dbParties.add({
+      party_code: "15",
+      name: "Dr Zia Wholesale Customer",
+      city: "Hyderabad",
+      balance_due: 15000,
+      current_balance: 15000,
+    });
+    assert(testParty.id && testParty.balance_due === 15000, "Party created with Rs. 15,000 initial udhaar");
+
+    const pmt = dbParties.recordPayment(
+      testParty.id,
+      5000,
+      "Cash",
+      "Partial recovery for invoice 101",
+      "Ali Cashier"
+    );
+    assert(pmt !== null, "Party payment recorded successfully");
+    assert(pmt.amount === 5000, "Recorded payment amount matches Rs. 5,000");
+    assert(pmt.party_code === "15", "Payment record preserves party_code #15");
+
+    const updatedParty = dbParties.getById(testParty.id);
+    assert(Number(updatedParty.balance_due) === 10000, "Party balance due reduced from 15,000 to 10,000");
+
+    // Verify CashBook auto-logged inflow entry
+    const cbEntries = dbCashBook.getAll({ date: todayStr, term: "Receive" });
+    const matchingCb = cbEntries.find((c) => c.party_id === testParty.id || (c.account_name && c.account_name.includes("Dr Zia")));
+    assert(matchingCb !== undefined, "CashBook automatically contains Party Wasooli Receive entry");
+    assert(Number(matchingCb.amount) === 5000, "CashBook inflow voucher amount is Rs. 5,000");
+
+    // 2. Day-End Closing Inflows Verification
+    const closingData1 = dbDayClosing.getDayClosingData(todayStr);
+    assert(Array.isArray(closingData1.payments_received?.items), "Closing payments_received contains items array");
+    const recPartyItem = closingData1.payments_received.items.find(
+      (it) => it.account_name.includes("Dr Zia") || (it.voucher_no && it.voucher_no === pmt.receipt_no)
+    );
+    assert(recPartyItem !== undefined, "Day closing payments_received items includes Dr Zia party udhaar recovery");
+    assert(recPartyItem.account_name.includes("[#15]"), "Account name prominently displays party code [#15]");
+    assert(recPartyItem.account_name.includes("Udhaar Wasooli"), "Account name includes (Udhaar Wasooli) label");
+    assert(recPartyItem.amount === 5000, "Closing received item amount matches Rs. 5,000");
+
+    // 3. Supplier Debt Payment Flow
+    const testSup = dbSuppliers.add({
+      supplier_code: "SUP-088",
+      name: "BioPharma Distribution",
+      current_balance: 20000,
+    });
+    assert(testSup.id && testSup.current_balance === 20000, "Supplier created with Rs. 20,000 debt");
+
+    const supPmt = dbSupplierLedger.recordPayment(
+      testSup.id,
+      6000,
+      "cash",
+      "Supplier debt payment",
+      "TRF-8812"
+    );
+    assert(supPmt !== null, "Supplier payment recorded via ledger");
+
+    const updatedSup = dbSuppliers.getById(testSup.id);
+    assert(Number(updatedSup.current_balance) === 14000, "Supplier balance reduced from 20,000 to 14,000");
+
+    const closingData2 = dbDayClosing.getDayClosingData(todayStr);
+    const paidSupItem = closingData2.payments_paid.items.find(
+      (it) => it.account_name.includes("BioPharma") || (it.voucher_no && it.voucher_no === "TRF-8812")
+    );
+    assert(paidSupItem !== undefined, "Day closing payments_paid includes supplier debt payment outflow");
+    assert(paidSupItem.amount === 6000, "Closing paid item amount matches Rs. 6,000");
+
+    // 4. Purchase GRN Credit (Udhar) Mode Verification
+    const beforeBal = Number(updatedSup.current_balance);
+    const creditPur = dbPurchases.add({
+      supplier_name: "BioPharma Distribution",
+      supplier_id: testSup.id,
+      supplier_code: "SUP-088",
+      payment_mode: "Credit",
+      total_amount: 12000,
+      paid_amount: 0,
+      balance_due: 12000,
+      items: [
+        {
+          medicine_name: "Panadol Extra Tab",
+          qty: 10,
+          rate: 1200,
+          gross: 12000,
+          net: 12000,
+        },
+      ],
+    });
+
+    assert(creditPur.id, "Credit Purchase GRN saved successfully");
+    assert(creditPur.payment_mode === "Credit", "Purchase record payment_mode is Credit");
+    assert(creditPur.paid_amount === 0, "Credit Purchase paid_amount is 0");
+    assert(creditPur.balance_due === 12000, "Credit Purchase balance_due is full Rs. 12,000");
+
+    const supAfterCredit = dbSuppliers.getById(testSup.id);
+    assert(Number(supAfterCredit.current_balance) === beforeBal + 12000, "Supplier outstanding udhaar increased by Rs. 12,000");
+
+    // Check Day Closing separation of cash vs credit purchase
+    const closingData3 = dbDayClosing.getDayClosingData(todayStr);
+    assert(closingData3.purchases.credit >= 12000, "Day closing purchases.credit tracks credit purchase");
+    assert(closingData3.purchases.cash === 0 || closingData3.purchases.cash < closingData3.purchases.total, "Credit purchase does not falsely inflate cash purchase");
+  });
+
+  // =========================================================================
+  // 🧪 SUITE 44: CashBook Roznamcha, Party/Supplier Khata & Daily Expenses Integration
+  // =========================================================================
+  suite("44. CashBook Roznamcha, Party & Supplier Khata & Daily Expenses Day Closing Integration", () => {
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    // 1. Create a test wholesale party with udhaar
+    const partyP = dbParties.add({
+      party_code: "P-77",
+      name: "Qasim Medicos Hyderabad",
+      city: "Hyderabad",
+      phone: "0300-1112233",
+      opening_balance: 25000,
+      balance_due: 25000,
+      current_balance: 25000,
+    });
+    assert(partyP.id, "Party registered with Rs. 25,000 initial udhaar");
+
+    // Post Party Wasooli via dbCashBook.addEntry
+    const wasooliVoucher = dbCashBook.addEntry({
+      date: todayStr,
+      voucher_no: "C-9001",
+      term: "Receive",
+      action_type: "party_wasooli",
+      account_name: partyP.name,
+      party_id: partyP.id,
+      party_code: partyP.party_code,
+      amount: 8000,
+      payment_mode: "Cash",
+      category: "Party Wasooli",
+      naration: "Partial udhaar wasooli via CashBook Khata",
+    });
+
+    assert(wasooliVoucher.id, "Wasooli CashBook voucher posted");
+    assert(wasooliVoucher.voucher_no === "C-9001", "Voucher number matches C-9001");
+    assert(wasooliVoucher.party_code === "P-77", "Party code preserved in CashBook voucher");
+
+    // Party balance must be reduced
+    const partyAfterWasooli = dbParties.getById(partyP.id);
+    assert(Number(partyAfterWasooli.current_balance) === 17000, "Party balance reduced to Rs. 17,000");
+
+    // Must appear in Day Closing payments_received
+    const closingAfterWasooli = dbDayClosing.getDayClosingData(todayStr);
+    const wasooliItem = (closingAfterWasooli.payments_received?.items || []).find((it) => it.voucher_no === "C-9001");
+    assert(wasooliItem, "Wasooli voucher present in Day Closing payments_received");
+    assert(wasooliItem.account_name.includes("[#P-77]"), "Account name prominently displays party code [#P-77]");
+    assert(wasooliItem.account_name.includes("Udhaar Wasooli"), "Account name includes (Udhaar Wasooli) label");
+    assert(wasooliItem.amount === 8000, "Wasooli voucher amount matches Rs. 8,000");
+
+    // 2. Create a test supplier and post payment via CashBook
+    const supP = dbSuppliers.add({
+      supplier_code: "SUP-77",
+      name: "Indus Pharma Distribution",
+      city: "Hyderabad",
+      phone: "0300-4445566",
+      opening_balance: 30000,
+      balance_due: 30000,
+      current_balance: 30000,
+    });
+    assert(supP.id, "Supplier registered with Rs. 30,000 initial debt");
+
+    const supPayVoucher = dbCashBook.addEntry({
+      date: todayStr,
+      voucher_no: "C-9002",
+      term: "Paid",
+      action_type: "supplier_payment",
+      account_name: supP.name,
+      supplier_id: supP.id,
+      supplier_code: supP.supplier_code,
+      amount: 10000,
+      payment_mode: "Cash",
+      category: "Supplier Payment",
+      naration: "Supplier balance clearance payment",
+    });
+
+    assert(supPayVoucher.id, "Supplier Payment CashBook voucher posted");
+    assert(supPayVoucher.voucher_no === "C-9002", "Voucher number matches C-9002");
+
+    // Supplier balance must be reduced
+    const supAfterPay = dbSuppliers.getById(supP.id);
+    assert(Number(supAfterPay.current_balance) === 20000, "Supplier payable reduced to Rs. 20,000");
+
+    // Must appear in Supplier Ledger
+    const supTxns = dbSupplierLedger.getBySupplier(supP.id);
+    const supLedgerPay = supTxns.find((t) => t.invoice_no === "C-9002" || (t.notes && t.notes.includes("C-9002")) || t.type === "CASH_PAYMENT");
+    assert(supLedgerPay, "Supplier payment recorded into Supplier Ledger");
+
+    // Must appear in Day Closing payments_paid
+    const closingAfterSupPay = dbDayClosing.getDayClosingData(todayStr);
+    const supPayItem = (closingAfterSupPay.payments_paid?.items || []).find((it) => it.voucher_no === "C-9002");
+    assert(supPayItem, "Supplier payment present in Day Closing payments_paid");
+    assert(supPayItem.amount === 10000, "Supplier payment item amount matches Rs. 10,000");
+
+    // 3. Post Direct Shop Expense via CashBook
+    const expenseVoucher = dbCashBook.addEntry({
+      date: todayStr,
+      voucher_no: "C-9003",
+      term: "Paid",
+      action_type: "shop_expense",
+      account_name: "Staff Chai & Refreshment",
+      amount: 450,
+      payment_mode: "Cash",
+      category: "Shop Expense",
+      naration: "Daily evening staff tea and snacks",
+    });
+
+    assert(expenseVoucher.id, "Shop Expense voucher posted");
+    assert(expenseVoucher.action_type === "shop_expense", "Voucher action_type is shop_expense");
+
+    // Verify supplier balance was NOT affected
+    const supUntouched = dbSuppliers.getById(supP.id);
+    assert(Number(supUntouched.current_balance) === 20000, "Shop Expense did not accidentally affect supplier balance");
+
+    // Must appear in Day Closing payments_paid
+    const closingAfterExpense = dbDayClosing.getDayClosingData(todayStr);
+    const expItem = (closingAfterExpense.payments_paid?.items || []).find((it) => it.voucher_no === "C-9003");
+    assert(expItem, "Shop expense present in Day Closing payments_paid");
+    assert(expItem.account_name === "Staff Chai & Refreshment", "Expense item matches Staff Chai & Refreshment");
+    assert(expItem.amount === 450, "Expense item amount matches Rs. 450");
+
+    // 4. Verify CashBook Daily Summary
+    const summary = dbCashBook.getDailySummary(todayStr);
+    assert(summary.totalDebit >= 8000, "CashBook Daily Summary totalDebit includes Rs. 8,000 wasooli");
+    assert(summary.totalCredit >= 10450, "CashBook Daily Summary totalCredit includes Rs. 10,000 sup pay + Rs. 450 expense");
+  });
+
+  // ============================================================================
+  // SUITE 45: PERPETUAL LIFETIME BESPOKE SOFTWARE ENGINE (UNRESTRICTED)
+  // ============================================================================
+  await suite("45. Perpetual Lifetime Bespoke Software Engine (Unrestricted)", async () => {
+    // 1. Initial baseline setup
+    const lic = dbLicense.get();
+    assert(lic.license_status === "active", "License status is active");
+    assert(lic.is_lifetime === true, "is_lifetime is permanently true");
+    assert(lic.license_mode === "lifetime", "license_mode is lifetime");
+    assert(lic.enforce_license === false, "enforce_license is false");
+
+    // 2. Evaluation returns zero restrictions
+    const lifeEval = dbLicense.evaluateStatus();
+    assert(lifeEval.status === "active", "evaluateStatus reports active");
+    assert(lifeEval.isGrace === false, "isGrace flag is false");
+    assert(lifeEval.isWarning === false, "isWarning flag is false");
+    assert(lifeEval.isLocked === false, "isLocked flag is false");
+    assert(lifeEval.daysLeft === 99999, "daysLeft reports 99999");
+    assert(lifeEval.isFeatureBlocked("pos") === false, "POS is unblocked");
+    assert(lifeEval.isFeatureBlocked("consultation") === false, "Consultation is unblocked");
+
+    // 3. Stubs return active lifetime state safely
+    const renewed = dbLicense.renew();
+    assert(renewed.license_status === "active", "dbLicense.renew returns active");
+
+    const extended = dbLicense.extendDays();
+    assert(extended.license_status === "active", "dbLicense.extendDays returns active");
+
+    const customDue = dbLicense.setDueDate("2030-01-01");
+    assert(customDue.license_status === "active", "dbLicense.setDueDate returns active");
+
+    const lifetime = dbLicense.setLifetime();
+    assert(lifetime.is_lifetime === true, "dbLicense.setLifetime returns lifetime");
+
+    const monthlyReset = dbLicense.setMonthlyMode();
+    assert(monthlyReset.license_status === "active", "dbLicense.setMonthlyMode returns active");
+  });
+
+  // =========================================================================
+  // 🧪 SUITE 46: Universal Permanent Factory Reset & Cross-Terminal Sync Outbox Integrity
+  // =========================================================================
+  suite("46. Universal Permanent Factory Reset, Ground Zero Wipe & Multi-Terminal Sync Parity", () => {
+    // 1. Setup mock records
+    const testPat = dbPatients.add({ name: "Mr Patient Test", phone: "0300-9999999" });
+    assert(testPat.id, "Mock test patient added");
+
+    const testVisit = dbVisits.add({ patient_id: testPat.id, doctor_id: "doc_1", symptoms: "Cold", fee: 500 });
+    assert(testVisit.id, "Mock OPD visit added");
+
+    const testItem = dbInventory.add({ medicine_name: "Panadol Drop 30ml", retail_price: 120, store_stock: 50 });
+    assert(testItem.id, "Mock medicine catalog item added");
+
+    const testParty = dbParties.add({ name: "Al-Rehman Chemist", party_code: "P-88", current_balance: 5000 });
+    assert(testParty.id, "Mock wholesale party added");
+
+    // Outbox should have pending mutations
+    const outboxBefore = dbOutbox.getAll();
+    assert(outboxBefore.length > 0, "Outbox contains pending mutation records for real-time push");
+
+    // 2. Test Transactional Reset (preserveCatalog: true)
+    const resetResPreserve = factoryResetAllData({ preserveCatalog: true });
+    assert(resetResPreserve === true, "factoryResetAllData({ preserveCatalog: true }) returns true");
+
+    assert(dbPatients.getAll().length === 0, "Transactional reset wipes all patients to 0");
+    assert(dbVisits.getAll().length === 0, "Transactional reset wipes all OPD queue visits to 0");
+    assert(dbSales.getAll().length === 0, "Transactional reset wipes all sales invoices to 0");
+    assert(dbExpenses.getAll().length === 0, "Transactional reset wipes all expenses to 0");
+    assert(dbCashBook.getAll().length === 0, "Transactional reset wipes all cashbook vouchers to 0");
+    assert(dbOutbox.getAll().length === 0, "Transactional reset clears local outbox to prevent zombie resurrection");
+
+    // Catalog items must be preserved!
+    const inventoryAfterPreserve = dbInventory.getAll();
+    assert(inventoryAfterPreserve.some((it) => it.id === testItem.id), "Medicine catalog item preserved after transactional reset");
+    const partiesAfterPreserve = dbParties.getAll();
+    assert(partiesAfterPreserve.some((p) => p.id === testParty.id), "Wholesale party preserved after transactional reset");
+
+    const epochAfterPreserve = Number(localStorage.getItem("cf_last_reset_epoch") || 0);
+    assert(epochAfterPreserve > 0, "Reset epoch timestamp stored in localStorage");
+
+    // 3. Test Ground Zero Complete Wipe (preserveCatalog: false)
+    const resetResGroundZero = factoryResetAllData({ preserveCatalog: false });
+    assert(resetResGroundZero === true, "factoryResetAllData({ preserveCatalog: false }) returns true");
+
+    assert(dbInventory.getAll().length === 0, "Ground Zero reset wipes medicine inventory to 0");
+    assert(dbParties.getAll().length === 0, "Ground Zero reset wipes wholesale parties to 0");
+    assert(dbSuppliers.getAll().length === 0, "Ground Zero reset wipes suppliers to 0");
+    assert(dbAccounts.getAll().length === 0, "Ground Zero reset wipes accounts to 0");
+    assert(dbOutbox.getAll().length === 0, "Ground Zero reset confirms outbox stays completely empty");
+
+    // Re-seed demo data for remaining tests/clean state
+    resetDatabaseToDemoData();
   });
 
   // ----------------------------------------------------

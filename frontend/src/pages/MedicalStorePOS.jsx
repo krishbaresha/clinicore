@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth.js";
-import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, dbSuppliers, dbUsers, dbSalesmen, dbWarehouses, dbPurchases, dbSupplierLedger, dbStockTransfers } from "../api/db.js";
+import { dbInventory, dbSales, dbVisits, dbPatients, dbClinic, dbPatientLedger, dbSuppliers, dbUsers, dbSalesmen, dbWarehouses, dbPurchases, dbSupplierLedger, dbStockTransfers, getMaxDiscountLimit } from "../api/db.js";
 import { printThermalReceipt } from "../utils/thermalPrinter.js";
 import PhotoLightbox from "../components/PhotoLightbox.jsx";
 
@@ -86,6 +86,12 @@ function ReceiptModal({ sale, onClose }) {
             <div><span className="text-slate-500 font-medium">Date &amp; Time :</span> {dateTimeStr}</div>
             <div><span className="text-slate-500 font-medium">Cashier :</span> {cashierName}</div>
             <div><span className="text-slate-500 font-medium">Customer :</span> {customerName}</div>
+            {sale.attending_doctor_name && (
+              <div><span className="text-slate-500 font-medium">Doctor :</span> {sale.attending_doctor_name}</div>
+            )}
+            {sale.token_no && (
+              <div><span className="text-slate-500 font-medium">Token # :</span> {sale.token_no}</div>
+            )}
             <div><span className="text-slate-500 font-medium">Invoice # :</span> {invoiceId}</div>
           </div>
 
@@ -535,7 +541,13 @@ export default function MedicalStorePOS() {
   }
 
   function setItemDiscount(inventoryId, discPct) {
-    const pct = Math.max(0, Math.min(100, parseFloat(discPct) || 0));
+    const maxLimit = getMaxDiscountLimit ? getMaxDiscountLimit() : 28;
+    let raw = parseFloat(discPct) || 0;
+    if (raw > maxLimit) {
+      alert(`⚠️ Maximum Discount Alert!\nAdmin Panel ne maximum discount limit ${maxLimit}% set ki hui hai.\nAap is se zyada discount nahi de sakte!`);
+      raw = maxLimit;
+    }
+    const pct = Math.max(0, raw);
     setCart((prev) =>
       prev.map((c) => {
         if (c.inventory_id !== inventoryId) return c;
@@ -701,6 +713,9 @@ export default function MedicalStorePOS() {
       visit_id: customerMode === "link" ? (linkedVisit?.id || null) : null,
       patient_id: customerMode === "link" ? (linkedPatient?.id || null) : null,
       patient_name: linkedPatient?.full_name || "Walk-in Patient",
+      attending_doctor_id: customerMode === "link" ? (linkedVisit?.doctor_id || null) : null,
+      attending_doctor_name: customerMode === "link" ? (linkedVisit?.doctor_name || null) : null,
+      token_no: customerMode === "link" ? (linkedVisit?.token_number || null) : null,
       items: cart,
       subtotal_amount: subtotal,
       discount_amount: discountVal,
@@ -1152,13 +1167,13 @@ export default function MedicalStorePOS() {
                           id={`pos-cart-disc-${idx}`}
                           type="number"
                           min="0"
-                          max="100"
+                          max={getMaxDiscountLimit ? getMaxDiscountLimit() : 28}
                           value={item.disc_pct === 0 ? "" : (item.disc_pct || "")}
                           placeholder="0%"
                           onChange={(e) => setItemDiscount(item.inventory_id, e.target.value)}
                           onKeyDown={(e) => handleCartInputKeyDown(e, idx, "disc")}
                           className="w-10 text-center text-xs font-black text-amber-950 focus:outline-none bg-transparent font-mono"
-                          title="Medicine Discount Percentage (%) (Navigate with Arrow Keys ↑ ↓ ← →)"
+                          title={`Medicine Discount % (Max Limit: ${getMaxDiscountLimit ? getMaxDiscountLimit() : 28}%)`}
                         />
                       </div>
 
@@ -1208,7 +1223,18 @@ export default function MedicalStorePOS() {
                     min="0"
                     max={subtotal}
                     value={discountInput}
-                    onChange={(e) => setDiscountInput(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const maxLimit = getMaxDiscountLimit ? getMaxDiscountLimit() : 28;
+                      const maxAllowedRs = (subtotal * maxLimit) / 100;
+                      const numVal = parseFloat(val);
+                      if (!isNaN(numVal) && numVal > maxAllowedRs && maxAllowedRs > 0) {
+                        alert(`⚠️ Maximum Discount Alert!\nAdmin Panel ne maximum discount limit ${maxLimit}% (Rs. ${maxAllowedRs.toFixed(2)}) set ki hui hai.\nAap is se zyada discount nahi de sakte!`);
+                        setDiscountInput(String(Math.floor(maxAllowedRs)));
+                      } else {
+                        setDiscountInput(val);
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "ArrowDown" || e.key === "Enter") {
                         e.preventDefault();

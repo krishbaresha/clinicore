@@ -40,7 +40,13 @@ export default function ReceiptStudio() {
   const [clinicConfig, setClinicConfig] = useState(() => {
     try {
       const saved = localStorage.getItem("cf_receipt_custom_config");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.urdu_footer_text && /[a-zA-Z]/.test(parsed.urdu_footer_text)) {
+          parsed.urdu_footer_text = "خریدا ہوا مال واپس یا تبدیل نہیں ہوگا۔";
+        }
+        return parsed;
+      }
     } catch {}
     return {
       clinic_name: "Dr. Asif Khan",
@@ -57,7 +63,7 @@ export default function ReceiptStudio() {
       contact_size: 11,
       paper_width: "80mm",
       font_family: "Georgia, 'Times New Roman', serif",
-      urdu_footer_text: "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔",
+      urdu_footer_text: "خریدا ہوا مال واپس یا تبدیل نہیں ہوگا۔",
       custom_policy_note: "Thanks for visiting! Get well soon.",
       doctor_name: "Dr. Asif Khan",
       doctor_qualifications: "D.H.M.S, R.H.M.P, Consultant Homoeopath",
@@ -1383,7 +1389,7 @@ export default function ReceiptStudio() {
 
                     case "urdu_footer":
                       return clinicConfig.urdu_footer_text ? (
-                        <div key={block.id} className="mt-3 pt-2 border-t border-dashed border-slate-950 text-center font-urdu text-[13.5px] font-medium text-slate-950 leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis antialiased" dir="rtl">
+                        <div key={block.id} style={{ fontFamily: "'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', serif" }} className="mt-3 pt-2 border-t border-dashed border-slate-950 text-center text-[11.5px] font-medium text-slate-950 leading-[1.8] whitespace-nowrap overflow-hidden text-ellipsis antialiased" dir="rtl">
                           {clinicConfig.urdu_footer_text}
                         </div>
                       ) : null;

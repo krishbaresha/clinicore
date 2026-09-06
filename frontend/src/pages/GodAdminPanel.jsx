@@ -168,7 +168,7 @@ export default function GodAdminPanel() {
       const sTime = new Date(s.sale_date || s.created_at || 0).getTime();
       if (sTime < dateBounds.startMs) return;
 
-      const actorName = s.active_cashier_name || s.cashier_name || s.user_name || "Cashier Desk";
+      const actorName = s.active_cashier_name || s.cashier_name || s.user_name || s.salesman || "Cashier Desk";
       const actorId = s.active_cashier_id || s.cashier_id || actorName;
 
       if (staffFilter !== "all" && actorId !== staffFilter && actorName.toLowerCase() !== staffFilter.toLowerCase()) {
@@ -178,7 +178,7 @@ export default function GodAdminPanel() {
       const entry = getStaffEntry(actorId, actorName, "Cashier");
       entry.posSalesCount += 1;
       const paid = Number(s.paid_amount ?? s.total_amount) || 0;
-      const disc = Number(s.discount_amount) || 0;
+      const disc = Number(s.discount_amount || s.total_discount) || 0;
       entry.posSalesCash += paid;
       entry.discountsGranted += disc;
       entry.totalCollection += paid;
@@ -250,7 +250,7 @@ export default function GodAdminPanel() {
       if (activeTab === "inventory" && !["ADD_INVENTORY_ITEM", "UPDATE_INVENTORY_ITEM", "DELETE_INVENTORY_ITEM", "BULK_INVENTORY_IMPORT"].includes(log.action) && log.entity !== "inventory") {
         return false;
       }
-      if (activeTab === "discounts" && log.action !== "DISCOUNT_GRANTED") {
+      if (activeTab === "discounts" && log.action !== "DISCOUNT_GRANTED" && !(Number(log.after?.discount_amount || log.after?.total_discount) > 0)) {
         return false;
       }
       if (activeTab === "writeoffs" && !["STOCK_WRITE_OFF", "STOCK_MOVEMENT"].includes(log.action)) {
@@ -259,7 +259,8 @@ export default function GodAdminPanel() {
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const str = `${log.action} ${log.actor_name} ${log.reason} ${log.entity} ${log.entity_id}`.toLowerCase();
+        const cust = log.after?.patient_name || log.after?.customer_name || log.after?.full_name || log.after?.account_name || log.after?.supplier_name || "";
+        const str = `${log.action} ${log.actor_name} ${log.reason} ${log.entity} ${log.entity_id} ${cust}`.toLowerCase();
         if (!str.includes(q)) return false;
       }
 
@@ -273,16 +274,19 @@ export default function GodAdminPanel() {
   }, [filteredLogs, displayLimit]);
 
   const handleExportCSV = () => {
-    let csv = "Timestamp,Action,Staff Member,Role,Entity,Entity ID,Details\n";
+    let csv = "Timestamp,Action,Staff Member,Role,Customer / Target,Entity,Entity ID,Discount (Rs),Total (Rs),Details\n";
     filteredLogs.forEach((l) => {
       const date = `"${new Date(l.timestamp).toLocaleString("en-US", { timeZone: "Asia/Karachi" })}"`;
       const action = `"${escapeCSV(l.action)}"`;
       const actor = `"${escapeCSV(l.actor_name || "System")}"`;
       const role = `"${escapeCSV(l.role || "Staff")}"`;
+      const cust = `"${escapeCSV(l.after?.patient_name || l.after?.customer_name || l.after?.full_name || l.after?.account_name || l.after?.supplier_name || "")}"`;
       const entity = `"${escapeCSV(l.entity)}"`;
       const entityId = `"${escapeCSV(l.entity_id || "")}"`;
+      const disc = `"${Number(l.after?.discount_amount || l.after?.total_discount || 0)}"`;
+      const tot = `"${Number(l.after?.total_amount || 0)}"`;
       const reason = `"${escapeCSV(l.reason || "")}"`;
-      csv += `${date},${action},${actor},${role},${entity},${entityId},${reason}\n`;
+      csv += `${date},${action},${actor},${role},${cust},${entity},${entityId},${disc},${tot},${reason}\n`;
     });
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -632,6 +636,7 @@ export default function GodAdminPanel() {
                 <th className="p-3">Timestamp</th>
                 <th className="p-3">Action</th>
                 <th className="p-3">Staff Member</th>
+                <th className="p-3">Patient / Customer / Target</th>
                 <th className="p-3">Entity</th>
                 <th className="p-3">Event Details / Reason</th>
               </tr>
@@ -639,7 +644,7 @@ export default function GodAdminPanel() {
             <tbody className="divide-y divide-slate-200/70 font-medium bg-white">
               {displayedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-slate-400 font-bold">
+                  <td colSpan={6} className="p-10 text-center text-slate-400 font-bold">
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <Clock className="w-8 h-8 text-slate-300" />
                       <span>No matching audit log entries found for this filter.</span>
@@ -657,6 +662,18 @@ export default function GodAdminPanel() {
                     second: "2-digit",
                     hour12: true,
                   });
+
+                  const patientOrCustomer =
+                    log.after?.patient_name ||
+                    log.after?.customer_name ||
+                    log.after?.full_name ||
+                    log.after?.account_name ||
+                    log.after?.supplier_name ||
+                    (log.entity === "patients" ? log.before?.full_name : "") ||
+                    "";
+
+                  const discountAmount = Number(log.after?.discount_amount || log.after?.total_discount || 0);
+                  const totalAmount = Number(log.after?.total_amount || 0);
 
                   return (
                     <tr key={log.id || log.hash || Math.random()} className="hover:bg-slate-50 transition-colors">
@@ -715,18 +732,49 @@ export default function GodAdminPanel() {
                           );
                         })()}
                       </td>
+                      <td className="p-3 font-medium text-slate-900 whitespace-nowrap">
+                        {patientOrCustomer ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-bold text-slate-900 text-xs flex items-center gap-1">
+                              <span className="material-symbols-outlined text-xs text-teal-600">
+                                {log.action?.includes("PURCHASE") ? "local_shipping" : (patientOrCustomer.toLowerCase().includes("walk") ? "directions_walk" : "person")}
+                              </span>
+                              {patientOrCustomer}
+                            </span>
+                            {log.after?.mr_number && (
+                              <span className="text-[10px] font-mono text-slate-500 font-semibold">{log.after.mr_number}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">—</span>
+                        )}
+                      </td>
                       <td className="p-3 text-slate-600 font-mono text-[11px] whitespace-nowrap">
                         <span className="font-bold text-slate-800">{log.entity}</span>
                         {log.entity_id ? <span className="text-slate-400 block text-[10px]">#{log.entity_id.slice(-8)}</span> : ""}
                       </td>
                       <td className="p-3 text-slate-800">
                         <div className="font-medium text-xs leading-relaxed">{log.reason || "Operational audit trace"}</div>
-                        {(log.reason?.includes("Device Previous Active User") || log.reason?.includes("Device Last Active User")) && (
-                          <div className="mt-1 inline-flex items-center gap-1 bg-rose-50 text-rose-950 text-[10.5px] font-bold px-2 py-0.5 rounded-md border border-rose-300 shadow-2xs">
-                            <span className="material-symbols-outlined text-xs text-rose-700">history</span>
-                            <span>Device Previous User Lineage Tracked</span>
-                          </div>
-                        )}
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {discountAmount > 0 && (
+                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-300 shadow-2xs">
+                              <span className="material-symbols-outlined text-xs text-amber-700">percent</span>
+                              <span>Discount: Rs. {discountAmount.toFixed(2)}</span>
+                            </span>
+                          )}
+                          {totalAmount > 0 && (
+                            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-300 shadow-2xs">
+                              <span className="material-symbols-outlined text-xs text-emerald-700">payments</span>
+                              <span>Bill: Rs. {totalAmount.toFixed(2)}</span>
+                            </span>
+                          )}
+                          {(log.reason?.includes("Device Previous Active User") || log.reason?.includes("Device Last Active User")) && (
+                            <div className="inline-flex items-center gap-1 bg-rose-50 text-rose-950 text-[10px] font-bold px-2 py-0.5 rounded-md border border-rose-300 shadow-2xs">
+                              <span className="material-symbols-outlined text-xs text-rose-700">history</span>
+                              <span>Device Previous User Lineage Tracked</span>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

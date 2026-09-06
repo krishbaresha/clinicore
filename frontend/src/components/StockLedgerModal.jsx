@@ -37,7 +37,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
       setCategories(cats);
 
       if (initialItem) {
-        const cat = initialItem.item_code || initialItem.company_name || "All";
+        const cat = initialItem.company_code || initialItem.company_name || initialItem.item_code || "All";
         setSelectedCategory(cat);
         const skus = dbStockLedger.getSKUSummary(cat);
         setSkuList(skus);
@@ -84,12 +84,12 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
     setShowDateHistoryModal(true);
   };
 
-  // Filtered categories with Natural Alphanumeric Sorting (GHR-1 -> GHR-2 -> GHR-10)
+  // Filtered categories with Natural Alphanumeric Sorting (GHR -> BM -> LEH)
   const filteredCategories = useMemo(() => {
     let list = categories;
     if (categorySearch.trim()) {
       const q = categorySearch.toLowerCase().trim();
-      list = categories.filter((c) => (c.category || "").toLowerCase().includes(q) || (c.company_name && c.company_name.toLowerCase().includes(q)));
+      list = categories.filter((c) => (c.category || "").toLowerCase().includes(q) || (c.company_code || "").toLowerCase().includes(q) || (c.company_name && c.company_name.toLowerCase().includes(q)));
     }
     return [...list].sort((a, b) =>
       (a.category || "").localeCompare(b.category || "", undefined, { numeric: true, sensitivity: "base" })
@@ -153,7 +153,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                     </span>
                   </div>
                   <p className="text-xs text-teal-100/90 font-medium">
-                    4-Level Audit Drilldown: Category Summary ➔ SKU Summary ➔ Transactional Ledger ➔ Item Date History
+                    4-Level Audit Drilldown: Company Summary ➔ SKU Summary ➔ Transactional Ledger ➔ Item Date History
                   </p>
                 </div>
               </div>
@@ -179,10 +179,10 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-teal-700" />
-                      <span>Category Summary</span>
+                      <span>Company Summary</span>
                     </h3>
                     <span className="text-[11px] font-mono text-slate-700 font-black">
-                      {filteredCategories.length} Brands
+                      {filteredCategories.length} Companies
                     </span>
                   </div>
 
@@ -190,7 +190,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                     <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                     <input
                       type="text"
-                      placeholder="Search Category / Brand (e.g. GHR-1, BM)..."
+                      placeholder="Search Company Code / Name (e.g. GHR, BM)..."
                       value={categorySearch}
                       onChange={(e) => setCategorySearch(e.target.value)}
                       className="w-full min-h-[38px] pl-8 pr-3 py-1.5 rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500 focus:border-teal-600 outline-none bg-white shadow-xs"
@@ -202,7 +202,7 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                       <thead className="sticky top-0 bg-slate-900 border-b border-slate-700 text-[10px] font-black text-white uppercase shadow-sm">
                         <tr>
                           <th className="py-2.5 px-2.5 text-center w-10">Sr.</th>
-                          <th className="py-2.5 px-3">Category / Brand Code</th>
+                          <th className="py-2.5 px-3">Company Code &amp; Name</th>
                           <th className="py-2.5 px-3 text-right">Qty</th>
                         </tr>
                       </thead>
@@ -224,15 +224,17 @@ export default function StockLedgerModal({ isOpen, onClose, initialItem = null }
                               </td>
                               <td className="py-2 px-3">
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className={`font-mono font-black ${isSelected ? "text-white" : "text-slate-950"}`}>{c.category}</span>
+                                  <span className={`font-mono font-black text-xs ${isSelected ? "text-white" : "text-slate-950"}`}>
+                                    {c.company_code || c.category}
+                                  </span>
                                   {c.item_count > 0 && (
                                     <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-slate-200/80 text-slate-800"}`}>
                                       {c.item_count} items
                                     </span>
                                   )}
                                 </div>
-                                {c.company_name && c.company_name.toLowerCase() !== c.category.toLowerCase() && (
-                                  <div className={`text-[10px] font-medium truncate ${isSelected ? "text-teal-100" : "text-slate-600"}`}>
+                                {c.company_name && (
+                                  <div className={`text-[11px] font-bold truncate mt-0.5 ${isSelected ? "text-teal-100" : "text-slate-700"}`}>
                                     {c.company_name}
                                   </div>
                                 )}

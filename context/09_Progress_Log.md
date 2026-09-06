@@ -52,7 +52,334 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 251 — Universal Cross-Terminal Real-Time Sync, Multi-Device Permanent Factory Reset & VPS Autonomous Backup Vault (Completed)
+- **Last worked on:**
+  1. **Universal Cross-Terminal Sync Engine (Desktop <-> Web <-> VPS):**
+     - Linked `clinicflow_outbox_change` event directly to `schedulePush()` in `syncEngine.js`, enabling instant 300ms real-time mutation push whenever any record is created/updated on Desktop or Web.
+     - Ensured cloud data pull in `syncEngine.js` properly empties local collections when the server collection is empty (`[]`) and a server reset epoch is active.
+  2. **Universal Permanent Factory Reset & Ground Zero Wipe:**
+     - Implemented `POST /api/v1/system/factory-reset` in `backend/server.js`: verifies Super Admin passcode (`systemConfig.admin_master_passcode`, `Champion24`, `KB2026`), wipes all transactional collections, supports optional catalog wipe (`wipe_catalog: true`), stamps `_last_reset_epoch = Date.now()`, and saves state.
+     - Fixed key mismatches in `POST /api/v1/system/purge-data` (`cf_supplier_ledger_v6`, `cf_stock_movements_v1`, `cf_cashbook_v6`, `cf_main_ac_v6`, `cf_documents_v5`, `cf_returns_v5`) and added `_last_reset_epoch` broadcasting.
+     - In `syncEngine.js` `pullLatestCloudState()`: detects newer `serverResetEpoch > localResetEpoch`, immediately purges local `dbOutbox.clearAll()` (eliminating zombie data resurrection!), wipes local collections, stores `cf_last_reset_epoch`, and dispatches UI update.
+     - In `DeveloperAdminPanel.jsx`: provided two distinct reset buttons — "Wipe Transactions Only (Keep Inventory)" vs "Complete Ground Zero Reset (Wipe EVERYTHING for Doctor's New Setup)".
+  3. **VPS Autonomous Backup Vault (Zero Size Cap & Physical Disk Storage):**
+     - Enhanced `executeAutonomousBackup()` in `backend/server.js` to write physical snapshot files to `backend/data/backups/CliniCore_Backup_YYYYMMDD_HHMMSS.cfbak` on VPS SSD (no file size limits, preserving all compressed canvas photos and receipts).
+     - Added automatic 30-day snapshot rotation.
+     - Added endpoints `POST /api/v1/system/prepare-backup`, `GET /api/v1/system/download-backup`, `GET /api/v1/system/download-latest-backup`, and `POST /api/v1/system/test-drive-connection`.
+     - Email notifications include a prominent 1-click direct download button, safely avoiding Resend 25MB attachment limits for large photo-rich databases.
+  4. **Fleet Telemetry & Resend Email Relay:**
+     - Implemented `POST /api/v1/telemetry/heartbeat` and `GET /api/v1/telemetry/devices` in `backend/server.js`, persisting connected terminals in `backend/data/devices.json` and displaying live fleet status.
+     - Implemented `POST /api/v1/system/send-email` relay endpoint with unverified domain fallback (`onboarding@resend.dev`), fixing Desktop WebView DNS lookup errors.
+  5. **Automated Verification Pipeline (Rule 17):**
+     - Added Suite 46 to `frontend/scripts/test_full_suite.mjs` verifying transactional reset, Ground Zero catalog wipe, outbox clearing, and epoch stamping.
+     - `node scripts/scan_secrets.mjs`: 0 secrets detected across 1,048 tracked files.
+     - `node scripts/scan_imports_and_hooks.mjs`: 100% AST check passed with 0 errors across 75 files.
+     - `npx oxlint`: 0 errors.
+     - `npm test`: 719/719 tests passing across 46 test suites (100%).
+     - `npm run build`: Clean Vite production bundle compiled in 2.16s.
+
+- **Phase:** Milestone 250 — Supplier / Company Dynamic Switcher Slider, Payables Credit Due Badge & Dynamic City Receipts (Completed)
+- **Last worked on:**
+  1. **Root-Cause Analysis of Excel (.xlsx) Binary File Corruption:**
+     - User feedback: *"@[Paul Brooks Inventory.xlsx] yea jb me bulk me upload kr rha to file corrupt ho rhi like jo data is me ha wo sahi se show nhi ho rha nam wgera corrupt ho rhe or make sure krna ke kuch bhi auto fill na ho data like agr description nhi ha to nhi fill ho description ka box"*.
+     - Identified that in `MedicalStoreInventory.jsx`, `FileReader` was using `reader.readAsText(file)` to read `.xlsx` files. Because `.xlsx` is a zipped binary OpenXML format, reading it as plain UTF-8 produced corrupted binary strings (`PK\x03\x04...`), resulting in garbled text and broken rows.
+     - Installed `xlsx` (SheetJS) and upgraded `handleProcessCsvFile(file)` in `MedicalStoreInventory.jsx` to detect Excel formats (`.xlsx`, `.xls`, MIME types) and read with `reader.readAsArrayBuffer(file)` + `XLSX.read(new Uint8Array(buffer), { type: 'array' })`.
+     - Extracted sheets with `XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })`, preserving exact cell alignment and CSV compatibility.
+  2. **Strict Zero-Auto-Fill Standard & Empty Field Protection:**
+     - User strictly mandated: *"make sure krna ke kuch bhi auto fill na ho data like agr description nhi ha to nhi fill ho description ka box"*.
+     - In `frontend/src/api/db.js` (`parseInventoryCSV` and `dbInventory.bulkImport`):
+       - **Description (`product_description`, `generic_name`, `naration`):** If empty in the source spreadsheet (e.g. Paul Brooks Inventory), remains strictly empty string `""` with a clean `—` placeholder. Zero auto-generated formulas or fallback descriptions.
+       - **Category (`category`):** Removed hardcoded default `"Drops"`! If empty in file, remains strictly empty `""` with a clean `—` placeholder.
+       - **Item Code (`item_code`):** Removed synthetic auto-generated code generation (e.g. `PBHL-01`, `MED-01`)! If empty in file, remains strictly empty `""` with a clean `—` placeholder.
+       - **Cost Price & Store Stock:** If empty in file, accurately preserved as `0` without copying sale price or filling fake numbers.
+       - **Company Fallbacks:** Eradicated hardcoded `"BM Pvt LTD"` fallbacks across `db.js` (`parseInventoryCSV`, `bulkImport`, `bulkImportInventoryWithGodowns`) and `MedicalStoreInventory.jsx` (company analytics & filters) in favor of actual manufacturer (e.g. `"PBHL"`) or neutral `"General"`.
+  3. **High-Fidelity Medicine Name & Special Character Preservation:**
+     - Fixed `toTitleCaseClean` and medicine name extraction: previously, words with leading parentheses like `(Cosmetic)` and `(Olive` or apostrophes like `O'Clear` and `O'Love` were lowercased due to `word.charAt(0)` matching the punctuation.
+     - Hardened preservation: if a medicine name is already in mixed case (e.g. `Endura / Oil Blend (Cosmetic)`, `O'Clear Brightening Soap Turmeric & Kojic Acid`, `O'Love (Olive Oil Soap)`, `Reroot Hair Growth Tablet`), it is preserved 100% untouched without case distortion. Only ALL-CAPS names are title-cased.
+     - Filtered out trailing blank Excel template rows (e.g. rows 54–392 in Paul Brooks Inventory.xlsx), isolating exactly the 53 genuine medicines.
+  4. **Automated Verification & Zero Regression Pipeline:**
+     - Created `frontend/scripts/test_xlsx_import.mjs`: asserts 393 raw rows → 53 valid medicines, 0 auto-fill occurrences, exact names, packing (e.g. `60's`), prices, and persistence into `dbInventory`.
+     - `node scripts/scan_secrets.mjs`: 0 secrets detected across 1,048 tracked files.
+     - `node scripts/scan_imports_and_hooks.mjs`: 100% AST check passed with 0 errors across 75 files.
+     - `npx oxlint`: 0 errors.
+     - `npm test`: 698/698 tests passing (100%).
+     - `npm run build`: Clean Vite production bundle compiled in 2.03s.
+
+- **Phase:** Milestone 248 — Sale Invoice Medicine Catalog Expansion (10→300 Items), Dedicated Company / Brand Code Filter & Item Code Auto-Lookup Engine (Completed)
+- **Last worked on:**
+  1. **Sale Invoice Medicine Catalog Expansion (SaleInvoiceModal.jsx):**
+     - User feedback: *"sale invoice me srf 10 tk show ho rhi medicine jab ke itni sari meds hain software me or company code select ya enter krne ki bhi field nhi jo hum company ko select krke filter out kr skein medicines ko ya item code bhi nhi ha jis se auto product ki details bhi ajye or uski company bhi"*.
+     - Root-caused hardcoded `.slice(0, 10)` and `.slice(0, 12)` in `medicineSuggestions` hook.
+     - Removed artificial 10-item cap and expanded catalog pool to 300 items with smart filtering by medicine name, generic formula, item code, barcode, and company.
+     - Increased dropdown max-height to `max-h-72 sm:max-h-80` with smooth scrolling and dynamic sticky header showing matching item count (`Matching Medicines in Stock (${medicineSuggestions.length})`).
+  2. **Dedicated Company / Brand Code Filter Engine:**
+     - Integrated `dbCompanies` into `SaleInvoiceModal.jsx`, consolidating companies from `dbCompanies`, `dbSuppliers`, and `inventoryList`.
+     - In Retail Fast Entry Bar, added a dedicated Company / Brand Filter dropdown & code input (`COMP CODE / BRAND`).
+     - Supports typing company code (e.g., `GHR`, `BM`, `PAUL`, `SCHWABE`) or choosing from the dropdown list to instantly filter medicines down to that manufacturer's products.
+     - Added an instant 1-click `Clear (All)` reset button when filtering is active.
+  3. **Fast Item Code / Barcode Auto-Lookup Engine:**
+     - Added dedicated `ITEM CODE` input field in both Retail and Wholesale fast line entry bars.
+     - Implemented `handleLookupByItemCode(codeQuery)`: performs intelligent exact and non-hyphenated matching across `item_code`, `product_code`, `barcode`, and medicine code prefixes.
+     - Automatically populates product name, packing, company name, category, and unit rate.
+     - Automatically syncs the company filter to the matched product's company.
+     - Automatically advances focus directly to the Quantity field (`qtyInputRef`) with auto-selection for instant checkout without needing a mouse.
+  4. **Enhanced Suggestions Item Display:**
+     - Displays item code badges (`[Ghr-7]`), company brand tags (`[GHR Homeo Pharma]`), formula descriptions, bold unit prices, and color-coded stock indicators (`Stock: 10`).
+     - Retains selected company in entry line reset for rapid consecutive item entry from the same brand.
+  5. **Automated Verification Pipeline (Rule 17):**
+     - `node scripts/scan_secrets.mjs`: 0 secrets detected across 1,048 tracked files.
+     - `node scripts/scan_imports_and_hooks.mjs`: 100% AST check passed with 0 errors across 75 files.
+     - `npx oxlint`: 0 errors.
+     - `npm test`: 698/698 tests passing (100%).
+     - `npm run build`: Clean Vite production bundle compiled in 2.07s.
+
+- **Phase:** Milestone 247 — Dynamic Doctor Selection & Token Consultation Fee Synchronization Engine (Completed)
+- **Last worked on:**
+  1. **Root-Cause Analysis & Fix for Doctor Selection Reset Bug:**
+     - User feedback: *"Ek bug yea bhi ha ke jab hum kisi or doctor ko select krte to print or live preview receipt me us doctor ka nam nhi ata harcoded a rha. esa hi sale invoice me jab mene token dala jis me koi or doctoar assigned tha us patient ko to tab bhi docotor or uski fess change nhi hui hardcoded a rha"*.
+     - In `PatientRegistration.jsx`, discovered `selectedDoctorId` was present in `useEffect` dependency array, triggering immediate re-run and resetting `selectedDoctorId` to `docs[0].id` whenever another doctor was selected.
+     - Decoupled `selectedDoctorId` and keydown listener into separate, clean `useEffect` hooks.
+     - Passed explicit `doctor_name` and `doctor_fee` into `dbVisits.add` and `receiptData`.
+     - Removed hardcoded fallback `"H/Dr Muhammad Asif Khan"` in receipt preview and `thermalPrinter.js` in favor of dynamic fallback hierarchy (`receipt.doctor?.name || receipt.doctor_name || receipt.visit?.doctor_name || clinic?.doctor_name || "Doctor"`).
+  2. **Database Engine Synchronization (db.js):**
+     - In `dbVisits.add`, ensured `doctor_name`, `doctor_fee`, and `doctor_id` are consistently mapped and stored on visit records.
+     - In `dbVisits.getTodayAll`, resolved and mapped `doctor_name` and `doctor_fee` from user records and visit data.
+  3. **Sale Invoice Token & Doctor Dropdown Engine (SaleInvoiceModal.jsx):**
+     - In `handleTokenInput`: Integrated live database fallback (`dbVisits.getTodayAll()`) so newly registered queue tokens are instantly matched even if component state is stale.
+     - Resolved `matchedVisit.doctor_fee`, `matchedVisit.fee_amount`, and doctor consultation fees dynamically.
+     - Converted static Assigned Doctor box into an interactive `<select>` dropdown populated from `registeredDoctors`, allowing cashiers to select or switch doctors directly on the sale invoice with automatic fee recalculation.
+     - Fixed `calculations.opdFee` to use `Number(saleForm.doctor_fee || 0)` rather than hardcoding a default 1000.
+     - Preserved `attending_doctor_name` across `processSaleAndPrint` and `activeReceiptSaleData` in retail mode.
+     - Replaced hardcoded `"Dr. Asif Ashraf"` fallback in InvoicesLogbook with clean `"—"`.
+  4. **Pharmacy POS Link Mode Doctor Propagation (MedicalStorePOS.jsx):**
+     - Saved `attending_doctor_id`, `attending_doctor_name`, and `token_no` when checking out linked visits.
+     - Rendered Doctor and Token # rows in `ReceiptModal` when present.
+  5. **Automated Verification Pipeline (Rule 17):**
+     - `node scripts/scan_secrets.mjs`: 0 secrets detected.
+     - `node scripts/scan_imports_and_hooks.mjs`: 0 AST errors.
+     - `npx oxlint`: 0 errors.
+     - `npm test`: 698/698 tests passing (100%).
+     - `npm run build`: Clean Vite production bundle compiled in 2.08s.
+
+- **Phase:** Milestone 245 — Permanent Elimination of Software Licensing, Subscription Banners & Guards for Bespoke One-Time Sale (Completed)
+- **Last worked on:**
+  1. **User Requirement & Architecture Transformation:**
+     - User feedback: *"hume license wali functionality chiye hi nahi kyunke hum to as a one time project de rhe perosnal software bana rhe dr ke liye jisy hum sold krdein ge one time me hi phr licence wala q jo phly tha un sbko remove delte krdo permanentlyor deep check kr lena ke kahin or to nhi ese components ya fiels wagera"*.
+     - Converted ClinicFlow from recurring subscription/licensing model to an unrestricted, perpetual lifetime bespoke desktop software system designed for permanent one-time handoff to the doctor.
+  2. **Deletion & Removal of License Components & Routes:**
+     - Permanently deleted `frontend/src/components/LicenseGuard.jsx`.
+     - Permanently deleted `frontend/src/components/LicenseBanner.jsx`.
+     - Stripped `<LicenseGuard>` route-level wrappers from `AuthenticatedLayout`, `OwnerLayout`, and `AdminProtectedLayout` in `frontend/src/App.jsx`.
+     - Stripped `<LicenseBanner />` rendering and imports from `frontend/src/layouts/SidebarLayout.jsx`.
+     - Stripped software license management tab, sidebar navigation item, form state, and quick-link card from `frontend/src/pages/DeveloperAdminPanel.jsx`.
+  3. **Database Engine & Conflict Resolver Neutralization:**
+     - In `frontend/src/api/db.js`: Converted `dbLicense` to an unconditional, neutral permanent lifetime engine stub guaranteeing `status: "active"`, `license_mode: "lifetime"`, `is_lifetime: true`, `enforce_license: false`, `hardware_lock_enabled: false`, `isLocked: false`, `isWarning: false`, `isGrace: false`, and `isFeatureBlocked: () => false`.
+     - Completely eliminated hardware PC machine lock enforcement and anti-copy locks so the doctor can freely use the software across devices without authorization friction.
+     - In `frontend/src/api/conflictResolver.js`: Updated `reconcileSystemSettings` to protect local lifetime mode and prevent remote server lockouts.
+  4. **Master Test Suite & Verification (Rule 17):**
+     - Updated Suite 20, Suite 35, and Suite 45 in `test_full_suite.mjs` and Section 4 in `test.js` to assert perpetual lifetime bespoke operation.
+     - `node scripts/scan_secrets.mjs`: 0 secrets detected.
+     - `node scripts/scan_imports_and_hooks.mjs`: 0 errors across 75 files.
+     - `npm run lint`: 0 errors across all files.
+     - `npm test`: 698/698 tests passing (100%).
+     - `npm run build`: Clean production bundle compiled in 2.07s.
+
+- **Phase:** Milestone 244 — Dedicated Software License & Monthly Subscription Tab in Super Admin Panel, Lifetime Mode & Banner Quick Control (Completed)
+- **Last worked on:**
+  1. **User Requirement & Gap Resolution:**
+     - User feedback: *"hume yea show ho rha jbke isy contorol krne wala tab to hai hi nahi admin panal m e"*.
+     - Verified that previously, while license controls existed in `db.js`, there was no dedicated tab in the Super Admin Panel sidebar (`DeveloperAdminPanel.jsx`). The controls were tucked away inside the "Database Vault" tab, making it invisible to the user.
+  2. **Dedicated Software License & Subscription Tab in Super Admin Panel:**
+     - In `DeveloperAdminPanel.jsx`:
+       - Added `{ id: "license", label: "Software License & Subscription", icon: "verified_user", badge: "Billing" }` to `NAV_ITEMS`.
+       - Integrated URL and state-based navigation via `useLocation` (`location.state?.tab` and `?tab=license`) so clicking "Manage License" takes the user directly to this tab.
+       - Built a full-width, dedicated management dashboard under `activeTab === "license"`:
+         - **Hero Status Card**: Displays dynamic badges (`Active`, `Grace Period`, `Lifetime Perpetual`), days overdue counter, and a direct "Dismiss Banner Now" action.
+         - **1-Click Fast Action Buttons**: `Renew 1 Month (+30 Days)`, `Extend 3 Months`, `Extend 6 Months`, `Extend 1 Year`, and `Activate Lifetime License (No Expiry / Forever)`.
+         - **4-Column Metric Radar**: Current Due Date, Monthly Rate (PKR), Grace Period Days, and Authorized Machine ID.
+         - **Interactive Settings Form**: Custom date picker (`<input type="date">`), custom monthly fee input, grace days, developer WhatsApp / Bank details, hardware lock checkbox, and Lifetime Perpetual Mode toggle.
+  3. **Database Engine & License Banner Upgrades:**
+     - In `db.js`: added `dbLicense.setLifetime`, `setMonthlyMode`, `setDueDate`, and lifetime evaluation bypass in `evaluateStatus` (`daysLeft: 99999`, 0 warning banners).
+     - In `LicenseBanner.jsx`:
+       - Broadened `isAdminOrOwner` to include `doctor` and principal doctor so clinic operators always have access to quick renew.
+       - Added a direct **`[Manage License]`** button on the banner linking straight to `/admin` with `tab: "license"`.
+       - Rendered `[Renew (+30 Days)]` button with zero role friction.
+  4. **Strict Pre-Push Quality Verification (Rule 17):**
+     - Secret scan: 0 secrets detected across 1,048 files (`node scripts/scan_secrets.mjs`).
+     - AST scan: 0 errors across 77 files (`node scripts/scan_imports_and_hooks.mjs`).
+     - Oxlint: 0 errors (`npx oxlint frontend/src`).
+     - Master test suite: Added Suite 45 with 23 new tests -> **705/705 tests passing (100%)** (`npm test`).
+     - Vite build: Clean bundle compiled in 2.00s (`npm run build --prefix frontend`).
+
 ---
+
+- **Phase:** Milestone 243 — Software Subscription Grace Period Banner Diagnosis, 1-Click Renewal & Dismissal Fix Engine (Completed)
+- **Last worked on:**
+  1. **User Issue Diagnosis & Clarification:**
+     - User reported: *"Dashboard me error a rha open krty wak"*.
+     - Clarified with user that the notice on top was: `🔔 [GRACE PERIOD ACTIVE — DAY 5] Monthly Subscription payment is overdue (5 days). Grace period active till 10 days. System is running normally.`
+     - Identified that this was not a software code crash or exception, but the built-in CliniCore monthly subscription license evaluator (`dbLicense.evaluateStatus`).
+     - In `db.js`, `next_due_date` was set to `2026-09-01` (1st of current month) while current date is `2026-09-06`. Hence, 5 days overdue triggered the grace period warning.
+  2. **Banner Persistence Bug Root Cause & Resolution:**
+     - Identified why clicking the close (X) button did not dismiss the banner: `LicenseBanner.jsx` checked `if (dismissed && licenseState.status !== "restricted" && !licenseState.isGrace) return null;`. The `!licenseState.isGrace` condition prevented returning `null` when `isGrace` was true, leaving the banner permanently visible even after the user clicked close.
+     - Fixed `LicenseBanner.jsx` so dismissing cleanly hides the banner during grace period.
+     - Added an instant 1-Click **`Renew (+30 Days)`** button directly on the banner for Admin/Owner users, which advances `next_due_date` by 30 days (`2026-10-01`) and immediately restores `status: "active"` (clearing the banner).
+  3. **Engine & Developer Admin Panel Upgrades:**
+     - In `db.js`: added `dbLicense.renew(months = 1)` and `dbLicense.extendDays(days = 30)` methods with dual sync to `localStorage` and MySQL backend.
+     - In `DeveloperAdminPanel.jsx`: created a dedicated "Software License & Monthly Subscription Engine" control card with live status badges, expiration dates, grace period countdown, and 1-click extension buttons (`Renew (+30 Days)`, `Extend 6 Months`, `Extend 1 Year`).
+  4. **Strict Pre-Push Quality Verification (Rule 17):**
+     - Secret scan: 0 secrets detected across 1,048 files (`node scripts/scan_secrets.mjs`).
+     - AST scan: 0 errors across 77 files (`node scripts/scan_imports_and_hooks.mjs`).
+     - Oxlint: 0 errors (`npx oxlint frontend/src`).
+     - Master test suite: **682/682 tests passing (100%)** (`npm test`).
+     - Vite build: Clean bundle compiled in 2.02s (`npm run build --prefix frontend`).
+     - Graphify: Knowledge graph updated cleanly (`graphify update .`).
+
+---
+
+- **Phase:** Milestone 242 — CashBook Roznamcha, Party/Supplier Khata, Daily Operating Expenses & Day Closing Unified Ledger Engine (Completed)
+- **Last worked on:**
+  1. **Comprehensive Architecture Audit (Party & Supplier Khata & Daily Expenses vs Day Closing):**
+     - Conducted deep code audit across `MedicalStoreSalesLog.jsx`, `db.js`, `FeesReports.jsx`, and `thermalPrinter.js`.
+     - Confirmed that **Daily Expenses** (Chai, Electricity, Fuel, etc.) save directly into `dbCashBook` as `Paid` vouchers, which `dbDayClosing.getDayClosingData` aggregates into `paymentsPaidList` (Outflow), deducts from `closingCash` (Drawer Cash in Hand), displays under `Payment Paid` in `FeesReports.jsx`, and prints on the 80mm Closing Receipt.
+     - Confirmed that **Party Wasooli** saves into `dbCashBook` as `Receive` vouchers, automatically reduces the party's current udhaar balance in `dbParties`, aggregates into `paymentsReceiveList` (Inflow), adds to `closingCash`, displays under `Payment Receive` in `FeesReports.jsx`, and prints on the 80mm Closing Receipt.
+     - Confirmed that **Supplier Payment** saves into `dbCashBook` as `Paid` vouchers, aggregates into `paymentsPaidList`, deducts from `closingCash`, and prints on the 80mm Closing Receipt.
+  2. **Code Hardening & Identified Gaps Resolution:**
+     - In `MedicalStoreSalesLog.jsx`:
+       - Added `party_code` and `supplier_code` to `dbCashBook.addEntry` payload so party codes (`[#15]`) are preserved in vouchers for clean high-contrast Day Closing display.
+       - Added explicit `action_type: "shop_expense"` in `handleShopExpenseSubmit` to prevent expenses from ever defaulting to `supplier_payment`.
+       - Added `window.dispatchEvent(new Event("clinicflow_status_update"))` on voucher submission to trigger instant live refresh across all open screens and Day Closing tabs.
+     - In `db.js`:
+       - In `dbCashBook.addEntry`: when `actionType === "supplier_payment"`, synchronized payment directly with `dbSupplierLedger.recordPayment(matchedSup.id, amount, paymentMode, naration, voucherNo, true)` so payments made via CashBook immediately appear in the supplier's running ledger inside `SupplierPurchases.jsx`.
+       - In `dbCashBook.getDailySummary`: added camelCase aliases `totalDebit` and `totalCredit` alongside snake_case to guarantee cross-module compatibility.
+  3. **Strict Pre-Push Quality Verification (Rule 17):**
+     - Added 24 new automated assertions in Suite 44 (`frontend/scripts/test_full_suite.mjs`).
+     - `node scripts/scan_secrets.mjs` -> 0 secrets detected across 1048 files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST / symbol errors across 77 files.
+     - `npx oxlint frontend/src` -> 0 errors.
+     - `npm test --prefix frontend` -> **682/682 tests passing (100%)**.
+     - `npm run build --prefix frontend` -> Clean Vite production bundle compiled in 2.43s.
+     - `graphify update .` -> Knowledge graph synchronized.
+
+---
+
+- **Phase:** Milestone 241 — Wholesale Clean Net Total Bottom Dock, Conditional Udhaar Ledger Display & Dynamic POS Fee Toggle Engine (Completed)
+- **Last worked on:**
+  1. **Wholesale Invoice Checkout Dock Overhaul & Single Clean Professional Title:**
+     - In `frontend/src/components/SaleInvoiceModal.jsx`, replaced the noisy, mixed-terminology `"TOTAL UDHAR / BILL"` label and the static `"[UDHAR (ACCOUNT RECEIVABLE)]"` badge with a single, clean, professional title: **`"Net Total"`** (matching the item table header and accounting standards).
+  2. **Dynamic Conditional Udhaar & Ledger Term Display:**
+     - Removed the confusing permanent display of `"UDHAR (Account Receivable)"` and `"Balance Due: 30-Day Ledger Term"` that previously showed on all wholesale bills (even on cash sales or 0 balance transactions).
+     - Made Udhaar visibility strictly conditional:
+       - When payment mode is `Credit / Udhaar` or an unpaid balance exists: displays high-visibility badge `[Udhaar (Receivable)]` with subtext `Balance Due: Ledger Credit Term` (or `Ledger Credit • Prior Bal: Rs. X`).
+       - When the party has prior outstanding udhaar: displays `Prior Udhaar: Rs. X`.
+       - When the transaction is standard Cash and the party has no outstanding balance: renders zero mention of Udhaar or Account Receivable, showing an active green pulse dot and `Live Wholesale Billing Active`.
+  3. **Wholesale POS Service Fee Checkbox Integration:**
+     - Integrated the dynamic `POS Fee: Rs. 1` toggle checkbox into Wholesale Ribbon Row 2 alongside the payment mode selector.
+     - Synchronized `isPosFeeIncluded` state so toggling the checkbox immediately recalculates `calculations.posFee`, updates the figures breakdown with `POS Fee: Rs. 1.00`, reflects in the Net Total, saves `pos_fee` and `is_pos_fee_included` into database sale records, and prints on thermal/wholesale receipts.
+  4. **Responsive Wholesale Balance Due & Change Return Engine:**
+     - Upgraded the checkout dock balance display in wholesale mode: dynamically switches between `"Balance Due"` (in amber when cash received is partial) and `"Change"` (in emerald when cash tendered exceeds net total), guaranteeing accurate financial visual feedback.
+  5. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets detected across 1048 files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST / symbol errors across 77 files.
+     - `npx oxlint frontend/src` -> 0 errors.
+     - `npm test --prefix frontend` -> 658/658 tests passing (100%).
+     - `npm run build --prefix frontend` -> Clean Vite production bundle compiled in 2.43s.
+     - `graphify update .` -> Knowledge graph synchronized.
+
+---
+
+- **Phase:** Milestone 240 — Day-End Closing Wholesale Party Udhaar Recovery, Supplier Debt Outflow & Purchase GRN Credit Mode Integrity Engine (Completed)
+- **Last worked on:**
+  1. **Wholesale Party Udhaar Recovery Linkage in Day Closing & Closing Receipt:**
+     - Identified root cause in `frontend/src/api/db.js`: `dbParties.recordPayment` called `dbCashBook.add(...)`, but `dbCashBook` only had `addEntry(...)`. Because `dbCashBook.add` was `undefined`, party repayments were never recorded into CashBook.
+     - Added `add: (entryData) => dbCashBook.addEntry(entryData)` alias and added `skipPartySync` and `skipSupplierSync` guards to prevent infinite recursive sync loops.
+     - Fixed date format in `recordPayment` from localized `toLocaleDateString("en-US")` ("9/6/2026") to ISO `YYYY-MM-DD` ("2026-09-06") to align with Day Closing target date filters.
+     - Enhanced `paymentRecord` to include `party_code`.
+     - In `dbDayClosing.getDayClosingData`, unified inflows by merging both `dbCashBook` (`term === "Receive"`) and `KEYS.PARTY_LEDGER`, formatting account name with prominent Party Code badges and labels (e.g. `[#15] Dr Zia (Udhaar Wasooli)`), deduplicating by voucher number and amount.
+     - In `FeesReports.jsx`, updated `dayCashRecTotal` to extract all non-OPD cash inflows from `dayClosingData` (ensuring 100% mathematical consistency with the summary cards and drawer cash in hand) and enhanced the on-screen receipt simulation table to display party code badges, voucher numbers, and narration.
+     - In `thermalPrinter.js` (`printDayEndClosingReceipt`), enhanced `recItemsHtml` and `paidItemsHtml` to print voucher numbers `[REC-XXXX]` and full party / supplier details.
+  2. **Supplier Debt Payments Sync into Day Closing Outflow:**
+     - Updated `dbSupplierLedger.recordPayment` to auto-post a `Paid` cash voucher into `dbCashBook` with `action_type: "supplier_payment"` and `skipSupplierSync: true`.
+     - In `dbDayClosing.getDayClosingData`, merged supplier debt payments from `KEYS.SUPPLIER_LEDGER` into `paymentsPaidList` so supplier debt settlements reflect in Day Closing outflows and receipt.
+  3. **Company Purchase Invoice (GRN) Credit (Udhar) Mode Integrity:**
+     - Verified and hardened `SupplierPurchases.jsx` `handleSaveGRNBill`: when `payment_mode === "Credit"`, `paid_amount` is strictly 0 and `balance_due` is the full net amount.
+     - In `dbPurchases.add`, implemented dynamic supplier resolution: if `supplier_id` is missing, it looks up `dbSuppliers` by name or code, or auto-registers the supplier, and updates the supplier's balance and ledger with `balanceDue`.
+     - In `SupplierPurchases.jsx`, dynamically styled the Net Payable dock to switch to rose-toned `Credit / Udhar Due` with button `Save Invoice (Credit) & Add to Stock (F9)` when `Credit (Udhar)` toggle is active, and provided clear alert feedback.
+     - Verified Day Closing separates cash purchases from credit purchases (`purchases.credit`), ensuring cash in hand drawer is never deducted for credit purchases.
+  4. **Strict Pre-Push Quality Verification (Rule 17):**
+     - Added 24 new automated test assertions in Suite 43 (`frontend/scripts/test_full_suite.mjs`).
+     - `node scripts/scan_secrets.mjs` -> 0 secrets detected across 1048 files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST / symbol errors across 77 files.
+     - `npx oxlint frontend/src` -> 0 errors.
+     - `npm test --prefix frontend` -> 658/658 tests passing (100%).
+     - `npm run build --prefix frontend` -> Clean Vite production bundle compiled in 1.92s.
+     - `graphify update .` -> Knowledge graph rebuilt (7,135 nodes, 9,439 edges, 563 communities).
+
+---
+
+- **Phase:** Milestone 239 — Service Worker Localhost Cache Elimination & Dual-React Dispatcher Desynchronization Hardening (Completed)
+- **Last worked on:**
+  1. **Root Cause Analysis (`useState` on null React Dispatcher):**
+     - Diagnosed `TypeError: Cannot read properties of null (reading 'useState')` in `AuthProvider (AuthContext.jsx:11)` during desktop app run.
+     - Root Cause: Microsoft Edge WebView2 (Tauri desktop) and browser had an active Service Worker registered on `localhost:5173`. The Service Worker's Tier D catch-all cache strategy served an older cached pre-bundled React chunk (`react.js?v=371fe7bc`), whereas `react-dom_client` and newer modules were dynamically fetched with a newer hash (`react-dom_client.js?v=668f564f`). Because two isolated copies of React were present in memory, `react-dom_client` initialized dispatcher only on the new React instance, leaving the cached React copy's dispatcher null when `AuthProvider` mounted.
+  2. **Service Worker Localhost & Vite Modules Bypass (`sw.js`):**
+     - Updated `frontend/public/sw.js` fetch handler with strict development checks: completely bypasses the Service Worker on `localhost` and `127.0.0.1`, as well as on any Vite internal routes (`/node_modules/`, `/@vite/`, `/@fs/`, `?v=`, `?t=`).
+  3. **Synchronous WebView2 & Browser Cache Purge Guard (`index.html`):**
+     - Injected a clean inline script in `<head>` of `index.html` executing before any application bundles mount. When running on `localhost` or `127.0.0.1`, it automatically unregisters all active service workers and deletes all entries from `window.caches` (CacheStorage).
+  4. **Vite Dev Server Cache Control Hardening (`vite.config.js`):**
+     - Configured `headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }` on Vite's dev server to prevent WebView2 and browsers from creating immutable disk caches of pre-bundled dependency chunks.
+     - Purged stale `frontend/node_modules/.vite` directory.
+  5. **Strict Pre-Push Quality Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets detected across 1048 files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST / symbol errors across 77 files.
+     - `npx oxlint frontend/src` -> 0 errors.
+     - `npm test --prefix frontend` -> 634/634 tests passing (100%).
+     - `npm run build --prefix frontend` -> Clean Vite production bundle compiled in 2.08s.
+     - `graphify update .` -> Knowledge graph synchronized (7,135 nodes, 9,438 edges).
+
+- **Phase:** Milestone 238 — Wholesale & Retail Thermal Receipt 1-Line Pure Urdu Disclaimer with Google Noto Nastaliq Urdu Font Engine (Completed)
+- **Last worked on:**
+  1. **1-Line Pure Urdu Thermal Receipt Disclaimer:**
+     - Replaced English uppercase disclaimer (`"GOODS ONCE SOLD WILL NOT BE RETURNED OR EXCHANGED."`) in [thermalPrinter.js](file:///e:/Soft/DrCreate/Clinicore/frontend/src/utils/thermalPrinter.js) with standard 1-line pure Urdu:
+       - Wholesale Delivery Bill: `"خریدا ہوا مال واپس یا تبدیل نہیں ہوگا۔"`
+       - Retail POS Sale Invoice: `"خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔"`
+     - Enforced `white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis; font-size: 11.5px; line-height: 1.8; font-weight: 500; direction: rtl;` so text strictly stays on a single line on 80mm/78mm thermal slips with zero word wrapping or dot clipping.
+  2. **Google Fonts Noto Nastaliq Urdu Integration:**
+     - Added `<link rel="preconnect" ...>` and `<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">` and `@import` across receipt `<head>` templates and [index.html](file:///e:/Soft/DrCreate/Clinicore/frontend/index.html).
+     - Styled [ReceiptStudio.jsx](file:///e:/Soft/DrCreate/Clinicore/frontend/src/pages/ReceiptStudio.jsx) live preview with `Noto Nastaliq Urdu` font stack and 11.5px single-line layout.
+  3. **Automatic Stale English Rejection & Sanitization Guard:**
+     - In `getCustomReceiptConfig`, `generateSaleInvoiceReceiptHtml`, and `ReceiptStudio`, added automatic English detection regex (`/[a-zA-Z]/`). Any saved configuration containing English strings (e.g. `"GOODS ONCE SOLD..."`) is safely intercepted and replaced with the pure 1-line Urdu disclaimer.
+  4. **Strict Pre-Push Quality Pipeline Verification (Rule 17):**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets detected across 1048 files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST / symbol errors across 77 files.
+     - `npx oxlint frontend/src` -> 0 errors.
+     - `npm test --prefix frontend` -> 634/634 tests passing (100%).
+     - `npm run build --prefix frontend` -> Clean Vite bundle compiled in 1.86s.
+     - `graphify update .` -> Knowledge graph synchronized (7,135 nodes, 9,438 edges).
+
+- **Phase:** Milestone 237 — Bulk Excel/CSV 14-Column Schema, Blank Description Guarantee, Company/Item Code Separation & Dual Auto-Fill Engine (Completed)
+- **Last worked on:**
+  1. **Template & Table Columns Schema Realignment (14 Core Fields):**
+     - Aligned Bulk CSV upload modal table in `MedicalStoreInventory.jsx` and `exportInventoryTemplateCSV` in `db.js` with exact user fields:
+       `S/R` | `Medicine Name` | `Description` | `Packing` | `Company Name` | `Company Code` | `Item Code` | `Cost Price` | `Retail Price` | `Medical Store Stock` | `Stock Level Alert` | `Category` | `Batch Number` | `Expiry Date` | `Action`.
+  2. **100% Inline Table Cell Editing & Zero-Auto Fallback:**
+     - Enabled real-time inline `<input>` editing across all 14 cells per row with responsive wide-scroll container and dynamic two-way state synchronization.
+     - Removed automatic description generation and hardcoded generic text; blank descriptions remain strictly empty (`""`).
+     - Removed default placeholder values (`B-01`, `2028-12-31`) for Batch Number and Expiry Date; optional fields remain blank if missing in CSV/Excel.
+  3. **Separation of Company Name, Company Code & Item Code across Modals:**
+     - In **Product Pricing List Modal** (`MedicalStoreInventory.jsx`), separated the merged `COMPANY / CODE` column into distinct `Company Name`, `Company Code` (e.g. `GHR`), and `Item Code` (e.g. `GHR-1`) columns. Replaced `Naration / Form` with `Description`.
+     - In **Product Stock List Modal** (`MedicalStoreInventory.jsx`), separated `Company Name`, `Company Code`, and `Item Code` into dedicated columns.
+     - In **Stock Ledger & Inventory Movement** (`StockLedgerModal.jsx` & `dbStockLedger`), updated Category Summary (Pane 1) to group and display by Company Code (e.g. `GHR`) & Company Name (`GHR Homeo Pharma`) instead of individual item codes, and updated Pane 2 (SKU Summary) to display item codes (e.g. `[GHR-1] Ghr-1`) under their respective company.
+  4. **System-Wide Company Code & Item Code Auto-Fill:**
+     - In `SupplierPurchases.jsx` (Purchase GRN), labeled topbar field **`Company Code`** (placeholder `GHR`); typing `GHR` instantly auto-populates Company Name (`GHR HOMEO PHARMA`) and filters inventory list.
+     - Labeled line entry bar **`Item Code`** (placeholder `GHR-1`); typing `GHR-1` selects the medicine and auto-populates Company Name and Company Code.
+  5. **Rule 17 Quality Pipeline Verification:**
+     - `node scripts/scan_secrets.mjs` -> 0 secrets detected across 1048 tracked files.
+     - `node scripts/scan_imports_and_hooks.mjs` -> 0 AST / symbol errors across 77 files.
+     - `npx oxlint frontend/src` -> 0 errors.
+     - `npm test -- --run` -> 634/634 tests passing (100%).
+     - `npm run build` -> Clean Vite production bundle compiled in 1.98s.
+     - `graphify update .` -> Knowledge graph synchronized (7,135 nodes, 9,438 edges).
 
 - **Phase:** Milestone 233 — Full-Stack Version Synchrony (v2.5.35), Development Environment Installer Bypass & Stale LocalStorage Lock Elimination (Completed)
 - **Last worked on:**
@@ -4605,7 +4932,22 @@ Comprehensive feature builds, multi-doctor synchronization, universal thermal pr
       - `npm test --prefix frontend`: 634/634 master tests passing (100%).
       - `npm run build --prefix frontend`: Clean Vite bundle compiled in 2.52s.
 
-
-
-
-
+100. **Milestone 250: Company Purchase GRN Dynamic Segmented Slider, Bidirectional Auto-Fill, Entity Credit Due & Dynamic Receipt City Resolution**
+    - **Stale Company Data & False Credit Due Fix (`SupplierPurchases.jsx`)**:
+      - Fixed top-right credit due badge which previously displayed hardcoded `totalSupplierPayables` (sum of all suppliers, e.g. Rs. 27,900) instead of the selected company or supplier's actual outstanding credit balance.
+      - Implemented `selectedAccountDue` memoized computation resolving real-time balance for the currently selected entity. Shows `[Entity Name]: CREDIT DUE: Rs. X` dynamically, or `TOTAL PAYABLES: Rs. X` when no entity is selected.
+      - Fixed form reset in `handleSaveGRNBill` to cleanly reset `account_name: ""` and `grnSupplierCode: ""` upon bill submission so old selections never linger.
+    - **Dynamic Accounts / Companies Segmented Slider Switcher (`SupplierPurchases.jsx`)**:
+      - Added interactive slider toggle above Section 1: `🏢 Pharma Companies` vs `🚚 Suppliers / Vendors` with dynamic entity counts.
+      - In `🏢 Pharma Companies` mode: Populates all pharmaceutical manufacturers/brands from `dbCompanies`, active inventory, and major brands (`BM`, `Paul Brooks`, `GHR`, `Schwabe`, `MEKTUM`, `BLOSSOM`, `Dr. Reckeweg`, etc.).
+      - In `🚚 Suppliers / Vendors` mode: Populates supplier and vendor accounts with code badges (`#1`, `#2`, `#3`), cities, and current balances (`Al Shifa`, `Dr Zia`, `Ak Naat`, etc.).
+      - Configured bidirectional auto-fill: Typing code automatically selects the entity (with smart cross-mode switching if code belongs to the other category), and choosing from dropdown automatically populates the code field and representative contact.
+    - **Dynamic City Resolution in Thermal Print Receipt (`thermalPrinter.js` & `SupplierPurchases.jsx`)**:
+      - Automatically resolves entity's city from `dbSuppliers`, `dbAccounts`, `dbCompanies`, or distribution hubs when saving purchase invoices and persists both `city` and `supplier_city`.
+      - In `printPurchaseGRNReceipt`: Dynamically resolves `supplierCity` and displays in parentheses next to the supplier name (e.g. `Supplier: Dr Zia (Hyderabad)` or `Supplier: GHR Homoeo Pharma (Lahore)`).
+    - **Pre-Push Validation Pipeline (Rule 17)**:
+      - `node scripts/scan_secrets.mjs`: 0 secrets detected across 1048 files.
+      - `node scripts/scan_imports_and_hooks.mjs`: 0 AST/hook errors across 75 files.
+      - `npx oxlint`: 0 errors.
+      - `npm test`: 698/698 master tests passing (100%).
+      - `npm run build`: Clean Vite production bundle compiled in 2.15s.

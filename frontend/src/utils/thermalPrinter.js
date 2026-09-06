@@ -8,7 +8,7 @@ import { CLINIC_LOGO_BASE64 } from "./clinicLogoBase64.js";
 import { RECEIPT_HEADER_IMAGE_BASE64 } from "./receiptHeaderBase64.js";
 import { getShortVersionBadge } from "./version.js";
 import { getActiveCashier } from "../api/auth.js";
-import { dbDayClosing } from "../api/db.js";
+import { dbDayClosing, dbSuppliers, dbAccounts, dbCompanies } from "../api/db.js";
 
 /**
  * Get user customized receipt branding & layout configuration
@@ -18,6 +18,9 @@ export function getCustomReceiptConfig() {
     const raw = typeof localStorage !== "undefined" ? localStorage.getItem("cf_receipt_custom_config") : null;
     if (raw) {
       let config = JSON.parse(raw);
+      if (config && config.urdu_footer_text && /[a-zA-Z]/.test(config.urdu_footer_text)) {
+        config.urdu_footer_text = "خریدا ہوا مال واپس یا تبدیل نہیں ہوگا۔";
+      }
       return config;
     }
   } catch {}
@@ -39,7 +42,7 @@ export function getCustomReceiptConfig() {
     show_doctor_info: true,
     show_doctor_sign: true,
     show_urdu_footer: false, // Default false for all receipts except Sale Invoice
-    urdu_footer_text: "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔",
+    urdu_footer_text: "خریدا ہوا مال واپس یا تبدیل نہیں ہوگا۔",
   };
 }
 
@@ -492,9 +495,9 @@ export function generateSaleInvoiceReceiptHtml(sale, clinicData = null) {
         <title>Receipt_${invoiceId}</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
           @page { size: 80mm auto; margin: 0mm !important; }
           @media print {
             @page { size: 80mm auto; margin: 0mm !important; }
@@ -531,10 +534,14 @@ export function generateSaleInvoiceReceiptHtml(sale, clinicData = null) {
             font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', serif;
             direction: rtl;
             text-align: center;
-            font-size: 12.5px;
-            line-height: 1.8;
-            font-weight: 400;
+            font-size: 14px;
+            line-height: 2;
+            font-weight: 600;
             color: #000;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            display: block;
+            margin: 0 auto;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
@@ -652,14 +659,27 @@ export function generateSaleInvoiceReceiptHtml(sale, clinicData = null) {
           ${escapeHtml(cfg.custom_policy_note || (isWholesale ? "Thank You for Your Wholesale Order!" : "Thank You. Please Visit Again."))}
         </div>` : ""}
 
-        <!-- Footer Disclaimer (Light Urdu in Noto Nastaliq Urdu) -->
+        <!-- Footer Disclaimer (1-Line Urdu in Google Noto Nastaliq Urdu) -->
         ${(showUrdu || cfg.show_urdu_footer || cfg.urdu_footer_text !== undefined) ? `
         <div style="border-top: 1px dashed #000; margin-top: 6px; padding-top: 4px; text-align: center;">
           <div class="urdu-disclaimer">
-            ${escapeHtml((cfg.urdu_footer_text && !cfg.urdu_footer_text.toLowerCase().includes("once sold") && !cfg.urdu_footer_text.toLowerCase().includes("returned"))
-              ? cfg.urdu_footer_text
-              : (isWholesale ? "خریدی ہوئی دوا یا سامان واپس یا تبدیل نہیں ہوگا۔" : "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔")
-            )}
+            ${(() => {
+              const defaultUrdu = isWholesale
+                ? "خریدا ہوا مال واپس یا تبدیل نہیں ہوگا۔"
+                : "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔";
+              const rawText = String(cfg.urdu_footer_text || "").trim();
+              if (!rawText || /[a-zA-Z]/.test(rawText)) {
+                return defaultUrdu;
+              }
+              if (
+                rawText === "خریدا ہوا مال واپس یا تبدیل نہیں ہوگا۔" ||
+                rawText === "خریدی ہوئی دوا واپس یا تبدیل نہیں ہوگی۔" ||
+                rawText === "خریدی ہوئی دوا یا سامان واپس یا تبدیل نہیں ہوگا۔"
+              ) {
+                return defaultUrdu;
+              }
+              return escapeHtml(rawText);
+            })()}
           </div>
         </div>` : ""}
 
@@ -740,16 +760,24 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
   const paidItemsHtml = paidItems.length > 0
     ? paidItems.map(it => `
       <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;color:#000;">
-        <span style="font-weight:800;max-width:48mm;word-break:break-word;">${escapeHtml(it.account_name || "Expense")}${it.naration ? ` <span style="font-weight:normal;color:#333;">(${escapeHtml(it.naration)})</span>` : ""}</span>
-        <span style="font-weight:900;color:#000;font-family:monospace;font-size:14px;">Rs. ${Number(it.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span style="font-weight:800;max-width:48mm;word-break:break-word;">
+          ${escapeHtml(it.account_name || "Expense")}
+          ${it.voucher_no ? ` <span style="font-size:11px;font-family:monospace;color:#222;font-weight:bold;">[${escapeHtml(it.voucher_no)}]</span>` : ""}
+          ${it.naration ? ` <span style="font-weight:normal;color:#333;font-size:11.5px;">(${escapeHtml(it.naration)})</span>` : ""}
+        </span>
+        <span style="font-weight:900;color:#000;font-family:monospace;font-size:14px;white-space:nowrap;">Rs. ${Number(it.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       </div>`).join("")
     : `<div style="font-size:12px;color:#444;text-align:center;padding:3px 0;">No payments paid on this date.</div>`;
 
   const recItemsHtml = recItems.length > 0
     ? recItems.map(it => `
       <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;color:#000;">
-        <span style="font-weight:800;max-width:48mm;word-break:break-word;">${escapeHtml(it.account_name || "Receipt")}${it.naration ? ` <span style="font-weight:normal;color:#333;">(${escapeHtml(it.naration)})</span>` : ""}</span>
-        <span style="font-weight:900;color:#000;font-family:monospace;font-size:14px;">Rs. ${Number(it.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span style="font-weight:800;max-width:48mm;word-break:break-word;">
+          ${escapeHtml(it.account_name || "Receipt")}
+          ${it.voucher_no ? ` <span style="font-size:11px;font-family:monospace;color:#222;font-weight:bold;">[${escapeHtml(it.voucher_no)}]</span>` : ""}
+          ${it.naration ? ` <span style="font-weight:normal;color:#333;font-size:11.5px;">(${escapeHtml(it.naration)})</span>` : ""}
+        </span>
+        <span style="font-weight:900;color:#000;font-family:monospace;font-size:14px;white-space:nowrap;">Rs. ${Number(it.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       </div>`).join("")
     : `<div style="font-size:12px;color:#444;text-align:center;padding:3px 0;">No cash payments received on this date.</div>`;
 
@@ -759,7 +787,11 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
       <head>
         <meta charset="utf-8">
         <title>DayClosing_${dateStr}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
+          @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
           @page { size: 80mm auto; margin: 0mm !important; }
           @media print {
             @page { size: 80mm auto; margin: 0mm !important; }
@@ -867,7 +899,7 @@ export function printDayEndClosingReceipt(closing, clinicData = null) {
 
         <!-- Urdu Footer (urdu_footer block) -->
         ${showUrdu && cfg.urdu_footer_text ? `
-        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;"><div style="font-size: 13.5px; line-height: 1.4; font-weight: 500; color: #000; letter-spacing: 0.1px;">${escapeHtml(cfg.urdu_footer_text)}</div></div>
+        <div style="border-top: 1px dashed #000; margin-top: 10px; padding-top: 4px; text-align: center; direction: rtl; white-space: nowrap !important; overflow: visible !important; font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Urdu Typesetting', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;"><div style="font-size: 14px; line-height: 2; font-weight: 600; color: #000;">${escapeHtml(cfg.urdu_footer_text)}</div></div>
         <div class="dotted"></div>` : ""}
 
         <!-- Custom Policy Note (custom_note block) -->
@@ -1020,7 +1052,14 @@ export function printOPDTokenReceipt(receipt, clinicData = null) {
   const timeFormatted = `${String(rawDate.getHours()).padStart(2, '0')}:${String(rawDate.getMinutes()).padStart(2, '0')}`;
   const printDateTimeStr = `${dateFormatted} ${timeFormatted}`;
 
-  const doctorName = escapeHtml(receipt.doctor?.name || receipt.visit?.doctor_name || cfg.doctor_name || "H/Dr Muhammad Asif Khan");
+  const doctorName = escapeHtml(
+    receipt.doctor?.name ||
+    receipt.doctor_name ||
+    receipt.visit?.doctor_name ||
+    cfg.doctor_name ||
+    (clinicData && (clinicData.doctor_name || clinicData.name)) ||
+    "Consultant Doctor"
+  );
   const gender = escapeHtml((receipt.patient?.gender || "M").toUpperCase().charAt(0));
   const rawAge = formatPatientAge(receipt.patient);
   const age = rawAge && rawAge !== "—" ? escapeHtml(rawAge.replace(/[^0-9]/g, "") || rawAge) : "—";
@@ -1935,6 +1974,30 @@ export function printPurchaseGRNReceipt(purchase, clinic = null) {
   const reference = escapeHtml(purchase.reference || (clinic?.user_name || "Store Incharge"));
   const paymentMode = escapeHtml(purchase.payment_mode || (Number(purchase.balance_due) > 0 ? "Credit (Udhaar)" : "Cash In Hand"));
 
+  // Dynamic City Resolution for selected company/supplier
+  let supplierCity = purchase.supplier_city || purchase.city || "";
+  if (!supplierCity && (purchase.supplier_name || purchase.account_name)) {
+    try {
+      const targetName = (purchase.supplier_name || purchase.account_name || "").toLowerCase().trim();
+      const sup = dbSuppliers?.getAll?.().find(s => (s.name || "").toLowerCase().trim() === targetName);
+      if (sup?.city) supplierCity = sup.city;
+      if (!supplierCity) {
+        const acc = dbAccounts?.getAll?.().find(a => (a.account_name || a.name || "").toLowerCase().trim() === targetName);
+        if (acc?.city) supplierCity = acc.city;
+      }
+      if (!supplierCity) {
+        const comp = dbCompanies?.getAll?.().find(c => (c.name || "").toLowerCase().trim() === targetName);
+        if (comp?.city) supplierCity = comp.city;
+      }
+      if (!supplierCity) {
+        if (targetName.includes("schwabe") || targetName.includes("german")) supplierCity = "Germany / Karachi";
+        else if (targetName.includes("paul") || targetName.includes("brooks")) supplierCity = "Karachi";
+        else if (targetName.includes("bm") || targetName.includes("reckeweg")) supplierCity = "Lahore";
+        else if (targetName.includes("ghr") || targetName.includes("mektum") || targetName.includes("blossom")) supplierCity = "Lahore";
+      }
+    } catch {}
+  }
+
   const items = purchase.items || [];
   const itemsGross = items.reduce((sum, it) => sum + (Number(it.gross) || (Number(it.qty || it.quantity || 1) * Number(it.rate || it.cost_price || 0))), 0);
   const itemsSubtotal = items.reduce((sum, it) => sum + (Number(it.net) || Number(it.total_cost) || (Number(it.qty || it.quantity || 1) * Number(it.rate || it.cost_price || 0))), 0) || itemsGross;
@@ -1992,7 +2055,7 @@ export function printPurchaseGRNReceipt(purchase, clinic = null) {
             <span>Date: ${dateStr}</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 2px; gap: 4px;">
-            <span style="font-weight: 700; font-size: 14.5px;">Supplier: ${supplierName}</span>
+            <span style="font-weight: 700; font-size: 14.5px;">Supplier: ${supplierName}${supplierCity ? ` <span style="font-weight: 600; font-size: 12px; color: #222;">(${escapeHtml(supplierCity)})</span>` : ""}</span>
             <span style="text-align: right; white-space: nowrap; flex-shrink: 0;">Co. Bill #: ${grnNo}</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">

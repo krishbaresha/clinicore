@@ -394,55 +394,32 @@ export async function runSecurityQASuite() {
   });
 
   // =========================================================================
-  // SECTION 4: SOFTWARE LICENSING ENGINE & KILL-SWITCHES
+  // SECTION 4: UNRESTRICTED PERPETUAL LIFETIME SOFTWARE ENGINE
   // =========================================================================
-  await suite("4. Software Licensing Engine & Kill-Switches", () => {
-    // 4.1 Default Active Status
+  await suite("4. Unrestricted Perpetual Lifetime Software Engine", () => {
+    // 4.1 Default Active Lifetime Status
     localStorage.removeItem("clinicflow_license");
     let licState = dbLicense.evaluateStatus();
     assert(licState.status === "active" && licState.isLocked === false, "Default fresh setup has active, unlocked license status");
+    assert(licState.isWarning === false, "No warning active in perpetual lifetime mode");
+    assert(licState.isGrace === false, "No grace period active in perpetual lifetime mode");
 
-    // 4.2 Warning Mode
-    dbLicense.update({ license_status: "warning", next_due_date: "2026-09-01" });
-    licState = dbLicense.evaluateStatus();
-    assert(licState.status === "warning" && licState.isWarning === true && licState.isLocked === false, "Warning status evaluates with isWarning=true and isLocked=false");
+    // 4.2 Lifetime Policy Settings
+    const lic = dbLicense.get();
+    assert(lic.is_lifetime === true, "is_lifetime is true");
+    assert(lic.license_mode === "lifetime", "license_mode is lifetime");
+    assert(lic.hardware_lock_enabled === false, "Hardware machine lock is disabled");
 
-    // 4.3 Grace Period Mode
-    dbLicense.update({ license_status: "grace_period", grace_days: 10 });
-    licState = dbLicense.evaluateStatus();
-    assert(licState.status === "grace_period" && licState.isGrace === true && licState.isLocked === false, "Grace period status evaluates with isGrace=true and isLocked=false");
+    // 4.3 Guaranteed Unrestricted Features
+    assert(licState.isFeatureBlocked("pos") === false, "POS is never blocked");
+    assert(licState.isFeatureBlocked("inventory") === false, "Inventory is never blocked");
+    assert(licState.isFeatureBlocked("consultation") === false, "Doctor Consultation is never blocked");
+    assert(licState.isFeatureBlocked("reports") === false, "Reports are never blocked");
 
-    // 4.4 Hard Lock Screen Full Blocker
-    dbLicense.update({ is_hard_locked: true, license_status: "locked", custom_notice: "Suspended for non-payment." });
+    // 4.4 Resilient to Any Updates
+    dbLicense.update({ license_status: "active" });
     licState = dbLicense.evaluateStatus();
-    assert(licState.status === "locked" && licState.isLocked === true, "Hard lock evaluated with isLocked=true");
-    assert(licState.isFeatureBlocked("pos") === true, "Hard lock blocks POS feature");
-    assert(licState.isFeatureBlocked("inventory") === true, "Hard lock blocks Inventory feature");
-    assert(licState.isFeatureBlocked("consultation") === true, "Hard lock blocks Doctor Consultation feature");
-
-    // 4.5 Selective Module Kill-Switches
-    dbLicense.update({
-      is_hard_locked: false,
-      license_status: "restricted",
-      restricted_features: ["pos", "b2b", "reports"],
-      custom_notice: "POS and B2B paused.",
-    });
-    licState = dbLicense.evaluateStatus();
-    assert(licState.status === "restricted" && licState.isLocked === false, "Restricted license evaluates status='restricted'");
-    assert(licState.isFeatureBlocked("pos") === true, "Selective kill-switch blocks POS");
-    assert(licState.isFeatureBlocked("b2b") === true, "Selective kill-switch blocks B2B");
-    assert(licState.isFeatureBlocked("reports") === true, "Selective kill-switch blocks Reports");
-    assert(licState.isFeatureBlocked("consultation") === false, "Selective kill-switch leaves OPD Consultation active");
-    assert(licState.isFeatureBlocked("patients") === false, "Selective kill-switch leaves Patient Registration active");
-
-    // Reset license to active
-    dbLicense.update({
-      is_hard_locked: false,
-      license_status: "active",
-      restricted_features: [],
-    });
-    licState = dbLicense.evaluateStatus();
-    assert(licState.status === "active" && licState.isLocked === false, "License restored to active status");
+    assert(licState.status === "active" && licState.isLocked === false, "Remains active after update");
   });
 
   // =========================================================================

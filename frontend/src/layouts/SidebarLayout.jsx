@@ -36,7 +36,6 @@ import { dbClinic, dbPatients, dbSales, dbInventory, dbUsers, exportFullDatabase
 import { generateCliniCoreEmailTemplate } from "../utils/emailTemplate.js";
 import PullToRefresh from "../components/PullToRefresh.jsx";
 import LanguageSwitcher from "../components/LanguageSwitcher.jsx";
-import LicenseBanner from "../components/LicenseBanner.jsx";
 import KeyboardShortcutsModal from "../components/KeyboardShortcutsModal.jsx";
 import { useGlobalKeyboardNav } from "../hooks/useGlobalKeyboardNav.js";
 import { useTranslation } from "react-i18next";
@@ -678,9 +677,6 @@ export default function SidebarLayout({ children }) {
   return (
     <div className="h-screen w-screen max-h-screen max-w-full overflow-hidden bg-[#f8fafc] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
       
-      {/* ── Top License & Subscription Reminder Banner ── */}
-      <LicenseBanner />
-
       {/* ── Top Header Bar (Translucent Glassmorphic Engine - Fixed Topbar) ── */}
       <header className="border-b border-slate-200/70 bg-white z-40 shadow-xs h-13 sm:h-14 lg:h-16 compact-low-res-header flex items-center px-3 sm:px-6 justify-between flex-shrink-0">
         <div className="flex items-center gap-3">

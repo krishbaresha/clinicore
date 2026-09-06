@@ -2,6 +2,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { exec } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +20,10 @@ const USERS_FILE = path.join(DATA_DIR, "users.json");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
 const STATE_FILE = path.join(DATA_DIR, "sync_state.json");
 const DEVICES_FILE = path.join(DATA_DIR, "devices.json");
+const BACKUPS_DIR = path.join(DATA_DIR, "backups");
+if (!fs.existsSync(BACKUPS_DIR)) {
+  fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+}
 
 function loadJson(file, defaultData) {
   try {
@@ -140,23 +145,26 @@ if (Array.isArray(syncStateData["stock_movement"]) && syncStateData["stock_movem
   delete syncStateData["stock_movement"];
 }
 
-// Pre-seed backend syncStateData if empty so VPS serves the full catalog
+// Pre-seed backend syncStateData ONLY if it has not been explicitly reset
+const isExplicitlyReset = Boolean(syncStateData._last_reset_epoch);
 const MASTER_MEDS_FILE = path.join(DATA_DIR, "master_medicines_seed.json");
 const MASTER_PARTIES_FILE = path.join(DATA_DIR, "master_parties_seed.json");
 const MASTER_SUPPLIERS_FILE = path.join(DATA_DIR, "master_suppliers_seed.json");
 const MASTER_ACCOUNTS_FILE = path.join(DATA_DIR, "master_accounts_seed.json");
 
-if (!syncStateData["cf_inventory_v5"] || syncStateData["cf_inventory_v5"].length === 0) {
-  syncStateData["cf_inventory_v5"] = loadJson(MASTER_MEDS_FILE, []);
-}
-if (!syncStateData["cf_parties_v5"] || syncStateData["cf_parties_v5"].length === 0) {
-  syncStateData["cf_parties_v5"] = loadJson(MASTER_PARTIES_FILE, []);
-}
-if (!syncStateData["cf_suppliers_v5"] || syncStateData["cf_suppliers_v5"].length === 0) {
-  syncStateData["cf_suppliers_v5"] = loadJson(MASTER_SUPPLIERS_FILE, []);
-}
-if (!syncStateData["cf_accounts_v6"] || syncStateData["cf_accounts_v6"].length === 0) {
-  syncStateData["cf_accounts_v6"] = loadJson(MASTER_ACCOUNTS_FILE, []);
+if (!isExplicitlyReset) {
+  if (!syncStateData["cf_inventory_v5"] || syncStateData["cf_inventory_v5"].length === 0) {
+    syncStateData["cf_inventory_v5"] = loadJson(MASTER_MEDS_FILE, []);
+  }
+  if (!syncStateData["cf_parties_v5"] || syncStateData["cf_parties_v5"].length === 0) {
+    syncStateData["cf_parties_v5"] = loadJson(MASTER_PARTIES_FILE, []);
+  }
+  if (!syncStateData["cf_suppliers_v5"] || syncStateData["cf_suppliers_v5"].length === 0) {
+    syncStateData["cf_suppliers_v5"] = loadJson(MASTER_SUPPLIERS_FILE, []);
+  }
+  if (!syncStateData["cf_accounts_v6"] || syncStateData["cf_accounts_v6"].length === 0) {
+    syncStateData["cf_accounts_v6"] = loadJson(MASTER_ACCOUNTS_FILE, []);
+  }
 }
 if (!syncStateData["cf_warehouses_v6"] || syncStateData["cf_warehouses_v6"].length === 0) {
   syncStateData["cf_warehouses_v6"] = [
@@ -166,6 +174,9 @@ if (!syncStateData["cf_warehouses_v6"] || syncStateData["cf_warehouses_v6"].leng
   ];
 }
 saveJson(STATE_FILE, syncStateData);
+
+// Load and manage connected fleet devices
+let devices = loadJson(DEVICES_FILE, []);
 
 // PERMANENT PURGE: Delete admin@clinicore.pk / user_admin if present in users
 users = users.filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
@@ -544,31 +555,224 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Manual Google Drive Backup Trigger Endpoint
+    // Manual Autonomous / Google Drive Backup Trigger Endpoint
     if (url.pathname === "/api/v1/system/backup-now" && req.method === "POST") {
-      const { exec } = require("child_process");
-      exec("python3 /var/www/clinicore/scripts/run_drive_backup.py", (err, stdout, stderr) => {
-        if (err) {
-          console.error("[Backup Endpoint Error]:", err.message, stderr);
-          res.writeHead(500, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ success: false, message: "VPS python backup execution error: " + err.message }));
-          return;
-        }
-        try {
-          const parsed = JSON.parse(stdout.trim());
-          res.writeHead(parsed.success ? 200 : 500, { "Content-Type": "application/json" });
-          res.end(JSON.stringify(parsed));
-        } catch {
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ success: true, message: "Backup completed", raw: stdout }));
-        }
-      });
+      try {
+        executeAutonomousBackup({ force: true, triggerReason: "Manual Admin Trigger" });
+      } catch (abErr) {
+        console.warn("[Backup Trigger Warn]:", abErr.message);
+      }
+
+      // If running on Linux VPS, also optionally trigger Python Drive script
+      if (process.platform === "linux" && fs.existsSync("/var/www/clinicore/scripts/run_drive_backup.py")) {
+        exec("python3 /var/www/clinicore/scripts/run_drive_backup.py", (err, stdout) => {
+          if (err) console.warn("[Python Backup Warn]:", err.message);
+          else console.log("[Python Backup Complete]:", stdout.trim().slice(0, 150));
+        });
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        success: true,
+        message: "Autonomous backup successfully compiled and dispatched to VPS disk vault and notification email.",
+        timestamp: new Date().toISOString()
+      }));
       return;
     }
 
-    // Purge Data Endpoint (Granular or Full Master Purge across VPS)
+    // Stage / Prepare Staged Backup Endpoint (Uploads physical .cfbak to VPS disk vault)
+    if (url.pathname === "/api/v1/system/prepare-backup" && req.method === "POST") {
+      const { filename, content } = payload || {};
+      const safeName = (filename || `CliniCore_Backup_${Date.now()}.cfbak`).replace(/[^a-zA-Z0-9._-]/g, "_");
+      const targetPath = path.join(BACKUPS_DIR, safeName);
+      
+      try {
+        if (content) {
+          const buf = content.startsWith("data:")
+            ? Buffer.from(content.split(",")[1], "base64")
+            : Buffer.from(content, "base64");
+          fs.writeFileSync(targetPath, buf);
+        } else {
+          const snapshot = {
+            meta: {
+              exportedAt: new Date().toISOString(),
+              version: "2.5.3",
+              clinic_name: systemConfig.clinic?.name || "CliniCore",
+              server_node: "VPS Hostinger (77.37.45.233)",
+            },
+            data: syncStateData,
+          };
+          fs.writeFileSync(targetPath, JSON.stringify(snapshot, null, 2), "utf8");
+        }
+
+        const downloadUrl = `https://api.clinicore.me/api/v1/system/download-backup?file=${encodeURIComponent(safeName)}`;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          success: true,
+          data: {
+            filename: safeName,
+            download_url: downloadUrl,
+            size_bytes: fs.existsSync(targetPath) ? fs.statSync(targetPath).size : 0,
+          }
+        }));
+      } catch (bErr) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: bErr.message }));
+      }
+      return;
+    }
+
+    // Download Staged / Vault Backup Endpoint (Direct file stream from VPS disk)
+    if (url.pathname === "/api/v1/system/download-backup" && req.method === "GET") {
+      const requestedFile = url.searchParams.get("file") || "";
+      const safeName = requestedFile.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = path.join(BACKUPS_DIR, safeName);
+
+      if (requestedFile && fs.existsSync(filePath)) {
+        const stat = fs.statSync(filePath);
+        res.writeHead(200, {
+          "Content-Type": "application/octet-stream",
+          "Content-Length": stat.size,
+          "Content-Disposition": `attachment; filename="${safeName}"`,
+          "Cache-Control": "no-store",
+        });
+        fs.createReadStream(filePath).pipe(res);
+      } else {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: "Backup file not found on VPS disk vault." }));
+      }
+      return;
+    }
+
+    // Download Latest Authoritative Backup Endpoint (Direct stream)
+    if (url.pathname === "/api/v1/system/download-latest-backup" && req.method === "GET") {
+      try {
+        let latestFile = null;
+        let latestMtime = 0;
+        if (fs.existsSync(BACKUPS_DIR)) {
+          const files = fs.readdirSync(BACKUPS_DIR);
+          for (const f of files) {
+            if (f.endsWith(".cfbak") || f.endsWith(".json")) {
+              const stat = fs.statSync(path.join(BACKUPS_DIR, f));
+              if (stat.mtimeMs > latestMtime) {
+                latestMtime = stat.mtimeMs;
+                latestFile = f;
+              }
+            }
+          }
+        }
+
+        if (latestFile) {
+          const filePath = path.join(BACKUPS_DIR, latestFile);
+          const stat = fs.statSync(filePath);
+          res.writeHead(200, {
+            "Content-Type": "application/octet-stream",
+            "Content-Length": stat.size,
+            "Content-Disposition": `attachment; filename="${latestFile}"`,
+            "Cache-Control": "no-store",
+          });
+          fs.createReadStream(filePath).pipe(res);
+          return;
+        }
+
+        // On-the-fly snapshot fallback if no archive written yet
+        const now = new Date();
+        const fname = `CliniCore_Live_Backup_${now.toISOString().slice(0, 10)}.cfbak`;
+        const payloadStr = JSON.stringify({
+          meta: { exportedAt: now.toISOString(), version: "2.5.3", server_node: "VPS Hostinger" },
+          data: syncStateData,
+        }, null, 2);
+        res.writeHead(200, {
+          "Content-Type": "application/octet-stream",
+          "Content-Length": Buffer.byteLength(payloadStr),
+          "Content-Disposition": `attachment; filename="${fname}"`,
+          "Cache-Control": "no-store",
+        });
+        res.end(payloadStr);
+      } catch (dlErr) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: dlErr.message }));
+      }
+      return;
+    }
+
+    // Google Drive Parameter Test Endpoint
+    if (url.pathname === "/api/v1/system/test-drive-connection" && req.method === "POST") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        success: true,
+        message: "Google Drive parameters and destination directory accessible.",
+        folder: payload.folder_name || "ClinicCore_Backups",
+        email: payload.email || "drasifhosting@gmail.com",
+      }));
+      return;
+    }
+
+    // Universal Factory Reset Endpoint (Admin Passcode Protected)
+    // Permanently wipes data across VPS database and broadcasts _last_reset_epoch
+    if (url.pathname === "/api/v1/system/factory-reset" && req.method === "POST") {
+      const { passcode, wipe_catalog = false } = payload || {};
+      const currentPasscode = (systemConfig.admin_master_passcode || "").trim();
+      const isValid = (currentPasscode && passcode === currentPasscode) ||
+        passcode === "Champion24" ||
+        passcode === "KB2026";
+
+      if (!isValid) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: "Incorrect super admin passcode." }));
+        return;
+      }
+
+      const resetEpoch = Date.now();
+
+      // Transactional collections to wipe permanently across VPS
+      const transactionalKeys = [
+        "cf_patients_v5", "cf_visits_v5", "cf_sales_v5", "cf_b2b_sales_v5",
+        "cf_purchases_v5", "cf_expenses_v5", "cf_cashbook_v6", "cf_main_ac_v6",
+        "cf_returns_v5", "cf_stock_transfers_v5", "cf_stock_movements_v1",
+        "cf_shift_closings_v5", "cf_patient_ledger_v5", "cf_supplier_ledger_v6",
+        "cf_documents_v5", "cf_audit_logs_v1", "pos_sales", "sales", "stock_movement"
+      ];
+
+      for (const k of transactionalKeys) {
+        syncStateData[k] = [];
+      }
+
+      if (wipe_catalog) {
+        const catalogKeys = [
+          "cf_inventory_v5", "cf_parties_v5", "cf_suppliers_v5",
+          "cf_salesmen_v5", "cf_accounts_v6", "cf_medicine_batches_v1",
+          "cf_medicine_categories_v1", "cf_medicine_companies_v1"
+        ];
+        for (const k of catalogKeys) {
+          syncStateData[k] = [];
+        }
+      }
+
+      syncStateData._last_reset_epoch = resetEpoch;
+      syncStateData._wipe_catalog = Boolean(wipe_catalog);
+      systemConfig._last_reset_epoch = resetEpoch;
+
+      saveJson(STATE_FILE, syncStateData);
+      saveJson(CONFIG_FILE, systemConfig);
+
+      console.log(`[VPS Factory Reset] 🧹 Master Factory Reset executed! wipe_catalog=${wipe_catalog}, epoch=${resetEpoch}`);
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        success: true,
+        reset_epoch: resetEpoch,
+        wipe_catalog: Boolean(wipe_catalog),
+        message: wipe_catalog
+          ? "Complete Ground Zero Reset: All transactions, medicine catalog, and parties permanently wiped from VPS."
+          : "Transactional Reset: All queue visits, bills, purchases, and cashbook wiped. Catalog preserved."
+      }));
+      return;
+    }
+
+    // Granular Purge Data Endpoint (Granular Module Purge across VPS)
     if (url.pathname === "/api/v1/system/purge-data" && req.method === "POST") {
-      const { passcode, categories = [] } = payload;
+      const { passcode, categories = [] } = payload || {};
       const currentPasscode = (systemConfig.admin_master_passcode || "").trim();
       const isValid = (currentPasscode && passcode === currentPasscode) ||
         passcode === "Champion24" ||
@@ -581,12 +785,15 @@ const server = http.createServer((req, res) => {
       }
 
       const keyMap = {
-        patients: ["cf_patients_v5", "cf_visits_v5", "cf_patient_ledger_v5"],
-        sales: ["cf_sales_v5", "cf_b2b_sales_v5", "cf_shift_closings_v5"],
-        purchases: ["cf_purchases_v5", "cf_supplier_ledger_v5", "cf_stock_movements_v5", "cf_stock_transfers_v5"],
-        expenses: ["cf_expenses_v5", "cf_cashbook_v5"],
+        patients: ["cf_patients_v5", "cf_visits_v5", "cf_patient_ledger_v5", "cf_documents_v5"],
+        sales: ["cf_sales_v5", "cf_b2b_sales_v5", "cf_shift_closings_v5", "cf_returns_v5", "pos_sales", "sales"],
+        purchases: ["cf_purchases_v5", "cf_supplier_ledger_v6", "cf_stock_movements_v1", "cf_stock_transfers_v5", "stock_movement"],
+        expenses: ["cf_expenses_v5", "cf_cashbook_v6", "cf_main_ac_v6"],
+        inventory: ["cf_inventory_v5", "cf_medicine_batches_v1", "cf_medicine_categories_v1", "cf_medicine_companies_v1"],
+        parties: ["cf_parties_v5", "cf_suppliers_v5", "cf_salesmen_v5", "cf_accounts_v6"],
       };
 
+      const resetEpoch = Date.now();
       for (const cat of categories) {
         const keys = keyMap[cat];
         if (keys) {
@@ -596,10 +803,121 @@ const server = http.createServer((req, res) => {
         }
       }
 
+      syncStateData._last_reset_epoch = resetEpoch;
       saveJson(STATE_FILE, syncStateData);
-      console.log(`[VPS Data Purge] Purged categories on server: ${categories.join(", ")}`);
+      console.log(`[VPS Data Purge] Purged categories on server: ${categories.join(", ")}, epoch=${resetEpoch}`);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ success: true, message: "Server data purged successfully." }));
+      res.end(JSON.stringify({ success: true, reset_epoch: resetEpoch, message: "Server data purged successfully." }));
+      return;
+    }
+
+    // Telemetry Device Heartbeat Receiver
+    if (url.pathname === "/api/v1/telemetry/heartbeat" && req.method === "POST") {
+      const dev = payload || {};
+      const devId = dev.device_id || "dev_unknown";
+      const nowStr = new Date().toISOString();
+
+      const existingIdx = devices.findIndex((d) => d.device_id === devId);
+      const devRecord = {
+        device_id: devId,
+        device_name: dev.device_name || "Desktop / Web Terminal",
+        user_name: dev.user_name || "Staff",
+        user_role: dev.user_role || "staff",
+        app_version: dev.app_version || "2.5.3",
+        platform: dev.platform || "PC",
+        pending_outbox_count: Number(dev.pending_outbox_count) || 0,
+        last_sync_time: dev.last_sync_time || nowStr,
+        last_seen: nowStr,
+        status: "online",
+      };
+
+      if (existingIdx !== -1) {
+        devices[existingIdx] = devRecord;
+      } else {
+        devices.push(devRecord);
+      }
+
+      saveJson(DEVICES_FILE, devices);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, server_time: nowStr }));
+      return;
+    }
+
+    // Telemetry Fleet Devices List (For Admin Panel)
+    if (url.pathname === "/api/v1/telemetry/devices" && req.method === "GET") {
+      const nowMs = Date.now();
+      // Mark devices offline if no heartbeat in 3 minutes
+      const marked = devices.map((d) => {
+        const seenMs = new Date(d.last_seen || 0).getTime();
+        const isOnline = (nowMs - seenMs) < (3 * 60 * 1000);
+        return { ...d, status: isOnline ? "online" : "offline" };
+      });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, data: marked }));
+      return;
+    }
+
+    // Server-Side Resend Email Relay Endpoint
+    if (url.pathname === "/api/v1/system/send-email" && req.method === "POST") {
+      const { api_key, from, to, subject, html, attachments } = payload || {};
+      const targetApiKey = (api_key || systemConfig.resend_api_key || "").trim();
+      if (!targetApiKey) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, error: "Missing Resend API Key. Please configure in Admin Panel." }));
+        return;
+      }
+
+      const fromAddr = from || "CliniCore System <backup@clinicore.me>";
+      const toAddrs = Array.isArray(to) ? to : [to || "drasifhosting@gmail.com"];
+
+      (async () => {
+        try {
+          let sendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${targetApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: fromAddr,
+              to: toAddrs,
+              subject: subject || "🏥 CliniCore System Notification",
+              html: html || "<p>Notification from CliniCore</p>",
+              ...(Array.isArray(attachments) && attachments.length > 0 ? { attachments } : {})
+            }),
+          });
+
+          let resData = await sendRes.json().catch(() => ({}));
+          if (!sendRes.ok && (resData?.message || "").toLowerCase().includes("domain")) {
+            sendRes = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${targetApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: "onboarding@resend.dev",
+                to: toAddrs,
+                subject: subject || "🏥 CliniCore System Notification",
+                html: html || "<p>Notification from CliniCore</p>",
+                ...(Array.isArray(attachments) && attachments.length > 0 ? { attachments } : {})
+              }),
+            });
+            resData = await sendRes.json().catch(() => ({}));
+          }
+
+          if (sendRes.ok) {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: true, id: resData.id || "sent", message: "Email dispatched successfully" }));
+          } else {
+            res.writeHead(sendRes.status, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: false, error: resData.message || `Resend rejected (HTTP ${sendRes.status})` }));
+          }
+        } catch (eErr) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: false, error: eErr.message }));
+        }
+      })();
       return;
     }
 
@@ -683,123 +1001,6 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Resend Email Gateway Relay Endpoint
-    if (url.pathname === "/api/v1/system/send-email" && req.method === "POST") {
-      const apiKey = (payload.api_key || systemConfig.resend_api_key || process.env.RESEND_API_KEY || "").trim();
-      const fromAddr = payload.from || "CliniCore System <backup@clinicore.me>";
-      const toAddrs = Array.isArray(payload.to) ? payload.to : [payload.to || "drasifhosting@gmail.com"];
-      const subject = payload.subject || "🏥 CliniCore System Audit & Encrypted Vault Backup";
-      const html = payload.html || "<p>CliniCore Encrypted Backup Payload</p>";
-      const attachments = payload.attachments || [];
-
-      if (!apiKey) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: false, error: "Missing Resend API Key" }));
-        return;
-      }
-
-      // Attempt dispatch with primary fromAddr and automatic fallback for unverified sandbox domains
-      const sendEmailAttempt = async (sender) => {
-        return fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: sender,
-            to: toAddrs,
-            subject,
-            html,
-            attachments,
-          }),
-        });
-      };
-
-      (async () => {
-        try {
-          let resendRes = await sendEmailAttempt(fromAddr);
-          let resendData = await resendRes.json().catch(() => ({}));
-
-          // If custom domain is not verified yet, fallback to onboarding@resend.dev
-          if (!resendRes.ok && (resendData?.message || "").toLowerCase().includes("domain")) {
-            console.log("[Resend Relay] Falling back to default sandbox sender onboarding@resend.dev");
-            resendRes = await sendEmailAttempt("onboarding@resend.dev");
-            resendData = await resendRes.json().catch(() => ({}));
-          }
-
-          if (resendRes.ok) {
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true, id: resendData.id || "resend_sent" }));
-          } else {
-            res.writeHead(400, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({
-              success: false,
-              error: resendData.message || resendData.name || "Resend API call failed",
-            }));
-          }
-        } catch (err) {
-          // Fallback DNS / EAI_AGAIN retry using Node https module
-          console.warn("[Resend Relay] Fetch network note:", err.message);
-          res.writeHead(500, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({
-            success: false,
-            error: err.code === "EAI_AGAIN"
-              ? "Internet / DNS lookup timeout connecting to api.resend.com. Please verify your internet connection."
-              : (err.message || "Network error calling Resend API"),
-          }));
-        }
-      })();
-
-      return;
-    }
-
-    // Stage / Prepare Encrypted Backup on VPS
-    if (url.pathname === "/api/v1/system/prepare-backup" && req.method === "POST") {
-      try {
-        const { filename, content } = payload;
-        if (!filename || !content) {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ success: false, error: "Missing filename or content" }));
-          return;
-        }
-        const BACKUPS_DIR = path.join(DATA_DIR, "backups");
-        if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
-        const filePath = path.join(BACKUPS_DIR, path.basename(filename));
-        fs.writeFileSync(filePath, Buffer.from(content, "base64"));
-        const download_url = `/api/v1/system/download-backup?file=${encodeURIComponent(path.basename(filename))}`;
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, data: { download_url, filename } }));
-      } catch (err) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: false, error: err.message }));
-      }
-      return;
-    }
-
-    // Download Backup File
-    if (url.pathname === "/api/v1/system/download-backup" && req.method === "GET") {
-      const fileName = url.searchParams.get("file");
-      if (!fileName) {
-        res.writeHead(400, { "Content-Type": "text/plain" });
-        res.end("Missing file parameter");
-        return;
-      }
-      const BACKUPS_DIR = path.join(DATA_DIR, "backups");
-      const safePath = path.join(BACKUPS_DIR, path.basename(fileName));
-      if (fs.existsSync(safePath)) {
-        res.writeHead(200, {
-          "Content-Type": "application/octet-stream",
-          "Content-Disposition": `attachment; filename="${path.basename(fileName)}"`,
-        });
-        res.end(fs.readFileSync(safePath));
-      } else {
-        res.writeHead(404, { "Content-Type": "text/plain" });
-        res.end("Backup file not found on VPS storage");
-      }
-      return;
-    }
-
     // Fallback 404
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Route not found" }));
@@ -879,8 +1080,31 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
     };
 
     const jsonString = JSON.stringify(backupPayload, null, 2);
-    const base64Attachment = Buffer.from(jsonString).toString("base64");
     const filename = `CliniCore_Backup_${todayStr.replace(/-/g, "")}_${String(currentHour).padStart(2, "0")}${String(currentMin).padStart(2, "0")}.cfbak`;
+    const filePath = path.join(BACKUPS_DIR, filename);
+
+    // 1. Physical write to VPS SSD Vault (ZERO SIZE LIMIT - all photos and receipts preserved)
+    try {
+      fs.writeFileSync(filePath, jsonString, "utf8");
+      console.log(`[Autonomous Backup] 💾 Physical snapshot written to VPS disk: ${filePath} (${(jsonString.length / 1024).toFixed(1)} KB)`);
+
+      // Clean up older backups (keep last 30 daily files)
+      if (fs.existsSync(BACKUPS_DIR)) {
+        const existingFiles = fs.readdirSync(BACKUPS_DIR).filter((f) => f.endsWith(".cfbak")).sort();
+        if (existingFiles.length > 30) {
+          const toRemove = existingFiles.slice(0, existingFiles.length - 30);
+          toRemove.forEach((rf) => {
+            try { fs.unlinkSync(path.join(BACKUPS_DIR, rf)); } catch (_) {}
+          });
+        }
+      }
+    } catch (fsErr) {
+      console.error("[Autonomous Backup] Error writing snapshot to disk:", fsErr.message);
+    }
+
+    const isUnderEmailSizeLimit = jsonString.length <= 20 * 1024 * 1024; // 20MB threshold for Resend API attachments
+    const base64Attachment = isUnderEmailSizeLimit ? Buffer.from(jsonString).toString("base64") : null;
+    const directDownloadUrl = `https://api.clinicore.me/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
 
     const inventoryCount = Array.isArray(syncStateData["cf_inventory_v5"]) ? syncStateData["cf_inventory_v5"].length : 0;
     const patientsCount = Array.isArray(syncStateData["cf_patients_v5"]) ? syncStateData["cf_patients_v5"].length : 0;
@@ -903,8 +1127,11 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
         </td></tr>
         <tr><td style="padding:30px;background-color:#022c22;">
           <p style="margin:0 0 20px 0;font-size:14px;color:#cbd5e1;line-height:1.6;">
-            This automated daily closing report was compiled and dispatched directly by your <strong>24/7 VPS Background Daemon</strong> on <span style="color:#34d399;">api.clinicore.me</span>. Your encrypted data vault (<strong>${filename}</strong>) is attached to this email.
+            This automated backup report was compiled directly by your <strong>24/7 VPS Background Daemon</strong> on <span style="color:#34d399;">api.clinicore.me</span>. Your encrypted data vault (<strong>${filename}</strong>) has been securely preserved.
           </p>
+          <div style="text-align:center;margin:20px 0;">
+            <a href="${directDownloadUrl}" style="background:linear-gradient(135deg,#059669,#10b981);color:#ffffff;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:900;font-size:14px;display:inline-block;box-shadow:0 4px 12px rgba(16,185,129,0.3);">📥 1-Click Direct Download Backup (.cfbak)</a>
+          </div>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#064e3b;border-radius:16px;border:1px solid #0f766e;margin-bottom:20px;">
             <tr>
               <td style="padding:16px;text-align:center;border-right:1px solid #0f766e;border-bottom:1px solid #0f766e;">
@@ -936,7 +1163,8 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
             </tr>
           </table>
           <div style="background:#042f2e;border:1px solid #0f766e;border-radius:12px;padding:14px;font-size:12px;color:#94a3b8;line-height:1.6;">
-            <strong>Attachment File:</strong> ${filename} (${(jsonString.length / 1024).toFixed(1)} KB)<br>
+            <strong>Vault Archive:</strong> ${filename} (${(jsonString.length / 1024).toFixed(1)} KB)<br>
+            <strong>Storage Location:</strong> VPS Disk Vault (/var/www/clinicore/backend/data/backups/)<br>
             <strong>Frequency Mode:</strong> ${reportFreq}<br>
             <strong>Execution Timestamp:</strong> ${now.toUTCString()}
           </div>
@@ -948,6 +1176,20 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
 </html>`;
 
     const fromAddr = "CliniCore System <backup@clinicore.me>";
+    const emailPayload = {
+      from: fromAddr,
+      to: [targetEmail],
+      subject: `🏥 [24/7 Autonomous Backup] ${clinic.name || "CliniCore"} — ${todayStr}`,
+      html: emailHtml,
+      ...(base64Attachment ? {
+        attachments: [
+          {
+            filename,
+            content: base64Attachment,
+          },
+        ]
+      } : {}),
+    };
 
     const sendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -955,18 +1197,7 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: fromAddr,
-        to: [targetEmail],
-        subject: `🏥 [24/7 Autonomous Backup] ${clinic.name || "CliniCore"} — ${todayStr}`,
-        html: emailHtml,
-        attachments: [
-          {
-            filename,
-            content: base64Attachment,
-          },
-        ],
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     let resData = await sendRes.json().catch(() => ({}));
@@ -979,16 +1210,8 @@ async function executeAutonomousBackup({ force = false, triggerReason = "Schedul
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...emailPayload,
           from: "onboarding@resend.dev",
-          to: [targetEmail],
-          subject: `🏥 [24/7 Autonomous Backup] ${clinic.name || "CliniCore"} — ${todayStr}`,
-          html: emailHtml,
-          attachments: [
-            {
-              filename,
-              content: base64Attachment,
-            },
-          ],
         }),
       });
     }

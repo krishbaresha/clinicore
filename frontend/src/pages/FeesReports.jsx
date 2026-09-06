@@ -147,8 +147,13 @@ export default function FeesReports() {
     0
   );
 
-  // Day CashBook Vouchers Inflows and Outflows
+  // Day Cash Inflows from CashBook Vouchers and Wholesale Party Udhaar Repayments
   const dayCashRecTotal = useMemo(() => {
+    if (dayClosingData?.payments_received?.items) {
+      return dayClosingData.payments_received.items
+        .filter((it) => !it.account_name?.includes("OPD Doctor Consultation Fees"))
+        .reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+    }
     return (allCashBook || [])
       .filter(
         (c) =>
@@ -156,24 +161,28 @@ export default function FeesReports() {
           (c.term === "Receive" || c.type === "Receive")
       )
       .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  }, [allCashBook, targetDateStr]);
+  }, [allCashBook, targetDateStr, dayClosingData]);
 
   const dayCashPaidTotal = useMemo(() => {
-    return (allCashBook || [])
+    if (dayClosingData?.payments_paid?.items) {
+      return dayClosingData.payments_paid.total || 0;
+    }
+    const cbPaid = (allCashBook || [])
       .filter(
         (c) =>
           (c.date || c.created_at || "").split("T")[0] === targetDateStr &&
           (c.term === "Paid" || c.type === "Paid")
       )
       .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  }, [allCashBook, targetDateStr]);
+    const exp = (allExpenses || [])
+      .filter((e) => (e.expense_date || e.date || "").split("T")[0] === targetDateStr)
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    return cbPaid + exp;
+  }, [allCashBook, allExpenses, targetDateStr, dayClosingData]);
 
   const totalInflow = dayOpdFees + dayPharmacySales + dayWholesaleSales + dayCashRecTotal;
 
-  const dayExpenses = allExpenses.filter(
-    (e) => (e.expense_date || e.date || "").split("T")[0] === targetDateStr
-  );
-  const totalDayExpenses = dayExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) + dayCashPaidTotal;
+  const totalDayExpenses = dayCashPaidTotal;
 
   const dayPurchases = allPurchases.filter(
     (p) => (p.purchase_date || p.created_at || "").split("T")[0] === targetDateStr
@@ -580,13 +589,23 @@ export default function FeesReports() {
                       No payments paid on this date.
                     </div>
                   ) : (
-                    <div className="max-h-24 overflow-y-auto custom-scrollbar space-y-0.5 pr-0.5 pl-2">
+                    <div className="max-h-28 overflow-y-auto custom-scrollbar space-y-0.5 pr-0.5 pl-2">
                       {dayClosingData?.payments_paid?.items?.map((it, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-[10.5px] text-slate-800">
-                          <span className="truncate max-w-[170px]">
-                            {it.account_name} {it.naration ? `(${it.naration})` : ""}
+                        <div key={idx} className="flex justify-between items-center text-[10.5px] text-slate-800 py-0.5 border-b border-slate-100/60 last:border-0">
+                          <span className="truncate max-w-[210px]" title={`${it.account_name} ${it.voucher_no ? `[${it.voucher_no}]` : ''} ${it.naration ? `(${it.naration})` : ''}`}>
+                            <span className="font-semibold text-slate-900">{it.account_name}</span>
+                            {it.voucher_no && (
+                              <span className="text-[9px] font-mono text-rose-700 bg-rose-50 px-1 py-0.2 rounded border border-rose-200 ml-1">
+                                {it.voucher_no}
+                              </span>
+                            )}
+                            {it.naration && (
+                              <span className="text-slate-500 font-normal text-[9.5px] ml-1">
+                                ({it.naration})
+                              </span>
+                            )}
                           </span>
-                          <span className="font-mono font-medium shrink-0">
+                          <span className="font-mono font-bold shrink-0 text-rose-800">
                             Rs. {Number(it.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                           </span>
                         </div>
@@ -612,13 +631,23 @@ export default function FeesReports() {
                       No cash payments received on this date.
                     </div>
                   ) : (
-                    <div className="max-h-24 overflow-y-auto custom-scrollbar space-y-0.5 pr-0.5 pl-2">
+                    <div className="max-h-28 overflow-y-auto custom-scrollbar space-y-0.5 pr-0.5 pl-2">
                       {dayClosingData?.payments_received?.items?.map((it, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-[10.5px] text-slate-800">
-                          <span className="truncate max-w-[170px]">
-                            {it.account_name} {it.naration ? `(${it.naration})` : ""}
+                        <div key={idx} className="flex justify-between items-center text-[10.5px] text-slate-800 py-0.5 border-b border-slate-100/60 last:border-0">
+                          <span className="truncate max-w-[210px]" title={`${it.account_name} ${it.voucher_no ? `[${it.voucher_no}]` : ''} ${it.naration ? `(${it.naration})` : ''}`}>
+                            <span className="font-semibold text-slate-900">{it.account_name}</span>
+                            {it.voucher_no && (
+                              <span className="text-[9px] font-mono text-teal-700 bg-teal-50 px-1 py-0.2 rounded border border-teal-200 ml-1">
+                                {it.voucher_no}
+                              </span>
+                            )}
+                            {it.naration && (
+                              <span className="text-slate-500 font-normal text-[9.5px] ml-1">
+                                ({it.naration})
+                              </span>
+                            )}
                           </span>
-                          <span className="font-mono font-medium shrink-0">
+                          <span className="font-mono font-bold shrink-0 text-emerald-800">
                             Rs. {Number(it.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                           </span>
                         </div>

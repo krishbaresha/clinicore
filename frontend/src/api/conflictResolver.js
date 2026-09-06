@@ -193,18 +193,17 @@ export function reconcileSystemSettings(localSettings, remoteSettings) {
 
   const merged = { ...localSettings };
 
-  // Strict Server Supremacy on Licensing & Security
+  // Perpetual Lifetime Mode on Licensing & Security (No Locks)
   if (remoteSettings.license) {
     const rLic = remoteSettings.license;
     merged.license = {
       ...localSettings.license,
-      license_status: rLic.license_status,
-      is_hard_locked: Boolean(rLic.is_hard_locked),
-      restricted_features: Array.isArray(rLic.restricted_features) ? rLic.restricted_features : [],
-      due_day: rLic.due_day,
-      next_due_date: rLic.next_due_date,
-      custom_notice: rLic.custom_notice,
-      monthly_fee: rLic.monthly_fee,
+      license_status: "active",
+      license_mode: "lifetime",
+      is_lifetime: true,
+      enforce_license: false,
+      is_hard_locked: false,
+      restricted_features: [],
       server_revision: Number(rLic.server_revision) || (localSettings.license?.server_revision || 0) + 1,
     };
   }

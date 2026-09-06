@@ -523,7 +523,9 @@ export default function MedicalStoreSalesLog() {
       cheque_no: cbPartyChequeNo || undefined,
       account_name: cbPartyAccountName,
       party_id: selectedOpt?.badge === "Party" ? (rawEntity?.id || cbPartyAccountName) : undefined,
+      party_code: selectedOpt?.badge === "Party" ? (rawEntity?.party_code || rawEntity?.code || "") : undefined,
       supplier_id: (selectedOpt?.badge === "Supplier" || selectedOpt?.badge === "Company") ? (rawEntity?.id || cbPartyAccountName) : undefined,
+      supplier_code: (selectedOpt?.badge === "Supplier" || selectedOpt?.badge === "Company") ? (rawEntity?.supplier_code || rawEntity?.code || "") : undefined,
       naration: cbPartyNarration || defaultNarration,
       amount: numAmount,
       cashier: activeCashier,
@@ -567,6 +569,7 @@ export default function MedicalStoreSalesLog() {
     setCbPartyAccountName("");
     setAccountUpdateTrigger((prev) => prev + 1);
     loadAllData();
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   };
 
   // 2. Submit Direct Shop Expense (Kharcha - Chai, Bijli, Rozina — No Account Needed)
@@ -586,6 +589,7 @@ export default function MedicalStoreSalesLog() {
       date: todayStr,
       voucher_no: cbVoucherNo,
       term: "Paid",
+      action_type: "shop_expense",
       account_name: expHead,
       naration: cbExpenseNarration || `Shop Operating Kharcha (${expHead})`,
       amount: numAmount,
@@ -605,6 +609,7 @@ export default function MedicalStoreSalesLog() {
     setCbExpenseAmount("");
     setCbExpenseNarration("");
     loadAllData();
+    try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch {}
   };
 
   const handleCashBookDelete = (entry) => {

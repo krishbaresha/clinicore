@@ -90,13 +90,16 @@ export default function PatientRegistration() {
     if (searchRef.current) searchRef.current.focus();
     const c = dbClinic.get();
     setClinic(c);
-    const docs = dbUsers.getAll().filter((u) => u.role === "doctor");
+    const docs = dbUsers.getDoctors ? dbUsers.getDoctors() : dbUsers.getAll().filter((u) => u.role === "doctor");
     setDoctors(docs);
     if (docs.length > 0) {
-      const defaultDocId = docs[0].id;
-      setSelectedDoctorId(defaultDocId);
-      const autoFee = getDoctorFee(defaultDocId, c, docs);
-      setFeeAmount(String(autoFee));
+      setSelectedDoctorId((prev) => {
+        if (prev && docs.some((d) => d.id === prev)) return prev;
+        const defaultDocId = docs[0].id;
+        const autoFee = getDoctorFee(defaultDocId, c, docs);
+        setFeeAmount(String(autoFee));
+        return defaultDocId;
+      });
     }
     setServices(dbClinicServices.getAll());
 
@@ -106,7 +109,9 @@ export default function PatientRegistration() {
         setSelected(p);
       }
     }
+  }, [location.state?.patientId]);
 
+  useEffect(() => {
     function handlePatientRegKeyDown(e) {
       if (e.key === "F1") {
         e.preventDefault();
@@ -136,7 +141,7 @@ export default function PatientRegistration() {
     return () => {
       window.removeEventListener("keydown", handlePatientRegKeyDown);
     };
-  }, [location.state, showReceipt, showAddForm, results, selectedDoctorId]);
+  }, [showReceipt, showAddForm, results]);
 
   function handleDoctorChange(docId) {
     setSelectedDoctorId(docId);
@@ -276,10 +281,13 @@ function toTitleCase(str) {
       if (!confirmDup) return;
     }
 
-    const assignedDoctor = doctors.find((d) => d.id === selectedDoctorId) || doctors[0] || { id: "user_001", name: "Doctor" };
+    const assignedDoctor = doctors.find((d) => d.id === selectedDoctorId) || doctors[0] || { id: "user_001", name: clinic?.doctor_name || "Doctor" };
+    const docName = assignedDoctor.name || assignedDoctor.full_name || clinic?.doctor_name || "Doctor";
     const newVisit = dbVisits.add({
       patient_id: selected.id,
       doctor_id: selectedDoctorId || assignedDoctor.id,
+      doctor_name: docName,
+      doctor_fee: finalFee,
       visit_type: "consultation",
       fee_amount: finalFee,
     });
@@ -289,7 +297,8 @@ function toTitleCase(str) {
       token: newVisit.token_number,
       token_number: newVisit.token_number,
       patient: selected,
-      doctor: assignedDoctor,
+      doctor: { ...assignedDoctor, name: docName },
+      doctor_name: docName,
       visit: newVisit,
       fee: finalFee,
       fee_amount: finalFee,
@@ -390,7 +399,7 @@ function toTitleCase(str) {
             {/* ── Doctor & Appointment No Center Block ── */}
             <div className="text-center py-2.5 border-b border-slate-900">
               <div className="font-black text-base text-slate-950">
-                {receipt.doctor?.name || "H/Dr Muhammad Asif Khan"}
+                {receipt.doctor?.name || receipt.doctor_name || receipt.visit?.doctor_name || clinic?.doctor_name || "Doctor"}
               </div>
               <div className="font-bold text-sm text-slate-800 mt-0.5">
                 Appointment No
