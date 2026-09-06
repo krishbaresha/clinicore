@@ -58,6 +58,7 @@ import {
   dbPartyLedger,
   dbSupplierLedger,
   dbClinicServices,
+  dbCategories,
   dbAuditLogs,
   dbStockMovements,
   dbMedicineBatches,
@@ -3895,6 +3896,89 @@ async function runTests() {
 
     // Re-seed demo data for remaining tests/clean state
     resetDatabaseToDemoData();
+  });
+
+  // =========================================================================
+  // 🧪 SUITE 47: Dynamic Medicine Categories & Doctor-Isolated Daily Tokens
+  // =========================================================================
+  suite("47. Dynamic Medicine Categories & Doctor-Isolated Daily Tokens Engine", () => {
+    // 1. Category Engine Standard Library Test
+    const allCategories = dbCategories.getAll();
+    assert(Array.isArray(allCategories), "dbCategories.getAll() returns an array");
+    assert(allCategories.length >= 13, "dbCategories.getAll() contains standard pre-populated categories");
+    assert(allCategories.includes("Homeopathic Drops"), "Contains 'Homeopathic Drops'");
+    assert(allCategories.includes("Soaps / Medicated"), "Contains 'Soaps / Medicated'");
+    assert(allCategories.includes("Mother Tinctures (Q)"), "Contains 'Mother Tinctures (Q)'");
+
+    // 2. Add Custom Category Test
+    const newCatName = "Herbal Toothpaste & Dentifrice";
+    const addedCat = dbCategories.add(newCatName);
+    assert(addedCat === newCatName, "dbCategories.add returns normalized category name");
+    assert(dbCategories.getAll().includes(newCatName), "dbCategories.getAll() includes newly added category");
+    assert(dbCategories.getCustomList().includes(newCatName), "dbCategories.getCustomList() contains custom category");
+
+    // 3. Duplicate Category Handling (case-insensitive deduplication)
+    const duplicateAdd = dbCategories.add("herbal toothpaste & dentifrice");
+    assert(duplicateAdd === newCatName, "Duplicate add returns existing category title");
+    const occurrences = dbCategories.getAll().filter((c) => c.toLowerCase() === newCatName.toLowerCase());
+    assert(occurrences.length === 1, "Duplicate add does not create duplicate entries");
+
+    // 4. Delete Custom Category Test
+    const deleteRes = dbCategories.delete(newCatName);
+    assert(deleteRes === true, "dbCategories.delete returns true for custom category");
+    assert(!dbCategories.getCustomList().includes(newCatName), "Custom category removed from custom list");
+
+    // 5. Doctor-Isolated Daily Token Numbering Test
+    // Create test patient
+    const tokenPatient = dbPatients.add({ name: "Token Test Patient", phone: "0321-1234567" });
+    assert(tokenPatient.id, "Token test patient created");
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const docA = "doc_asif_chamber";
+    const docB = "doc_kashif_chamber";
+
+    // Initial tokens for fresh doctors should be 1
+    const nextA1 = dbVisits.nextTokenNumber(docA);
+    const nextB1 = dbVisits.nextTokenNumber(docB);
+    assert(typeof nextA1 === "number" && nextA1 >= 1, "Doctor A nextTokenNumber returns valid integer");
+    assert(typeof nextB1 === "number" && nextB1 >= 1, "Doctor B nextTokenNumber returns valid integer");
+
+    // Add visit for Doctor A with token nextA1
+    const visitA1 = dbVisits.add({
+      patient_id: tokenPatient.id,
+      doctor_id: docA,
+      token_number: nextA1,
+      date: todayStr,
+      status: "waiting",
+    });
+    assert(visitA1.token_number === nextA1, "Doctor A first visit assigned nextA1");
+
+    // Now Doctor A next token must be nextA1 + 1
+    const nextA2 = dbVisits.nextTokenNumber(docA);
+    assert(nextA2 === nextA1 + 1, "Doctor A subsequent nextTokenNumber increments by 1");
+
+    // But Doctor B next token must remain independent (isolated)
+    const nextBStill = dbVisits.nextTokenNumber(docB);
+    assert(nextBStill === nextB1, "Doctor B token sequence is completely isolated from Doctor A");
+
+    // Add visit for Doctor B
+    const visitB1 = dbVisits.add({
+      patient_id: tokenPatient.id,
+      doctor_id: docB,
+      token_number: nextB1,
+      date: todayStr,
+      status: "waiting",
+    });
+    assert(visitB1.token_number === nextB1, "Doctor B visit assigned independent token");
+
+    // Doctor B subsequent token increments
+    const nextB2 = dbVisits.nextTokenNumber(docB);
+    assert(nextB2 === nextB1 + 1, "Doctor B subsequent nextTokenNumber increments independently");
+
+    // 6. User alias equivalence (user_owner vs user_001)
+    const ownerToken1 = dbVisits.nextTokenNumber("user_owner");
+    const user001Token1 = dbVisits.nextTokenNumber("user_001");
+    assert(ownerToken1 === user001Token1, "user_owner and user_001 share token sequence equivalence");
   });
 
   // ----------------------------------------------------

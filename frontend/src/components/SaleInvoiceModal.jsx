@@ -443,7 +443,7 @@ export default function SaleInvoiceModal({
   };
 
   // Handle Token Input Lookup (Retail Patient Queue)
-  const handleTokenInput = (val) => {
+  const handleTokenInput = (val, preferredDoctorId = null) => {
     setSaleForm((prev) => ({ ...prev, token_no: val }));
     if (!val || !val.trim()) return;
     const clean = val.trim().toUpperCase();
@@ -452,12 +452,27 @@ export default function SaleInvoiceModal({
     const num = parseInt(clean.replace(/\D/g, ""), 10);
     const freshVisits = dbVisits?.getTodayAll ? dbVisits.getTodayAll() : (dbVisits?.getAll ? dbVisits.getAll() : []);
     const visitsPool = todayVisits && todayVisits.length > 0 ? todayVisits : freshVisits;
+    const activeDocId = preferredDoctorId || saleForm.attending_doctor_id;
+
+    // First attempt: match token number for the currently selected doctor
     let matchedVisit = visitsPool.find(
       (v) =>
-        String(v.token_number) === clean ||
-        `T-${v.token_number}`.toUpperCase() === clean ||
-        (num && Number(v.token_number) === num)
+        (activeDocId ? (v.doctor_id === activeDocId || (!v.doctor_id && activeDocId === "user_owner")) : false) &&
+        (String(v.token_number) === clean ||
+         `T-${v.token_number}`.toUpperCase() === clean ||
+         (num && Number(v.token_number) === num))
     );
+
+    // Second attempt: match any token number across today's pool
+    if (!matchedVisit) {
+      matchedVisit = visitsPool.find(
+        (v) =>
+          String(v.token_number) === clean ||
+          `T-${v.token_number}`.toUpperCase() === clean ||
+          (num && Number(v.token_number) === num)
+      );
+    }
+
     if (!matchedVisit && freshVisits !== visitsPool) {
       matchedVisit = freshVisits.find(
         (v) =>
@@ -493,7 +508,7 @@ export default function SaleInvoiceModal({
         doctor_fee: String(fee),
       }));
       setIsDoctorFeeIncluded(fee > 0);
-      showToast(`Token Found: ${rawName} • Dr. ${resolvedDocName} (Fee: Rs. ${fee})`);
+      showToast(`Token #${matchedVisit.token_number}: ${rawName} • Dr. ${resolvedDocName} (Fee: Rs. ${fee})`);
       return;
     }
 
@@ -553,13 +568,42 @@ export default function SaleInvoiceModal({
     }
   };
 
-  // Quick Token Picker
-  const selectQuickToken = (tokenKey) => {
+  // Quick Token Picker (supports exact visit object binding for zero doctor token collisions)
+  const selectQuickToken = (tokenKey, visitObj = null) => {
     if (tokenKey === "WALK-IN" || tokenKey === "Walk-in") {
       setTokenModeHandler("manual");
       return;
     }
     setTokenMode("auto");
+    if (visitObj) {
+      const pat = visitObj.patient_id ? dbPatients.getById(visitObj.patient_id) : null;
+      const rawName = visitObj.patient_name || pat?.full_name || pat?.name || "";
+      const docUser = visitObj.doctor_id ? dbUsers.getById(visitObj.doctor_id) : null;
+      const doc = registeredDoctors.find((d) => d.id === visitObj.doctor_id || d.name === visitObj.doctor_name) || docUser;
+      const resolvedDocName = visitObj.doctor_name || doc?.name || doc?.full_name || clinicInfo.doctor_name || "Consultant Doctor";
+      const resolvedDocId = visitObj.doctor_id || doc?.id || (primaryDoc?.id || "");
+      const fee = Number(
+        visitObj.doctor_fee !== undefined && visitObj.doctor_fee !== null && visitObj.doctor_fee !== ""
+          ? visitObj.doctor_fee
+          : visitObj.fee_amount !== undefined && visitObj.fee_amount !== null && visitObj.fee_amount !== ""
+          ? visitObj.fee_amount
+          : doc?.consultation_fee || doc?.fee || clinicInfo.doctor_fee || 0
+      );
+
+      setSaleForm((prev) => ({
+        ...prev,
+        token_no: String(visitObj.token_number || tokenKey),
+        account_name: rawName,
+        visit_id: visitObj.id,
+        patient_id: visitObj.patient_id || "",
+        attending_doctor_id: resolvedDocId,
+        attending_doctor_name: resolvedDocName,
+        doctor_fee: String(fee),
+      }));
+      setIsDoctorFeeIncluded(fee > 0);
+      showToast(`Token #${visitObj.token_number}: ${rawName} • Dr. ${resolvedDocName}`);
+      return;
+    }
     handleTokenInput(tokenKey);
   };
 
@@ -1641,17 +1685,20 @@ export default function SaleInvoiceModal({
                   {/* Quick Token Picker Pills */}
                   <div className="flex items-center gap-1 text-[9px] text-slate-500 font-mono ml-auto">
                     <span className="uppercase font-semibold tracking-wider text-slate-400 hidden sm:inline">Tokens:</span>
-                    {queueTokensList.map((v) => (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => selectQuickToken(String(v.token_number || v.id))}
-                        className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-teal-50 hover:text-teal-800 border border-slate-200 transition cursor-pointer"
-                        title={v.patient_name || "Patient Queue"}
-                      >
-                        T-{v.token_number || v.id} ({v.patient_name ? v.patient_name.split(" ")[0] : "Queue"})
-                      </button>
-                    ))}
+                    {queueTokensList.map((v) => {
+                      const docTag = v.doctor_name ? v.doctor_name.replace(/^(H\/)?Dr\.?\s*/i, "").split(" ")[0] : "";
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => selectQuickToken(String(v.token_number || v.id), v)}
+                          className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-teal-50 hover:text-teal-800 border border-slate-200 transition cursor-pointer"
+                          title={`${v.patient_name || "Patient"} — Dr. ${v.doctor_name || "Consultant"}`}
+                        >
+                          T-{v.token_number || v.id}{docTag ? ` [${docTag}]` : ""} ({v.patient_name ? v.patient_name.split(" ")[0] : "Queue"})
+                        </button>
+                      );
+                    })}
                     <button
                       type="button"
                       onClick={() => selectQuickToken("WALK-IN")}

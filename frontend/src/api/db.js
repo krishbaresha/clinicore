@@ -1460,17 +1460,26 @@ export const dbVisits = {
   getPendingReports: () => {
     return getCollection(KEYS.VISITS).filter((v) => v.status === "completed_reports_pending");
   },
-  nextTokenNumber: () => {
+  nextTokenNumber: (doctorId = null) => {
     const today = getPKTDateStr();
-    const todayVisits = getCollection(KEYS.VISITS).filter(
-      (v) => getPKTDateStr(new Date(v.visit_date)) === today
-    );
+    const todayVisits = getCollection(KEYS.VISITS).filter((v) => {
+      const isToday = getPKTDateStr(new Date(v.visit_date)) === today;
+      if (!isToday) return false;
+      if (!doctorId) return true;
+      const vDoc = v.doctor_id || "user_owner";
+      const targetDoc = doctorId || "user_owner";
+      return (
+        vDoc === targetDoc ||
+        ((vDoc === "user_owner" || vDoc === "user_001") && (targetDoc === "user_owner" || targetDoc === "user_001"))
+      );
+    });
     const maxToken = todayVisits.reduce((max, v) => Math.max(max, v.token_number || 0), 0);
     return maxToken + 1;
   },
   add: (visit) => {
     const visits = getCollection(KEYS.VISITS);
-    const token_number = dbVisits.nextTokenNumber();
+    const targetDocId = visit.doctor_id || "user_owner";
+    const token_number = visit.token_number || dbVisits.nextTokenNumber(targetDocId);
     const activeCashier = typeof window !== "undefined" && typeof window.getActiveCashier === "function" ? window.getActiveCashier() : null;
     const cashierId = visit.cashier_id || visit.active_cashier_id || activeCashier?.id || "user_admin";
     const cashierName = visit.cashier_name || visit.active_cashier_name || activeCashier?.name || "Front Desk";
@@ -1600,7 +1609,7 @@ export const dbVisits = {
       v.id === visitId ? { ...v, status: "skipped_reissued" } : v
     );
     setCollection(KEYS.VISITS, updatedVisits);
-    const token_number = dbVisits.nextTokenNumber();
+    const token_number = dbVisits.nextTokenNumber(originalVisit.doctor_id);
     const newVisit = {
       id: "visit_" + Date.now(),
       patient_id: originalVisit.patient_id,
@@ -3113,8 +3122,22 @@ export const dbAccounts = {
 };
 
 // ---------- Medicine Categories Engine ----------
-// By default empty: categories are user-defined and dynamically discovered from active inventory
-export const DEFAULT_STANDARD_CATEGORIES = [];
+// Standard pharmaceutical and homeopathic categories available out of the box
+export const DEFAULT_STANDARD_CATEGORIES = [
+  "Homeopathic Drops",
+  "Mother Tinctures (Q)",
+  "Dilutions",
+  "Tablets",
+  "Bio-Chemic / Tissue Salts",
+  "Syrups",
+  "Ointments / Creams",
+  "Soaps / Medicated",
+  "Oils / Cosmetics",
+  "Tonics / Supplements",
+  "Capsules",
+  "Injections / Ampoules",
+  "General / Sundries",
+];
 
 export const dbCategories = {
   getAll: () => {
@@ -3151,19 +3174,49 @@ export const dbCategories = {
 
     return result;
   },
+  getCustomList: () => {
+    const saved = getCollection(KEYS.CATEGORIES) || [];
+    return saved.map((c) => (typeof c === "string" ? c : c?.name || "")).filter(Boolean);
+  },
+  getCustomObjects: () => {
+    const saved = getCollection(KEYS.CATEGORIES) || [];
+    return saved.map((c) => (typeof c === "string" ? { id: c, name: c } : c));
+  },
   add: (categoryName) => {
     if (!categoryName || !categoryName.trim()) return false;
     const clean = categoryName.trim();
     const current = getCollection(KEYS.CATEGORIES) || [];
-    const exists = current.some((c) => {
+    const existing = current.find((c) => {
       const n = typeof c === "string" ? c : c?.name;
       return (n || "").toLowerCase().trim() === clean.toLowerCase();
     });
-    if (!exists) {
-      setCollection(KEYS.CATEGORIES, [...current, { id: generateId("cat"), name: clean, created_at: new Date().toISOString() }]);
-      notifyStatusUpdate();
+    if (existing) {
+      return typeof existing === "string" ? existing : existing.name;
     }
+    const standardMatch = DEFAULT_STANDARD_CATEGORIES.find(
+      (s) => s.toLowerCase().trim() === clean.toLowerCase()
+    );
+    if (standardMatch) return standardMatch;
+
+    const newCat = { id: generateId("cat"), name: clean, created_at: new Date().toISOString() };
+    setCollection(KEYS.CATEGORIES, [...current, newCat]);
+    if (typeof dbOutbox !== "undefined" && dbOutbox.enqueue) {
+      dbOutbox.enqueue("categories", newCat, "CREATE", newCat.id);
+    }
+    notifyStatusUpdate();
     return clean;
+  },
+  delete: (categoryName) => {
+    if (!categoryName) return false;
+    const clean = categoryName.trim().toLowerCase();
+    const current = getCollection(KEYS.CATEGORIES) || [];
+    const filtered = current.filter((c) => {
+      const n = typeof c === "string" ? c : c?.name;
+      return (n || "").toLowerCase().trim() !== clean;
+    });
+    setCollection(KEYS.CATEGORIES, filtered);
+    notifyStatusUpdate();
+    return true;
   },
   reset: () => {
     setCollection(KEYS.CATEGORIES, []);

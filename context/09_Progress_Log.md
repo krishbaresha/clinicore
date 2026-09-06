@@ -52,6 +52,21 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 252 — Dynamic Medicine Category Engine, Per-Doctor Isolated Daily Tokens, Admin Panel Stability & v2.5.38 Native Release (In Progress)
+- **Last worked on:**
+  1. **Dynamic Medicine Category Engine & Edit Modal Upgrade:**
+     - Pre-populated `DEFAULT_STANDARD_CATEGORIES` in `db.js` with 13 standard homeopathic & pharmacy categories (Homeopathic Drops, Mother Tinctures, Dilutions, Tablets, Bio-Chemic, Syrups, Ointments, Soaps, Oils, Tonics, Capsules, Injections, General).
+     - Enhanced `dbCategories` with deduplicated merging, custom addition, and deletion.
+     - Upgraded "Edit Medicine Details" modal in `MedicalStoreInventory.jsx` with an interactive `+ New Category` button and inline input with Save & Cancel shortcuts, dynamically registering and selecting new categories on-the-fly.
+  2. **Independent Per-Doctor Daily Token Generation:**
+     - Updated `dbVisits.nextTokenNumber(doctorId)` to calculate daily tokens strictly per doctor, ensuring Dr. Asif gets #1, #2, #3 and Dr. Kashif gets #1, #2, #3 without cross-doctor token skipping.
+     - Enhanced `SaleInvoiceModal.jsx` token lookup to prioritize the selected doctor and displayed doctor tags on quick token pills with direct visit ID binding.
+  3. **Super Admin Panel Bug Fixes & Stability:**
+     - Fixed `activeTab` initialization bug in `DeveloperAdminPanel.jsx` where null URL parameters left the panel blank by providing fallback to `"god_audit"`.
+  4. **Full-Stack Version Bump (v2.5.38) & Desktop Release:**
+     - Aligned version to 2.5.38 across frontend, Tauri config, and backend API.
+     - Pushed git tag `v2.5.38` to trigger GitHub Actions automated desktop installer build.
+
 - **Phase:** Milestone 251 — Universal Cross-Terminal Real-Time Sync, Multi-Device Permanent Factory Reset & VPS Autonomous Backup Vault (Completed)
 - **Last worked on:**
   1. **Universal Cross-Terminal Sync Engine (Desktop <-> Web <-> VPS):**

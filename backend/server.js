@@ -245,10 +245,10 @@ const server = http.createServer((req, res) => {
       });
       res.end(JSON.stringify({
         success: true,
-        version: "2.5.35",
-        build_id: "20260906.7113922",
+        version: "2.5.38",
+        build_id: "20260906.7113938",
         release_channel: "production",
-        changelog: "Real-Time Global Cloud Mutation Sync, Dr. Asif Clinic Logo on All Receipts & Mobile PWA App Fix",
+        changelog: "Dynamic Categories, Per-Doctor Tokens, Ground Zero Wipe & Autonomous Backup Vault",
         min_client_version: "2.4.0",
         download_url: "https://api.clinicore.me/api/v1/system/download-installer"
       }));

@@ -12,6 +12,7 @@ import {
   dbVisits,
   dbPatients,
   dbCashBook,
+  dbCategories,
   dbOutbox,
   getDeviceId,
   exportFullDatabase,
@@ -38,15 +39,19 @@ const DEFAULT_API_URL =
     : "https://api.clinicore.me");
 
 function getApiUrl() {
-  return DEFAULT_API_URL;
+  try {
+    return localStorage.getItem("cf_custom_server_url") || DEFAULT_API_URL;
+  } catch {
+    return DEFAULT_API_URL;
+  }
 }
 
 function getAdminPasscode() {
   try {
     const clinic = dbClinic.get() || {};
-    return clinic.admin_master_passcode || localStorage.getItem("cf_admin_master_passcode") || "7860";
+    return clinic.admin_master_passcode || localStorage.getItem("cf_admin_master_passcode") || "Champion24";
   } catch {
-    return "7860";
+    return "Champion24";
   }
 }
 
@@ -87,7 +92,8 @@ export default function DeveloperAdminPanel() {
       const params = new URLSearchParams(window.location.search);
       if (params.get("tab")) return params.get("tab");
     } catch {}
-  }); // "audits" | "staff" | "apis" | "backups" | "god_audit"
+    return "god_audit";
+  }); // "god_audit" | "audits" | "staff" | "apis" | "backups"
   const [toastMsg, setToastMsg] = useState("");
 
   useEffect(() => {
@@ -270,6 +276,9 @@ export default function DeveloperAdminPanel() {
       max_discount_limit_pct: Number(c.max_discount_limit_pct) || 28,
     };
   });
+
+  const [adminNewCatInput, setAdminNewCatInput] = useState("");
+  const [, setAdminCatTrigger] = useState(0);
 
   const loadData = () => {
     // 1. Hydrate local data INSTANTLY in 0ms to eliminate UI freeze on click
@@ -3026,6 +3035,87 @@ export default function DeveloperAdminPanel() {
                       >
                         Reset Factory Demo Data
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Medicine Categories Master Card */}
+                  <div className="md:col-span-2 bg-white border border-teal-100 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="font-black text-teal-950 text-base flex items-center gap-2">
+                          <span className="material-symbols-outlined text-teal-700">category</span>
+                          Medicine Categories Master &amp; Dynamic Registry
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Manage standard and custom product categories that dynamically populate across POS, Inventory, and Edit Medicine modals.
+                        </p>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-teal-800 bg-teal-50 border border-teal-200 px-3 py-1 rounded-full self-start sm:self-auto">
+                        {dbCategories.getAll().length} Categories
+                      </span>
+                    </div>
+
+                    {/* Add Category Fast Input */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={adminNewCatInput}
+                        onChange={(e) => setAdminNewCatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (adminNewCatInput.trim()) {
+                              const created = dbCategories.add(adminNewCatInput.trim());
+                              setAdminNewCatInput("");
+                              setAdminCatTrigger((v) => v + 1);
+                              showToast(`Category "${created}" added to master list!`);
+                            }
+                          }
+                        }}
+                        placeholder="Enter new category name (e.g. Soaps / Medicated, Eye Drops, Herbal Powders)..."
+                        className="w-full bg-slate-50 border border-teal-200 focus:border-teal-600 focus:bg-white rounded-2xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adminNewCatInput.trim()) {
+                            const created = dbCategories.add(adminNewCatInput.trim());
+                            setAdminNewCatInput("");
+                            setAdminCatTrigger((v) => v + 1);
+                            showToast(`Category "${created}" added to master list!`);
+                          }
+                        }}
+                        className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-2xl shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-base">add</span>
+                        <span>Add Category</span>
+                      </button>
+                    </div>
+
+                    {/* Active Categories Pills */}
+                    <div className="flex flex-wrap gap-2 pt-2 max-h-48 overflow-y-auto p-1">
+                      {dbCategories.getAll().map((cat) => (
+                        <span
+                          key={cat}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold"
+                        >
+                          <span>{cat}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Remove category "${cat}" from master list?`)) {
+                                dbCategories.delete(cat);
+                                setAdminCatTrigger((v) => v + 1);
+                                showToast(`Category "${cat}" removed.`);
+                              }
+                            }}
+                            className="text-slate-400 hover:text-rose-600 cursor-pointer font-black text-xs"
+                            title="Delete category"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>

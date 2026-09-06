@@ -66,6 +66,8 @@ export default function MedicalStoreInventory() {
   // Dynamic Categories from dbCategories & active inventory
   const [customCategoryInput, setCustomCategoryInput] = useState("");
   const [showAddCategoryInput, setShowAddCategoryInput] = useState(false);
+  const [showEditAddCategoryInput, setShowEditAddCategoryInput] = useState(false);
+  const [editCustomCategoryInput, setEditCustomCategoryInput] = useState("");
   const [categoryUpdateTrigger, setCategoryUpdateTrigger] = useState(0);
 
   // Dynamic Companies from dbCompanies & active inventory
@@ -173,6 +175,8 @@ export default function MedicalStoreInventory() {
 
   const openEditFormForItem = (item) => {
     setEditingItem(item);
+    setShowEditAddCategoryInput(false);
+    setEditCustomCategoryInput("");
     const locStocks = item.location_stocks || {};
     const wh1Qty = locStocks.wh_001 ?? item.warehouse_stock ?? 0;
     const wh2Qty = locStocks.wh_002 ?? 0;
@@ -394,7 +398,7 @@ export default function MedicalStoreInventory() {
           medicine_name: item.medicine_name || "",
           product_description: item.product_description || item.generic_name || item.naration || "",
           company_name: item.company_name || "",
-          category: item.category || "Homeopathic Drops",
+          category: item.category || "",
           item_code: item.item_code || "",
           current_stock: curStock,
           new_stock: curStock,
@@ -3886,20 +3890,94 @@ export default function MedicalStoreInventory() {
 
                 {/* Category */}
                 <div className="space-y-1">
-                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
-                    Category
-                  </label>
-                  <select
-                    value={editFormData.category}
-                    onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
-                    onKeyDown={(e) => handleFormKeyDown(e, false, handleSaveEdit)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold text-slate-900"
-                  >
-                    <option value="">-- Select Category (Optional) --</option>
-                    {allCategories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                      Category
+                    </label>
+                    {!showEditAddCategoryInput && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEditAddCategoryInput(true);
+                          setEditCustomCategoryInput("");
+                        }}
+                        className="text-[11px] text-teal-700 hover:text-teal-950 font-bold flex items-center gap-0.5 hover:underline cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-xs">add_circle</span>
+                        <span>+ Add New Category</span>
+                      </button>
+                    )}
+                  </div>
+                  {!showEditAddCategoryInput ? (
+                    <select
+                      value={editFormData.category}
+                      onChange={(e) => {
+                        if (e.target.value === "__ADD_NEW__") {
+                          setShowEditAddCategoryInput(true);
+                          setEditCustomCategoryInput("");
+                        } else {
+                          setEditFormData({ ...editFormData, category: e.target.value });
+                        }
+                      }}
+                      onKeyDown={(e) => handleFormKeyDown(e, false, handleSaveEdit)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs font-bold text-slate-900"
+                    >
+                      <option value="">-- Select Category (Optional) --</option>
+                      {allCategories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                      <option value="__ADD_NEW__" className="text-teal-700 font-bold bg-teal-50">➕ + Add New Category...</option>
+                    </select>
+                  ) : (
+                    <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="e.g. Soaps, Shampoo, Creams..."
+                        value={editCustomCategoryInput}
+                        onChange={(e) => setEditCustomCategoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (editCustomCategoryInput.trim()) {
+                              const created = dbCategories.add(editCustomCategoryInput.trim());
+                              setCategoryUpdateTrigger((v) => v + 1);
+                              setEditFormData((prev) => ({ ...prev, category: created }));
+                              setShowEditAddCategoryInput(false);
+                              setEditCustomCategoryInput("");
+                              triggerToast(`Category "${created}" added and selected!`);
+                            }
+                          } else if (e.key === "Escape") {
+                            setShowEditAddCategoryInput(false);
+                          }
+                        }}
+                        className="w-full border-2 border-teal-500 rounded-xl px-3 py-1.5 text-xs font-bold bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editCustomCategoryInput.trim()) {
+                            const created = dbCategories.add(editCustomCategoryInput.trim());
+                            setCategoryUpdateTrigger((v) => v + 1);
+                            setEditFormData((prev) => ({ ...prev, category: created }));
+                            setShowEditAddCategoryInput(false);
+                            setEditCustomCategoryInput("");
+                            triggerToast(`Category "${created}" added and selected!`);
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shrink-0 cursor-pointer shadow-xs"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowEditAddCategoryInput(false)}
+                        className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs shrink-0 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Item Code */}
