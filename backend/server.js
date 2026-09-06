@@ -391,6 +391,7 @@ const server = http.createServer((req, res) => {
         medicine_batches: "cf_medicine_batches_v1",
         categories: "cf_medicine_categories_v1",
         companies: "cf_medicine_companies_v1",
+        tenants: "cf_tenants_v5",
       };
 
       const mutations = Array.isArray(payload.mutations) ? payload.mutations : [];

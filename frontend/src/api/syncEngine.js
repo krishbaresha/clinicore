@@ -352,6 +352,7 @@ class SyncEngine {
             "cf_services_v5",
             "cf_approvals_v1",
             "cf_transactions_v1",
+            "cf_tenants_v5",
           ];
 
           for (const k of syncKeys) {
