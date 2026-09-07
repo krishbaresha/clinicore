@@ -74,6 +74,12 @@ class SyncEngine {
 
   init() {
     if (typeof window !== "undefined") {
+      // Immediate pull and push on boot for instant cross-device hydration
+      if (this.isOnline) {
+        this.pullLatestCloudState();
+        this.processOutbox();
+      }
+
       window.addEventListener("online", () => {
         this.handleNetworkChange(true);
         this.forceSyncNow();
@@ -437,6 +443,7 @@ class SyncEngine {
           }
           this.lastSyncTime = new Date().toISOString();
           try { localStorage.setItem("cf_last_sync_time", this.lastSyncTime); } catch (_) {}
+          try { window.dispatchEvent(new Event("clinicflow_status_update")); } catch (_) {}
         }
         this.setState(SYNC_FSM_STATES.IDLE);
       } else {
