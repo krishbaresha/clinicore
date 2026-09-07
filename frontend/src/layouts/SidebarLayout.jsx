@@ -132,7 +132,7 @@ const NAV_DEFAULT = [
   { label: "Doctor OPD Queue", icon: "queue", path: "/doctor/queue" },
   { label: "Sale Invoice", icon: "point_of_sale", path: "/store/pos" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
-  { label: "Purchase Invoice ", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Purchase Invoice", icon: "local_shipping", path: "/store/purchases" },
   { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Patients & EMR", icon: "group", path: "/patients" },
