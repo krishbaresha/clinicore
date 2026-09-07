@@ -368,9 +368,10 @@ WantedBy=multi-user.target
 NODE_SERVICE_EOF
 
 systemctl daemon-reload
-systemctl enable clinicore-node-api.service 2>/dev/null || true
+systemctl enable clinicore-api.service 2>/dev/null || true
+systemctl restart clinicore-api.service 2>/dev/null || true
 systemctl restart clinicore-node-api.service 2>/dev/null || true
-echo "  Systemd service 'clinicore-node-api' registered & running."
+echo "  Systemd services restarted."
 
 systemctl restart php8.3-fpm 2>/dev/null || systemctl restart php-fpm 2>/dev/null || echo "  (php-fpm restart skipped)"
 systemctl reload nginx || systemctl restart nginx

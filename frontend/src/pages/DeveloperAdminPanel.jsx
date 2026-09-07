@@ -2890,7 +2890,7 @@ export default function DeveloperAdminPanel() {
                     <div className="flex flex-wrap gap-3 pt-2">
                       <button
                         onClick={async () => {
-                          const passcode = prompt("⚠️ CONFIRM TRANSACTIONAL RESET:\n\nThis will permanently wipe all OPD queue visits, retail POS sales, B2B wholesale bills, GRN purchases, expenses, and cashbook across BOTH the VPS database and local storage!\n\nYour 500+ Item Medicine Catalog, Suppliers, Accounts, and Clinic Profile will remain 100% intact.\n\nEnter Super Admin Master Passcode to confirm:");
+                          const passcode = prompt("⚠️ CONFIRM TRANSACTIONAL RESET:\n\nThis will permanently wipe all OPD queue visits, retail POS sales, B2B wholesale bills, GRN purchases, expenses, and cashbook across BOTH the VPS database and local storage!\n\nYour 500+ Item Medicine Catalog, Suppliers, Accounts, and Clinic Profile will remain 100% intact.\n\nEnter Super Admin Master Passcode (7860 or Champion24) to confirm:");
                           if (!passcode) return;
 
                           try {
@@ -2901,7 +2901,7 @@ export default function DeveloperAdminPanel() {
                                 "Content-Type": "application/json",
                                 "Authorization": `Bearer ${localStorage.getItem("cf_vps_jwt") || ""}`
                               },
-                              body: JSON.stringify({ passcode, wipe_catalog: false }),
+                              body: JSON.stringify({ passcode: passcode.trim(), wipe_catalog: false }),
                             });
 
                             const data = await res.json().catch(() => null);
@@ -2927,7 +2927,7 @@ export default function DeveloperAdminPanel() {
 
                       <button
                         onClick={async () => {
-                          const passcode = prompt("🚨 100% GROUND ZERO FACTORY RESET (COMPLETE WIPE):\n\nThis will permanently DELETE ALL DATA (including all test medicines/inventory, wholesale parties, suppliers, accounts, queue patients, and sales bills) across BOTH the VPS database and local storage!\n\nUse this to clean out ALL test data before uploading the Doctor's real production stock.\n\nEnter Super Admin Master Passcode to confirm:");
+                          const passcode = prompt("🚨 100% GROUND ZERO FACTORY RESET (COMPLETE WIPE):\n\nThis will permanently DELETE ALL DATA (including all test medicines/inventory, wholesale parties, suppliers, accounts, queue patients, and sales bills) across BOTH the VPS database and local storage!\n\nUse this to clean out ALL test data before uploading the Doctor's real production stock.\n\nEnter Super Admin Master Passcode (7860 or Champion24) to confirm:");
                           if (!passcode) return;
 
                           try {
@@ -2938,7 +2938,7 @@ export default function DeveloperAdminPanel() {
                                 "Content-Type": "application/json",
                                 "Authorization": `Bearer ${localStorage.getItem("cf_vps_jwt") || ""}`
                               },
-                              body: JSON.stringify({ passcode, wipe_catalog: true }),
+                              body: JSON.stringify({ passcode: passcode.trim(), wipe_catalog: true }),
                             });
 
                             const data = await res.json().catch(() => null);

@@ -218,13 +218,13 @@ class SyncEngine {
 
   startBackgroundPoller() {
     if (this.pollInterval) clearInterval(this.pollInterval);
-    // Poll every 25 seconds
+    // Poll every 4 seconds for responsive multi-tab / incognito sync
     this.pollInterval = setInterval(() => {
-      if (this.isOnline && typeof document !== "undefined" && document.visibilityState === "visible") {
+      if (this.isOnline) {
         this.pullLatestCloudState();
         this.processOutbox();
       }
-    }, 25000);
+    }, 4000);
 
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
     // Send heartbeat every 30 seconds
@@ -232,12 +232,12 @@ class SyncEngine {
       this.sendDeviceHeartbeat();
     }, 30000);
 
-    // Initial check after 1.5 seconds
+    // Initial check after 300ms
     setTimeout(() => {
       this.pullLatestCloudState();
       this.processOutbox();
       this.sendDeviceHeartbeat();
-    }, 1500);
+    }, 300);
   }
 
   // --------------------------------------------------------------------------

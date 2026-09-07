@@ -103,7 +103,7 @@ const PHARMACIST_NAV = [
 const WAREHOUSE_NAV = [
   { label: "Dashboard", icon: "dashboard", path: "/dashboard" },
   { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
-  { label: "Company Purchases (GRN)", icon: "add_business", path: "/store/purchases" },
+  { label: "Purchase Invoice", icon: "add_business", path: "/store/purchases" },
   { label: "Store Counter Inventory", icon: "inventory_2", path: "/store" },
 ];
 
@@ -166,7 +166,7 @@ export default function SidebarLayout({ children }) {
     if (saved !== null) return saved === "true";
     return typeof window !== "undefined" ? window.innerWidth >= 1200 : true;
   });
-  
+
   // Mobile Slide-over Drawer State
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -350,7 +350,7 @@ export default function SidebarLayout({ children }) {
           triggerReason = "Daily 8:00 PM Evening Shift Closure";
         }
       }
- else if (frequency === "every_12h") {
+      else if (frequency === "every_12h") {
         const intervalMs = 12 * 60 * 60 * 1000;
         if (nowMs - lastBackupMs >= intervalMs) {
           shouldTrigger = true;
@@ -425,8 +425,8 @@ export default function SidebarLayout({ children }) {
           (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost")
             ? window.location.origin
             : typeof window !== "undefined" && window.location.hostname === "localhost"
-            ? "http://127.0.0.1:5000"
-            : "https://clinicore.me");
+              ? "http://127.0.0.1:5000"
+              : "https://clinicore.me");
 
         // 1. Stage backup on server to create authoritative 1-click download link
         let downloadUrl = `${apiUrl}/api/v1/system/download-backup?file=${encodeURIComponent(filename)}`;
@@ -495,7 +495,7 @@ export default function SidebarLayout({ children }) {
           try {
             localStorage.setItem("cf_last_daily_report_date", todayDateStr);
             localStorage.setItem("cf_last_triggered_frequency", frequency);
-          } catch {}
+          } catch { }
         } else {
           console.warn("[AutoBackup] Resend Dispatch Response Error:", emailRes.error);
           addAutomationLog("failed", triggerReason, `Resend Error: ${emailRes.error}`);
@@ -642,17 +642,15 @@ export default function SidebarLayout({ children }) {
                 end={item.path === "/store" || item.end}
                 onClick={onItemClick}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 min-h-[44px] px-3.5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer ${
-                    isActive
-                      ? "bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-sm shadow-teal-700/20 font-bold"
-                      : "text-slate-600 hover:bg-teal-50/80 hover:text-teal-950 font-medium"
+                  `flex items-center gap-3 min-h-[44px] px-3.5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer ${isActive
+                    ? "bg-gradient-to-r from-teal-700 to-teal-600 text-white shadow-sm shadow-teal-700/20 font-bold"
+                    : "text-slate-600 hover:bg-teal-50/80 hover:text-teal-950 font-medium"
                   } ${!isFullWidth ? "justify-center px-0" : ""}`
                 }
                 title={!isFullWidth ? displayLabel : undefined}
               >
-                <span className={`flex-shrink-0 flex items-center justify-center ${
-                  !isFullWidth ? "w-6 h-6" : "w-5 h-5"
-                }`}>
+                <span className={`flex-shrink-0 flex items-center justify-center ${!isFullWidth ? "w-6 h-6" : "w-5 h-5"
+                  }`}>
                   {getNavIcon(item.icon, !isFullWidth ? "w-6 h-6" : "w-5 h-5")}
                 </span>
 
@@ -676,7 +674,7 @@ export default function SidebarLayout({ children }) {
 
   return (
     <div className="h-screen w-screen max-h-screen max-w-full overflow-hidden bg-[#f8fafc] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
-      
+
       {/* ── Top Header Bar (Translucent Glassmorphic Engine - Fixed Topbar) ── */}
       <header className="border-b border-slate-200/70 bg-white z-40 shadow-xs h-13 sm:h-14 lg:h-16 compact-low-res-header flex items-center px-3 sm:px-6 justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -950,15 +948,14 @@ export default function SidebarLayout({ children }) {
           return (
             <main
               id="main-content-viewport"
-              className={`flex-1 h-full min-h-0 min-w-0 ${
-                isPOSCockpit
+              className={`flex-1 h-full min-h-0 min-w-0 ${isPOSCockpit
                   ? "overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6 max-w-none pb-16 md:pb-6 flex flex-col"
                   : isFeesPage
-                  ? "overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-3.5 max-w-none pb-16 md:pb-3"
-                  : isFullWidthPage
-                  ? "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-none pb-24 md:pb-12"
-                  : "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-7xl pb-24 md:pb-12"
-              } mx-auto w-full custom-scrollbar focus:outline-none`}
+                    ? "overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-3.5 max-w-none pb-16 md:pb-3"
+                    : isFullWidthPage
+                      ? "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-none pb-24 md:pb-12"
+                      : "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-7xl pb-24 md:pb-12"
+                } mx-auto w-full custom-scrollbar focus:outline-none`}
               tabIndex={-1}
             >
               {isPOSCockpit ? (
@@ -985,10 +982,9 @@ export default function SidebarLayout({ children }) {
                 to={item.path}
                 end={item.path === "/store" || item.end}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all min-h-[44px] ${
-                    isActive
-                      ? "text-teal-800 font-black bg-teal-50/80"
-                      : "text-slate-500 font-semibold hover:text-teal-700"
+                  `flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all min-h-[44px] ${isActive
+                    ? "text-teal-800 font-black bg-teal-50/80"
+                    : "text-slate-500 font-semibold hover:text-teal-700"
                   }`
                 }
               >
