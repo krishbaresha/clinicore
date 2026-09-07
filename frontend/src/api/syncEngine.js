@@ -23,15 +23,12 @@ import { getEffectiveVersion } from "../utils/version.js";
 export function getActiveServerUrl() {
   try {
     if (typeof localStorage !== "undefined") {
-      const custom = localStorage.getItem("cf_custom_api_url");
+      const custom = localStorage.getItem("cf_custom_api_url") || localStorage.getItem("cf_custom_server_url");
       if (custom && custom.trim()) return custom.trim().replace(/\/$/, "");
     }
   } catch (_) {}
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL.replace(/\/$/, "");
-  }
-  if (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1") && !window.location.hostname.includes("tauri")) {
-    return window.location.origin.replace(/\/$/, "");
   }
   return "https://api.clinicore.me";
 }

@@ -33,17 +33,16 @@ import { APP_CONFIG, compareSemver, getEffectiveVersion, setEffectiveVersion } f
 import GodAdminPanel from "./GodAdminPanel.jsx";
 
 const DEFAULT_API_URL =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof window !== "undefined" && window.location.origin && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")
-    ? window.location.origin
-    : "https://api.clinicore.me");
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "https://api.clinicore.me";
 
 function getApiUrl() {
   try {
-    return localStorage.getItem("cf_custom_server_url") || DEFAULT_API_URL;
+    const custom = localStorage.getItem("cf_custom_server_url") || localStorage.getItem("cf_custom_api_url");
+    if (custom && custom.trim()) return custom.trim().replace(/\/$/, "");
   } catch {
     return DEFAULT_API_URL;
   }
+  return DEFAULT_API_URL;
 }
 
 function getAdminPasscode() {
