@@ -41,6 +41,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://api.clinicore.me/api/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

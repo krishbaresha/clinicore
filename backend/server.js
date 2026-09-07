@@ -184,9 +184,11 @@ saveJson(USERS_FILE, users);
 
 const server = http.createServer((req, res) => {
   // CORS Headers
+  const reqHeaders = req.headers["access-control-request-headers"] || "*";
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Idempotency-Key");
+  res.setHeader("Access-Control-Allow-Headers", reqHeaders === "*" ? "*" : `${reqHeaders}, Content-Type, Authorization, Cache-Control, Pragma, X-Idempotency-Key`);
+  res.setHeader("Access-Control-Max-Age", "86400");
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);

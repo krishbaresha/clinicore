@@ -314,7 +314,7 @@ class SyncEngine {
     try {
       const res = await fetch(`${serverUrl}/api/v1/system/sync-state?_t=${Date.now()}`, {
         method: "GET",
-        headers: { "Cache-Control": "no-cache" },
+        mode: "cors",
       }).catch(() => null);
 
       if (res && res.ok) {
