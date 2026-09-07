@@ -210,18 +210,18 @@ class SyncEngine {
     if (this.pushTimer) clearTimeout(this.pushTimer);
     this.pushTimer = setTimeout(() => {
       this.processOutbox();
-    }, 300);
+    }, 100);
   }
 
   startBackgroundPoller() {
     if (this.pollInterval) clearInterval(this.pollInterval);
-    // Poll every 4 seconds for responsive multi-tab / incognito sync
+    // Poll every 2 seconds for ultra-fast multi-tab / incognito real-time sync
     this.pollInterval = setInterval(() => {
       if (this.isOnline) {
         this.pullLatestCloudState();
         this.processOutbox();
       }
-    }, 4000);
+    }, 2000);
 
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
     // Send heartbeat every 30 seconds

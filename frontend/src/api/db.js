@@ -581,6 +581,23 @@ export function factoryResetAllData({ preserveCatalog = false } = {}) {
       localStorage.setItem("cf_last_reset_epoch", String(resetEpoch));
     } catch (_) {}
 
+    // Reset sequence counters so new bills/invoices/tokens restart from 1001/00001
+    const seqPrefixes = ["INV", "POS", "WS", "WHO", "B2B", "SAL", "S", "W", "PUR", "GRN", "P", "REC", "PAY", "CBK", "TRF"];
+    seqPrefixes.forEach((pfx) => storageDriver.removeItem(`cf_seq_${pfx}`));
+
+    // Purge browser CacheStorage (cached photos/reports/files)
+    try {
+      if (typeof window !== "undefined" && "caches" in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((k) => {
+            if (k.includes("clinicflow") || k.includes("clinicore")) {
+              caches.delete(k);
+            }
+          });
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     // Notify all tabs
     if (_syncChannel) {
       try { _syncChannel.postMessage({ type: "FACTORY_RESET", preserveCatalog, epoch: resetEpoch }); } catch {}

@@ -52,6 +52,16 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 256 — Ultra-Fast 2s Real-Time Sync & Complete WebApp Zero-Residual Data Wipe Engine (Completed)
+- **Last worked on:**
+  1. **Ultra-Fast Real-Time Multi-Tab / Incognito Cloud Sync:**
+     - Reduced background sync poller interval from 4s to 2s in `syncEngine.js`.
+     - Decreased outbox push debounce from 300ms to 100ms for instant transmission upon any local mutation.
+  2. **Comprehensive WebApp Data Wipe & Residual Cache Purge:**
+     - Enhanced `factoryResetAllData` in `db.js` to wipe all sequential invoice & token counters (`cf_seq_*`), ensuring new bills start clean from `1001`.
+     - Integrated automatic browser `CacheStorage` purging for cached patient photos, receipts, and offline assets.
+     - Updated backend `/api/v1/system/factory-reset` to clean out stale backup files from the VPS disk vault (`backend/data/backups/`) and reset connected devices.
+     - Added `7860` passcode support to `/api/v1/system/purge-data`.
 - **Phase:** Milestone 255 — Multi-Terminal Incognito Real-Time Cloud Sync Boot & VPS Storage Health Verification (Completed)
 - **Last worked on:**
   1. **VPS Cloud Storage & File System Verification:**
