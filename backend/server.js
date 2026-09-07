@@ -182,7 +182,66 @@ let devices = loadJson(DEVICES_FILE, []);
 users = users.filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
 saveJson(USERS_FILE, users);
 
+// ─────────────────────────────────────────────────────────
+// SSE (Server-Sent Events) Real-Time Live Broadcast Engine
+// Defined BEFORE http.createServer so the SSE handler can
+// reference sseClients and broadcastInvalidate directly.
+// ─────────────────────────────────────────────────────────
+const sseClients = new Set();
+
+function broadcastInvalidate(meta = {}) {
+  if (sseClients.size === 0) return;
+  const eventPayload = JSON.stringify({
+    type: "invalidate",
+    ts: Date.now(),
+    ...meta,
+  });
+  const msg = `data: ${eventPayload}\n\n`;
+  const dead = [];
+  for (const client of sseClients) {
+    try {
+      client.write(msg);
+    } catch (_) {
+      dead.push(client);
+    }
+  }
+  dead.forEach((c) => sseClients.delete(c));
+  if (sseClients.size > 0) {
+    console.log(`[SSE Live] 📡 Broadcast invalidate → ${sseClients.size} client(s)`);
+  }
+}
+
 const server = http.createServer((req, res) => {
+  // ── SSE Real-Time Live Broadcast Endpoint ──
+  // Clients connect here to receive instant invalidation events
+  if (req.url === "/api/v1/sync/live" || req.url?.startsWith("/api/v1/sync/live?")) {
+    const reqHeaders = req.headers["access-control-request-headers"] || "*";
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", reqHeaders === "*" ? "*" : `${reqHeaders}, Content-Type, Cache-Control`);
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no"); // Disable Nginx buffering for SSE
+    res.writeHead(200);
+    res.write("data: {\"type\":\"connected\"}\n\n"); // Initial handshake
+
+    // Register this client in the SSE pool
+    sseClients.add(res);
+    console.log(`[SSE Live] Client connected. Total listeners: ${sseClients.size}`);
+
+    // Heartbeat ping every 25s to keep connection alive through proxies/firewalls
+    const pingTimer = setInterval(() => {
+      try { res.write(":ping\n\n"); } catch (_) { clearInterval(pingTimer); sseClients.delete(res); }
+    }, 25000);
+
+    // Cleanup on disconnect
+    req.on("close", () => {
+      clearInterval(pingTimer);
+      sseClients.delete(res);
+      console.log(`[SSE Live] Client disconnected. Total listeners: ${sseClients.size}`);
+    });
+    return;
+  }
   // CORS Headers
   const reqHeaders = req.headers["access-control-request-headers"] || "*";
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -466,6 +525,8 @@ const server = http.createServer((req, res) => {
       }
 
       saveJson(STATE_FILE, syncStateData);
+      // ── Broadcast real-time invalidation to all SSE listeners ──
+      broadcastInvalidate({ source: "sync_push", count: mutations.length });
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ success: true, data: { results } }));
       return;
@@ -517,6 +578,8 @@ const server = http.createServer((req, res) => {
           users = payload["cf_users_v5"].filter((u) => u.email !== "admin@clinicore.pk" && u.id !== "user_admin");
           saveJson(USERS_FILE, users);
         }
+        // Broadcast to all SSE listeners after bulk state push
+        broadcastInvalidate({ source: "state_push" });
       }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ success: true }));
@@ -1249,7 +1312,8 @@ setInterval(() => {
 }, 60 * 1000);
 
 server.listen(PORT, () => {
-  console.log(`[ClinicFlow Node.js Backend] Running on http://localhost:${PORT}`);
+  console.log(`[ClinicFlow Node.js Backend v2.6.0] 🚀 Running on http://localhost:${PORT}`);
+  console.log(`[SSE Live] Real-time broadcast engine active on /api/v1/sync/live`);
   // Initial startup verification check after 5 seconds
   setTimeout(() => {
     executeAutonomousBackup({ force: false, triggerReason: "Service Startup Check" });

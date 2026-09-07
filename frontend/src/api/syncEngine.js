@@ -66,6 +66,10 @@ class SyncEngine {
     this.subscribers = new Set();
     this.lastSyncTime = typeof localStorage !== "undefined" ? localStorage.getItem("cf_last_sync_time") || null : null;
     this.serverTimeOffsetMs = 0;
+    // SSE Live Bridge state
+    this._sseSource = null;
+    this._sseConnecting = false;
+    this._sseReconnectTimer = null;
     this.init();
   }
 
@@ -80,14 +84,20 @@ class SyncEngine {
       window.addEventListener("online", () => {
         this.handleNetworkChange(true);
         this.forceSyncNow();
+        this.connectSSE(); // Reconnect SSE on network recovery
       });
       window.addEventListener("offline", () => {
         this.handleNetworkChange(false);
+        this._closeSse(); // Drop SSE on offline
       });
       window.addEventListener("focus", () => {
         if (this.isOnline) {
           this.pullLatestCloudState();
           this.processOutbox();
+          // Reconnect SSE if dropped while tab was in background
+          if (!this._sseSource || this._sseSource.readyState === 2) {
+            this.connectSSE();
+          }
         }
       });
       window.addEventListener("clinicflow_outbox_change", () => {
@@ -101,6 +111,8 @@ class SyncEngine {
         }
       });
       this.startBackgroundPoller();
+      // Start SSE Live Bridge for real-time cross-device sync
+      this.connectSSE();
     }
   }
 
@@ -220,13 +232,14 @@ class SyncEngine {
 
   startBackgroundPoller() {
     if (this.pollInterval) clearInterval(this.pollInterval);
-    // Poll every 2 seconds for ultra-fast multi-tab / incognito real-time sync
+    // Poll every 8 seconds as a safety net — SSE handles real-time updates
+    // This fallback catches edge cases where SSE drops silently
     this.pollInterval = setInterval(() => {
       if (this.isOnline) {
         this.pullLatestCloudState();
         this.processOutbox();
       }
-    }, 2000);
+    }, 8000);
 
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
     // Send heartbeat every 30 seconds
@@ -240,6 +253,72 @@ class SyncEngine {
       this.processOutbox();
       this.sendDeviceHeartbeat();
     }, 300);
+  }
+
+  // --------------------------------------------------------------------------
+  // SSE Live Bridge — Real-Time Cross-Device Invalidation
+  // --------------------------------------------------------------------------
+
+  connectSSE() {
+    if (!this.isOnline || typeof EventSource === "undefined") return;
+    if (this._sseConnecting) return;
+    if (this._sseSource && this._sseSource.readyState !== 2) return; // Already open or connecting
+
+    this._sseConnecting = true;
+    const serverUrl = getActiveServerUrl();
+    const sseUrl = `${serverUrl}/api/v1/sync/live`;
+
+    try {
+      const source = new EventSource(sseUrl);
+      this._sseSource = source;
+
+      source.onopen = () => {
+        this._sseConnecting = false;
+        console.log("[SSE Live] ⚡ Real-time bridge connected to", sseUrl);
+      };
+
+      source.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "invalidate") {
+            // Another device pushed data — pull latest state immediately
+            console.log("[SSE Live] 📡 Received invalidate signal. Pulling fresh state...");
+            this.pullLatestCloudState();
+            this.processOutbox();
+          }
+          // 'connected' type is just the handshake, ignore
+        } catch (_) {}
+      };
+
+      source.onerror = () => {
+        this._sseConnecting = false;
+        source.close();
+        this._sseSource = null;
+        // Reconnect after 5 seconds on error/drop
+        if (this.isOnline) {
+          if (this._sseReconnectTimer) clearTimeout(this._sseReconnectTimer);
+          this._sseReconnectTimer = setTimeout(() => {
+            this._sseConnecting = false;
+            this.connectSSE();
+          }, 5000);
+        }
+      };
+    } catch (err) {
+      this._sseConnecting = false;
+      console.warn("[SSE Live] Failed to initialize EventSource:", err.message);
+    }
+  }
+
+  _closeSse() {
+    if (this._sseSource) {
+      try { this._sseSource.close(); } catch (_) {}
+      this._sseSource = null;
+    }
+    this._sseConnecting = false;
+    if (this._sseReconnectTimer) {
+      clearTimeout(this._sseReconnectTimer);
+      this._sseReconnectTimer = null;
+    }
   }
 
   // --------------------------------------------------------------------------
