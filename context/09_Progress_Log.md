@@ -52,6 +52,48 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 259 — Exhaustive Deep Audit & Universal Multi-Device Cloud Sync Enqueue Standard across all Collections (Completed)
+- **Last worked on:**
+  1. **Exhaustive AST Codebase Audit:**
+     - Performed automated AST & lexical traversal across all 37 database modules in `frontend/src/api/db.js` to detect every single mutation and `setCollection` call.
+  2. **Connected 100% of Mutations to Real-Time Cloud Synchronization:**
+     - `dbTransactions`: Added `dbOutbox.enqueue("transactions", ...)` on `recordTransaction` and `reverseTransaction`.
+     - `dbApprovals`: Added `dbOutbox.enqueue("approvals", ...)` on `createRequest`, `reviewRequest`, `executeApprovedPayload`, and `cancelRequest`.
+     - `dbMedicineBatches`: Added `dbOutbox.enqueue("batches", ...)` on `addBatch`, `update`, and `bulkUpdate`.
+     - `dbParties`: Added `dbOutbox.enqueue("party_ledger", ...)` on `recordPayment`.
+     - `dbSuppliers`: Added `dbOutbox.enqueue("suppliers", ...)` on `updateBalance`, `recordPayment`, and `delete`.
+     - `dbPatientLedger`: Added `dbOutbox.enqueue("patient_ledger", ...)` on `addCredit` and `receivePayment`.
+     - `dbSupplierLedger`: Added `dbOutbox.enqueue("supplier_ledger", ...)` on `addTransaction`.
+     - `dbDocuments`: Added `dbOutbox.enqueue("documents", ...)` on `add` and `delete`.
+     - `dbTenants`: Added `dbOutbox.enqueue("tenants", ...)` on `add`, `update`, and `delete`.
+     - `dbPurchases`: Added `dbOutbox.enqueue("purchases", ...)` on `deletePurchase`.
+     - `dbStockTransfers`: Added `dbOutbox.enqueue("stock_transfers", ...)` on `transfer`, `dispatchTransfer`, and `receiveTransfer`.
+     - `dbUsers`: Added `dbOutbox.enqueue("users", ...)` on `updateDoctorStatus`, `setPrincipalDoctor`, and `handoverDoctorQueue` (`visits`).
+     - `dbCategories`: Added `dbOutbox.enqueue("categories", ...)` on `delete` and cloud push on `reset`.
+     - `dbDatabaseManagement`: Added `clinicflow_push_collection` on `purgeEntity` and `resetDatabase`.
+  3. **Verification Pipeline:**
+     - 762/762 Master Unit Tests passing (100%).
+     - 0 AST / Hook / Identifier errors across 76 source files.
+     - 0 Secret leaks across 987 files.
+     - Clean Vite production bundle compiled.
+
+- **Phase:** Milestone 258 — Universal Real-Time Cross-Device Sync Engine Parity & Bulk Ingestion Server Push (Completed)
+- **Last worked on:**
+  1. **Root Cause Analysis & Fix: Patient Queue "Mark Done" Cross-Device Sync:**
+     - Identified that `dbVisits.complete()`, `dbVisits.skip()`, `dbVisits.addReports()`, and `dbVisits.reissueLateToken()` in `db.js` only updated local `localStorage` without calling `dbOutbox.enqueue()`.
+     - Added authoritative `dbOutbox.enqueue("visits", updatedRecord, "UPDATE", id)` and stamped `updated_at: new Date().toISOString()` across all visit completion and queue state change handlers.
+     - Enhanced `syncEngine.js` pull merger to compare `completed_at` alongside `updated_at`/`created_at`, ensuring completed visits immediately reflect on phones and other browser sessions.
+  2. **Root Cause Analysis & Fix: Bulk Inventory Ingestion Server Push:**
+     - Identified that `dbInventory.bulkImport()` and `dbInventory.bulkImportFromAccess()` in `db.js` wrote directly to `setCollection(KEYS.INVENTORY)` without pushing to cloud.
+     - Added `pushFullCollectionState(key, data)` to `SyncEngine` in `syncEngine.js` and wired `clinicflow_push_collection` event listener in `db.js` so bulk imports immediately push the full updated catalog to VPS `/api/v1/system/sync-state`.
+  3. **Complete Inventory Location & Transfer Outbox Binding:**
+     - Added `dbOutbox.enqueue("inventory", ...)` mutations across `setStockForLocation`, `deductStockFromLocation`, `transferBetweenLocations`, `deductStock`, `addStock`, and `bulkDeductStock`.
+  4. **Verification & Audit:**
+     - Passed `scan_secrets.mjs` (0 secrets).
+     - Passed `scan_imports_and_hooks.mjs` (0 errors across 76 files).
+     - Passed full test suite `npm test` (762/762 passed).
+     - Passed Vite production build `npm run build` (clean 12.7s build).
+
 - **Phase:** Milestone 257 — Neat Clean Company & Product Dropdowns, Mnemonic Smart Item Codes & Purchase Invoice Renaming (Completed)
 - **Last worked on:**
   1. **Neat & Clean Company Dropdown (`SupplierPurchases.jsx`):**

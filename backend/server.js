@@ -391,6 +391,7 @@ const server = http.createServer((req, res) => {
         STOCK_MOVEMENT: "cf_stock_movements_v1",
         shift_closings: "cf_shift_closings_v5",
         patient_ledger: "cf_patient_ledger_v5",
+        party_ledger: "cf_party_ledger_v5",
         supplier_ledger: "cf_supplier_ledger_v6",
         documents: "cf_documents_v5",
         users: "cf_users_v5",
@@ -405,6 +406,8 @@ const server = http.createServer((req, res) => {
         categories: "cf_medicine_categories_v1",
         companies: "cf_medicine_companies_v1",
         tenants: "cf_tenants_v5",
+        approvals: "cf_approvals_v1",
+        transactions: "cf_transactions_v1",
       };
 
       const mutations = Array.isArray(payload.mutations) ? payload.mutations : [];

@@ -95,6 +95,11 @@ class SyncEngine {
           this.schedulePush();
         }
       });
+      window.addEventListener("clinicflow_push_collection", (e) => {
+        if (e?.detail?.key && e?.detail?.data && this.isOnline) {
+          this.pushFullCollectionState(e.detail.key, e.detail.data);
+        }
+      });
       this.startBackgroundPoller();
     }
   }
@@ -349,6 +354,7 @@ class SyncEngine {
             "cf_stock_movements_v1",
             "cf_shift_closings_v5",
             "cf_patient_ledger_v5",
+            "cf_party_ledger_v5",
             "cf_supplier_ledger_v6",
             "cf_documents_v5",
             "cf_users_v5",
@@ -422,8 +428,8 @@ class SyncEngine {
                         localMap.set(serverItem.id, serverItem);
                       } else {
                         const existing = localMap.get(serverItem.id);
-                        const sTime = new Date(serverItem.updated_at || serverItem.created_at || 0).getTime();
-                        const lTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+                        const sTime = new Date(serverItem.updated_at || serverItem.completed_at || serverItem.created_at || 0).getTime();
+                        const lTime = new Date(existing.updated_at || existing.completed_at || existing.created_at || 0).getTime();
                         if (sTime >= lTime) {
                           localMap.set(serverItem.id, { ...existing, ...serverItem });
                         }
@@ -504,6 +510,19 @@ class SyncEngine {
     const remaining = allOutbox.filter((m) => m.status !== "dead_letter");
     storageDriver.setItem(KEYS.OUTBOX, JSON.stringify(remaining));
     this.notify();
+  }
+
+  async pushFullCollectionState(key, data) {
+    if (!this.isOnline || !key || !data) return;
+    try {
+      const serverUrl = getActiveServerUrl();
+      await fetch(`${serverUrl}/api/v1/system/sync-state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: data }),
+        cache: "no-store",
+      }).catch(() => null);
+    } catch (_) {}
   }
 
   async forceSyncNow() {
