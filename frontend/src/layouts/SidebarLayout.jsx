@@ -132,7 +132,7 @@ const NAV_DEFAULT = [
   { label: "Doctor OPD Queue", icon: "queue", path: "/doctor/queue" },
   { label: "Sale Invoice", icon: "point_of_sale", path: "/store/pos" },
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
-  { label: "Purchases (GRN)", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Purchase Invoice ", icon: "local_shipping", path: "/store/purchases" },
   { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
   { label: "Patients & EMR", icon: "group", path: "/patients" },
@@ -949,12 +949,12 @@ export default function SidebarLayout({ children }) {
             <main
               id="main-content-viewport"
               className={`flex-1 h-full min-h-0 min-w-0 ${isPOSCockpit
-                  ? "overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6 max-w-none pb-16 md:pb-6 flex flex-col"
-                  : isFeesPage
-                    ? "overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-3.5 max-w-none pb-16 md:pb-3"
-                    : isFullWidthPage
-                      ? "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-none pb-24 md:pb-12"
-                      : "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-7xl pb-24 md:pb-12"
+                ? "overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6 max-w-none pb-16 md:pb-6 flex flex-col"
+                : isFeesPage
+                  ? "overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-3.5 max-w-none pb-16 md:pb-3"
+                  : isFullWidthPage
+                    ? "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-none pb-24 md:pb-12"
+                    : "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-7xl pb-24 md:pb-12"
                 } mx-auto w-full custom-scrollbar focus:outline-none`}
               tabIndex={-1}
             >
