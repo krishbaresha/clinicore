@@ -413,7 +413,7 @@ const server = http.createServer((req, res) => {
         try {
           const entity = m.entity || "";
           const targetKey = ENTITY_TO_KEY[entity] || entity;
-          const action = (m.action || "CREATE").toUpperCase();
+          const action = (m.action || m.operation || "CREATE").toUpperCase();
           const targetId = m.entity_id || m.payload?.id;
           const data = m.payload;
 

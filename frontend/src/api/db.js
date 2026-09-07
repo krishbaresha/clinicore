@@ -7523,6 +7523,7 @@ export const dbOutbox = {
       entity: entityName,
       entity_id: entityId || payload?.id || "",
       operation: operation.toUpperCase(),
+      action: operation.toUpperCase(),
       action_type: actionTypeOrEntity, // Backwards compatibility
       payload,
       status: "pending", // "pending" | "sending" | "confirmed" | "failed" | "conflict" | "dead_letter"
