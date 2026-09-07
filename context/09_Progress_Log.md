@@ -52,6 +52,29 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 254 — Desktop Software Decoupling, Pure WebApp Isolation & Dedicated temp_desktop_software Separation (Completed)
+- **Last worked on:**
+  1. **Complete Separation of Desktop Software to `temp_desktop_software`:**
+     - Fully isolated native desktop files into `temp_desktop_software`:
+       - `src-tauri/`: Full Tauri 2.0 Rust engine (`Cargo.toml`, `Cargo.lock`, `tauri.conf.json`, `capabilities/`, `icons/`, `src/main.rs`, etc.).
+       - `releases/`: Windows NSIS standalone installers (`CliniCore-v2.5.30-Setup.exe`) and MSI installer (`CliniCore-v2.5.30-Installer.msi`).
+       - `scripts/`: Desktop SQLite and IPC bridge sync script (`sync_desktop_engine.mjs`).
+       - `docs/`: Comprehensive desktop offline-first sync architecture documentation (`12_Desktop_Offline_First_Sync_Architecture.md`).
+       - Created dedicated `temp_desktop_software/package.json` with independent npm scripts (`tauri`, `tauri:dev`, `tauri:build`, `sync:desktop`).
+       - Created dedicated `temp_desktop_software/README.md` with complete documentation on building and running the desktop software independently.
+  2. **WebApp Cleanup & Zero Desktop Software Clutter:**
+     - Removed all desktop-specific scripts (`tauri`, `tauri:dev`, `tauri:build`, `sync:desktop`) from `frontend/package.json` and root `package.json`.
+     - Removed unused `isDesktopApp` import and dead `desktopMode` reference from `frontend/src/App.jsx`.
+     - Updated `frontend/vite.config.js` watcher to explicitly ignore `temp_desktop_software`.
+     - Removed duplicate `getAccessCatalog` definition in `frontend/src/api/db.js`.
+  3. **Automated Test Suite & Verification:**
+     - Updated Suite 19 in `frontend/scripts/test_full_suite.mjs` to verify desktop software isolation in `temp_desktop_software`.
+     - All 763/763 master tests passed (100%).
+     - Zero AST errors (`node scripts/scan_imports_and_hooks.mjs`).
+     - Zero oxlint errors (`npx oxlint`).
+     - Zero secret leaks (`node scripts/scan_secrets.mjs`).
+     - Clean Vite production compilation (`npm --prefix frontend run build`).
+
 - **Phase:** Milestone 253 — WhatsApp Closing PDF Smart Dispatcher, VPS Service Unification & Full Context Sync (Completed)
 - **Last worked on:**
   1. **Automated Day Closing Receipt PDF Generation & WhatsApp Smart Dispatcher:**

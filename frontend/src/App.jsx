@@ -117,8 +117,6 @@ function AdminProtectedLayout({ children }) {
   );
 }
 
-import { isDesktopApp } from "./utils/desktop.js";
-
 const GodAdminPanel          = lazyWithRetry(() => import("./pages/GodAdminPanel.jsx"));
 
 import { canAccessRoutePath, getDefaultRouteForRole } from "./config/permissions.js";
@@ -145,8 +143,6 @@ function RoleProtectedRoute({ allowedRoles, targetPath, children }) {
 }
 
 function AppRoutes() {
-  const desktopMode = isDesktopApp();
-
   return (
     <Suspense fallback={<PageLoadingFallback />}>
       <Routes>

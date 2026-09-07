@@ -154,7 +154,6 @@ import { GLOBAL_NAV_SHORTCUTS } from "../src/hooks/useGlobalKeyboardNav.js";
 import { syncEngine, SYNC_FSM_STATES } from "../src/api/syncEngine.js";
 import { performance } from "perf_hooks";
 
-import { runDesktopSync } from "./sync_desktop_engine.mjs";
 import fs from "fs";
 import path from "path";
 
@@ -1021,14 +1020,14 @@ async function runTests() {
   });
 
   // =========================================================================
-  // SUITE 19: Desktop Engine Automated Sync & PWA Offline Verification
+  // SUITE 19: Desktop Software Isolation & PWA Offline Verification
   // =========================================================================
-  await suite("19. Desktop Engine Automated Sync & PWA Offline Verification", async () => {
-    // 1. Run automated desktop engine synchronization
-    const syncRes = runDesktopSync();
-    assert(syncRes.success === true, "Desktop sync executed successfully with zero schema drift");
-    assert(syncRes.entitiesVerified >= 19, `All ${syncRes.entitiesVerified} core entities verified in SQLite DDL`);
-    assert(syncRes.fieldsVerified >= 11, `All ${syncRes.fieldsVerified} DrCreate schema fields verified in SQLite DDL`);
+  await suite("19. Desktop Software Isolation & PWA Offline Verification", async () => {
+    // 1. Verify desktop software is cleanly separated from frontend
+    const frontendTauri = path.resolve("./frontend/src-tauri");
+    const localTauri = path.resolve("./src-tauri");
+    assert(!fs.existsSync(frontendTauri) && !fs.existsSync(localTauri), "Zero desktop software/Tauri clutter in frontend repository");
+    assert(!fs.existsSync(path.resolve("./releases")) && !fs.existsSync(path.resolve("./frontend/releases")), "Zero desktop binary releases in frontend repository");
 
     // 2. Verify PWA Manifest exists and contains required attributes
     const manifestPath = fs.existsSync(path.resolve("./public/manifest.json")) ? path.resolve("./public/manifest.json") : path.resolve("./frontend/public/manifest.json");

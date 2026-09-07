@@ -2573,16 +2573,6 @@ export const dbInventory = {
     setCollection(KEYS.INVENTORY, updated);
     return { success: true, count: itemsToImport.length, total: updated.length };
   },
-
-  /** Direct synchronous catalog loader for lightning-fast autocomplete */
-  getAccessCatalog: async () => {
-    try {
-      const module = await import("../assets/legacy_access_inventory.json");
-      return Array.isArray(module.default) ? module.default : (Array.isArray(module) ? module : []);
-    } catch {
-      return [];
-    }
-  },
 };
 
 /** Generate Sample CSV Template for Bulk Inventory Upload with Full 14 Columns Schema */

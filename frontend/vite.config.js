@@ -171,7 +171,7 @@ export default defineConfig(({ command }) => ({
       'Cache-Control': 'no-store, no-cache, must-revalidate',
     },
     watch: {
-      ignored: ['**/src-tauri/**', '**/target/**', '**/.git/**'],
+      ignored: ['**/temp_desktop_software/**', '**/src-tauri/**', '**/target/**', '**/.git/**'],
     },
     proxy: {
       '/api/v1/system/send-email': {
