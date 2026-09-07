@@ -1,6 +1,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { initDB, dbPatients } from "./api/db.js";
+import { syncEngine } from "./api/syncEngine.js";
 import { waitForDiskCache } from "./api/storageDriver.js";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
@@ -212,6 +213,18 @@ export default function App() {
         ]);
         initDB();
 
+        // Cloud-First Boot Hydration: Pull authoritative state from VPS before displaying screens
+        if (typeof navigator !== "undefined" && navigator.onLine) {
+          try {
+            await Promise.race([
+              syncEngine.pullLatestCloudState(),
+              new Promise((resolve) => setTimeout(resolve, 1500)),
+            ]);
+          } catch (syncErr) {
+            console.warn("Cloud-First boot hydration non-blocking warning:", syncErr);
+          }
+        }
+
         if (mounted) setStorageReady(true);
 
         try {
@@ -227,10 +240,10 @@ export default function App() {
     }
     setupStorage();
 
-    // Global fail-safe timeout (1.5s max) to guarantee app unblocks on all mobile browsers
+    // Global fail-safe timeout (2.5s max) to guarantee app unblocks on all mobile browsers
     const fallbackTimer = setTimeout(() => {
       if (mounted) setStorageReady(true);
-    }, 1500);
+    }, 2500);
 
     return () => {
       mounted = false;
