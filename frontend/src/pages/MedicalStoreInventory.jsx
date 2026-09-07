@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { verifyAdminPasscode } from "../api/auth.js";
 import { getInventory, addInventoryItem, bulkImportInventory } from "../api/store.js";
-import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, dbCategories, dbCompanies, dbAuditLogs, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV } from "../api/db.js";
+import { dbClinic, dbSuppliers, dbWarehouses, dbInventory, dbCategories, dbCompanies, dbAuditLogs, formatStockBreakdown, exportInventoryTemplateCSV, parseInventoryCSV, generateSmartItemCode } from "../api/db.js";
 import { formatCurrency, downloadCSV, normalizeDateForInput } from "../utils/formatters.js";
 import { printInventoryListReceipt, printProductPricingListReceipt, printBlindStockAuditSheet } from "../utils/thermalPrinter.js";
 import ProductMovementModal from "../components/ProductMovementModal.jsx";
@@ -774,15 +774,29 @@ export default function MedicalStoreInventory() {
     setQuickForm((prev) => {
       const next = { ...prev, [name]: value };
 
-      // Case A: User selected Company Name from dropdown -> Auto-fill item_code
+      // Case A: User typed Product Name -> Smart Item Code auto-generation if item_code is blank or previously auto-generated
+      if (name === "medicine_name") {
+        if (!prev.item_code || prev.item_code === generateSmartItemCode(prev.medicine_name, prev.company_name)) {
+          const smartCode = generateSmartItemCode(value, prev.company_name);
+          if (smartCode) {
+            next.item_code = smartCode;
+          }
+        }
+      }
+
+      // Case B: User selected Company Name from dropdown -> Auto-fill company code or prefix
       if (name === "company_name") {
         const found = allCompanyOptions.find((c) => c.name.toLowerCase() === value.toLowerCase().trim());
         if (found) {
           next.item_code = found.code;
         }
+        if (prev.medicine_name && (!next.item_code || prev.item_code === generateSmartItemCode(prev.medicine_name, prev.company_name))) {
+          const smart = generateSmartItemCode(prev.medicine_name, value);
+          if (smart) next.item_code = smart;
+        }
       }
 
-      // Case B: User typed or changed Product Code (item_code) -> Auto-fill company_name!
+      // Case C: User typed or changed Product Code (item_code) -> Auto-fill company_name!
       if (name === "item_code") {
         const found = findCompanyByCode(value);
         if (found) {
@@ -820,6 +834,7 @@ export default function MedicalStoreInventory() {
     const totalBase = storeStock + godownStock;
     const desc = quickForm.product_description?.trim() || "";
     const packingVal = quickForm.packing?.trim() || "";
+    const smartCode = (quickForm.item_code || "").trim() || generateSmartItemCode(quickForm.medicine_name, quickForm.company_name) || extractCompanyCode(quickForm.company_name);
 
     const payload = {
       medicine_name: quickForm.medicine_name.trim(),
@@ -831,7 +846,7 @@ export default function MedicalStoreInventory() {
       strip_label: packingVal || "Bottle",
       box_label: "Pack",
       company_name: (quickForm.company_name || "").trim(),
-      item_code: (quickForm.item_code || "").trim() || extractCompanyCode(quickForm.company_name),
+      item_code: smartCode,
       category: quickForm.category || "",
       has_multi_unit: false,
       strips_per_box: 1,
@@ -1558,14 +1573,15 @@ export default function MedicalStoreInventory() {
               {/* Row 2: Product Code, Brand & Category */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-3">
-                  <label htmlFor="quick_item_code" className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
-                    Company Code
+                  <label htmlFor="quick_item_code" className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>Item / Product Code</span>
+                    <span className="text-[10px] text-teal-700 font-bold font-mono">Auto</span>
                   </label>
                   <input
                     id="quick_item_code"
                     name="item_code"
                     type="text"
-                    placeholder="e.g. BM, MKT, PB, SCH"
+                    placeholder="e.g. ARN-30, MKT-01"
                     value={quickForm.item_code}
                     onChange={handleQuickChange}
                     onKeyDown={(e) => handleFormKeyDown(e)}

@@ -21,6 +21,7 @@ function ExpandableCombobox({
   addNewLabel = "+ New",
   required = false,
   className = "",
+  cleanMode = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -165,13 +166,13 @@ function ExpandableCombobox({
         <span className={`truncate ${selectedOpt ? "text-gray-900 font-black" : "text-gray-400 font-medium"}`}>
           {selectedOpt ? (
             <span className="flex items-center gap-1.5 truncate">
-              {selectedOpt.badge && (
+              {!cleanMode && selectedOpt.badge && (
                 <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-800">
                   {selectedOpt.badge}
                 </span>
               )}
               <span className="truncate">{selectedOpt.label}</span>
-              {selectedOpt.sublabel && (
+              {!cleanMode && selectedOpt.sublabel && (
                 <span className="text-gray-400 text-[10px] font-normal truncate">({selectedOpt.sublabel})</span>
               )}
             </span>
@@ -247,7 +248,7 @@ function ExpandableCombobox({
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      {opt.badge && (
+                      {!cleanMode && opt.badge && (
                         <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black ${
                           isHighlighted || isSelected ? "bg-emerald-800 text-white" : "bg-emerald-100 text-emerald-800"
                         }`}>
@@ -255,7 +256,7 @@ function ExpandableCombobox({
                         </span>
                       )}
                       <span className="truncate">{opt.label}</span>
-                      {opt.sublabel && (
+                      {!cleanMode && opt.sublabel && (
                         <span className={`text-[10px] font-medium truncate ${isHighlighted || isSelected ? "text-emerald-200" : "text-gray-400"}`}>
                           {opt.sublabel}
                         </span>
@@ -542,8 +543,8 @@ export default function SupplierPurchases() {
         code: code,
         supplier_code: code,
         city: city,
-        sublabel: `${code ? `[Code: ${code}] ` : ""}${city ? `${city} • ` : ""}Pharma Company / Brand${due > 0 ? ` • Due: Rs. ${due.toLocaleString()}` : ""}`,
-        badge: `🏢 ${code}`,
+        sublabel: "",
+        badge: "",
         raw: d,
         type: "company",
         balance_due: due,
@@ -562,8 +563,8 @@ export default function SupplierPurchases() {
         code: code,
         supplier_code: code,
         city: "",
-        sublabel: `${code ? `[Code: ${code}] ` : ""}Inventory Brand / Manufacturer`,
-        badge: `🏢 ${code}`,
+        sublabel: "",
+        badge: "",
         raw: inv,
         type: "company",
         balance_due: 0,
@@ -592,8 +593,8 @@ export default function SupplierPurchases() {
           code: b.code,
           supplier_code: b.code,
           city: b.city,
-          sublabel: `[Code: ${b.code}] ${b.city} • Pharma Company`,
-          badge: `🏢 ${b.code}`,
+          sublabel: "",
+          badge: "",
           raw: b,
           type: "company",
           balance_due: 0,
@@ -764,8 +765,8 @@ export default function SupplierPurchases() {
     return filteredGrnInventory.map((inv) => ({
       id: inv.id,
       label: inv.medicine_name,
-      sublabel: `Cost: Rs. ${inv.cost_price_per_box || inv.cost_price || 0} · Godown: ${inv.warehouse_stock || 0}${inv.batch_no ? ` · Bat: ${inv.batch_no}` : ""}`,
-      badge: inv.item_code ? `${inv.company_code ? `${inv.company_code} • ` : ""}${inv.item_code}` : (inv.company_name || inv.category || "MED"),
+      sublabel: "",
+      badge: "",
       raw: inv,
     }));
   }, [filteredGrnInventory]);
@@ -1650,6 +1651,7 @@ export default function SupplierPurchases() {
                     placeholder={accountSelectorMode === "company" ? "Select Pharma Company..." : "Select Supplier / Vendor..."}
                     searchPlaceholder={accountSelectorMode === "company" ? "Search Companies..." : "Search Suppliers..."}
                     required={true}
+                    cleanMode={true}
                   />
                 </div>
                 {/* Payment Mode */}
@@ -1738,6 +1740,7 @@ export default function SupplierPurchases() {
                     placeholder="Search product..."
                     searchPlaceholder="Type medicine name..."
                     required={true}
+                    cleanMode={true}
                   />
                 </div>
                 {/* Batch # */}

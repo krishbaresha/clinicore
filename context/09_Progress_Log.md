@@ -52,6 +52,27 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 257 — Neat Clean Company & Product Dropdowns, Mnemonic Smart Item Codes & Purchase Invoice Renaming (Completed)
+- **Last worked on:**
+  1. **Neat & Clean Company Dropdown (`SupplierPurchases.jsx`):**
+     - Completely stripped out badges, codes, and sublabel clutter (`🏢 BLS`, `[Code: BLS] Lahore...`) from the company selection options list.
+     - Enabled `cleanMode` in `ExpandableCombobox` ensuring only the pure company name is displayed in both trigger box and dropdown list.
+     - Enhanced `handleSupplierCodeChange` to instantly and cleanly select the matching company whenever a user enters/types a company code.
+  2. **Clean Product Selection Dropdown (`SupplierPurchases.jsx`):**
+     - When a company is selected, products are strictly filtered for that company.
+     - Removed all badges, cost/godown notes, and company prefixes from product options in the dropdown list, displaying only the pure, unobstructed product name (`medicine_name`).
+  3. **Intelligent Mnemonic Auto-Generated Item Codes (`db.js`, `MedicalStoreInventory.jsx`):**
+     - Implemented `generateSmartItemCode(productName, companyName)` taking significant word initials, syllables, and potencies (e.g. "Arnica Montana 30" -> "ARN-MON-30" or "ARN-30").
+     - Integrated real-time smart item code auto-fill during single-product registration and quick-entry in `MedicalStoreInventory.jsx`.
+     - Integrated smart code auto-fallback for bulk CSV/Excel imports whenever item code is blank.
+  4. **Sidebar Navigation & i18n Menu Renaming:**
+     - Updated sidebar menu label from "Company Purchases (GRN)" / "Purchases & Inward" to "Purchase Invoice" in `SidebarLayout.jsx`, `en.json`, and `ur.json`.
+  5. **Verification & Audit:**
+     - Passed `scan_secrets.mjs` (0 secrets).
+     - Passed `scan_imports_and_hooks.mjs` (0 errors across 76 files).
+     - Passed full test suite `npm test` (762/762 passed).
+     - Passed Vite production build `npm run build`.
+
 - **Phase:** Milestone 256 — Ultra-Fast 2s Real-Time Sync & Complete WebApp Zero-Residual Data Wipe Engine (Completed)
 - **Last worked on:**
   1. **Ultra-Fast Real-Time Multi-Tab / Incognito Cloud Sync:**

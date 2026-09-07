@@ -2762,6 +2762,70 @@ export function normalizeDateForInput(val) {
   return "";
 }
 
+/**
+ * Generates an intelligent, memorable mnemonic item code from product name & company name.
+ * e.g. "Arnica Montana 30" -> "ARN-30" or "ARN-MON-30"
+ * Takes significant word initials/prefixes so users can easily recall them.
+ */
+export function generateSmartItemCode(productName = "", companyName = "") {
+  const cleanProd = String(productName || "")
+    .trim()
+    .replace(/[\[\(\{].*?[\]\)\}]/g, "") // remove bracketed company names if present
+    .replace(/[^\w\s\.\-\/]/g, " ")
+    .trim();
+
+  if (!cleanProd) return "";
+
+  // Split into tokens
+  const tokens = cleanProd.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return "";
+
+  const mnemonicParts = [];
+
+  // Inspect tokens for potent numbers (e.g. 30, 200, 1M, 6X, 10M, 100ML, 500MG, 10MG)
+  const numbersAndPotencies = [];
+  const words = [];
+
+  tokens.forEach((t) => {
+    if (/^(\d+[a-zA-Z]*|[a-zA-Z]*\d+)$/.test(t) || /^(cm|1m|10m|50m|q|mother|\d+x|\d+c)$/i.test(t)) {
+      numbersAndPotencies.push(t.toUpperCase());
+    } else {
+      words.push(t);
+    }
+  });
+
+  if (words.length === 1) {
+    const w = words[0].replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    if (w.length <= 4) {
+      mnemonicParts.push(w);
+    } else {
+      mnemonicParts.push(w.substring(0, 4));
+    }
+  } else if (words.length === 2) {
+    const w1 = words[0].replace(/[^a-zA-Z0-9]/g, "").toUpperCase().substring(0, 3);
+    const w2 = words[1].replace(/[^a-zA-Z0-9]/g, "").toUpperCase().substring(0, 3);
+    mnemonicParts.push(`${w1}-${w2}`);
+  } else if (words.length >= 3) {
+    const w1 = words[0].replace(/[^a-zA-Z0-9]/g, "").toUpperCase().substring(0, 3);
+    const w2 = words[1].replace(/[^a-zA-Z0-9]/g, "").toUpperCase().substring(0, 3);
+    const w3 = words[2].replace(/[^a-zA-Z0-9]/g, "").toUpperCase().substring(0, 3);
+    mnemonicParts.push(`${w1}-${w2}-${w3}`);
+  }
+
+  if (numbersAndPotencies.length > 0) {
+    mnemonicParts.push(numbersAndPotencies.join("-"));
+  }
+
+  let finalCode = mnemonicParts.filter(Boolean).join("-").replace(/--+/g, "-");
+
+  // If very short or empty, fallback to clean alphanumeric
+  if (!finalCode || finalCode.length < 2) {
+    finalCode = cleanProd.replace(/[^a-zA-Z0-9]/g, "").substring(0, 6).toUpperCase();
+  }
+
+  return finalCode.toUpperCase();
+}
+
 /** Parse, Sanitize, Clean, and Validate Inventory CSV File Content with Smart Auto-Sort & Categorization */
 export function parseInventoryCSV(csvInput) {
   if (!csvInput) return [];
@@ -2864,8 +2928,8 @@ export function parseInventoryCSV(csvInput) {
     const company = rawComp ? (rawComp.length <= 5 ? rawComp.toUpperCase() : (rawComp === rawComp.toUpperCase() && /[A-Z]/.test(rawComp) ? toTitleCaseClean(rawComp) : rawComp)) : "";
     const companyCode = rawCompCode || (company ? (company.length <= 4 ? company.toUpperCase() : company.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase()) : "");
     
-    // Strict Rule: If item_code is not present in file, leave it strictly blank ""
-    const itemCode = rawItemCode;
+    // Smart Mnemonic Item Code: If item_code is present, use it; otherwise auto-generate from medicine name & company
+    const itemCode = rawItemCode || generateSmartItemCode(cleanName, company);
     
     const purchasePrice = costIdx !== -1 && cells[costIdx] !== "" && cells[costIdx] !== null && !isNaN(Number(cells[costIdx])) ? parseFloat(cells[costIdx]) : 0;
     const salePrice = saleIdx !== -1 && cells[saleIdx] !== "" && cells[saleIdx] !== null && !isNaN(Number(cells[saleIdx])) ? parseFloat(cells[saleIdx]) : (purchasePrice > 0 ? purchasePrice : 0);
@@ -8382,13 +8446,15 @@ export function bulkImportInventoryWithGodowns(csvText) {
         (item.company_name || "").toLowerCase().trim() === company.toLowerCase().trim()
     );
 
+    const effectiveItemCode = companyCode || generateSmartItemCode(name, company);
+
     if (existing) {
       dbInventory.update(existing.id, {
         medicine_name: name,
         description: desc || existing.description,
         unit_label: packing || existing.unit_label,
         company_name: company,
-        item_code: companyCode || existing.item_code,
+        item_code: existing.item_code || effectiveItemCode,
         cost_price: costPrice || existing.cost_price,
         cost_price_per_box: costPrice || existing.cost_price_per_box,
         unit_sale_price: retailPrice || existing.unit_sale_price,
@@ -8406,7 +8472,7 @@ export function bulkImportInventoryWithGodowns(csvText) {
         description: desc,
         unit_label: packing,
         company_name: company,
-        item_code: companyCode,
+        item_code: effectiveItemCode,
         cost_price: costPrice,
         cost_price_per_box: costPrice,
         unit_sale_price: retailPrice,

@@ -84,7 +84,7 @@ const CASHIER_NAV = [
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
   { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
-  { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Purchase Invoice", icon: "local_shipping", path: "/store/purchases" },
   { label: "Patients Directory", icon: "group", path: "/patients" },
   { label: "Fees & Day Closing", icon: "payments", path: "/fees" },
 ];
@@ -96,7 +96,7 @@ const PHARMACIST_NAV = [
   { label: "Sales Log & Returns", icon: "receipt_long", path: "/store/sales" },
   { label: "Wholesale B2B & Parties", icon: "warehouse", path: "/store/warehouse" },
   { label: "Store Inventory", icon: "inventory_2", path: "/store" },
-  { label: "Purchases & Inward", icon: "local_shipping", path: "/store/purchases" },
+  { label: "Purchase Invoice", icon: "local_shipping", path: "/store/purchases" },
 ];
 
 // 4. Warehouse & Wholesale Distribution Portal
