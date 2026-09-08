@@ -52,6 +52,16 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 261 — Developer Admin Panel Mobile Responsive Overhaul & Doctor/Staff Master Access Dual View (Completed)
+- **Last worked on:**
+  1. **Top Navbar Header Responsive Polish (`DeveloperAdminPanel.jsx`):**
+     - Optimized the Super Admin top header for small viewports (<640px) with icon-only action buttons, 40px touch targets, and non-wrapping titles to prevent overlapping elements.
+  2. **Doctor & Staff Master Access Directory Adaptive Dual View (`DeveloperAdminPanel.jsx`):**
+     - Implemented a mobile card layout (`block md:hidden`) for smartphones displaying staff credentials, badges (Owner, Role), assigned godown scope, consultation fee, one-tap financials toggle, and 40-44px touch-friendly action buttons (Make Primary, Change PIN, Edit, Delete).
+     - Enhanced the tablet/desktop table view (`hidden md:block`) with `.table-scroll-wrapper` and `.custom-scrollbar` with `min-w-[700px]` to eliminate horizontal page clipping.
+  3. **Add/Edit Staff & PIN Reset Modal Mobile Optimization (`DeveloperAdminPanel.jsx`):**
+     - Upgraded modals with `max-h-[90dvh]`, responsive vertical scrolling, and stacked mobile action buttons for effortless tapping.
+
 - **Phase:** Milestone 260 — Universal Mobile Responsive Viewport, Screen-Fitted Layout, iOS Safe Areas & Scoped Scrollbar Engine (Completed)
 - **Last worked on:**
   1. **Dynamic Viewport Height & Mobile Root Locking (`index.css`, `SidebarLayout.jsx`):**

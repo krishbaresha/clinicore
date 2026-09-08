@@ -1499,8 +1499,8 @@ export default function DeveloperAdminPanel() {
       )}
 
       {/* Top Navbar */}
-      <header className="border-b border-teal-100 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs h-16 flex items-center px-3 sm:px-6 justify-between flex-shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+      <header className="border-b border-teal-100 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs h-16 flex items-center px-2.5 sm:px-6 justify-between flex-shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
           {/* Sidebar Toggle Button */}
           <button
             onClick={() => {
@@ -1524,18 +1524,18 @@ export default function DeveloperAdminPanel() {
             className="h-8 sm:h-10 w-8 sm:w-10 object-contain rounded-xl drop-shadow-xs shrink-0"
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-nowrap">
               <h1 className="font-black text-xs sm:text-base text-teal-950 tracking-tight truncate">Admin Command Center</h1>
-              <span className="px-1.5 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
+              <span className="hidden xs:inline-block px-1.5 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
                 MASTER SUITE
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
               <span className="hidden md:inline">Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}</strong></span>
               <button
                 type="button"
                 onClick={() => handleCheckForUpdates(true)}
-                className="px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 text-[10px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 text-[9.5px] sm:text-[10px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
                 title="Click to check for software updates"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1551,7 +1551,7 @@ export default function DeveloperAdminPanel() {
           <button
             type="button"
             onClick={() => handleCheckForUpdates(true)}
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border border-emerald-500/30"
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-emerald-500/30"
             title="Check for Latest CliniCore Software Updates"
           >
             <span className={`material-symbols-outlined text-base ${isCheckingUpdates ? "animate-spin" : ""}`}>
@@ -1562,7 +1562,7 @@ export default function DeveloperAdminPanel() {
 
           <Link
             to="/login"
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-bold bg-white hover:bg-teal-50 text-teal-950 border border-teal-200 transition-colors flex items-center gap-1.5 shadow-xs"
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-bold bg-white hover:bg-teal-50 text-teal-950 border border-teal-200 transition-colors flex items-center justify-center gap-1.5 shadow-xs"
             title="Go to Staff & Cashier Login"
           >
             <span className="material-symbols-outlined text-base text-teal-700">badge</span>
@@ -1571,7 +1571,7 @@ export default function DeveloperAdminPanel() {
 
           <Link
             to="/dashboard"
-            className="p-1.5 sm:px-3.5 sm:py-1.5 rounded-2xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 transition-colors flex items-center gap-1.5"
+            className="p-1.5 sm:px-3.5 sm:py-1.5 rounded-2xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 transition-colors flex items-center justify-center gap-1.5"
             title="Go to Clinic Dashboard"
           >
             <span className="material-symbols-outlined text-base text-teal-700">dashboard</span>
@@ -1583,11 +1583,11 @@ export default function DeveloperAdminPanel() {
               sessionStorage.removeItem("cf_dev_auth");
               setIsAuthenticated(false);
             }}
-            className="px-2 sm:px-3 py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer flex items-center gap-1"
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer flex items-center justify-center gap-1 active:scale-95"
             title="Lock Super Admin Session"
           >
-            <span className="material-symbols-outlined text-sm">lock</span>
-            <span>Lock Admin</span>
+            <span className="material-symbols-outlined text-base sm:text-sm">lock</span>
+            <span className="hidden sm:inline">Lock Admin</span>
           </button>
         </div>
       </header>
@@ -2133,10 +2133,10 @@ export default function DeveloperAdminPanel() {
               {/* TAB 2: STAFF & DOCTOR MASTER ACCESS (Password Reset, Add, Delete) */}
               {/* ================================================================= */}
               {activeTab === "staff" && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="bg-white border border-teal-100 p-6 rounded-3xl flex items-center justify-between shadow-sm">
+                <div className="space-y-4 sm:space-y-6 animate-fade-in">
+                  <div className="bg-white border border-teal-100 p-4 sm:p-6 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
                     <div>
-                      <h3 className="text-lg font-black text-teal-950 flex items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-black text-teal-950 flex items-center gap-2">
                         <span className="material-symbols-outlined text-teal-700">badge</span>
                         Doctor &amp; Staff Master Access Directory
                       </h3>
@@ -2150,17 +2150,176 @@ export default function DeveloperAdminPanel() {
                           setEditingUser(null);
                           setShowAddStaffModal(true);
                         }}
-                        className="bg-gradient-to-r from-teal-700 to-teal-600 text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:from-teal-800 hover:to-teal-700 transition-all flex items-center gap-1.5 shadow-lg shadow-teal-700/20 cursor-pointer"
+                        className="w-full sm:w-auto bg-gradient-to-r from-teal-700 to-teal-600 text-white px-5 py-3 sm:py-2.5 rounded-2xl font-black text-xs hover:from-teal-800 hover:to-teal-700 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-teal-700/20 cursor-pointer active:scale-95"
                       >
                         <span className="material-symbols-outlined text-base">person_add</span>
-                        Add Doctor / Staff
+                        <span>Add Doctor / Staff</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Users Table */}
-                  <div className="bg-white border border-teal-100 rounded-3xl overflow-hidden shadow-sm">
-                    <table className="w-full text-left text-xs">
+                  {/* ── Mobile Card Grid (Visible on Mobile <md) ── */}
+                  <div className="block md:hidden space-y-3">
+                    {usersList.map((u) => (
+                      <div key={u.id} className="bg-white border border-teal-100 rounded-3xl p-4 shadow-sm space-y-3">
+                        {/* Header: Name, Owner Badge, Role Badge */}
+                        <div className="flex items-start justify-between gap-2 border-b border-teal-50 pb-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-teal-950 text-sm">{u.name}</span>
+                              {u.is_owner && (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shrink-0">
+                                  👑 OWNER
+                                </span>
+                              )}
+                            </div>
+                            {u.role === "doctor" && (
+                              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                {u.specialization || "General Physician"}
+                              </p>
+                            )}
+                          </div>
+
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-[10.5px] font-black shrink-0 ${
+                            u.role === "doctor"
+                              ? "bg-teal-100 text-teal-900 border border-teal-200"
+                              : u.role === "warehouse_incharge"
+                                ? "bg-indigo-100 text-indigo-900 border border-indigo-200"
+                                : "bg-emerald-100 text-emerald-900 border border-emerald-200"
+                          }`}>
+                            {u.role === "doctor"
+                              ? "Doctor (OPD)"
+                              : u.role === "cashier"
+                                ? "POS Counter & Cashier"
+                                : u.role === "warehouse_incharge"
+                                  ? "Warehouse Manager"
+                                  : u.role === "admin"
+                                    ? "Administrator"
+                                    : u.role}
+                          </span>
+                        </div>
+
+                        {/* Info Grid: Scope / Godown & Fee / Financials */}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-slate-50/90 rounded-2xl p-2.5 border border-slate-100">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scope / Godown</span>
+                            <span className="font-bold text-teal-950 text-[11px] block mt-0.5 truncate">
+                              {u.role === "doctor" ? (
+                                <span className="text-slate-500 font-medium italic">OPD Clinic</span>
+                              ) : u.assigned_warehouse_id === "wh_str" ? (
+                                <span>🏬 Medical Store</span>
+                              ) : u.assigned_warehouse_id ? (
+                                <span>🏢 {warehousesList.find((w) => w.id === u.assigned_warehouse_id)?.name || u.assigned_warehouse_id}</span>
+                              ) : (
+                                <span className="text-emerald-800">🌐 All Global</span>
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50/90 rounded-2xl p-2.5 border border-slate-100">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Financials / Fee</span>
+                            <div className="mt-0.5">
+                              {u.role === "doctor" && (
+                                <span className="font-black text-teal-800 font-mono text-[11px] block">Fee: Rs. {u.consultation_fee || 300}</span>
+                              )}
+                              {u.is_owner ? (
+                                <span className="text-[10.5px] font-black text-amber-900">👑 Full Access</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updatedVal = !u.can_view_financials;
+                                    dbUsers.update(u.id, { can_view_financials: updatedVal });
+                                    setUsersList(dbUsers.getAll());
+                                    showToast(`${u.name}: Financial revenue access ${updatedVal ? "ENABLED" : "REVOKED"}`);
+                                  }}
+                                  className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
+                                    u.can_view_financials
+                                      ? "bg-emerald-100 text-emerald-950 border-emerald-300 shadow-2xs"
+                                      : "bg-slate-100 text-slate-600 border-slate-300"
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-xs">
+                                    {u.can_view_financials ? "visibility" : "visibility_off"}
+                                  </span>
+                                  <span>{u.can_view_financials ? "Fin: ON" : "Fin: OFF"}</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons Bar */}
+                        <div className="pt-2 border-t border-teal-50 flex items-center justify-end gap-1.5 flex-wrap">
+                          {u.role === "doctor" && !u.is_owner && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Designate "${u.name}" as the Principal / Primary Doctor (Owner)?`)) {
+                                  dbUsers.setPrincipalDoctor(u.id);
+                                  setUsersList(dbUsers.getAll());
+                                  showToast(`"${u.name}" is now the Primary Doctor / Clinic Owner!`);
+                                }
+                              }}
+                              className="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1 transition-colors shadow-xs cursor-pointer active:scale-95 min-h-[38px]"
+                            >
+                              <span className="material-symbols-outlined text-sm text-amber-700">stars</span>
+                              Make Primary
+                            </button>
+                          )}
+                          {u.is_owner && (
+                            <span className="bg-amber-100 text-amber-950 font-black px-2.5 py-1.5 rounded-xl text-[10.5px] border border-amber-300 flex items-center gap-1 shadow-2xs mr-auto">
+                              ⭐ Primary Doctor
+                            </span>
+                          )}
+                          <button
+                            onClick={() => {
+                              setResetPasswordModalUser(u);
+                              setNewPasswordInput("");
+                            }}
+                            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors shadow-xs cursor-pointer active:scale-95 min-h-[38px]"
+                          >
+                            <span className="material-symbols-outlined text-sm">key</span>
+                            PIN
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingUser(u);
+                              setStaffForm({
+                                name: u.name,
+                                role: u.role || "doctor",
+                                email: u.email || "",
+                                phone: u.phone || "",
+                                password: "",
+                                specialization: u.specialization || "",
+                                room_number: u.room_number || "Room 1",
+                                consultation_fee: u.consultation_fee || 300,
+                                can_view_financials: Boolean(u.can_view_financials),
+                                is_owner: Boolean(u.is_owner),
+                                assigned_warehouse_id: u.assigned_warehouse_id || "",
+                                availability_status: u.availability_status || "available",
+                              });
+                              setShowAddStaffModal(true);
+                            }}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer active:scale-95 min-h-[38px] flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">edit</span>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer active:scale-95 min-h-[38px] flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Users Table (Visible on Tablet & Desktop >=md with Horizontal Scroll) ── */}
+                  <div className="hidden md:block bg-white border border-teal-100 rounded-3xl overflow-hidden shadow-sm table-scroll-wrapper custom-scrollbar overflow-x-auto w-full">
+                    <table className="w-full text-left text-xs min-w-[700px]">
                       <thead className="bg-teal-50/80 text-teal-900 font-black uppercase tracking-wider border-b border-teal-100">
                         <tr>
                           <th className="px-5 py-3.5">Staff Name</th>
@@ -3190,14 +3349,14 @@ export default function DeveloperAdminPanel() {
       {/* MODAL: ADD / EDIT STAFF                                           */}
       {/* ================================================================= */}
       {showAddStaffModal && (
-        <div className="fixed inset-0 bg-teal-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-teal-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <form
             onSubmit={handleSaveStaff}
-            className="bg-white border border-teal-100 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-slate-800 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto"
+            className="bg-white border border-teal-100 rounded-3xl p-4 sm:p-8 max-w-lg w-full text-slate-800 shadow-2xl space-y-4 my-auto max-h-[90dvh] overflow-y-auto custom-scrollbar"
           >
             <div className="flex justify-between items-center border-b border-teal-50 pb-3">
               <div>
-                <h3 className="font-black text-lg text-teal-950">
+                <h3 className="font-black text-base sm:text-lg text-teal-950">
                   {editingUser ? `Edit Staff: ${editingUser.name}` : "Add Doctor or Staff Member"}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">Master role and credential assignment</p>
@@ -3205,13 +3364,13 @@ export default function DeveloperAdminPanel() {
               <button
                 type="button"
                 onClick={() => setShowAddStaffModal(false)}
-                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
+            <div className="space-y-3.5 text-xs">
               {/* Full Name */}
               <div>
                 <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10.5px] mb-1">
@@ -3223,7 +3382,7 @@ export default function DeveloperAdminPanel() {
                   value={staffForm.name}
                   onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
                   placeholder="e.g. Dr. Asif Ashraf Khan"
-                  className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none transition-all"
+                  className="w-full h-11 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none transition-all"
                 />
               </div>
 
@@ -3236,7 +3395,7 @@ export default function DeveloperAdminPanel() {
                   <select
                     value={staffForm.role}
                     onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none cursor-pointer transition-all"
+                    className="w-full h-11 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none cursor-pointer transition-all"
                   >
                     <option value="doctor">👨‍⚕️ Doctor (OPD Consultant)</option>
                     <option value="cashier">💵 POS Counter &amp; Cashier</option>
@@ -3255,7 +3414,7 @@ export default function DeveloperAdminPanel() {
                       value={staffForm.consultation_fee}
                       onChange={(e) => setStaffForm({ ...staffForm, consultation_fee: Number(e.target.value) || 0 })}
                       placeholder="e.g. 500"
-                      className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-mono font-bold outline-none transition-all"
+                      className="w-full h-11 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-mono font-bold outline-none transition-all"
                     />
                   </div>
                 ) : (
@@ -3266,7 +3425,7 @@ export default function DeveloperAdminPanel() {
                     <select
                       value={staffForm.assigned_warehouse_id || ""}
                       onChange={(e) => setStaffForm({ ...staffForm, assigned_warehouse_id: e.target.value })}
-                      className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none cursor-pointer transition-all"
+                      className="w-full h-11 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none cursor-pointer transition-all"
                     >
                       <option value="">All Warehouses (Global Access)</option>
                       <option value="wh_str">Medical Store Counter (wh_str)</option>
@@ -3291,7 +3450,7 @@ export default function DeveloperAdminPanel() {
                     value={staffForm.specialization}
                     onChange={(e) => setStaffForm({ ...staffForm, specialization: e.target.value })}
                     placeholder="e.g. Homoeopathic Physician, MBBS, D.H.M.S"
-                    className="w-full h-10 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none transition-all"
+                    className="w-full h-11 bg-slate-50 border border-slate-300 focus:border-teal-600 focus:bg-white rounded-xl px-3 text-slate-900 font-bold outline-none transition-all"
                   />
                 </div>
               )}
@@ -3334,17 +3493,17 @@ export default function DeveloperAdminPanel() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-teal-50">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 border-t border-teal-50">
               <button
                 type="button"
                 onClick={() => setShowAddStaffModal(false)}
-                className="px-4 py-2.5 rounded-2xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
+                className="w-full sm:w-auto px-5 py-3 rounded-2xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer active:scale-95 text-center"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-2xl text-xs font-black bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white shadow-lg shadow-teal-700/20 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl text-xs font-black bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white shadow-lg shadow-teal-700/20 cursor-pointer active:scale-95 text-center"
               >
                 Save Staff User
               </button>
