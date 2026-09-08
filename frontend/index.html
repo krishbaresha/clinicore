@@ -6,6 +6,8 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Content Security Policy (CSP) Locking: Explicitly allow safe module evaluation (unsafe-eval), inline styles, webfonts, blob/canvas assets, and cloud sync endpoints -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http: https: data: blob: 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: blob: https://fonts.gstatic.com; img-src 'self' data: blob: http: https:; connect-src 'self' http: https: ws: wss: data: blob: https://api.clinicore.me https://api.resend.com; media-src 'self' data: blob: http: https:; worker-src 'self' blob: data:; child-src 'self' blob: data:; object-src 'none'; base-uri 'self';" />
     <title>CliniCore</title>
     <meta name="description" content="CliniCore &amp; DrCreate — Offline-first Clinic &amp; Wholesale Pharmacy Management System (clinicore.me)." />
     

@@ -211,15 +211,40 @@ function broadcastInvalidate(meta = {}) {
   }
 }
 
+function applyCorsHeaders(req, res) {
+  const origin = req.headers.origin || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD");
+  const requestedHeaders = req.headers["access-control-request-headers"];
+  if (requestedHeaders) {
+    res.setHeader("Access-Control-Allow-Headers", requestedHeaders);
+  } else {
+    res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, X-Idempotency-Key, access-control-request-headers, *");
+  }
+  res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Disposition, X-Idempotency-Key, Date, ETag");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  res.setHeader("Vary", "Origin, Access-Control-Request-Headers, Access-Control-Request-Method");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+}
+
 const server = http.createServer((req, res) => {
+  // Apply standard CORS & Security headers to all incoming requests
+  applyCorsHeaders(req, res);
+
+  // Preflight CORS OPTIONS handler
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, { "Content-Length": "0" });
+    res.end();
+    return;
+  }
+
   // ── SSE Real-Time Live Broadcast Endpoint ──
   // Clients connect here to receive instant invalidation events
   if (req.url === "/api/v1/sync/live" || req.url?.startsWith("/api/v1/sync/live?")) {
-    const reqHeaders = req.headers["access-control-request-headers"] || "*";
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", reqHeaders === "*" ? "*" : `${reqHeaders}, Content-Type, Cache-Control`);
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no"); // Disable Nginx buffering for SSE
     res.writeHead(200);
@@ -240,18 +265,6 @@ const server = http.createServer((req, res) => {
       sseClients.delete(res);
       console.log(`[SSE Live] Client disconnected. Total listeners: ${sseClients.size}`);
     });
-    return;
-  }
-  // CORS Headers
-  const reqHeaders = req.headers["access-control-request-headers"] || "*";
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", reqHeaders === "*" ? "*" : `${reqHeaders}, Content-Type, Authorization, Cache-Control, Pragma, X-Idempotency-Key`);
-  res.setHeader("Access-Control-Max-Age", "86400");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
     return;
   }
 

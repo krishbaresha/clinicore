@@ -169,6 +169,9 @@ export default defineConfig(({ command }) => ({
     host: true,
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, X-Idempotency-Key, *',
     },
     watch: {
       ignored: ['**/temp_desktop_software/**', '**/src-tauri/**', '**/target/**', '**/.git/**'],
