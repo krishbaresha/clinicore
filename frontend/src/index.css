@@ -662,8 +662,8 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -680,6 +680,53 @@
   background: rgba(5, 150, 105, 0.85);
 }
 
+/* Data Table Responsive Horizontal Scroll Wrapper */
+.table-scroll-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13, 148, 136, 0.4) rgba(0, 0, 0, 0.03);
+}
+
+.table-scroll-wrapper::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.table-scroll-wrapper::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+}
+
+.table-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(13, 148, 136, 0.4);
+  border-radius: 6px;
+}
+
+/* Viewport 100dvh locking for zero mobile vertical jitter */
+.app-dvh-viewport {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100vw;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* iOS Safe Area Insets for Mobile Bottom Navigation */
+.safe-bottom-inset {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+}
+
+.safe-content-bottom {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* Small Laptop & Low Resolution Displays (1366x768 / 1280x800 / 1024x768) */
 @media (max-height: 800px) {
   .compact-low-res-header {
@@ -694,7 +741,7 @@
 /* Mobile Bottom Navigation Safe Clearance */
 @media (max-width: 768px) {
   .mobile-safe-bottom {
-    padding-bottom: 90px !important;
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 

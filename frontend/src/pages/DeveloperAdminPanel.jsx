@@ -2076,7 +2076,7 @@ export default function DeveloperAdminPanel() {
                       </div>
                     </div>
 
-                    <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto w-full">
+                    <div className="border border-teal-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto overflow-x-auto w-full table-scroll-wrapper custom-scrollbar">
                       <table className="w-full text-left text-xs min-w-[620px]">
                         <thead className="bg-teal-50/80 text-teal-900 font-black uppercase tracking-wider sticky top-0 z-10 border-b border-teal-100">
                           <tr>

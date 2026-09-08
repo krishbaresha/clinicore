@@ -2551,8 +2551,8 @@ export default function SaleInvoiceModal({
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            <table className="w-full text-left text-xs text-slate-700">
+          <div className="flex-1 overflow-y-auto overflow-x-auto table-scroll-wrapper custom-scrollbar">
+            <table className="w-full text-left text-xs text-slate-700 min-w-[580px] sm:min-w-full">
               <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[9px] border-b border-slate-200 tracking-wider sticky top-0 z-10">
                 <tr>
                   <th className="py-1.5 px-2.5 w-10 text-center" scope="col">#</th>
@@ -2637,10 +2637,10 @@ export default function SaleInvoiceModal({
       {/* ================= END: ScrollableWorkspace ================= */}
 
       {/* ================= BEGIN: BottomCheckoutDock ================= */}
-      <footer className="bg-white border-t border-slate-200 px-3.5 py-2 flex-shrink-0 shadow-md" data-purpose="checkout-dock">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <footer className="bg-white border-t border-slate-200 px-3 sm:px-3.5 py-2 flex-shrink-0 shadow-md" data-purpose="checkout-dock">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           {/* Left Actions */}
-          <div className="flex items-center space-x-1.5">
+          <div className="flex items-center space-x-1.5 justify-between sm:justify-start">
             <button
               type="button"
               onClick={() => setShowInvoicesModal(true)}
@@ -2664,9 +2664,9 @@ export default function SaleInvoiceModal({
           </div>
 
           {/* Right Calculation Summary & Primary Save/Print Action */}
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 ml-auto text-xs">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between sm:justify-end text-xs w-full sm:w-auto">
             {/* Figures breakdown */}
-            <div className="flex items-center space-x-3 text-xs text-slate-500 pr-2 border-r border-slate-200">
+            <div className="flex items-center space-x-2 sm:space-x-3 text-[11px] sm:text-xs text-slate-500 pr-2 border-r border-slate-200">
               <div>
                 <span>Gross: </span>
                 <span className="font-mono font-semibold text-slate-800">
@@ -2680,7 +2680,7 @@ export default function SaleInvoiceModal({
                 </span>
               </div>
               {activeInvoiceMode === "retail" && calculations.opdFee > 0 && (
-                <div className="border-l border-slate-200 pl-2.5 flex items-center space-x-1">
+                <div className="border-l border-slate-200 pl-2 flex items-center space-x-1">
                   <span className="text-slate-600 font-medium">OPD:</span>
                   <span className="font-mono font-bold text-teal-800 bg-teal-50 px-1 py-0.2 rounded border border-teal-200">
                     Rs. {calculations.opdFee.toFixed(2)}
@@ -2688,7 +2688,7 @@ export default function SaleInvoiceModal({
                 </div>
               )}
               {calculations.posFee > 0 && (
-                <div className="border-l border-slate-200 pl-2.5 flex items-center space-x-1">
+                <div className="border-l border-slate-200 pl-2 flex items-center space-x-1">
                   <span className="text-slate-600 font-medium">POS Fee:</span>
                   <span className="font-mono font-bold text-teal-800 bg-teal-50 px-1 py-0.2 rounded border border-teal-200">
                     Rs. 1.00
@@ -2698,7 +2698,7 @@ export default function SaleInvoiceModal({
             </div>
 
             {/* Net Amount Box with Wholesale / Retail contextual styling */}
-            <div className="bg-teal-50 px-3.5 py-1 rounded-lg border border-teal-200 flex items-center space-x-2 shadow-xs">
+            <div className="bg-teal-50 px-2.5 sm:px-3.5 py-1 rounded-lg border border-teal-200 flex items-center space-x-2 shadow-xs">
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-teal-900 uppercase tracking-tight">
@@ -2725,14 +2725,14 @@ export default function SaleInvoiceModal({
                     : "Live Sale Billing Active"}
                 </span>
               </div>
-              <span className="text-base sm:text-lg font-extrabold text-teal-900 font-mono tracking-tight pl-1">
+              <span className="text-sm sm:text-lg font-extrabold text-teal-900 font-mono tracking-tight pl-1">
                 Rs. {calculations.grandNet.toFixed(2)}
               </span>
             </div>
 
             {/* Tendered / Cash Input & Change */}
             <div className="flex items-center space-x-1.5">
-              <div className="relative w-24 sm:w-28">
+              <div className="relative w-22 sm:w-28">
                 <input
                   ref={cashTenderedInputRef}
                   type="number"
@@ -2768,7 +2768,7 @@ export default function SaleInvoiceModal({
             <button
               type="button"
               onClick={processSaleAndPrint}
-              className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white font-semibold text-xs tracking-wide shadow-sm hover:shadow transition whitespace-nowrap cursor-pointer h-8"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 px-4 py-2 sm:py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white font-semibold text-xs tracking-wide shadow-sm hover:shadow transition whitespace-nowrap cursor-pointer min-h-[40px] sm:h-8"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />

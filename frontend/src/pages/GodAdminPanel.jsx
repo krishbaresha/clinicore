@@ -629,7 +629,7 @@ export default function GodAdminPanel() {
         </div>
 
         {/* Audit Log Stream Table with Vertical Scrollbar & Pinned Sticky Header */}
-        <div className="max-h-[560px] overflow-y-auto overflow-x-auto border border-slate-200 rounded-2xl custom-scrollbar relative shadow-inner bg-slate-50/20">
+        <div className="max-h-[560px] overflow-y-auto overflow-x-auto border border-slate-200 rounded-2xl custom-scrollbar table-scroll-wrapper relative shadow-inner bg-slate-50/20">
           <table className="w-full text-left text-xs border-collapse min-w-[760px]">
             <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-md shadow-xs border-b border-slate-200">
               <tr className="text-slate-700 font-black uppercase text-[10px] tracking-wider">

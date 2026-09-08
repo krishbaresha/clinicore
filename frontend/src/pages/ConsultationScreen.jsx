@@ -622,16 +622,16 @@ export default function ConsultationScreen() {
         />
       </div>
 
-      {/* ── Fixed Mobile-Safe Action Bar (Clears Mobile Nav at bottom-16 on mobile, bottom-0 on desktop) ── */}
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/90 backdrop-blur-md border-t border-slate-200/80 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-2.5">
+      {/* ── Fixed Mobile-Safe Action Bar (Clears Mobile Nav with safe-area support) ── */}
+      <div className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] md:bottom-0 left-0 right-0 p-2.5 sm:p-4 bg-white/95 backdrop-blur-md border-t border-slate-200/80 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-2 sm:gap-2.5">
           {/* Primary: Complete Visit */}
           <button
             id="complete-visit-btn"
             type="button"
             onClick={() => completeVisit("completed")}
             disabled={saving}
-            className="flex-1 min-h-[44px] py-3 px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white active:scale-98 shadow-teal-700/20 disabled:opacity-50 cursor-pointer"
+            className="flex-1 min-h-[44px] py-2.5 sm:py-3 px-4 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 text-white active:scale-98 shadow-teal-700/20 disabled:opacity-50 cursor-pointer"
           >
             {saving ? (
               <span className="material-symbols-outlined animate-spin text-lg">refresh</span>
@@ -650,7 +650,7 @@ export default function ConsultationScreen() {
             type="button"
             onClick={() => completeVisit("completed_reports_pending")}
             disabled={saving}
-            className="flex-1 min-h-[44px] py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border bg-amber-50/90 border-amber-300 text-amber-900 hover:bg-amber-100 active:scale-98 shadow-xs disabled:opacity-50 cursor-pointer"
+            className="flex-1 min-h-[44px] py-2.5 sm:py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border bg-amber-50/90 border-amber-300 text-amber-900 hover:bg-amber-100 active:scale-98 shadow-xs disabled:opacity-50 cursor-pointer"
           >
             <span className="material-symbols-outlined text-lg">forward_to_inbox</span>
             <span>Reports Pending at Reception</span>

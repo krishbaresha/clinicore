@@ -673,11 +673,11 @@ export default function SidebarLayout({ children }) {
   }
 
   return (
-    <div className="h-screen w-screen max-h-screen max-w-full overflow-hidden bg-[#f8fafc] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
+    <div className="app-dvh-viewport bg-[#f8fafc] text-slate-800 font-sans selection:bg-teal-600 selection:text-white flex flex-col">
 
       {/* ── Top Header Bar (Translucent Glassmorphic Engine - Fixed Topbar) ── */}
-      <header className="border-b border-slate-200/70 bg-white z-40 shadow-xs h-13 sm:h-14 lg:h-16 compact-low-res-header flex items-center px-3 sm:px-6 justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="border-b border-slate-200/70 bg-white z-40 shadow-xs h-13 sm:h-14 lg:h-16 compact-low-res-header flex items-center px-2.5 sm:px-6 justify-between flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Sidebar Open/Close Toggle Button with 44px ergonomic touch target */}
           <button
             onClick={() => {
@@ -687,27 +687,27 @@ export default function SidebarLayout({ children }) {
                 toggleSidebar();
               }
             }}
-            className="w-10 h-10 rounded-xl bg-teal-50/80 hover:bg-teal-100 text-teal-800 border border-teal-200/70 transition-all flex items-center justify-center cursor-pointer shadow-xs active:scale-95 touch-target-44"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-50/80 hover:bg-teal-100 text-teal-800 border border-teal-200/70 transition-all flex items-center justify-center cursor-pointer shadow-xs active:scale-95 touch-target-44 shrink-0"
             title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
             <Menu className="w-5 h-5" />
           </button>
 
           {/* Brand Logo & Clinic Info */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 min-w-0">
             <img
               src={clinicLogo}
               alt="H/Dr. Asif Clinic Logo"
-              className="h-10 sm:h-11 w-auto max-w-[120px] object-contain drop-shadow-xs"
+              className="h-8 sm:h-11 w-auto max-w-[90px] sm:max-w-[120px] object-contain drop-shadow-xs shrink-0"
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-base text-slate-900 tracking-tight">CliniCore</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-black text-sm sm:text-base text-slate-900 tracking-tight">CliniCore</span>
                 <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800 border border-teal-200/60">
                   HYBRID V2.5
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium truncate max-w-[160px] sm:max-w-xs">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate max-w-[130px] sm:max-w-xs">
                 {clinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}
               </p>
             </div>
@@ -715,38 +715,40 @@ export default function SidebarLayout({ children }) {
         </div>
 
         {/* Right Header User Chip & Quick Action Links */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <button
             onClick={() => setIsShortcutsModalOpen(true)}
-            className="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] font-bold border border-teal-200/80 bg-teal-50/70 hover:bg-teal-100 text-teal-900 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+            className="hidden sm:flex min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] font-bold border border-teal-200/80 bg-teal-50/70 hover:bg-teal-100 text-teal-900 items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
             title="Master Keyboard Shortcuts Deck (F12)"
           >
             <Keyboard className="w-4 h-4 text-teal-700" />
-            <span className="hidden sm:inline">Shortcuts</span>
+            <span className="hidden md:inline">Shortcuts</span>
             <kbd className="hidden lg:inline-block px-1.5 py-0.2 bg-teal-200/80 text-teal-950 text-[10px] font-mono font-bold rounded">
               F12
             </kbd>
           </button>
 
-          <LanguageSwitcher compact={true} />
+          <div className="hidden sm:block">
+            <LanguageSwitcher compact={true} />
+          </div>
 
           <StaffSwitcherWidget />
 
           {user && (
-            <div className="flex items-center gap-2 bg-white/80 border border-slate-200/70 rounded-xl px-2.5 sm:px-3 py-1 shadow-xs backdrop-blur-xs min-h-[38px]">
-              <div className="w-7 h-7 rounded-full bg-teal-700 text-white flex items-center justify-center font-black text-[11px] shadow-xs shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-white/80 border border-slate-200/70 rounded-xl px-2 sm:px-3 py-1 shadow-xs backdrop-blur-xs min-h-[36px] sm:min-h-[38px]">
+              <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full bg-teal-700 text-white flex items-center justify-center font-black text-[10px] sm:text-[11px] shadow-xs shrink-0">
                 {getInitials(user.name)}
               </div>
-              <div className="hidden sm:block text-left min-w-0 pr-1">
-                <p className="font-bold text-xs text-slate-900 truncate max-w-[120px]">{user.name}</p>
+              <div className="hidden md:block text-left min-w-0 pr-1">
+                <p className="font-bold text-xs text-slate-900 truncate max-w-[110px]">{user.name}</p>
                 <p className="text-[9.5px] font-bold text-teal-700 capitalize leading-none">{user.role}</p>
               </div>
               <button
                 onClick={handleLogout}
                 title="Sign Out / Exit Portal"
-                className="w-7 h-7 text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg transition-all flex items-center justify-center border border-rose-200 cursor-pointer"
+                className="w-6.5 h-6.5 sm:w-7 sm:h-7 text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg transition-all flex items-center justify-center border border-rose-200 cursor-pointer"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
               </button>
             </div>
           )}
@@ -897,6 +899,24 @@ export default function SidebarLayout({ children }) {
                   </div>
                 )}
 
+                {/* Mobile Drawer Quick Tools (Language & Shortcuts) */}
+                <div className="mx-3 mt-2 flex items-center gap-2 flex-shrink-0">
+                  <div className="flex-1">
+                    <LanguageSwitcher compact={false} />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setMobileDrawerOpen(false);
+                      setIsShortcutsModalOpen(true);
+                    }}
+                    className="p-2.5 rounded-xl border border-teal-200 bg-teal-50 text-teal-900 flex items-center gap-1 text-xs font-bold shrink-0 cursor-pointer"
+                    title="Keyboard Shortcuts (F12)"
+                  >
+                    <Keyboard className="w-4 h-4 text-teal-700" />
+                    <span>Keys</span>
+                  </button>
+                </div>
+
                 {/* Navigation Items (Fully expanded with labels) */}
                 <div className="p-3 overflow-y-auto flex-1 touch-scroll custom-scrollbar">
                   <NavigationList isFullWidth={true} onItemClick={() => setMobileDrawerOpen(false)} />
@@ -949,12 +969,12 @@ export default function SidebarLayout({ children }) {
             <main
               id="main-content-viewport"
               className={`flex-1 h-full min-h-0 min-w-0 ${isPOSCockpit
-                ? "overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6 max-w-none pb-16 md:pb-6 flex flex-col"
+                ? "overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6 max-w-none pb-20 md:pb-6 flex flex-col"
                 : isFeesPage
-                  ? "overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-3.5 max-w-none pb-16 md:pb-3"
+                  ? "overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-3.5 max-w-none pb-20 md:pb-3"
                   : isFullWidthPage
-                    ? "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-none pb-24 md:pb-12"
-                    : "overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 max-w-7xl pb-24 md:pb-12"
+                    ? "overflow-y-auto overflow-x-hidden p-2.5 sm:p-5 lg:p-8 max-w-none pb-20 md:pb-12"
+                    : "overflow-y-auto overflow-x-hidden p-2.5 sm:p-5 lg:p-8 max-w-7xl pb-20 md:pb-12"
                 } mx-auto w-full custom-scrollbar focus:outline-none`}
               tabIndex={-1}
             >
@@ -973,33 +993,33 @@ export default function SidebarLayout({ children }) {
 
       </div>
 
-      {/* ── Mobile Bottom Navigation Bar (Fast 1-Thumb 44px Touch Targets) ── */}
-      <nav className="md:hidden flex-shrink-0 z-40 bg-white/85 backdrop-blur-lg border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-        <ul className="flex justify-around items-center h-16 px-1">
+      {/* ── Mobile Bottom Navigation Bar (Fast 1-Thumb 44px Touch Targets with Safe Area Inset) ── */}
+      <nav className="md:hidden flex-shrink-0 z-40 bg-white/90 backdrop-blur-lg border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] safe-bottom-inset">
+        <ul className="flex justify-around items-center h-15 px-1">
           {navItems.slice(0, 4).map((item) => (
-            <li key={item.path} className="flex-1 min-w-[50px] text-center">
+            <li key={item.path} className="flex-1 min-w-[48px] text-center">
               <NavLink
                 to={item.path}
                 end={item.path === "/store" || item.end}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all min-h-[44px] ${isActive
+                  `flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all min-h-[44px] ${isActive
                     ? "text-teal-800 font-black bg-teal-50/80"
                     : "text-slate-500 font-semibold hover:text-teal-700"
                   }`
                 }
               >
                 {getNavIcon(item.icon, "w-5 h-5")}
-                <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label.split(" ")[0]}</span>
+                <span className="text-[9.5px] mt-0.5 tracking-tight truncate max-w-full">{item.label.split(" ")[0]}</span>
               </NavLink>
             </li>
           ))}
-          <li className="flex-1 min-w-[50px] text-center">
+          <li className="flex-1 min-w-[48px] text-center">
             <button
               onClick={() => setMobileDrawerOpen(true)}
-              className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl text-teal-800 font-black hover:bg-teal-50/80 transition-all w-full cursor-pointer min-h-[44px]"
+              className="flex flex-col items-center justify-center py-1 px-0.5 rounded-xl text-teal-800 font-black hover:bg-teal-50/80 transition-all w-full cursor-pointer min-h-[44px]"
             >
-              <Menu className="w-6 h-6" />
-              <span className="text-[10px] mt-0.5 tracking-tight">Menu</span>
+              <Menu className="w-5.5 h-5.5" />
+              <span className="text-[9.5px] mt-0.5 tracking-tight">Menu</span>
             </button>
           </li>
         </ul>

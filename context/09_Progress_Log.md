@@ -52,6 +52,24 @@ be specific so a human or next AI can correct it if wrong]
 [What should happen in the next session]
 ```
 
+- **Phase:** Milestone 260 — Universal Mobile Responsive Viewport, Screen-Fitted Layout, iOS Safe Areas & Scoped Scrollbar Engine (Completed)
+- **Last worked on:**
+  1. **Dynamic Viewport Height & Mobile Root Locking (`index.css`, `SidebarLayout.jsx`):**
+     - Replaced unstable `100vh` root container with `100dvh` (`.app-dvh-viewport`) and `overflow-hidden` to eliminate outer vertical jitter on mobile Safari and Android Chrome.
+  2. **Mobile-Optimized Topbar & Drawer Integration:**
+     - Streamlined the fixed top header on `<640px` screens: preserved brand logo, title, and compact staff avatar while moving secondary actions (keyboard shortcut cheatsheet, full language selector) cleanly into the slide-out mobile drawer (`AnimatePresence`).
+  3. **iOS Safe Area Insets (`env(safe-area-inset-bottom)`):**
+     - Integrated safe-area insets (`safe-bottom-inset`, `.safe-content-bottom`) into the mobile bottom navigation bar and doctor consultation bottom dock to prevent button overlap with the iOS home bar indicator.
+  4. **Scoped Horizontal Scrollbars for Wide Data Tables:**
+     - Wrapped wide tables across POS, purchases (GRN), inventory, sales logs, and admin audit streams in `.table-scroll-wrapper` and `.custom-scrollbar` to guarantee 0 horizontal page blowouts on mobile screens.
+  5. **Sale Invoice POS Cockpit & Checkout Dock Mobile Adaptation (`SaleInvoiceModal.jsx`):**
+     - Made cart items table horizontally scrollable (`min-w-[580px] sm:min-w-full`) and restructured the bottom checkout dock on mobile so calculation metrics and the primary "Save & Print Slip [F9]" button have full width with 48px touch hitboxes.
+  6. **Verification & Audit:**
+     - 762/762 Master Unit Tests passing (100%).
+     - 0 AST / Hook / Identifier errors across 76 source files.
+     - 0 Secret leaks across 987 files.
+     - Clean 13.4s Vite production build.
+
 - **Phase:** Milestone 259 — Exhaustive Deep Audit & Universal Multi-Device Cloud Sync Enqueue Standard across all Collections (Completed)
 - **Last worked on:**
   1. **Exhaustive AST Codebase Audit:**
