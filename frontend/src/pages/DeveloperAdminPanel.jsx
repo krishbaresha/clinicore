@@ -1500,7 +1500,7 @@ export default function DeveloperAdminPanel() {
 
       {/* Top Navbar */}
       <header className="border-b border-teal-100 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs h-16 flex items-center px-2.5 sm:px-6 justify-between flex-shrink-0">
-        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           {/* Sidebar Toggle Button */}
           <button
             onClick={() => {
@@ -1510,7 +1510,7 @@ export default function DeveloperAdminPanel() {
                 setSidebarOpen((prev) => !prev);
               }
             }}
-            className="p-2 rounded-2xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors flex items-center justify-center cursor-pointer shadow-xs shrink-0 active:scale-95"
+            className="p-2 rounded-2xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-all flex items-center justify-center cursor-pointer shadow-xs shrink-0 active:scale-95 min-w-[38px] min-h-[38px]"
             title="Toggle Menu"
           >
             <span className="material-symbols-outlined text-xl">
@@ -1521,21 +1521,21 @@ export default function DeveloperAdminPanel() {
           <img
             src="/favicon.svg"
             alt="CliniCore Logo"
-            className="h-8 sm:h-10 w-8 sm:w-10 object-contain rounded-xl drop-shadow-xs shrink-0"
+            className="h-8 sm:h-9 w-8 sm:w-9 object-contain rounded-xl drop-shadow-xs shrink-0"
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-nowrap">
-              <h1 className="font-black text-xs sm:text-base text-teal-950 tracking-tight truncate">Admin Command Center</h1>
-              <span className="hidden xs:inline-block px-1.5 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h1 className="font-black text-xs sm:text-sm md:text-base text-teal-950 tracking-tight truncate">Admin Command Center</h1>
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9.5px] font-black bg-teal-100 text-teal-800 border border-teal-200 shrink-0 uppercase tracking-wider">
                 MASTER SUITE
               </span>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
-              <span className="hidden md:inline">Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}</strong></span>
+              <span className="hidden lg:inline">Active Tenant: <strong className="text-teal-900">{activeClinic?.name || "H/Dr.Asif Ashraf Khan Clinic"}</strong></span>
               <button
                 type="button"
                 onClick={() => handleCheckForUpdates(true)}
-                className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 text-[9.5px] sm:text-[10px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 text-[9.5px] sm:text-[10px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
                 title="Click to check for software updates"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1551,7 +1551,7 @@ export default function DeveloperAdminPanel() {
           <button
             type="button"
             onClick={() => handleCheckForUpdates(true)}
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-emerald-500/30"
+            className="p-2 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-emerald-500/30 min-w-[38px] min-h-[38px]"
             title="Check for Latest CliniCore Software Updates"
           >
             <span className={`material-symbols-outlined text-base ${isCheckingUpdates ? "animate-spin" : ""}`}>
@@ -1562,7 +1562,7 @@ export default function DeveloperAdminPanel() {
 
           <Link
             to="/login"
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-bold bg-white hover:bg-teal-50 text-teal-950 border border-teal-200 transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+            className="p-2 sm:px-3 sm:py-1.5 rounded-2xl text-xs font-bold bg-white hover:bg-teal-50 text-teal-950 border border-teal-200 transition-all flex items-center justify-center gap-1.5 shadow-xs min-w-[38px] min-h-[38px]"
             title="Go to Staff & Cashier Login"
           >
             <span className="material-symbols-outlined text-base text-teal-700">badge</span>
@@ -1571,7 +1571,7 @@ export default function DeveloperAdminPanel() {
 
           <Link
             to="/dashboard"
-            className="p-1.5 sm:px-3.5 sm:py-1.5 rounded-2xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 transition-colors flex items-center justify-center gap-1.5"
+            className="p-2 sm:px-3.5 sm:py-1.5 rounded-2xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 transition-all flex items-center justify-center gap-1.5 min-w-[38px] min-h-[38px]"
             title="Go to Clinic Dashboard"
           >
             <span className="material-symbols-outlined text-base text-teal-700">dashboard</span>
@@ -1583,7 +1583,7 @@ export default function DeveloperAdminPanel() {
               sessionStorage.removeItem("cf_dev_auth");
               setIsAuthenticated(false);
             }}
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer flex items-center justify-center gap-1 active:scale-95"
+            className="p-2 sm:px-3 sm:py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95 min-w-[38px] min-h-[38px]"
             title="Lock Super Admin Session"
           >
             <span className="material-symbols-outlined text-base sm:text-sm">lock</span>
@@ -1621,21 +1621,22 @@ export default function DeveloperAdminPanel() {
             </div>
             <button
               onClick={() => setMobileDrawerOpen(false)}
-              className="p-1 rounded-xl bg-white border border-teal-200 text-teal-800"
+              className="p-1 rounded-xl bg-white border border-teal-200 text-teal-800 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
           </div>
 
           {/* Navigation Items List */}
-          <div className="p-3.5 space-y-1.5 overflow-y-auto flex-1">
-            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+          <div className="p-3 space-y-1.5 overflow-y-auto flex-1 custom-scrollbar">
+            <div className={`px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 ${!sidebarOpen && !mobileDrawerOpen ? "text-center" : ""}`}>
               {mobileDrawerOpen || sidebarOpen ? "Control Plane Modules" : "•"}
             </div>
 
             {visibleNavItems.map((item) => {
               const isActive = activeTab === item.id;
               const isLocked = tabSecurity?.tabs?.[item.id]?.locked && !unlockedTabs.has(item.id);
+              const isCollapsed = !sidebarOpen && !mobileDrawerOpen;
               return (
                 <button
                   key={item.id}
@@ -1644,13 +1645,14 @@ export default function DeveloperAdminPanel() {
                     setMobileDrawerOpen(false);
                   }}
                   className={`
-                    w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer text-left
+                    w-full flex items-center rounded-2xl text-xs font-black transition-all cursor-pointer text-left
+                    ${isCollapsed ? "justify-center px-0 py-3" : "justify-start px-3.5 py-3 gap-3.5"}
                     ${isActive
                       ? "bg-teal-700 text-white shadow-md shadow-teal-700/20"
                       : "text-slate-600 hover:bg-teal-50/80 hover:text-teal-950"
                     }
                   `}
-                  title={!sidebarOpen ? item.label : undefined}
+                  title={isCollapsed ? item.label : undefined}
                 >
                   <span
                     className={`material-symbols-outlined text-xl flex-shrink-0 ${isActive ? "text-white" : "text-teal-700"
@@ -1659,13 +1661,13 @@ export default function DeveloperAdminPanel() {
                     {item.icon}
                   </span>
 
-                  {(mobileDrawerOpen || sidebarOpen) && (
+                  {!isCollapsed && (
                     <span className="flex-1 truncate tracking-tight">
                       {item.label}
                     </span>
                   )}
 
-                  {(mobileDrawerOpen || sidebarOpen) && item.count !== undefined && (
+                  {!isCollapsed && item.count !== undefined && (
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive
                           ? "bg-white/20 text-white"
@@ -1676,7 +1678,7 @@ export default function DeveloperAdminPanel() {
                     </span>
                   )}
 
-                  {(mobileDrawerOpen || sidebarOpen) && item.badge && (
+                  {!isCollapsed && item.badge && (
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${isActive
                           ? "bg-white/20 text-white"
@@ -1716,8 +1718,8 @@ export default function DeveloperAdminPanel() {
                 </div>
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="p-1.5 rounded-xl hover:bg-teal-100 text-teal-800 transition-colors hidden md:block"
-                  title="Collapse"
+                  className="p-1.5 rounded-xl hover:bg-teal-100 text-teal-800 transition-colors hidden md:block cursor-pointer"
+                  title="Collapse Sidebar"
                 >
                   <span className="material-symbols-outlined text-lg">chevron_left</span>
                 </button>
@@ -1725,8 +1727,8 @@ export default function DeveloperAdminPanel() {
             ) : (
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="w-full p-1.5 rounded-xl hover:bg-teal-100 text-teal-800 transition-colors hidden md:flex items-center justify-center"
-                title="Expand"
+                className="w-full p-1.5 rounded-xl hover:bg-teal-100 text-teal-800 transition-colors hidden md:flex items-center justify-center cursor-pointer"
+                title="Expand Sidebar"
               >
                 <span className="material-symbols-outlined text-lg">chevron_right</span>
               </button>
@@ -1735,7 +1737,7 @@ export default function DeveloperAdminPanel() {
         </aside>
 
         {/* ── Main Content Pane ── */}
-        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-y-auto h-[calc(100vh-4rem)] space-y-6 pb-24 md:pb-12 custom-scrollbar">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-y-auto h-[calc(100dvh-4rem)] space-y-6 pb-24 md:pb-12 custom-scrollbar">
 
           <>
               {/* ================================================================= */}
